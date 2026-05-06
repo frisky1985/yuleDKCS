@@ -1,0 +1,752 @@
+syntax = "proto3";
+
+package dkcs;
+
+option go_package = "github.com/digitalkey/proto/dkcs";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+// ============================================================
+// 通用定义
+// ============================================================
+
+// 响应状态
+message Response {
+  uint32 code = 1;        // 错误码 (见 error-codes.md)
+  string message = 2;     // 错误信息
+  string trace_id = 3;    // 追踪ID
+  int64 timestamp = 4;    // 时间戳 (毫秒)
+}
+
+// 分页请求
+message PageRequest {
+  int32 page = 1;         // 页码，从1开始
+  int32 page_size = 2;    // 每页数量，默认20
+}
+
+// 分页响应
+message PageResponse {
+  int32 total = 1;        // 总数
+  int32 page = 2;         // 当前页
+  int32 page_size = 3;    // 每页数量
+  int32 total_pages = 4;  // 总页数
+}
+
+// 位置信息
+message Location {
+  double latitude = 1;    // 纬度
+  double longitude = 2;   // 经度
+  double accuracy = 3;    // 精度 (米)
+}
+
+// ============================================================
+// 密钥管理
+// ============================================================
+
+// 密钥类型
+enum KeyType {
+  KEY_TYPE_UNSPECIFIED = 0;
+  KEY_TYPE_OWNER = 1;       // 车主密钥
+  KEY_TYPE_FAMILY = 2;      // 家庭密钥
+  KEY_TYPE_FRIEND = 3;      // 朋友密钥
+  KEY_TYPE_SERVICE = 4;     // 服务密钥 (如代驾)
+  KEY_TYPE_TEMPORARY = 5;   // 临时密钥
+}
+
+// 密钥状态
+enum KeyState {
+  KEY_STATE_UNSPECIFIED = 0;
+  KEY_STATE_PENDING = 1;    // 待激活
+  KEY_STATE_ACTIVE = 2;     // 已激活
+  KEY_STATE_SUSPENDED = 3;  // 已挂起
+  KEY_STATE_REVOKED = 4;    // 已吊销
+  KEY_STATE_EXPIRED = 5;    // 已过期
+}
+
+// 权限类型
+enum Permission {
+  PERMISSION_UNSPECIFIED = 0;
+  PERMISSION_UNLOCK = 1;        // 解锁
+  PERMISSION_LOCK = 2;          // 闭锁
+  PERMISSION_ENGINE_START = 3;  // 启动引擎
+  PERMISSION_ENGINE_STOP = 4;   // 停止引擎
+  PERMISSION_TRUNK_OPEN = 5;    // 打开后备箱
+  PERMISSION_PANIC = 6;         // 紧急报警
+  PERMISSION_FIND = 7;          // 寻车
+  PERMISSION_CLIMATE = 8;       // 空调控制
+  PERMISSION_WINDOW = 9;        // 车窗控制
+  PERMISSION_SHARE = 10;        // 分享权限
+}
+
+// 协议类型
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_CCC = 1;      // CCC 3.0
+  PROTOCOL_ICCOA = 2;    // ICCOA DK3.0/DK4.0
+  PROTOCOL_ICCE = 3;     // ICCE
+}
+
+// 密钥信息
+message Key {
+  string key_id = 1;                    // 密钥ID
+  string vehicle_id = 2;                // 车辆ID (VIN)
+  string device_id = 3;                 // 设备ID
+  string user_id = 4;                   // 用户ID
+  KeyType key_type = 5;                 // 密钥类型
+  KeyState key_state = 6;               // 密钥状态
+  Protocol protocol = 7;                // 协议类型
+  repeated Permission permissions = 8;  // 权限列表
+  google.protobuf.Timestamp created_at = 9;    // 创建时间
+  google.protobuf.Timestamp activated_at = 10; // 激活时间
+  google.protobuf.Timestamp expires_at = 11;   // 过期时间
+  int32 use_count = 12;                 // 使用次数
+  int32 max_uses = 13;                  // 最大使用次数
+  map<string, string> metadata = 14;    // 元数据
+}
+
+// 创建密钥请求
+message CreateKeyRequest {
+  string vehicle_id = 1;                // 车辆ID
+  string device_id = 2;                 // 设备ID
+  string user_id = 3;                   // 用户ID
+  KeyType key_type = 4;                 // 密钥类型
+  Protocol protocol = 5;                // 协议类型
+  google.protobuf.Timestamp valid_from = 6;   // 生效时间
+  google.protobuf.Timestamp valid_until = 7; // 失效时间
+  repeated Permission permissions = 8;  // 权限列表
+  int32 max_uses = 9;                   // 最大使用次数
+  map<string, string> metadata = 10;    // 元数据
+  string trace_id = 11;                 // 追踪ID
+}
+
+// 创建密钥响应
+message CreateKeyResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 激活密钥请求
+message ActivateKeyRequest {
+  string key_id = 1;                    // 密钥ID
+  string activation_code = 2;           // 激活码
+  bytes device_signature = 3;           // 设备签名
+  string trace_id = 4;
+}
+
+// 激活密钥响应
+message ActivateKeyResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 吊销密钥请求
+message RevokeKeyRequest {
+  string key_id = 1;                    // 密钥ID
+  string reason = 2;                    // 吊销原因
+  bool revoke_all_related = 3;          // 是否吊销所有关联密钥
+  string trace_id = 4;
+}
+
+// 吊销密钥响应
+message RevokeKeyResponse {
+  Response response = 1;
+  Key key = 2;
+  repeated Key related_keys = 3;        // 被吊销的关联密钥
+}
+
+// 挂起密钥请求
+message SuspendKeyRequest {
+  string key_id = 1;
+  string reason = 2;
+  string trace_id = 3;
+}
+
+message SuspendKeyResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 恢复密钥请求
+message ResumeKeyRequest {
+  string key_id = 1;
+  string trace_id = 2;
+}
+
+message ResumeKeyResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 获取密钥请求
+message GetKeyRequest {
+  string key_id = 1;
+  string trace_id = 2;
+}
+
+message GetKeyResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 列出密钥请求
+message ListKeysRequest {
+  string vehicle_id = 1;                // 车辆ID过滤
+  string device_id = 2;                 // 设备ID过滤
+  string user_id = 3;                   // 用户ID过滤
+  KeyState key_state = 4;               // 状态过滤
+  KeyType key_type = 5;                 // 类型过滤
+  PageRequest page = 6;
+  string trace_id = 7;
+}
+
+message ListKeysResponse {
+  Response response = 1;
+  repeated Key keys = 2;
+  PageResponse page = 3;
+}
+
+// 分享密钥请求
+message ShareKeyRequest {
+  string key_id = 1;                    // 源密钥ID
+  string recipient_phone = 2;           // 接收方手机号
+  string recipient_email = 3;           // 接收方邮箱
+  KeyType share_type = 4;               // 分享类型
+  google.protobuf.Timestamp valid_from = 5;
+  google.protobuf.Timestamp valid_until = 6;
+  int32 max_uses = 7;                   // 最大使用次数
+  repeated Permission permissions = 8;  // 权限列表
+  string trace_id = 9;
+}
+
+// 分享信息
+message Share {
+  string share_id = 1;
+  string key_id = 2;
+  string share_code = 3;                // 分享码
+  string share_url = 4;                 // 分享链接
+  string recipient_phone = 5;
+  string recipient_email = 6;
+  KeyType share_type = 7;
+  KeyState share_state = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp expires_at = 10;
+}
+
+message ShareKeyResponse {
+  Response response = 1;
+  Share share = 2;
+}
+
+// 接受分享请求
+message AcceptShareRequest {
+  string share_code = 1;                // 分享码
+  string device_id = 2;                 // 接收设备ID
+  string user_id = 3;                   // 接收用户ID
+  string trace_id = 4;
+}
+
+message AcceptShareResponse {
+  Response response = 1;
+  Key key = 2;
+}
+
+// 取消分享请求
+message CancelShareRequest {
+  string share_id = 1;
+  string trace_id = 2;
+}
+
+message CancelShareResponse {
+  Response response = 1;
+  Share share = 2;
+}
+
+// ============================================================
+// 车控指令
+// ============================================================
+
+// 指令类型
+enum CommandType {
+  COMMAND_TYPE_UNSPECIFIED = 0;
+  COMMAND_TYPE_UNLOCK = 1;       // 解锁
+  COMMAND_TYPE_LOCK = 2;         // 闭锁
+  COMMAND_TYPE_ENGINE_START = 3; // 启动引擎
+  COMMAND_TYPE_ENGINE_STOP = 4;  // 停止引擎
+  COMMAND_TYPE_TRUNK_OPEN = 5;   // 打开后备箱
+  COMMAND_TYPE_PANIC = 6;        // 紧急报警
+  COMMAND_TYPE_FIND = 7;         // 寻车
+  COMMAND_TYPE_CLIMATE_ON = 8;   // 开启空调
+  COMMAND_TYPE_CLIMATE_OFF = 9;  // 关闭空调
+  COMMAND_TYPE_WINDOW_OPEN = 10; // 开窗
+  COMMAND_TYPE_WINDOW_CLOSE = 11;// 关窗
+}
+
+// 指令状态
+enum CommandState {
+  COMMAND_STATE_UNSPECIFIED = 0;
+  COMMAND_STATE_PENDING = 1;     // 待发送
+  COMMAND_STATE_SENT = 2;        // 已发送
+  COMMAND_STATE_EXECUTING = 3;   // 执行中
+  COMMAND_STATE_COMPLETED = 4;   // 已完成
+  COMMAND_STATE_FAILED = 5;      // 失败
+  COMMAND_STATE_TIMEOUT = 6;     // 超时
+  COMMAND_STATE_REJECTED = 7;    // 被拒绝
+}
+
+// 解锁参数
+message UnlockParams {
+  enum UnlockType {
+    UNLOCK_TYPE_UNSPECIFIED = 0;
+    UNLOCK_TYPE_ALL_DOORS = 1;
+    UNLOCK_TYPE_DRIVER_ONLY = 2;
+    UNLOCK_TYPE_DRIVER_PASSENGER = 3;
+  }
+  UnlockType unlock_type = 1;
+}
+
+// 闭锁参数
+message LockParams {
+  enum LockType {
+    LOCK_TYPE_UNSPECIFIED = 0;
+    LOCK_TYPE_ALL_DOORS = 1;
+    LOCK_TYPE_SINGLE_TAP = 2;
+  }
+  LockType lock_type = 1;
+}
+
+// 启动引擎参数
+message EngineStartParams {
+  int32 duration_seconds = 1;        // 运行时长 (秒)
+  ClimateParams climate = 2;         // 空调参数
+}
+
+// 空调参数
+message ClimateParams {
+  bool enabled = 1;
+  double temperature = 2;            // 目标温度
+  enum FanSpeed {
+    FAN_SPEED_UNSPECIFIED = 0;
+    FAN_SPEED_LOW = 1;
+    FAN_SPEED_MEDIUM = 2;
+    FAN_SPEED_HIGH = 3;
+    FAN_SPEED_AUTO = 4;
+  }
+  FanSpeed fan_speed = 3;
+  bool ac_on = 4;                    // 是否开启AC
+}
+
+// 指令信息
+message Command {
+  string command_id = 1;             // 指令ID
+  string vehicle_id = 2;             // 车辆ID
+  string key_id = 3;                 // 密钥ID
+  string device_id = 4;              // 设备ID
+  CommandType command_type = 5;      // 指令类型
+  CommandState command_state = 6;    // 指令状态
+  bytes payload = 7;                 // 指令参数 (BER-TLV)
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp sent_at = 9;
+  google.protobuf.Timestamp completed_at = 10;
+  int32 timeout_ms = 11;             // 超时时间 (毫秒)
+  Location location = 12;            // 请求位置
+  map<string, string> result = 13;   // 执行结果
+  uint32 error_code = 14;            // 错误码
+  string error_message = 15;         // 错误信息
+}
+
+// 发送指令请求
+message SendCommandRequest {
+  string vehicle_id = 1;
+  string key_id = 2;
+  string device_id = 3;
+  CommandType command_type = 4;
+  bytes payload = 5;                 // BER-TLV 编码参数
+  int32 timeout_ms = 6;
+  Location location = 7;
+  string trace_id = 8;
+}
+
+message SendCommandResponse {
+  Response response = 1;
+  Command command = 2;
+}
+
+// 获取指令状态请求
+message GetCommandStatusRequest {
+  string command_id = 1;
+  string trace_id = 2;
+}
+
+message GetCommandStatusResponse {
+  Response response = 1;
+  Command command = 2;
+}
+
+// 取消指令请求
+message CancelCommandRequest {
+  string command_id = 1;
+  string trace_id = 2;
+}
+
+message CancelCommandResponse {
+  Response response = 1;
+  Command command = 2;
+}
+
+// 指令流请求 (双向流)
+message CommandStreamRequest {
+  oneof request {
+    SendCommandRequest command = 1;   // 发送指令
+    string cancel_command_id = 2;     // 取消指令
+    bool ack = 3;                     // 确认
+  }
+}
+
+message CommandStreamResponse {
+  Response response = 1;
+  Command command = 2;
+  bool is_final = 3;                  // 是否最终状态
+}
+
+// ============================================================
+// 事件管理
+// ============================================================
+
+// 事件类型
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_KEY_CREATED = 1;
+  EVENT_TYPE_KEY_ACTIVATED = 2;
+  EVENT_TYPE_KEY_REVOKED = 3;
+  EVENT_TYPE_KEY_SHARED = 4;
+  EVENT_TYPE_KEY_USED = 5;
+  EVENT_TYPE_UNLOCK = 10;
+  EVENT_TYPE_LOCK = 11;
+  EVENT_TYPE_ENGINE_START = 12;
+  EVENT_TYPE_ENGINE_STOP = 13;
+  EVENT_TYPE_TRUNK_OPEN = 14;
+  EVENT_TYPE_PANIC = 15;
+  EVENT_TYPE_VEHICLE_BOUND = 20;
+  EVENT_TYPE_VEHICLE_UNBOUND = 21;
+  EVENT_TYPE_DEVICE_REGISTERED = 30;
+  EVENT_TYPE_DEVICE_REMOVED = 31;
+}
+
+// 事件信息
+message Event {
+  string event_id = 1;
+  EventType event_type = 2;
+  string vehicle_id = 3;
+  string key_id = 4;
+  string device_id = 5;
+  string user_id = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  Location location = 8;
+  bytes payload = 9;                  // 事件详情 (BER-TLV)
+  string result = 10;                 // success / failure
+  uint32 error_code = 11;
+  string error_message = 12;
+  map<string, string> metadata = 13;
+}
+
+// 记录事件请求
+message RecordEventRequest {
+  EventType event_type = 1;
+  string vehicle_id = 2;
+  string key_id = 3;
+  string device_id = 4;
+  string user_id = 5;
+  Location location = 6;
+  bytes payload = 7;
+  string result = 8;
+  uint32 error_code = 9;
+  string error_message = 10;
+  map<string, string> metadata = 11;
+  string trace_id = 12;
+}
+
+message RecordEventResponse {
+  Response response = 1;
+  Event event = 2;
+}
+
+// 列出事件请求
+message ListEventsRequest {
+  string vehicle_id = 1;
+  string device_id = 2;
+  string user_id = 3;
+  EventType event_type = 4;
+  google.protobuf.Timestamp start_time = 5;
+  google.protobuf.Timestamp end_time = 6;
+  PageRequest page = 7;
+  string trace_id = 8;
+}
+
+message ListEventsResponse {
+  Response response = 1;
+  repeated Event events = 2;
+  PageResponse page = 3;
+}
+
+// 事件流请求 (服务端流)
+message StreamEventsRequest {
+  string vehicle_id = 1;
+  repeated EventType event_types = 2;  // 订阅的事件类型
+  google.protobuf.Timestamp start_time = 3;
+  string trace_id = 4;
+}
+
+// 事件统计
+message EventStats {
+  EventType event_type = 1;
+  int64 count = 2;
+  int64 success_count = 3;
+  int64 failure_count = 4;
+  double success_rate = 5;
+}
+
+message GetEventStatsRequest {
+  string vehicle_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  string trace_id = 4;
+}
+
+message GetEventStatsResponse {
+  Response response = 1;
+  repeated EventStats stats = 2;
+}
+
+// ============================================================
+// 设备管理
+// ============================================================
+
+// 设备类型
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0;
+  DEVICE_TYPE_SMARTPHONE = 1;
+  DEVICE_TYPE_TABLET = 2;
+  DEVICE_TYPE_WEARABLE = 3;
+  DEVICE_TYPE_KEY_FOB = 4;
+}
+
+// 设备能力
+message DeviceCapabilities {
+  bool ble = 1;
+  bool nfc = 2;
+  bool uwb = 3;
+  bool se = 4;                        // 安全元件
+  bool biometric = 5;                 // 生物识别
+}
+
+// 设备信息
+message Device {
+  string device_id = 1;
+  string user_id = 2;
+  DeviceType device_type = 3;
+  string platform = 4;                // android / ios
+  string platform_version = 5;
+  string device_model = 6;
+  string device_name = 7;
+  string push_token = 8;              // FCM / APNs Token
+  DeviceCapabilities capabilities = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp last_active_at = 11;
+  bool is_active = 12;
+}
+
+// 注册设备请求
+message RegisterDeviceRequest {
+  string user_id = 1;
+  DeviceType device_type = 2;
+  string platform = 3;
+  string platform_version = 4;
+  string device_model = 5;
+  string device_name = 6;
+  string push_token = 7;
+  DeviceCapabilities capabilities = 8;
+  string trace_id = 9;
+}
+
+message RegisterDeviceResponse {
+  Response response = 1;
+  Device device = 2;
+}
+
+// 更新设备请求
+message UpdateDeviceRequest {
+  string device_id = 1;
+  string device_name = 2;
+  string push_token = 3;
+  DeviceCapabilities capabilities = 4;
+  string trace_id = 5;
+}
+
+message UpdateDeviceResponse {
+  Response response = 1;
+  Device device = 2;
+}
+
+// 获取设备请求
+message GetDeviceRequest {
+  string device_id = 1;
+  string trace_id = 2;
+}
+
+message GetDeviceResponse {
+  Response response = 1;
+  Device device = 2;
+}
+
+// 列出设备请求
+message ListDevicesRequest {
+  string user_id = 1;
+  bool active_only = 2;
+  PageRequest page = 3;
+  string trace_id = 4;
+}
+
+message ListDevicesResponse {
+  Response response = 1;
+  repeated Device devices = 2;
+  PageResponse page = 3;
+}
+
+// 移除设备请求
+message RemoveDeviceRequest {
+  string device_id = 1;
+  bool revoke_keys = 2;               // 是否同时吊销关联密钥
+  string trace_id = 3;
+}
+
+message RemoveDeviceResponse {
+  Response response = 1;
+  repeated Key revoked_keys = 2;
+}
+
+// ============================================================
+// 车辆管理
+// ============================================================
+
+// 车辆状态
+enum VehicleState {
+  VEHICLE_STATE_UNSPECIFIED = 0;
+  VEHICLE_STATE_ONLINE = 1;
+  VEHICLE_STATE_OFFLINE = 2;
+  VEHICLE_STATE_SLEEP = 3;
+  VEHICLE_STATE_MAINTENANCE = 4;
+}
+
+// 车辆信息
+message Vehicle {
+  string vehicle_id = 1;              // VIN
+  string user_id = 2;                 // 车主用户ID
+  string vehicle_model = 3;
+  string vehicle_name = 4;
+  VehicleState vehicle_state = 5;
+  google.protobuf.Timestamp last_online_at = 6;
+  Location last_location = 7;
+  int32 key_count = 8;                // 密钥数量
+  int32 device_count = 9;             // 设备数量
+  map<string, string> metadata = 10;
+}
+
+// 获取车辆请求
+message GetVehicleRequest {
+  string vehicle_id = 1;
+  string trace_id = 2;
+}
+
+message GetVehicleResponse {
+  Response response = 1;
+  Vehicle vehicle = 2;
+}
+
+// 列出车辆请求
+message ListVehiclesRequest {
+  string user_id = 1;
+  VehicleState vehicle_state = 2;
+  PageRequest page = 3;
+  string trace_id = 4;
+}
+
+message ListVehiclesResponse {
+  Response response = 1;
+  repeated Vehicle vehicles = 2;
+  PageResponse page = 3;
+}
+
+// ============================================================
+// 服务定义
+// ============================================================
+
+// 密钥管理服务
+service KeyService {
+  // 创建密钥
+  rpc CreateKey(CreateKeyRequest) returns (CreateKeyResponse);
+  // 激活密钥
+  rpc ActivateKey(ActivateKeyRequest) returns (ActivateKeyResponse);
+  // 吊销密钥
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+  // 挂起密钥
+  rpc SuspendKey(SuspendKeyRequest) returns (SuspendKeyResponse);
+  // 恢复密钥
+  rpc ResumeKey(ResumeKeyRequest) returns (ResumeKeyResponse);
+  // 获取密钥
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse);
+  // 列出密钥
+  rpc ListKeys(ListKeysRequest) returns (ListKeysResponse);
+  // 分享密钥
+  rpc ShareKey(ShareKeyRequest) returns (ShareKeyResponse);
+  // 接受分享
+  rpc AcceptShare(AcceptShareRequest) returns (AcceptShareResponse);
+  // 取消分享
+  rpc CancelShare(CancelShareRequest) returns (CancelShareResponse);
+}
+
+// 车控指令服务
+service CommandService {
+  // 发送指令
+  rpc SendCommand(SendCommandRequest) returns (SendCommandResponse);
+  // 获取指令状态
+  rpc GetCommandStatus(GetCommandStatusRequest) returns (GetCommandStatusResponse);
+  // 取消指令
+  rpc CancelCommand(CancelCommandRequest) returns (CancelCommandResponse);
+  // 指令流 (双向流)
+  rpc StreamCommands(stream CommandStreamRequest) returns (stream CommandStreamResponse);
+}
+
+// 事件服务
+service EventService {
+  // 记录事件
+  rpc RecordEvent(RecordEventRequest) returns (RecordEventResponse);
+  // 列出事件
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  // 事件流 (服务端流)
+  rpc StreamEvents(StreamEventsRequest) returns (stream Event);
+  // 获取事件统计
+  rpc GetEventStats(GetEventStatsRequest) returns (GetEventStatsResponse);
+}
+
+// 设备服务
+service DeviceService {
+  // 注册设备
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  // 更新设备
+  rpc UpdateDevice(UpdateDeviceRequest) returns (UpdateDeviceResponse);
+  // 获取设备
+  rpc GetDevice(GetDeviceRequest) returns (GetDeviceResponse);
+  // 列出设备
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  // 移除设备
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse);
+}
+
+// 车辆服务
+service VehicleService {
+  // 获取车辆
+  rpc GetVehicle(GetVehicleRequest) returns (GetVehicleResponse);
+  // 列出车辆
+  rpc ListVehicles(ListVehiclesRequest) returns (ListVehiclesResponse);
+}

@@ -1,13 +1,12 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"time"
 )
 
-// Config holds all configuration
+// Config 应用配置
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
@@ -18,80 +17,84 @@ type Config struct {
 	Metrics  MetricsConfig
 }
 
-// ServerConfig holds server configuration
+// ServerConfig 服务器配置
 type ServerConfig struct {
-	GRPCPort         int
-	HTTPPort         int
-	ReadTimeout      time.Duration
-	WriteTimeout     time.Duration
-	GracefulTimeout  time.Duration
+	GRPCPort int
+	HTTPPort int
 }
 
-// DatabaseConfig holds database configuration
+// DatabaseConfig 数据库配置
 type DatabaseConfig struct {
 	Host            string
 	Port            int
 	User            string
 	Password        string
 	Database        string
+	SSLMode         string
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
-	SSLMode         string
 }
 
-// RedisConfig holds Redis configuration
+// DSN 返回数据库连接字符串
+func (c DatabaseConfig) DSN() string {
+	return "host=" + c.Host +
+		" port=" + strconv.Itoa(c.Port) +
+		" user=" + c.User +
+		" password=" + c.Password +
+		" dbname=" + c.Database +
+		" sslmode=" + c.SSLMode
+}
+
+// RedisConfig Redis配置
 type RedisConfig struct {
 	Addr     string
 	Password string
 	DB       int
 }
 
-// KafkaConfig holds Kafka configuration
+// KafkaConfig Kafka配置
 type KafkaConfig struct {
-	Brokers       []string
-	ConsumerGroup string
-	Topics        TopicsConfig
+	Brokers []string
+	Topics  KafkaTopics
 }
 
-// TopicsConfig holds Kafka topics configuration
-type TopicsConfig struct {
-	KeyEvents     string
-	Commands      string
-	VehicleEvents string
-	Telemetry     string
+// KafkaTopics Kafka主题配置
+type KafkaTopics struct {
+	KeyEvents    string
+	Commands     string
+	Events       string
+	DLQ          string
 }
 
-// JWTConfig holds JWT configuration
+// JWTConfig JWT配置
 type JWTConfig struct {
 	Secret     string
-	Expiry     time.Duration
+	ExpireTime time.Duration
 	Issuer     string
 }
 
-// LogConfig holds logging configuration
+// LogConfig 日志配置
 type LogConfig struct {
-	Level  string
-	Format string
-	Output string
+	Level  string // debug, info, warn, error
+	Format string // json, text
+	Output string // stdout, stderr, file
+	File   string // 日志文件路径
 }
 
-// MetricsConfig holds metrics configuration
+// MetricsConfig 指标配置
 type MetricsConfig struct {
 	Enabled bool
-	Port   int
-	Path   string
+	Port    int
+	Path    string
 }
 
-// Load loads configuration from environment
+// Load 从环境变量加载配置
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			GRPCPort:        getEnvInt("GRPC_PORT", 50051),
-			HTTPPort:        getEnvInt("HTTP_PORT", 8080),
-			ReadTimeout:     getEnvDuration("READ_TIMEOUT", 10*time.Second),
-			WriteTimeout:    getEnvDuration("WRITE_TIMEOUT", 10*time.Second),
-			GracefulTimeout: getEnvDuration("GRACEFUL_TIMEOUT", 30*time.Second),
+			GRPCPort: getEnvInt("GRPC_PORT", 50051),
+			HTTPPort: getEnvInt("HTTP_PORT", 8080),
 		},
 		Database: DatabaseConfig{
 			Host:            getEnv("DB_HOST", "localhost"),
@@ -99,10 +102,10 @@ func Load() *Config {
 			User:            getEnv("DB_USER", "digitalkey"),
 			Password:        getEnv("DB_PASSWORD", ""),
 			Database:        getEnv("DB_NAME", "digitalkey_db"),
-			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 100),
-			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 20),
-			ConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", time.Hour),
 			SSLMode:         getEnv("DB_SSL_MODE", "disable"),
+			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 100),
+			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 10),
+			ConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MIN", 30)) * time.Minute,
 		},
 		Redis: RedisConfig{
 			Addr:     getEnv("REDIS_ADDR", "localhost:6379"),
@@ -110,24 +113,24 @@ func Load() *Config {
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		Kafka: KafkaConfig{
-			Brokers:       getEnvSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
-			ConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "dkcs-consumer"),
-			Topics: TopicsConfig{
-				KeyEvents:     getEnv("KAFKA_TOPIC_KEY_EVENTS", "dkcs.key.events"),
-				Commands:      getEnv("KAFKA_TOPIC_COMMANDS", "dkcs.commands"),
-				VehicleEvents: getEnv("KAFKA_TOPIC_VEHICLE_EVENTS", "dkcs.vehicle.events"),
-				Telemetry:     getEnv("KAFKA_TOPIC_TELEMETRY", "dkcs.telemetry"),
+			Brokers: getEnvSlice("KAFKA_BROKERS", []string{"localhost:9092"}),
+			Topics: KafkaTopics{
+				KeyEvents: getEnv("KAFKA_TOPIC_KEY_EVENTS", "dkcs.key.events"),
+				Commands:  getEnv("KAFKA_TOPIC_COMMANDS", "dkcs.commands"),
+				Events:    getEnv("KAFKA_TOPIC_EVENTS", "dkcs.events"),
+				DLQ:       getEnv("KAFKA_TOPIC_DLQ", "dkcs.dlq"),
 			},
 		},
 		JWT: JWTConfig{
-			Secret: getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-			Expiry: getEnvDuration("JWT_EXPIRY", 24*time.Hour),
-			Issuer: getEnv("JWT_ISSUER", "dkcs"),
+			Secret:     getEnv("JWT_SECRET", "change-me-in-production"),
+			ExpireTime: time.Duration(getEnvInt("JWT_EXPIRE_HOURS", 24)) * time.Hour,
+			Issuer:     getEnv("JWT_ISSUER", "dkcs"),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),
 			Format: getEnv("LOG_FORMAT", "json"),
 			Output: getEnv("LOG_OUTPUT", "stdout"),
+			File:   getEnv("LOG_FILE", ""),
 		},
 		Metrics: MetricsConfig{
 			Enabled: getEnvBool("METRICS_ENABLED", true),
@@ -137,15 +140,7 @@ func Load() *Config {
 	}
 }
 
-// DSN returns database connection string
-func (c *DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode,
-	)
-}
-
-// Helper functions
+// 辅助函数
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -155,8 +150,8 @@ func getEnv(key, defaultValue string) string {
 
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
-		if i, err := strconv.Atoi(value); err == nil {
-			return i
+		if int, err := strconv.Atoi(value); err == nil {
+			return int
 		}
 	}
 	return defaultValue
@@ -164,17 +159,8 @@ func getEnvInt(key string, defaultValue int) int {
 
 func getEnvBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
-		if b, err := strconv.ParseBool(value); err == nil {
-			return b
-		}
-	}
-	return defaultValue
-}
-
-func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if d, err := time.ParseDuration(value); err == nil {
-			return d
+		if bool, err := strconv.ParseBool(value); err == nil {
+			return bool
 		}
 	}
 	return defaultValue
@@ -182,8 +168,8 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 
 func getEnvSlice(key string, defaultValue []string) []string {
 	if value := os.Getenv(key); value != "" {
-		// Simple split by comma
-		var result []string
+		// 简单的逗号分隔
+		result := []string{}
 		for _, v := range splitByComma(value) {
 			if v != "" {
 				result = append(result, v)
@@ -197,14 +183,18 @@ func getEnvSlice(key string, defaultValue []string) []string {
 }
 
 func splitByComma(s string) []string {
-	var result []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == ',' {
-			result = append(result, s[start:i])
-			start = i + 1
+	result := []string{}
+	current := ""
+	for _, c := range s {
+		if c == ',' {
+			result = append(result, current)
+			current = ""
+		} else {
+			current += string(c)
 		}
 	}
-	result = append(result, s[start:])
+	if current != "" {
+		result = append(result, current)
+	}
 	return result
 }
