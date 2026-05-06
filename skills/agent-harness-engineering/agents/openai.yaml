@@ -1,0 +1,7 @@
+interface:
+  display_name: "Agent Harness Engineering"
+  short_description: "Scaffold agent-readable docs and repo guardrails."
+  default_prompt: "Use $agent-harness-engineering to bootstrap AGENTS.md, progressive docs, and mechanical quality checks for this repository."
+
+policy:
+  allow_implicit_invocation: true

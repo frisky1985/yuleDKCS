@@ -1,0 +1,14 @@
+{
+  "name": "agent-engineering-workflow",
+  "version": "1.0.0",
+  "description": "AI辅助工程最佳实践 — 整合 Harness Engineering + Superpowers + OpenSpec",
+  "author": "QClaw",
+  "tags": ["harness-engineering", "superpowers", "openspec", "best-practices", "workflow"],
+  "dependencies": [
+    "agent-harness-engineering",
+    "superpowers",
+    "openspec"
+  ],
+  "created": "2026-04-07T00:00:00.000Z",
+  "updated": "2026-04-07T00:00:00.000Z"
+}

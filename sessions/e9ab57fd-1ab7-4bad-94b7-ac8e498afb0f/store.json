@@ -1,0 +1,25 @@
+{
+  "id": "e9ab57fd-1ab7-4bad-94b7-ac8e498afb0f",
+  "name": "每日科技新闻推送",
+  "status": "active",
+  "createdAt": "2026-04-20T00:09:31.832Z",
+  "updatedAt": "2026-04-20T00:09:31.833Z",
+  "agents": [
+    {
+      "id": "agent_hi73e11f",
+      "name": "Main Agent",
+      "role": "assistant",
+      "status": "idle",
+      "createdAt": "2026-04-20T00:09:31.832Z",
+      "model": "unknown",
+      "systemPrompt": ""
+    }
+  ],
+  "summary": {
+    "id": "summary_6dq3sxq8",
+    "title": "每日科技新闻推送",
+    "createdAt": "2026-04-20T00:09:31.833Z",
+    "file": "summary_6dq3sxq8.md"
+  },
+  "lastMessageCount": 16
+}

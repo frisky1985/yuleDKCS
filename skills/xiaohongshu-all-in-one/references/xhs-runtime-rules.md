@@ -1,0 +1,89 @@
+# XHS 运行规则（引用自技能主文）
+
+## 0.1 低 token 与快照约束
+
+- 优先 `evaluate`，减少无意义 dump 与重复抓取。
+- 只在关键节点做快照：登录确认、到发布页、填写完成、发布前停顿。
+- 避免 `fullPage`（除用户要求整页归档）；重复调用优先复用同一 `targetId`。
+- 每个动作最多重试 1 次；第二次失败改稳健路径并汇报。
+- 记录关键证据：账号名、页面状态、按钮可见、字数等，返回可执行信号。
+
+## 0.2 浏览器稳定规则（最高优先）
+
+- 默认仅用内置浏览器：`profile="openclaw"`。
+- 每次动作前先确认会话目标 tab（`browser.start --profile openclaw` 后再 `open/snapshot`）。
+- 若出现 `no tab is connected`、`profile "chrome"` 等异常，立刻切回 `openclaw` 并重试。
+- 连续 2 次点击/导航失败后改稳健路径（如直达点击改为 evaluate+定位），不做盲重试。
+
+## 3.5 搜索并浏览（核心约束）
+
+1. 仅从搜索结果页点击进入帖子，禁止直接 `navigate` 到 `/explore/<id>`。
+2. 默认跳过本账号作者内容（避免自刷）。
+3. 进入后先校验：不是 404、可见评论/互动信息、可识别标题或作者。
+4. 进入方式优先点卡片本体，避免点头像/作者名导致跳错。
+5. 若评论控件为 `contenteditable` 或 `p.content-input`，需先触发输入事件再发送。
+6. 两条点击失败或 404 后返回搜索页换下一条，不对同链接直跳重试。
+
+### 📝 发布流程实战经验（2026-03-15 验证通过）
+
+**已验证可用的完整发布流程：**
+
+1. **打开发布页**
+   ```
+   browser.open(url="https://creator.xiaohongshu.com/publish/publish?from=homepage&target=image")
+   ```
+
+2. **上传图片到 uploads 目录**
+   ```bash
+   cp ~/Desktop/图片.jpg /tmp/openclaw/uploads/
+   ```
+
+3. **上传图片到发布页**
+   ```
+   browser.upload(paths=["图片.jpg"])
+   ```
+
+4. **关键：点击"上传图片"按钮触发文件选择**
+   ```
+   browser.act(kind="click", ref="e2")
+   ```
+
+5. **等待编辑界面加载**
+   ```
+   browser.snapshot()
+   ```
+
+6. **填写标题**
+   ```
+   browser.act(kind="type", ref="e1", text="标题内容")
+   ```
+
+7. **填写正文（推荐用 evaluate 方式）**
+   ```
+   browser.act(kind="evaluate", fn="() => { const editor = document.querySelector('.content-editor') || document.querySelector('[contenteditable]'); if(editor) { editor.innerHTML = '正文HTML内容'; editor.dispatchEvent(new Event('input', {bubbles: true})); } }")
+   ```
+
+8. **点击发布按钮**
+   ```
+   browser.act(kind="click", ref="e14")
+   ```
+
+**关键选择器（已验证）：**
+| 元素 | ref |
+|------|-----|
+| 上传图片按钮 | e2 |
+| 标题输入框 | e1 |
+| 正文输入框 | e2 |
+| 发布按钮 | e14 |
+
+- 若搜索结构变化先 snapshot 更新 selector 再继续，不盲跑旧路径。
+- 关键页（创作页、探索页、用户页）尽量复用已打开 tab，不重复 `open`。
+- 先告诉用户“已达异常节点”，避免无意义继续操作导致误发。
+- 发布页关键动作（切 tab、上传、点击发布）失败时：
+  1) 先 snapshot 刷新 ref
+  2) 同动作最多再试 1 次
+  3) 仍失败则切稳健路径（同义入口/用户手动最后一击）
+- 轮播详情页抓图时，禁止取第一个 `.img-container`；必须优先抓取 `.swiper-slide-active:not(.swiper-slide-duplicate) .img-container img`。
+- 抓图后要做一次人工核对：检查 URL 末段 key 是否与用户指定封面一致（例如 `.../1040g3k...`）。不一致则重新抓取 active 图。
+- 图生图产物需要做“相似度体感检查”：若用户反馈元素过于雷同，切换到 style-only 提示词并重生，不争辩。
+- 涉及 browser.upload 时，默认先检查文件是否位于 `/tmp/openclaw/uploads`，否则先复制再上传。
