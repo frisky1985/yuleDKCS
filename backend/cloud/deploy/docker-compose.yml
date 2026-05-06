@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # ── MySQL ──
+  mysql:
+    image: mysql:8.0
+    container_name: dk-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-dk_root_2026}
+      MYSQL_DATABASE: digital_key
+      MYSQL_USER: dk_service
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dk_pass_2026}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=1G
+      --innodb-log-file-size=256M
+      --max-connections=500
+      --wait-timeout=28800
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dk-net
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: dk-redis
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD:-dk_redis_2026}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-dk_redis_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dk-net
+
+  # ── Kafka ──
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: dk-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zk_data:/var/lib/zookeeper/data
+    networks:
+      - dk-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: dk-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_RETENTION_HOURS: 168
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - dk-net
+
+  # ── Digital Key HUB ──
+  hub:
+    build:
+      context: ./hub
+      dockerfile: Dockerfile
+    container_name: dk-hub
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    ports:
+      - "8080:8080"   # REST API
+      - "9090:9090"   # gRPC
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=dk_service
+      - DB_PASSWORD=${MYSQL_PASSWORD:-dk_pass_2026}
+      - DB_NAME=digital_key
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dk_redis_2026}
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    networks:
+      - dk-net
+
+  # ── Digital Key Cloud Service ──
+  dkcs:
+    build:
+      context: ./dkcs
+      dockerfile: Dockerfile
+    container_name: dk-dkcs
+    depends_on:
+      - hub
+      - mysql
+    ports:
+      - "9091:9091"   # gRPC (车厂内网)
+    environment:
+      - HUB_ADDR=hub:9090
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=dk_service
+      - DB_PASSWORD=${MYSQL_PASSWORD:-dk_pass_2026}
+      - DB_NAME=digital_key
+      - MQTT_BROKER=tcp://emqx:1883
+    restart: unless-stopped
+    networks:
+      - dk-net
+
+  # ── EMQX MQTT Broker (TCU连接) ──
+  emqx:
+    image: emqx/emqx:5.5
+    container_name: dk-emqx
+    ports:
+      - "1883:1883"   # MQTT TCP
+      - "8083:8083"   # MQTT WebSocket
+      - "18083:18083" # Dashboard
+    environment:
+      - EMQX_NAME=dk_emqx
+      - EMQX_LOADED_MODULES=emqx_mod_acl_internal
+    volumes:
+      - emqx_data:/opt/emqx/data
+    networks:
+      - dk-net
+
+volumes:
+  mysql_data:
+  redis_data:
+  zk_data:
+  kafka_data:
+  emqx_data:
+
+networks:
+  dk-net:
+    driver: bridge

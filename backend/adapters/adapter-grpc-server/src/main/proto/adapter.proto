@@ -1,0 +1,78 @@
+// DigitalKey Adapter Service gRPC Interface
+// Bridges Go backend and Java TSP adapters
+
+syntax = "proto3";
+
+package digitalkey.adapter;
+
+option java_multiple_files = true;
+option java_package = "com.digitalkey.adapter.grpc";
+option java_outer_classname = "AdapterProto";
+
+// Request/Response messages
+message VehicleListRequest {
+    string user_id = 1;
+    string adapter_type = 2;  // ccc, iccoa, icce
+}
+
+message Vehicle {
+    string vehicle_id = 1;
+    string vin = 2;
+    string make = 3;
+    string model = 4;
+    int32 model_year = 5;
+}
+
+message VehicleListResponse {
+    bool success = 1;
+    string message = 2;
+    repeated Vehicle vehicles = 3;
+}
+
+message KeyRequest {
+    string user_id = 1;
+    string vehicle_id = 2;
+    string vin = 3;
+    repeated string key_types = 4;
+    string adapter_type = 5;
+    map<string, string> options = 6;
+}
+
+message KeyResponse {
+    bool success = 1;
+    string message = 2;
+    string key_id = 3;
+    repeated string key_data = 4;
+}
+
+message KeyRevokeRequest {
+    string user_id = 1;
+    string vehicle_id = 2;
+    string key_id = 3;
+    string adapter_type = 4;
+}
+
+message HealthCheckRequest {
+    string adapter_type = 1;
+}
+
+message HealthCheckResponse {
+    bool healthy = 1;
+    string adapter_name = 2;
+    string status = 3;
+}
+
+// Adapter Service - Go calls Java
+service AdapterService {
+    // Get vehicles from TSP
+    rpc GetVehicles(VehicleListRequest) returns (VehicleListResponse);
+    
+    // Request digital keys
+    rpc RequestKeys(KeyRequest) returns (KeyResponse);
+    
+    // Revoke digital keys
+    rpc RevokeKeys(KeyRevokeRequest) returns (KeyResponse);
+    
+    // Health check
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
