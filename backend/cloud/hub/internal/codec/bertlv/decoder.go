@@ -13,12 +13,12 @@ import (
 
 // 解码错误定义
 var (
-	ErrInvalidTag      = errors.New("无效的Tag标签")
-	ErrInvalidLength   = errors.New("无效的Length长度")
 	ErrBufferTooShort  = errors.New("数据缓冲区太短")
 	ErrUnexpectedEnd   = errors.New("数据意外结束")
 	ErrInvalidEncoding = errors.New("无效的编码格式")
 	ErrTagNotMatch     = errors.New("Tag不匹配")
+	ErrInvalidTag       = errors.New("无效的Tag标签")
+	ErrInvalidLength    = errors.New("无效的Length长度")
 )
 
 // Decoder BERTLV解码器
@@ -26,13 +26,6 @@ type Decoder struct {
 	reader *bytes.Reader
 }
 
-// TLV解析结果
-type TLV struct {
-	Tag    Tag
-	Length int
-	Value  []byte
-	Raw    []byte // 原始数据（含Tag和Length）
-}
 
 // 解码错误详情
 type DecodeError struct {
@@ -95,7 +88,7 @@ func (d *Decoder) Decode() (*TLV, error) {
 		Tag:    tag,
 		Length: length,
 		Value:  value,
-		Raw:    raw,
+		RawData: raw,
 	}, nil
 }
 

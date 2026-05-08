@@ -72,7 +72,7 @@ func (t Tag) String() string {
 		return "CCCMsg"
 	case TagICCOAMsg:
 		return "ICCOAMsg"
-	case TagICCE Msg:
+	case TagICCMsg:
 		return "ICCMsg"
 	case TagBleMac:
 		return "BleMac"
