@@ -1,0 +1,75 @@
+# Prometheus 配置文件
+# 详情请参阅: https://prometheus.io/docs/prometheus/latest/configuration/configuration/
+
+global:
+  scrape_interval: 15s     # 默认抓取间隔
+  evaluation_interval: 15s # 规则计算间隔
+  external_labels:
+    cluster: 'yuleDKCS'
+    replica: '{{.ExternalURL}}'
+
+# 告警规则文件
+rule_files:
+  # - "alert_rules.yml"
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身的指标
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+
+  # Backend API 服务指标
+  - job_name: 'backend-api'
+    static_configs:
+      - targets: ['backend:8080']
+    metrics_path: /metrics
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    # 健康检查
+    health_check:
+      enabled: true
+    # 标签重写
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'backend-api'
+
+  # Node Exporter 节点指标
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # PostgreSQL Exporter 数据库指标（如果有的话）
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 15s
+
+  # Redis Exporter 缓存指标（如果有的话）
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 15s
+
+  # 多个 backend 实例（如果有的话）
+  - job_name: 'backend-api-instances'
+    static_configs:
+      - targets:
+        - 'backend-1:8080'
+        - 'backend-2:8080'
+        labels:
+          app: 'backend'
+          env: 'production'
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+# 远程读取配置（可选）
+# remote_read:
+#   - url: "http://remote-storage/read"
+
+# 远程写入配置（可选）
+# remote_write:
+#   - url: "http://remote-storage/write"

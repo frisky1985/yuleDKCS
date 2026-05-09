@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: yuledkcs-dev
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+  tier: dev
+
+resources:
+  - ../../base
+
+patchesStrategicMerge:
+  - configmap-patch.yaml
+  - deployment-patch.yaml
+  - hpa-patch.yaml
+
+configMapGenerator:
+  - name: yuledkcs-config
+    behavior: merge
+    literals:
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - LOG_LEVEL=debug
+
+replicas:
+  - name: yuledkcs-backend
+    count: 1

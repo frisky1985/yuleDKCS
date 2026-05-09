@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yuledkcs-config
+  namespace: yuledkcs
+data:
+  APP_ENV: "development"
+  APP_DEBUG: "true"
+  LOG_LEVEL: "debug"
+  ENABLE_METRICS: "false"
+  ENABLE_TRACING: "false"

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yuledkcs-config
+  namespace: yuledkcs
+  labels:
+    app.kubernetes.io/name: yuledkcs
+    app.kubernetes.io/component: config
+data:
+  # Application Configuration
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_PORT: "8080"
+  
+  # Database Configuration
+  DB_HOST: "postgresql-service"
+  DB_PORT: "5432"
+  DB_NAME: "yuledkcs"
+  DB_SSL_MODE: "require"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Feature Flags
+  ENABLE_METRICS: "true"
+  ENABLE_TRACING: "true"

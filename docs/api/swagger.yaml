@@ -1,0 +1,1641 @@
+openapi: 3.0.3
+info:
+  title: Yule DKCS API
+  description: |
+    数字车钥匙服务 (Digital Key Cloud Service) API 文档
+    
+    提供车辆管理、数字钥匙、OTA升级、WebSocket实时通信等功能。
+    
+    ## 认证方式
+    本API使用 JWT Bearer Token 进行认证。请在请求头中添加：
+    ```
+    Authorization: Bearer {your_token}
+    ```
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@yuledkcs.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 本地开发环境
+  - url: https://api.yuledkcs.com/api/v1
+    description: 生产环境
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 用户
+    description: 用户信息管理
+  - name: 车辆
+    description: 车辆注册、状态查询、控制命令
+  - name: 钥匙
+    description: 数字钥匙发行、分享、管理
+  - name: OTA
+    description: 固件管理和OTA升级
+  - name: WebSocket
+    description: 实时通信接口
+
+paths:
+  # ========== 健康检查 ==========
+  /health:
+    get:
+      tags:
+        - 系统
+      summary: 健康检查
+      description: 检查服务是否正常运行
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  time:
+                    type: object
+
+  /api/v1/ping:
+    get:
+      tags:
+        - 系统
+      summary: 测试接口
+      description: 简单的连通性测试
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: pong
+
+  # ========== 认证 ==========
+  /api/v1/auth/register:
+    post:
+      tags:
+        - 认证
+      summary: 用户注册
+      description: 注册新用户账号
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User registered successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: 用户名或邮箱已存在
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - 认证
+      summary: 用户登录
+      description: 使用用户名和密码登录，获取JWT令牌
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Login successful
+                  token:
+                    type: string
+                    description: JWT访问令牌
+                    example: eyJhbGciOiJIUzI1NiIs...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - 认证
+      summary: 刷新令牌
+      description: 使用刷新令牌获取新的访问令牌
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: 新的JWT访问令牌
+
+  # ========== 用户 ==========
+  /api/v1/user/profile:
+    get:
+      tags:
+        - 用户
+      summary: 获取用户资料
+      description: 获取当前登录用户的信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========== 车辆 ==========
+  /api/v1/vehicles:
+    post:
+      tags:
+        - 车辆
+      summary: 注册车辆
+      description: 注册一辆新车辆到用户账号
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleRegisterRequest'
+      responses:
+        '201':
+          description: 车辆注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - 车辆
+      summary: 获取用户车辆列表
+      description: 获取当前用户的所有车辆，支持分页
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: 每页数量
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vehicles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VehicleResponse'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+
+  /api/v1/vehicles/{id}:
+    get:
+      tags:
+        - 车辆
+      summary: 获取车辆详情
+      description: 获取指定车辆的详细信息
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: 车辆ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/vehicles/{id}/status:
+    get:
+      tags:
+        - 车辆
+      summary: 获取车辆实时状态
+      description: 获取车辆的实时状态信息
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleStatusResponse'
+
+  /api/v1/vehicles/{id}/command:
+    post:
+      tags:
+        - 车辆
+      summary: 发送车辆控制命令
+      description: |
+        向车辆发送控制命令。支持的命令：
+        - `unlock` - 解锁车辆
+        - `lock` - 锁定车辆
+        - `engine_start` - 启动引擎
+        - `engine_stop` - 停止引擎
+        - `trunk` - 开启后备箱
+        - `windows_up` - 升起车窗
+        - `windows_down` - 降下车窗
+        - `find_my_car` - 寻车
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleCommandRequest'
+      responses:
+        '202':
+          description: 命令已接受
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  command_id:
+                    type: integer
+                  status:
+                    type: string
+                  request_id:
+                    type: string
+
+  /api/v1/vehicles/{id}/location:
+    put:
+      tags:
+        - 车辆
+      summary: 更新车辆位置
+      description: 更新车辆当前位置（由车机调用）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleLocationRequest'
+      responses:
+        '200':
+          description: 位置更新成功
+
+  /api/v1/vehicles/{id}/status/update:
+    put:
+      tags:
+        - 车辆
+      summary: 车辆上报状态
+      description: 车辆主动上报当前状态（由车机调用）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [online, offline, locked, unlocked, active, inactive, maintenance]
+                lock_state:
+                  type: string
+                battery_level:
+                  type: integer
+                charging_state:
+                  type: string
+      responses:
+        '200':
+          description: 状态更新成功
+
+  /api/v1/commands/{command_id}:
+    get:
+      tags:
+        - 车辆
+      summary: 获取命令执行结果
+      description: 查询车辆控制命令的执行结果
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: command_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleCommandResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ========== 钥匙 ==========
+  /api/v1/keys:
+    get:
+      tags:
+        - 钥匙
+      summary: 获取用户钥匙列表
+      description: 获取当前用户的所有数字钥匙
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      list:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/KeyResponse'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  /api/v1/keys/issue:
+    post:
+      tags:
+        - 钥匙
+      summary: 发行新钥匙
+      description: 为指定车辆发行数字钥匙
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueKeyRequest'
+      responses:
+        '201':
+          description: 钥匙发行成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/KeyResponse'
+
+  /api/v1/keys/{id}:
+    get:
+      tags:
+        - 钥匙
+      summary: 获取钥匙详情
+      description: 获取指定钥匙的详细信息
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/KeyResponse'
+        '404':
+          description: 钥匙不存在
+
+    delete:
+      tags:
+        - 钥匙
+      summary: 撤销钥匙
+      description: 撤销指定的数字钥匙
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 钥匙已撤销
+
+  /api/v1/keys/{id}/share:
+    post:
+      tags:
+        - 钥匙
+      summary: 分享钥匙
+      description: 将钥匙分享给其他用户
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareKeyRequest'
+      responses:
+        '201':
+          description: 分享成功
+
+  /api/v1/keys/{id}/permissions:
+    put:
+      tags:
+        - 钥匙
+      summary: 更新钥匙权限
+      description: 修改钥匙的操作权限
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePermissionsRequest'
+      responses:
+        '200':
+          description: 权限更新成功
+
+  /api/v1/keys/shared/list:
+    get:
+      tags:
+        - 钥匙
+      summary: 获取收到的分享钥匙
+      description: 获取其他用户分享给当前用户的钥匙
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KeyShare'
+
+  /api/v1/keys/{id}/shares:
+    get:
+      tags:
+        - 钥匙
+      summary: 获取钥匙分享列表
+      description: 获取指定钥匙的所有分享记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+
+  /api/v1/keys/shares/{share_id}:
+    delete:
+      tags:
+        - 钥匙
+      summary: 撤销分享
+      description: 撤销指定的钥匙分享
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: share_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 分享已撤销
+
+  # ========== OTA ==========
+  /api/v1/ota/firmwares:
+    post:
+      tags:
+        - OTA
+      summary: 创建固件
+      description: 上传新固件信息
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Firmware'
+      responses:
+        '201':
+          description: 固件创建成功
+
+    get:
+      tags:
+        - OTA
+      summary: 列出固件
+      description: 获取固件列表，支持按类型筛选
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [ecu, ivi, tbox, adas, gateway, bms]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: 成功
+
+  /api/v1/ota/firmwares/{id}:
+    get:
+      tags:
+        - OTA
+      summary: 获取固件详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+
+    put:
+      tags:
+        - OTA
+      summary: 更新固件
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 更新成功
+
+    delete:
+      tags:
+        - OTA
+      summary: 删除固件
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+
+  /api/v1/ota/firmwares/{id}/deactivate:
+    put:
+      tags:
+        - OTA
+      summary: 停用固件
+      description: 停用指定固件，使其不再可用于更新
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 停用成功
+
+  /api/v1/ota/firmwares/{id}/download:
+    post:
+      tags:
+        - OTA
+      summary: 下载固件
+      description: 获取固件下载链接
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTADownloadRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  download_url:
+                    type: string
+
+  /api/v1/ota/check:
+    post:
+      tags:
+        - OTA
+      summary: 检查更新 (POST)
+      description: 检查是否有可用固件更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUpdateRequest'
+      responses:
+        '200':
+          description: 检查完成
+
+  /api/v1/ota/updates:
+    get:
+      tags:
+        - OTA
+      summary: 检查更新 (GET)
+      description: 通过查询参数检查更新
+      parameters:
+        - name: current_version
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: hardware_version
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: firmware_type
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: vehicle_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 检查完成
+
+  /api/v1/vehicles/{id}/ota/status:
+    get:
+      tags:
+        - OTA
+      summary: 获取车辆OTA状态
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+
+    put:
+      tags:
+        - OTA
+      summary: 更新车辆OTA状态
+      description: 上报OTA更新进度
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOTAStatusRequest'
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/vehicles/{id}/ota/start:
+    post:
+      tags:
+        - OTA
+      summary: 开始OTA更新
+      description: 触发车辆OTA更新流程
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target_version:
+                  type: string
+      responses:
+        '200':
+          description: OTA开始
+
+  /api/v1/vehicles/{id}/ota/history:
+    get:
+      tags:
+        - OTA
+      summary: 获取OTA历史记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+
+  # ========== WebSocket ==========
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: WebSocket连接
+      description: |
+        建立WebSocket连接用于实时通信。
+        
+        ## 连接方式
+        - 用户连接: `/ws?token={jwt_token}&vehicle_id={optional}`
+        - 车辆连接: `/ws/vehicle/{id}?token={vehicle_token}`
+        - 管理员连接: `/ws/admin?token={admin_token}`
+        
+        ## 消息类型
+        - `status` - 车辆状态更新
+        - `command` - 控制命令
+        - `location` - 位置更新
+        - `notification` - 系统通知
+        - `heartbeat` - 心跳消息
+        
+      parameters:
+        - name: token
+          in: query
+          schema:
+            type: string
+          description: JWT认证令牌
+        - name: vehicle_id
+          in: query
+          schema:
+            type: integer
+          description: 可选，指定订阅的车辆
+      responses:
+        '101':
+          description: WebSocket连接已升级
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT访问令牌
+
+  schemas:
+    # ========== 通用 ==========
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        error:
+          type: string
+
+    # ========== 认证 ==========
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        password:
+          type: string
+          minLength: 6
+          format: password
+          example: password123
+
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          minLength: 6
+          format: password
+          example: password123
+
+    # ========== 用户 ==========
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # ========== 车辆 ==========
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+        owner_id:
+          type: integer
+        name:
+          type: string
+        vin:
+          type: string
+          pattern: '^[A-HJ-NPR-Z0-9]{17}$'
+        plate:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        color:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, locked, unlocked, active, inactive, maintenance]
+        lock_status:
+          type: string
+        engine_status:
+          type: string
+        online_status:
+          type: string
+        ble_mac:
+          type: string
+        uwb_capable:
+          type: boolean
+        uwb_enabled:
+          type: boolean
+        software_version:
+          type: string
+        ota_available:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    VehicleRegisterRequest:
+      type: object
+      required:
+        - vin
+        - brand
+        - model
+        - year
+        - name
+      properties:
+        vin:
+          type: string
+          pattern: '^[A-HJ-NPR-Z0-9]{17}$'
+          description: 车辆识别码，17位字符
+        brand:
+          type: string
+          description: 车辆品牌
+        model:
+          type: string
+          description: 车辆型号
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 2030
+          description: 生产年份
+        color:
+          type: string
+        plate:
+          type: string
+          description: 车牌号
+        name:
+          type: string
+          description: 车辆昵称
+        ble_mac:
+          type: string
+          description: BLE蓝牙地址
+        uwb_capable:
+          type: boolean
+          description: 是否支持UWB
+
+    VehicleResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        owner_id:
+          type: integer
+        name:
+          type: string
+        vin:
+          type: string
+        plate:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        color:
+          type: string
+        status:
+          type: string
+        lock_status:
+          type: string
+        engine_status:
+          type: string
+        online_status:
+          type: string
+        ble_mac:
+          type: string
+        uwb_capable:
+          type: boolean
+        uwb_enabled:
+          type: boolean
+        last_seen_at:
+          type: string
+          format: date-time
+        software_version:
+          type: string
+        ota_available:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    VehicleStatusResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        lock_status:
+          type: string
+        engine_status:
+          type: string
+        online_status:
+          type: string
+        location:
+          $ref: '#/components/schemas/VehicleLocation'
+        last_seen_at:
+          type: string
+          format: date-time
+        software_version:
+          type: string
+
+    VehicleLocation:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 39.9042
+        longitude:
+          type: number
+          format: double
+          example: 116.4074
+        altitude:
+          type: number
+          format: double
+        accuracy:
+          type: number
+          format: double
+        timestamp:
+          type: integer
+          description: Unix时间戳（毫秒）
+
+    VehicleLocationRequest:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 39.9042
+        longitude:
+          type: number
+          format: double
+          example: 116.4074
+        altitude:
+          type: number
+          format: double
+        accuracy:
+          type: number
+          format: double
+
+    VehicleCommandRequest:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          enum: [unlock, lock, engine_start, engine_stop, trunk, windows_up, windows_down, find_my_car]
+          description: 控制命令
+        params:
+          type: object
+          description: 命令参数
+        request_id:
+          type: string
+          description: 客户端请求ID，用于幂等控制
+
+    VehicleCommandResponse:
+      type: object
+      properties:
+        command_id:
+          type: string
+        command:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        executed_at:
+          type: string
+          format: date-time
+
+    # ========== 钥匙 ==========
+    KeyPermissions:
+      type: object
+      properties:
+        unlock:
+          type: boolean
+          default: true
+        lock:
+          type: boolean
+          default: true
+        start_engine:
+          type: boolean
+          default: true
+        trunk:
+          type: boolean
+          default: false
+        windows:
+          type: boolean
+          default: false
+
+    Key:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        vehicle_id:
+          type: integer
+        type:
+          type: string
+          enum: [CCC, ICCE, ICCOA]
+        status:
+          type: string
+          enum: [active, inactive, revoked, expired, pending]
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+        key_identifier:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        usage_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    KeyResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        vehicle_id:
+          type: integer
+        vehicle_name:
+          type: string
+        type:
+          type: string
+          enum: [CCC, ICCE, ICCOA]
+        status:
+          type: string
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+        key_identifier:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        usage_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        is_shared:
+          type: boolean
+        shared_by:
+          type: integer
+
+    KeyShare:
+      type: object
+      properties:
+        id:
+          type: integer
+        key_id:
+          type: integer
+        shared_to:
+          type: integer
+        shared_by:
+          type: integer
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+        status:
+          type: string
+        shared_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+
+    IssueKeyRequest:
+      type: object
+      required:
+        - vehicle_id
+        - type
+      properties:
+        vehicle_id:
+          type: integer
+        type:
+          type: string
+          enum: [CCC, ICCE, ICCOA]
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+        name:
+          type: string
+        description:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    ShareKeyRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: integer
+          description: 被分享用户的ID
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+        expires_at:
+          type: string
+          format: date-time
+
+    UpdatePermissionsRequest:
+      type: object
+      required:
+        - permissions
+      properties:
+        permissions:
+          $ref: '#/components/schemas/KeyPermissions'
+
+    # ========== OTA ==========
+    Firmware:
+      type: object
+      properties:
+        id:
+          type: integer
+        version:
+          type: string
+          description: 固件版本号
+        type:
+          type: string
+          enum: [ecu, ivi, tbox, adas, gateway, bms]
+        url:
+          type: string
+          description: 固件下载地址
+        size:
+          type: integer
+          description: 文件大小（字节）
+        checksum:
+          type: string
+          description: SHA256校验值
+        signature:
+          type: string
+          description: 固件签名
+        release_notes:
+          type: string
+        min_hardware_version:
+          type: string
+        max_hardware_version:
+          type: string
+        is_active:
+          type: boolean
+        release_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FirmwareResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        version:
+          type: string
+        type:
+          type: string
+        size:
+          type: integer
+        checksum:
+          type: string
+        release_notes:
+          type: string
+        min_hardware_version:
+          type: string
+        max_hardware_version:
+          type: string
+        release_date:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CheckUpdateRequest:
+      type: object
+      required:
+        - current_version
+        - hardware_version
+        - firmware_type
+      properties:
+        current_version:
+          type: string
+          description: 当前固件版本
+        hardware_version:
+          type: string
+          description: 硬件版本
+        firmware_type:
+          type: string
+          enum: [ecu, ivi, tbox, adas, gateway, bms]
+        vehicle_id:
+          type: integer
+
+    CheckUpdateResponse:
+      type: object
+      properties:
+        has_update:
+          type: boolean
+        firmware:
+          $ref: '#/components/schemas/Firmware'
+        update_required:
+          type: boolean
+        message:
+          type: string
+
+    UpdateOTAStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, downloading, installing, completed, failed, rolled_back]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        error_message:
+          type: string
+
+    OTADownloadRequest:
+      type: object
+      properties:
+        vehicle_id:
+          type: integer
+        ip_address:
+          type: string
+
+    VehicleOTAStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        vehicle_id:
+          type: integer
+        current_version:
+          type: string
+        target_version:
+          type: string
+        status:
+          type: string
+          enum: [pending, downloading, installing, completed, failed, rolled_back]
+        progress:
+          type: integer
+        error_message:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 400
+            message: 请求参数错误
+            error: "invalid request body"
+
+    Unauthorized:
+      description: 未认证或认证失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 401
+            message: 未认证
+
+    Forbidden:
+      description: 无权限访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 403
+            message: 无权访问此资源
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 404
+            message: 资源不存在
+
+    InternalError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 500
+            message: 服务器内部错误

@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yuledkcs-ingress
+  namespace: yuledkcs
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+spec:
+  rules:
+    - host: staging.yuledkcs.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: yuledkcs-backend-service
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - staging.yuledkcs.example.com
+      secretName: yuledkcs-staging-tls-secret

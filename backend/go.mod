@@ -10,6 +10,7 @@ require (
 	gorm.io/driver/postgres v1.5.4
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/gorilla/websocket v1.5.1
+	github.com/prometheus/client_golang v1.19.0
 )
 
 require (

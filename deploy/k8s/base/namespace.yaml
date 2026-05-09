@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: yuledkcs
+  labels:
+    name: yuledkcs
+    app.kubernetes.io/name: yuledkcs
+    app.kubernetes.io/component: namespace

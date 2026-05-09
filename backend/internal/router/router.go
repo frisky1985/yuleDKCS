@@ -1,19 +1,34 @@
 package router
 
 import (
+	"database/sql"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/config"
+	"github.com/frisky1985/yuleDKCS/backend/internal/handlers"
+	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
 )
 
 // Setup 初始化路由
-func Setup(r *gin.Engine, cfg *config.Config) {
+func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB) {
 	// 使用 Gin 默认中间件（Logger + Recovery）
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// 健康检查
-	r.GET("/health", healthCheck)
+	// Prometheus指标中间件
+	r.Use(middleware.PrometheusMiddleware())
+
+	// 创建健康检查器
+	healthChecker := handlers.NewHealthChecker(cfg, db)
+
+	// 健康检查端点
+	r.GET("/health", healthChecker.HealthCheck)
+	r.GET("/health/live", healthChecker.LivenessCheck)
+	r.GET("/health/ready", healthChecker.ReadinessCheck)
+
+	// Prometheus指标端点
+	r.GET("/metrics", handlers.MetricsHandler())
 
 	// API 路由组
 	api := r.Group("/api/v1")
@@ -50,15 +65,7 @@ func Setup(r *gin.Engine, cfg *config.Config) {
 	})
 }
 
-// healthCheck 健康检查
-func healthCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status": "ok",
-		"time":   gin.H{},
-	})
-}
-
-// ping 测试接口
+// 处理器函数占位符
 func ping(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "pong",

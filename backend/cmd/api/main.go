@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,11 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/config"
+	"github.com/frisky1985/yuleDKCS/backend/internal/handlers"
 	"github.com/frisky1985/yuleDKCS/backend/internal/router"
 )
 
 // Run 启动 API 服务器
-func Run() error {
+func Run(db *sql.DB) error {
 	// 加载配置
 	cfg, err := config.Load()
 	if err != nil {
@@ -31,7 +33,7 @@ func Run() error {
 	r := gin.New()
 
 	// 初始化路由
-	router.Setup(r, cfg)
+	router.Setup(r, cfg, db)
 
 	// 创建 HTTP 服务器
 	srv := &http.Server{
@@ -47,11 +49,17 @@ func Run() error {
 		}
 	}()
 
+	// 设置应用为就绪状态
+	handlers.SetReady(true)
+	log.Println("Application is ready")
+
 	// 等待中断信号
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
+	// 设置应用为未就绪状态
+	handlers.SetReady(false)
 	log.Println("Shutting down server...")
 
 	// 优雅关闭

@@ -1,0 +1,26 @@
+apiVersion: v2
+name: yuledkcs
+description: A Helm chart for yuleDKCS application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/your-org/yuledkcs
+sources:
+  - https://github.com/your-org/yuledkcs
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com
+keywords:
+  - yuledkcs
+  - backend
+  - web
+  - api
+dependencies:
+  - name: postgresql
+    version: 12.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.x.x
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
