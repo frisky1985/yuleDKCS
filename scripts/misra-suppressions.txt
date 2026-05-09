@@ -1,0 +1,8 @@
+// MISRA-C 2012 Suppressions
+// Format: id:file:line
+
+// Allow standard library headers for cryptographic operations
+misra-c2012-21.6:*:0
+
+// Allow dynamic memory in test code only
+misra-c2012-21.3:*test*

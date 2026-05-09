@@ -1,0 +1,47 @@
+# yuleDKCS Doxygen 配置
+PROJECT_NAME           = "yuleDKCS"
+PROJECT_NUMBER         = "1.0.0"
+PROJECT_BRIEF          = "Digital Key Connectivity Stack - 汽车数字钥匙连接栈"
+OUTPUT_DIRECTORY       = docs/api
+INPUT                  = include src README.md
+FILE_PATTERNS          = *.h *.c *.md
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+
+# 输出格式
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_PDF           = NO
+HTML_OUTPUT            = html
+
+# 代码高亮
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+
+# 图表
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+CLASS_DIAGRAMS         = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+
+# 调试信息
+QUIET                  = NO
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+
+# 预处理
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = NO
+
+# 中文支持
+INPUT_ENCODING         = UTF-8
+DOXYFILE_ENCODING      = UTF-8
