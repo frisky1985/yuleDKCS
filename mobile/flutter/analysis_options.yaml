@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    avoid_print: false
+    prefer_single_quotes: true
+    prefer_const_constructors: true
+    prefer_final_locals: true
+    avoid_unnecessary_containers: true
+
+analyzer:
+  exclude:
+    - '**/*.g.dart'
+    - '**/generated_plugin_registrant.dart'

@@ -1,0 +1,96 @@
+group 'com.nousresearch.yuledkcs'
+version '1.0.0'
+
+buildscript {
+    ext.kotlin_version = '1.9.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.nousresearch.yuledkcs'
+    compileSdkVersion 34
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 34
+        
+        externalNativeBuild {
+            cmake {
+                cppFlags "-O3 -fvisibility=hidden"
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+        
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "../../../ffi/CMakeLists.txt"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-O3 -DNDEBUG -fvisibility=hidden"
+                }
+            }
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-O0 -g"
+                }
+            }
+        }
+    }
+
+    packagingOptions {
+        pickFirst 'lib/arm64-v8a/libyuledkcs.so'
+        pickFirst 'lib/armeabi-v7a/libyuledkcs.so'
+        pickFirst 'lib/x86_64/libyuledkcs.so'
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation 'androidx.annotation:annotation:1.7.0'
+}

@@ -1,0 +1,24 @@
+# yuleDKCS 配置示例
+# 复制此文件为 config.yaml 并根据需要修改
+
+server:
+  port: 8080
+  mode: debug  # debug 或 release
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  dbname: yuledkcs
+  sslmode: disable
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: your-secret-key-here
+  expires_in: 24  # 小时
