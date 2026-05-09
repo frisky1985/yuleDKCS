@@ -1,0 +1,96 @@
+# 灰度发布 Ingress 配置
+# 使用 Ingress-Nginx 的 canary 功能
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yuledkcs-canary
+  namespace: yuledkcs
+  annotations:
+    # 启用灰度发布
+    nginx.ingress.kubernetes.io/canary: "true"
+    # 灰度流量百分比 (0-100)
+    nginx.ingress.kubernetes.io/canary-weight: "20"
+    # 基于 Cookie 的灰度
+    nginx.ingress.kubernetes.io/canary-by-cookie: "canary"
+    # 基于 Header 的灰度
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.yuledkcs.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: yuledkcs-backend-canary
+            port:
+              number: 8080
+---
+# 灰度版本后端服务
+apiVersion: v1
+kind: Service
+metadata:
+  name: yuledkcs-backend-canary
+  namespace: yuledkcs
+spec:
+  selector:
+    app: yuledkcs-backend
+    version: canary
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+# 灰度版本 Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yuledkcs-backend-canary
+  namespace: yuledkcs
+  labels:
+    app: yuledkcs-backend
+    version: canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yuledkcs-backend
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: yuledkcs-backend
+        version: canary
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/frisky1985/yuledkcs/backend:canary
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: yuledkcs-config
+        - secretRef:
+            name: yuledkcs-secrets
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
