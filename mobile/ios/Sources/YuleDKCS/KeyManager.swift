@@ -1,285 +1,397 @@
 import Foundation
+import Combine
+import CoreBluetooth
+import LocalAuthentication
+import CryptoKit
 
-/// 数字钥匙模型
-public struct DigitalKey: Codable, Identifiable {
-    public let id: String
-    public let vehicleId: String
-    public let ownerId: String
-    public let issuedAt: Date
-    public let expiresAt: Date?
-    public let permissions: [Permission]
-    public let status: KeyStatus
-    public let sharedWith: [String]?
-    
-    public init(
-        id: String,
-        vehicleId: String,
-        ownerId: String,
-        issuedAt: Date,
-        expiresAt: Date? = nil,
-        permissions: [Permission] = [],
-        status: KeyStatus = .active,
-        sharedWith: [String]? = nil
-    ) {
-        self.id = id
-        self.vehicleId = vehicleId
-        self.ownerId = ownerId
-        self.issuedAt = issuedAt
-        self.expiresAt = expiresAt
-        self.permissions = permissions
-        self.status = status
-        self.sharedWith = sharedWith
-    }
-}
-
-/// 权限类型
-public struct Permission: Codable, OptionSet {
-    public let rawValue: Int
-    
-    public init(rawValue: Int) {
-        self.rawValue = rawValue
-    }
-    
-    public static let unlock = Permission(rawValue: 1 << 0)
-    public static let lock = Permission(rawValue: 1 << 1)
-    public static let startEngine = Permission(rawValue: 1 << 2)
-    public static let openTrunk = Permission(rawValue: 1 << 3)
-    public static let openWindows = Permission(rawValue: 1 << 4)
-    public static let shareKey = Permission(rawValue: 1 << 5)
-    public static let revokeKey = Permission(rawValue: 1 << 6)
-    public static let all: Permission = [.unlock, .lock, .startEngine, .openTrunk, .openWindows, .shareKey, .revokeKey]
-}
-
-/// 钥匙状态
-public enum KeyStatus: String, Codable {
-    case active
-    case inactive
-    case revoked
-    case expired
-    case pending
-}
-
-/// 钥匙管理器
-public final class KeyManager {
-    
-    // MARK: - Singleton
+/// Manager for digital key operations
+///
+/// Handles issuing, listing, sharing, and revoking digital keys.
+/// Also manages key usage logs and offline operations.
+public class KeyManager: ObservableObject {
     
     public static let shared = KeyManager()
     
-    // MARK: - Properties
+    @Published public private(set) var keys: [DigitalKey] = []
+    @Published public private(set) var activeKey: DigitalKey?
+    @Published public private(set) var isLoading = false
     
-    private var keys: [DigitalKey] = []
-    private let queue = DispatchQueue(label: "com.yuledkcs.keymanager", qos: .userInitiated)
+    private var cancellables = Set<AnyCancellable>()
     private let userDefaults = UserDefaults.standard
-    private let keysKey = "com.yuledkcs.keys"
-    
-    // MARK: - Initialization
+    private let keychain = KeychainManager.shared
+    private let queue = DispatchQueue(label: "com.yuledkcs.keymanager", qos: .userInitiated)
     
     private init() {
-        loadKeysFromStorage()
+        loadCachedKeys()
     }
     
-    // MARK: - Public Methods
+    // MARK: - Key Lifecycle
     
-    /// 发放新钥匙
+    /// Issue a new digital key for a vehicle
     /// - Parameters:
-    ///   - vehicleId: 车辆 ID
-    ///   - permissions: 权限列表
-    ///   - completion: 回调
+    ///   - vehicleId: The vehicle identifier
+    ///   - completion: Callback with Result containing the issued DigitalKey
     public func issueKey(
         vehicleId: String,
-        permissions: [Permission] = [.unlock, .lock],
         completion: @escaping (Result<DigitalKey, Error>) -> Void
     ) {
-        queue.async {
-            do {
-                try YuleDKCS.shared.checkInitialized()
-                
-                // 调用 FFI 生成钥匙
-                let keyData = try self.generateKeyViaFFI(vehicleId: vehicleId, permissions: permissions)
-                
-                // 创建钥匙对象
-                let key = DigitalKey(
-                    id: UUID().uuidString,
-                    vehicleId: vehicleId,
-                    ownerId: "current_user",
-                    issuedAt: Date(),
-                    expiresAt: nil,
-                    permissions: permissions,
-                    status: .active
-                )
-                
-                // 存储钥匙
-                self.saveKey(key)
-                
-                DispatchQueue.main.async {
+        guard YuleDKCS.shared.isInitialized else {
+            completion(.failure(YuleDKCSError.notInitialized))
+            return
+        }
+        
+        isLoading = true
+        
+        YuleDKCS.shared.api.issueKey(vehicleId: vehicleId)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] result in
+                    self?.isLoading = false
+                    if case .failure(let error) = result {
+                        completion(.failure(error))
+                    }
+                },
+                receiveValue: { [weak self] key in
+                    self?.storeKey(key)
                     completion(.success(key))
                 }
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-            }
-        }
+            )
+            .store(in: &cancellables)
     }
     
-    /// 获取所有钥匙列表
-    public func listKeys() -> [DigitalKey] {
-        return queue.sync {
-            return keys
-        }
-    }
-    
-    /// 根据 ID 获取钥匙
-    public func getKey(id: String) -> DigitalKey? {
-        return queue.sync {
-            return keys.first { $0.id == id }
-        }
-    }
-    
-    /// 分享钥匙
+    /// Receive a shared key via QR code or deep link
     /// - Parameters:
-    ///   - keyId: 钥匙 ID
-    ///   - recipient: 接收者 ID
-    ///   - permissions: 要分享的权限
+    ///   - shareToken: The share token from QR code or link
+    ///   - completion: Callback with Result containing the received DigitalKey
+    public func receiveSharedKey(
+        shareToken: String,
+        completion: @escaping (Result<DigitalKey, Error>) -> Void
+    ) {
+        guard YuleDKCS.shared.isInitialized else {
+            completion(.failure(YuleDKCSError.notInitialized))
+            return
+        }
+        
+        isLoading = true
+        
+        YuleDKCS.shared.api.receiveSharedKey(token: shareToken)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] result in
+                    self?.isLoading = false
+                    if case .failure(let error) = result {
+                        completion(.failure(error))
+                    }
+                },
+                receiveValue: { [weak self] key in
+                    self?.storeKey(key)
+                    completion(.success(key))
+                }
+            )
+            .store(in: &cancellables)
+    }
+    
+    /// Activate a key (bind to Secure Enclave)
+    /// - Parameters:
+    ///   - keyId: The key identifier
+    ///   - completion: Callback with Result
+    public func activateKey(
+        keyId: String,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard YuleDKCS.shared.isInitialized else {
+            completion?(.failure(YuleDKCSError.notInitialized))
+            return
+        }
+        
+        queue.async { [weak self] in
+            // First activate on server
+            YuleDKCS.shared.api.activateKey(keyId: keyId)
+                .receive(on: DispatchQueue.main)
+                .sink(
+                    receiveCompletion: { result in
+                        if case .failure(let error) = result {
+                            completion?(.failure(error))
+                        }
+                    },
+                    receiveValue: { [weak self] _ in
+                        guard let self = self else { return }
+                        
+                        // Store in Secure Enclave
+                        if let key = self.keys.first(where: { $0.id == keyId }) {
+                            do {
+                                try self.keychain.storeKey(keyId: keyId, keyData: key.keyData)
+                                
+                                // Update local status
+                                var updatedKey = key
+                                updatedKey.status = .active
+                                self.updateKey(updatedKey)
+                                self.activeKey = updatedKey
+                                
+                                completion?(.success(()))
+                            } catch {
+                                completion?(.failure(error))
+                            }
+                        }
+                    }
+                )
+                .store(in: &self!.cancellables)
+        }
+    }
+    
+    /// Get list of all keys
+    /// - Parameter forceRefresh: Force refresh from server
+    /// - Returns: Array of DigitalKey
+    public func listKeys(forceRefresh: Bool = false) -> [DigitalKey] {
+        guard YuleDKCS.shared.isInitialized else {
+            return []
+        }
+        
+        if forceRefresh || keys.isEmpty {
+            refreshKeys()
+        }
+        
+        return keys
+    }
+    
+    /// Get a specific key by ID
+    /// - Parameter keyId: The key identifier
+    /// - Returns: DigitalKey or nil
+    public func getKey(keyId: String) -> DigitalKey? {
+        return keys.first { $0.id == keyId }
+    }
+    
+    /// Set active key for quick access
+    /// - Parameter keyId: The key identifier
+    public func setActiveKey(keyId: String?) {
+        activeKey = keyId.flatMap { getKey(keyId: $0) }
+        userDefaults.set(keyId, forKey: "active_key_id")
+    }
+    
+    /// Get the currently active key
+    public func getActiveKey() -> DigitalKey? {
+        return activeKey
+    }
+    
+    // MARK: - Sharing
+    
+    /// Share a key with another user
+    /// - Parameters:
+    ///   - keyId: The key identifier to share
+    ///   - recipient: Email or phone number of recipient
+    ///   - permissions: List of permissions to grant
+    ///   - expiresInDays: Expiration in days
+    ///   - completion: Callback with Result containing share link
     public func shareKey(
         keyId: String,
-        to recipient: String,
-        permissions: [Permission] = [.unlock, .lock]
+        recipient: String,
+        permissions: [Permission],
+        expiresInDays: Int = 7,
+        completion: ((Result<String, Error>) -> Void)? = nil
     ) {
-        queue.async {
-            guard let index = self.keys.firstIndex(where: { $0.id == keyId }) else {
-                print("[YuleDKCS] Key not found: \(keyId)")
-                return
-            }
-            
-            var key = self.keys[index]
-            
-            // 检查权限
-            guard key.permissions.contains(.shareKey) else {
-                print("[YuleDKCS] No permission to share key")
-                return
-            }
-            
-            // 更新分享列表
-            var sharedList = key.sharedWith ?? []
-            if !sharedList.contains(recipient) {
-                sharedList.append(recipient)
-            }
-            
-            // 创建分享记录
-            let sharedKey = DigitalKey(
-                id: UUID().uuidString,
-                vehicleId: key.vehicleId,
-                ownerId: recipient,
-                issuedAt: Date(),
-                expiresAt: nil,
-                permissions: permissions,
-                status: .active,
-                sharedWith: nil
-            )
-            
-            // 同步到服务器
-            self.syncShareToServer(keyId: keyId, recipient: recipient, permissions: permissions)
-            
-            print("[YuleDKCS] Key \(keyId) shared to \(recipient)")
+        guard YuleDKCS.shared.isInitialized else {
+            completion?(.failure(YuleDKCSError.notInitialized))
+            return
         }
+        
+        YuleDKCS.shared.api.shareKey(
+            keyId: keyId,
+            recipient: recipient,
+            permissions: permissions.map { $0.rawValue },
+            expiresInDays: expiresInDays
+        )
+        .receive(on: DispatchQueue.main)
+        .sink(
+            receiveCompletion: { result in
+                if case .failure(let error) = result {
+                    completion?(.failure(error))
+                }
+            },
+            receiveValue: { response in
+                completion?(.success(response.shareLink))
+            }
+        )
+        .store(in: &cancellables)
     }
     
-    /// 撤销钥匙
-    /// - Parameter keyId: 钥匙 ID
-    public func revokeKey(keyId: String) {
-        queue.async {
-            guard let index = self.keys.firstIndex(where: { $0.id == keyId }) else {
-                print("[YuleDKCS] Key not found: \(keyId)")
-                return
-            }
-            
-            var key = self.keys[index]
-            
-            // 检查权限
-            guard key.permissions.contains(.revokeKey) else {
-                print("[YuleDKCS] No permission to revoke key")
-                return
-            }
-            
-            key = DigitalKey(
-                id: key.id,
-                vehicleId: key.vehicleId,
-                ownerId: key.ownerId,
-                issuedAt: key.issuedAt,
-                expiresAt: key.expiresAt,
-                permissions: key.permissions,
-                status: .revoked,
-                sharedWith: key.sharedWith
-            )
-            
-            self.keys[index] = key
-            self.saveKeysToStorage()
-            
-            // 同步到服务器
-            self.syncRevokeToServer(keyId: keyId)
-            
-            print("[YuleDKCS] Key \(keyId) revoked")
+    // MARK: - Revocation
+    
+    /// Revoke a key
+    /// - Parameters:
+    ///   - keyId: The key identifier to revoke
+    ///   - completion: Callback with Result
+    public func revokeKey(
+        keyId: String,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard YuleDKCS.shared.isInitialized else {
+            completion?(.failure(YuleDKCSError.notInitialized))
+            return
         }
+        
+        YuleDKCS.shared.api.revokeKey(keyId: keyId)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { result in
+                    if case .failure(let error) = result {
+                        completion?(.failure(error))
+                    }
+                },
+                receiveValue: { [weak self] _ in
+                    self?.removeKey(keyId)
+                    completion?(.success(()))
+                }
+            )
+            .store(in: &cancellables)
     }
     
-    /// 删除钥匙
-    /// - Parameter keyId: 钥匙 ID
-    public func deleteKey(keyId: String) {
-        queue.async {
-            self.keys.removeAll { $0.id == keyId }
-            self.saveKeysToStorage()
-            print("[YuleDKCS] Key \(keyId) deleted")
-        }
+    /// Delete local key data only (keep server key)
+    public func deleteLocalKey(keyId: String) {
+        removeKey(keyId)
+    }
+    
+    // MARK: - Usage Logging
+    
+    /// Record a key usage log
+    public func recordUsage(
+        keyId: String,
+        operation: String,
+        status: KeyUsageLog.Status,
+        location: CLLocationCoordinate2D? = nil,
+        failureReason: String? = nil
+    ) {
+        let log = KeyUsageLog(
+            id: UUID().uuidString,
+            keyId: keyId,
+            operation: operation,
+            status: status,
+            timestamp: Date(),
+            location: location.flatMap { KeyUsageLog.Location(lat: $0.latitude, lng: $0.longitude) },
+            deviceInfo: UIDevice.current.model,
+            failureReason: failureReason
+        )
+        
+        // Store locally
+        storeUsageLog(keyId: keyId, log: log)
+        
+        // Try to sync to server
+        YuleDKCS.shared.api.recordUsage(keyId: keyId, log: log)
+            .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
+            .store(in: &cancellables)
+    }
+    
+    /// Get usage logs for a key
+    public func getUsageLogs(keyId: String) -> [KeyUsageLog] {
+        return loadUsageLogs(keyId: keyId)
+    }
+    
+    // MARK: - Permission Checking
+    
+    /// Check if a key has a specific permission
+    public func hasPermission(keyId: String, permission: Permission) -> Bool {
+        guard let key = getKey(keyId: keyId) else { return false }
+        return key.permissions.contains { $0.type == permission.rawValue && $0.enabled }
+    }
+    
+    /// Check if key is expired
+    public func isKeyExpired(keyId: String) -> Bool {
+        guard let key = getKey(keyId: keyId) else { return true }
+        guard let expiresAt = key.expiresAt else { return false }
+        return Date() > expiresAt
     }
     
     // MARK: - Private Methods
     
-    private func generateKeyViaFFI(vehicleId: String, permissions: [Permission]) throws -> Data {
-        // 通过 FFI 调用底层 C 库生成钥匙
-        let result = FFIBridge.shared.generateKey(vehicleId: vehicleId)
+    private func loadCachedKeys() {
+        if let data = userDefaults.data(forKey: "cached_keys"),
+           let keys = try? JSONDecoder().decode([DigitalKey].self, from: data) {
+            self.keys = keys
+        }
         
-        switch result {
-        case .success(let data):
-            return data
-        case .failure(let error):
-            throw error
+        if let activeId = userDefaults.string(forKey: "active_key_id") {
+            activeKey = getKey(keyId: activeId)
+        }
+        
+        refreshKeys()
+    }
+    
+    private func refreshKeys() {
+        YuleDKCS.shared.api.listKeys()
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { _ in },
+                receiveValue: { [weak self] keys in
+                    self?.keys = keys
+                    self?.saveCachedKeys()
+                }
+            )
+            .store(in: &cancellables)
+    }
+    
+    private func storeKey(_ key: DigitalKey) {
+        if !keys.contains(where: { $0.id == key.id }) {
+            keys.append(key)
+            saveCachedKeys()
+            
+            // Store key data securely
+            try? keychain.storeKey(keyId: key.id, keyData: key.keyData)
         }
     }
     
-    private func saveKey(_ key: DigitalKey) {
-        queue.sync {
-            if let index = keys.firstIndex(where: { $0.id == key.id }) {
-                keys[index] = key
-            } else {
-                keys.append(key)
-            }
-            saveKeysToStorage()
+    private func updateKey(_ key: DigitalKey) {
+        if let index = keys.firstIndex(where: { $0.id == key.id }) {
+            keys[index] = key
+            saveCachedKeys()
         }
     }
     
-    private func loadKeysFromStorage() {
-        guard let data = userDefaults.data(forKey: keysKey),
-              let savedKeys = try? JSONDecoder().decode([DigitalKey].self, from: data) else {
-            return
+    private func removeKey(_ keyId: String) {
+        keys.removeAll { $0.id == keyId }
+        saveCachedKeys()
+        
+        try? keychain.deleteKey(keyId: keyId)
+        
+        if activeKey?.id == keyId {
+            activeKey = nil
+            userDefaults.removeObject(forKey: "active_key_id")
         }
-        keys = savedKeys
     }
     
-    private func saveKeysToStorage() {
+    private func saveCachedKeys() {
         if let data = try? JSONEncoder().encode(keys) {
-            userDefaults.set(data, forKey: keysKey)
+            userDefaults.set(data, forKey: "cached_keys")
         }
     }
     
-    private func syncShareToServer(keyId: String, recipient: String, permissions: [Permission]) {
-        // TODO: 实现服务器同步
-        print("[YuleDKCS] Syncing share to server...")
+    private func storeUsageLog(keyId: String, log: KeyUsageLog) {
+        var logs = loadUsageLogs(keyId: keyId)
+        logs.insert(log, at: 0)
+        
+        // Keep only last 100 logs
+        if logs.count > 100 {
+            logs = Array(logs.prefix(100))
+        }
+        
+        if let data = try? JSONEncoder().encode(logs) {
+            userDefaults.set(data, forKey: "usage_logs_\(keyId)")
+        }
     }
     
-    private func syncRevokeToServer(keyId: String) {
-        // TODO: 实现服务器同步
-        print("[YuleDKCS] Syncing revoke to server...")
+    private func loadUsageLogs(keyId: String) -> [KeyUsageLog] {
+        guard let data = userDefaults.data(forKey: "usage_logs_\(keyId)") else {
+            return []
+        }
+        return (try? JSONDecoder().decode([KeyUsageLog].self, from: data)) ?? []
     }
+}
+
+// MARK: - Errors
+
+public enum YuleDKCSError: Error {
+    case notInitialized
+    case keyNotFound
+    case permissionDenied
+    case bleNotAvailable
+    case connectionFailed
+    case commandFailed
 }

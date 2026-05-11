@@ -1,0 +1,102 @@
+{
+  "valid_issue_key_ccc": {
+    "vehicle_id": 1,
+    "type": "CCC",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": true,
+      "windows": true
+    },
+    "name": "My CCC Key",
+    "description": "Main key for BMW X5"
+  },
+  "valid_issue_key_icce": {
+    "vehicle_id": 1,
+    "type": "ICCE",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": false,
+      "trunk": false,
+      "windows": false
+    },
+    "name": "My ICCE Key",
+    "description": "Guest key"
+  },
+  "valid_issue_key_iccoa": {
+    "vehicle_id": 1,
+    "type": "ICCOA",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": true,
+      "windows": false
+    },
+    "name": "My ICCOA Key"
+  },
+  "valid_issue_key_with_expiry": {
+    "vehicle_id": 1,
+    "type": "CCC",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": false,
+      "windows": false
+    },
+    "name": "Temporary Key",
+    "expires_at": "2024-12-31T23:59:59Z"
+  },
+  "invalid_issue_key_no_vehicle": {
+    "type": "CCC",
+    "permissions": {
+      "unlock": true
+    }
+  },
+  "invalid_issue_key_unknown_type": {
+    "vehicle_id": 1,
+    "type": "UNKNOWN",
+    "permissions": {}
+  },
+  "valid_share_key_full_permissions": {
+    "user_id": 2,
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": true,
+      "windows": true
+    }
+  },
+  "valid_share_key_limited_permissions": {
+    "user_id": 2,
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": false,
+      "trunk": false,
+      "windows": false
+    },
+    "expires_at": "2024-06-30T23:59:59Z"
+  },
+  "invalid_share_key_no_user": {
+    "permissions": {
+      "unlock": true
+    }
+  },
+  "valid_update_permissions": {
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": false,
+      "trunk": false,
+      "windows": false
+    }
+  },
+  "invalid_update_permissions_empty": {
+    "permissions": {}
+  }
+}

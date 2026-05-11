@@ -1,0 +1,734 @@
+# 车云一体化协议 - TLV Schema 定义
+# 用于代码生成、校验和文档自动生成
+# 版本: v1.2.0
+
+schema_version: "1.2.0"
+schema_name: "AutomotiveTripleEndTLV"
+description: "车云一体化三端通信协议 BER-TLV Schema"
+
+# ==================== 基础配置 ====================
+config:
+  byte_order: "big_endian"
+  length_encoding: "ber"  # short(<=127) / long(>127)
+  max_message_size: 65535  # 64KB
+  max_nesting_depth: 5
+  required_headers:
+    - 0x80  # PROTOCOL_VERSION
+    - 0x81  # MESSAGE_TYPE
+    - 0x82  # MESSAGE_ID
+    - 0x83  # TIMESTAMP
+
+# ==================== TAG 定义 ====================
+tags:
+  # ----- Universal Class (0x00-0x3F) -----
+  - tag: 0x01
+    name: BOOLEAN
+    class: universal
+    type: primitive
+    data_type: bool
+    size: 1
+    description: "布尔值 (0x00=false, 0xFF=true)"
+
+  - tag: 0x02
+    name: INTEGER
+    class: universal
+    type: primitive
+    data_type: int
+    size: variable  # 1-8 bytes
+    description: "有符号整数，大端序"
+
+  - tag: 0x04
+    name: OCTET_STRING
+    class: universal
+    type: primitive
+    data_type: bytes
+    size: variable
+    description: "字节串 (二进制数据)"
+
+  - tag: 0x05
+    name: NULL
+    class: universal
+    type: primitive
+    data_type: null
+    size: 0
+    description: "空值"
+
+  - tag: 0x0C
+    name: UTF8String
+    class: universal
+    type: primitive
+    data_type: string
+    encoding: utf-8
+    size: variable
+    description: "UTF-8编码字符串"
+
+  - tag: 0x30
+    name: SEQUENCE
+    class: universal
+    type: constructed
+    description: "有序TLV序列"
+
+  - tag: 0x31
+    name: SET
+    class: universal
+    type: constructed
+    description: "无序TLV集合"
+
+  # ----- Application Class (0x40-0x5F) -----
+  # 车辆相关 (0x40-0x4F)
+  - tag: 0x40
+    name: VEHICLE_INFO
+    class: application
+    type: constructed
+    description: "车辆信息容器"
+    children:
+      - 0x41  # VIN
+      - 0x42  # VEHICLE_MODEL
+      - 0x43  # VEHICLE_BRAND
+      - 0x44  # LICENSE_PLATE
+
+  - tag: 0x41
+    name: VIN
+    class: application
+    type: primitive
+    data_type: string
+    encoding: ascii
+    size:
+      min: 17
+      max: 17
+    description: "车辆识别号"
+    validation: "^[A-HJ-NPR-Z0-9]{17}$"
+    example: "LSVAG2180E2100001"
+
+  - tag: 0x42
+    name: VEHICLE_MODEL
+    class: application
+    type: primitive
+    data_type: string
+    encoding: utf-8
+    size:
+      max: 64
+    description: "车型"
+    example: "Model X"
+
+  - tag: 0x43
+    name: VEHICLE_BRAND
+    class: application
+    type: primitive
+    data_type: string
+    encoding: utf-8
+    size:
+      max: 32
+    description: "品牌"
+    example: "Tesla"
+
+  - tag: 0x44
+    name: LICENSE_PLATE
+    class: application
+    type: primitive
+    data_type: string
+    encoding: utf-8
+    size:
+      max: 16
+    description: "车牌号"
+
+  - tag: 0x45
+    name: VEHICLE_STATUS
+    class: application
+    type: constructed
+    description: "车辆状态容器"
+    children:
+      - 0x46  # IGNITION
+      - 0x47  # LOCK_STATUS
+      - 0x48  # MILEAGE
+      - 0x49  # FUEL_LEVEL
+      - 0x4A  # BATTERY_VOLTAGE
+      - 0x4B  # ENGINE_TEMP
+
+  - tag: 0x46
+    name: IGNITION
+    class: application
+    type: primitive
+    data_type: bool
+    description: "点火状态"
+
+  - tag: 0x47
+    name: LOCK_STATUS
+    class: application
+    type: primitive
+    data_type: bool
+    description: "锁车状态"
+
+  - tag: 0x48
+    name: MILEAGE
+    class: application
+    type: primitive
+    data_type: int
+    size: 5  # 40-bit max ~1T meters
+    unit: "meters"
+    description: "总里程(米)"
+
+  - tag: 0x49
+    name: FUEL_LEVEL
+    class: application
+    type: primitive
+    data_type: int
+    size: 1
+    unit: "percent"
+    range:
+      min: 0
+      max: 100
+    description: "油量百分比"
+
+  - tag: 0x4A
+    name: BATTERY_VOLTAGE
+    class: application
+    type: primitive
+    data_type: int
+    size: 2
+    unit: "mV"
+    description: "电压(毫伏)"
+
+  - tag: 0x4B
+    name: ENGINE_TEMP
+    class: application
+    type: primitive
+    data_type: int
+    size: 1
+    unit: "celsius"
+    range:
+      min: -40
+      max: 215
+    description: "发动机温度(摄氏度)"
+
+  # 位置相关 (0x50-0x57)
+  - tag: 0x50
+    name: LOCATION
+    class: application
+    type: constructed
+    description: "位置信息容器"
+    children:
+      - 0x51  # LATITUDE
+      - 0x52  # LONGITUDE
+      - 0x53  # ALTITUDE
+      - 0x54  # SPEED
+      - 0x55  # HEADING
+
+  - tag: 0x51
+    name: LATITUDE
+    class: application
+    type: primitive
+    data_type: int
+    size: 4
+    scale: 0.0000001  # 实际值 = value / 10^7
+    unit: "degrees"
+    range:
+      min: -900000000
+      max: 900000000
+    description: "纬度 (×10^7)"
+
+  - tag: 0x52
+    name: LONGITUDE
+    class: application
+    type: primitive
+    data_type: int
+    size: 4
+    scale: 0.0000001
+    unit: "degrees"
+    range:
+      min: -1800000000
+      max: 1800000000
+    description: "经度 (×10^7)"
+
+  - tag: 0x53
+    name: ALTITUDE
+    class: application
+    type: primitive
+    data_type: int
+    size: 2
+    unit: "meters"
+    range:
+      min: -500
+      max: 9000
+    description: "海拔(米)"
+
+  - tag: 0x54
+    name: SPEED
+    class: application
+    type: primitive
+    data_type: int
+    size: 2
+    scale: 0.01
+    unit: "m/s"
+    description: "速度(厘米/秒)"
+
+  - tag: 0x55
+    name: HEADING
+    class: application
+    type: primitive
+    data_type: int
+    size: 2
+    unit: "degrees"
+    range:
+      min: 0
+      max: 359
+    description: "方向(度)"
+
+  - tag: 0x56
+    name: GPS_ACCURACY
+    class: application
+    type: primitive
+    data_type: int
+    size: 1
+    unit: "meters"
+    description: "GPS精度(米)"
+
+  - tag: 0x57
+    name: LOCATION_TIMESTAMP
+    class: application
+    type: primitive
+    data_type: int
+    size: 8
+    unit: "milliseconds"
+    description: "位置时间戳(Unix)"
+
+  # 设备相关 (0x58-0x5F)
+  - tag: 0x58
+    name: DEVICE_INFO
+    class: application
+    type: constructed
+    description: "设备信息容器"
+    children:
+      - 0x59  # DEVICE_ID
+      - 0x5A  # DEVICE_TYPE
+      - 0x5B  # FIRMWARE_VERSION
+      - 0x5C  # HARDWARE_VERSION
+
+  - tag: 0x59
+    name: DEVICE_ID
+    class: application
+    type: primitive
+    data_type: bytes
+    size: 16
+    format: "uuid"
+    description: "设备UUID"
+
+  - tag: 0x5A
+    name: DEVICE_TYPE
+    class: application
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: TBOX
+      0x02: IVI
+      0x03: ADAS
+      0x04: CLUSTER
+    description: "设备类型"
+
+  - tag: 0x5B
+    name: FIRMWARE_VERSION
+    class: application
+    type: primitive
+    data_type: version
+    size: 3
+    format: "[major, minor, patch]"
+    description: "固件版本"
+
+  - tag: 0x5C
+    name: HARDWARE_VERSION
+    class: application
+    type: primitive
+    data_type: string
+    encoding: utf-8
+    size:
+      max: 16
+    description: "硬件版本"
+
+  - tag: 0x5D
+    name: DEVICE_STATUS
+    class: application
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: ONLINE
+      0x02: OFFLINE
+      0x03: SLEEP
+      0x04: UNKNOWN
+    description: "设备状态"
+
+  # ----- Context-Specific Class (0x80-0xBF) -----
+  # 协议控制 (0x80-0x8F)
+  - tag: 0x80
+    name: PROTOCOL_VERSION
+    class: context
+    type: primitive
+    data_type: version
+    size: 3
+    required: true
+    position: 1  # 必须是第一个字段
+    description: "协议版本 (Major.Minor.Patch)"
+    example: [0x01, 0x02, 0x00]  # v1.2.0
+
+  - tag: 0x81
+    name: MESSAGE_TYPE
+    class: context
+    type: primitive
+    data_type: enum
+    size: 1
+    required: true
+    position: 2
+    enum_values:
+      0x01: REQUEST
+      0x02: RESPONSE
+      0x03: ERROR
+      0x04: NOTIFICATION
+      0x05: HEARTBEAT
+      0x06: HEARTBEAT_ACK
+      0x07: COMMAND
+      0x08: COMMAND_ACK
+      0x09: COMMAND_RESULT
+      0x0A: OTA_REQUEST
+      0x0B: OTA_RESPONSE
+      0x0C: SYNC_REQUEST
+      0x0D: SYNC_RESPONSE
+      0x0E: VERSION_NEGOTIATION
+      0x0F: VERSION_NEGOTIATION_ACK
+    description: "消息类型"
+
+  - tag: 0x82
+    name: MESSAGE_ID
+    class: context
+    type: primitive
+    data_type: bytes
+    size: 16
+    format: "uuid"
+    required: true
+    position: 3
+    description: "消息唯一标识"
+
+  - tag: 0x83
+    name: TIMESTAMP
+    class: context
+    type: primitive
+    data_type: int
+    size: 8
+    unit: "milliseconds"
+    required: true
+    position: 4
+    description: "发送时间戳(Unix毫秒)"
+
+  - tag: 0x84
+    name: SESSION_ID
+    class: context
+    type: primitive
+    data_type: bytes
+    size: 16
+    format: "uuid"
+    required: false
+    condition: "认证后必需"
+    description: "会话标识"
+
+  - tag: 0x86
+    name: CORRELATION_ID
+    class: context
+    type: primitive
+    data_type: bytes
+    size: 16
+    format: "uuid"
+    description: "请求-响应关联ID"
+
+  - tag: 0x87
+    name: ERROR_CODE
+    class: context
+    type: primitive
+    data_type: int
+    size: 2
+    description: "错误码"
+
+  - tag: 0x88
+    name: AUTH_TOKEN
+    class: context
+    type: primitive
+    data_type: bytes
+    size:
+      max: 256
+    description: "认证令牌(JWT或类似)"
+
+  - tag: 0x89
+    name: SIGNATURE
+    class: context
+    type: primitive
+    data_type: bytes
+    size: 32
+    format: "hmac-sha256"
+    description: "消息签名"
+
+  - tag: 0x8B
+    name: COMPRESSION_FLAG
+    class: context
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x00: NONE
+      0x01: ZLIB
+    default: 0x00
+    description: "压缩标志"
+
+  # 同步相关 (0x90-0x9F)
+  - tag: 0x90
+    name: REQUEST_TYPE
+    class: context
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: GET
+      0x02: PUT
+      0x03: POST
+      0x04: DELETE
+    description: "请求类型"
+
+  - tag: 0x91
+    name: RESULT_CODE
+    class: context
+    type: primitive
+    data_type: int
+    size: 1
+    description: "结果码 (0=Success)"
+
+  - tag: 0x93
+    name: SYNC_VERSION
+    class: context
+    type: primitive
+    data_type: int
+    size: 4
+    description: "数据版本号"
+
+  - tag: 0x98
+    name: CHANGE_SET
+    class: context
+    type: constructed
+    description: "变更集容器"
+
+  # ----- Private Class (0xC0-0xFF) -----
+  # SDK相关 (0xC0-0xCF)
+  - tag: 0xC0
+    name: PUSH_TOKEN
+    class: private
+    type: primitive
+    data_type: bytes
+    size:
+      max: 256
+    description: "推送令牌(FCM/APNs)"
+
+  - tag: 0xC1
+    name: OS_TYPE
+    class: private
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: IOS
+      0x02: ANDROID
+    description: "操作系统类型"
+
+  - tag: 0xC3
+    name: APP_VERSION
+    class: private
+    type: primitive
+    data_type: version
+    size: 3
+    description: "App版本"
+
+  # 安全相关 (0xD0-0xDF)
+  - tag: 0xD0
+    name: SIGNATURE_ALGORITHM
+    class: private
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: HMAC_SHA256
+    description: "签名算法"
+
+  - tag: 0xD2
+    name: ENCRYPTION_ALGORITHM
+    class: private
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x01: AES_256_GCM
+    description: "加密算法"
+
+  # 版本协商 (0xE0-0xEF)
+  - tag: 0xE0
+    name: CLIENT_VERSION
+    class: private
+    type: primitive
+    data_type: version
+    size: 3
+    description: "客户端版本"
+
+  - tag: 0xE1
+    name: SERVER_VERSION
+    class: private
+    type: primitive
+    data_type: version
+    size: 3
+    description: "服务器版本"
+
+  - tag: 0xE3
+    name: NEGOTIATED_VERSION
+    class: private
+    type: primitive
+    data_type: version
+    size: 3
+    description: "协商后版本"
+
+  - tag: 0xE9
+    name: NEGOTIATION_RESULT
+    class: private
+    type: primitive
+    data_type: enum
+    size: 1
+    enum_values:
+      0x00: SUCCESS
+      0x01: DOWNGRADE
+      0x02: REJECT
+    description: "协商结果"
+
+# ==================== 消息定义 ====================
+message_templates:
+  # 心跳消息
+  heartbeat:
+    description: "心跳保活消息"
+    required_tags:
+      - 0x80  # PROTOCOL_VERSION
+      - 0x81  # MESSAGE_TYPE = 0x05
+      - 0x82  # MESSAGE_ID
+      - 0x83  # TIMESTAMP
+    optional_tags:
+      - 0x84  # SESSION_ID
+      - 0x46  # IGNITION (payload)
+
+  # 车辆状态上报
+  vehicle_status:
+    description: "车辆状态通知"
+    required_tags:
+      - 0x80
+      - 0x81  # = 0x04 (NOTIFICATION)
+      - 0x82
+      - 0x83
+      - 0x45  # VEHICLE_STATUS
+    payload_structure:
+      container: 0x45  # VEHICLE_STATUS
+      children: [0x46, 0x47, 0x48, 0x49, 0x4A]
+
+  # 位置上报
+  location_update:
+    description: "实时位置更新"
+    required_tags:
+      - 0x80
+      - 0x81  # = 0x04
+      - 0x82
+      - 0x83
+      - 0x50  # LOCATION
+    payload_structure:
+      container: 0x50
+      children: [0x51, 0x52, 0x54]  # lat, lon, speed
+
+  # 远程命令
+  remote_command:
+    description: "远程控制命令"
+    required_tags:
+      - 0x80
+      - 0x81  # = 0x07 (COMMAND)
+      - 0x82
+      - 0x83
+      - 0x41  # VIN
+      - 0x90  # REQUEST_TYPE
+      - 0x89  # SIGNATURE
+
+  # 版本协商
+  version_negotiation:
+    description: "版本协商"
+    required_tags:
+      - 0x80
+      - 0x81  # = 0x0E
+      - 0x82
+      - 0x83
+      - 0xE0  # CLIENT_VERSION
+      - 0xE4  # SUPPORTED_VERSIONS
+
+# ==================== 错误码定义 ====================
+error_codes:
+  0x0000: SUCCESS
+  0x0001: INVALID_MESSAGE
+  0x0002: UNSUPPORTED_VERSION
+  0x0003: AUTHENTICATION_FAILED
+  0x0004: AUTHORIZATION_FAILED
+  0x0005: RATE_LIMITED
+  0x0006: DEVICE_NOT_FOUND
+  0x0007: VEHICLE_NOT_FOUND
+  0x0008: COMMAND_TIMEOUT
+  0x0009: COMMAND_FAILED
+  0x2001: VERSION_NOT_SUPPORTED
+  0x2002: VERSION_DEPRECATED
+  0x2003: FORCE_UPGRADE_REQUIRED
+
+# ==================== 性能配置 ====================
+performance:
+  # 大小限制
+  max_message_size: 65535
+  max_payload_size: 64535
+  max_tlv_depth: 5
+  max_tlv_elements: 100
+
+  # 时延要求
+  decode_latency_ms:
+    p50: 1
+    p99: 5
+  encode_latency_ms:
+    p50: 1
+    p99: 3
+
+  # 常见消息大小
+  typical_sizes:
+    heartbeat: 45
+    vehicle_status: 120
+    location_update: 85
+    command: 150
+    command_result: 100
+    ota_package_info: 200
+
+  # 压缩
+  compression:
+    threshold_bytes: 256
+    algorithm: zlib
+    level: 6  # default compression
+
+# ==================== 测试向量 ====================
+test_vectors:
+  # 最小有效消息
+  minimal_valid:
+    description: "最小有效消息 (只含必需字段)"
+    hex: "80030102008101058210AABBCCDDEEFF00112233445566778899830800000191D48AE000"
+    expected:
+      protocol_version: "1.2.0"
+      message_type: "HEARTBEAT"
+
+  # 心跳消息
+  heartbeat:
+    description: "完整心跳消息"
+    hex: "80030102008101058210AABBCCDDEEFF00112233445566778899830800000191D48AE00030084601FF4A02523039"
+    # version, heartbeat, uuid, timestamp, payload(ignition=true, voltage=12345)
+
+  # 带压缩标志
+  compressed:
+    description: "ZLIB压缩消息"
+    hex: "80030102008101048210AABBCCDDEEFF00112233445566778899830800000191D48AE0008B0178DA63000000010001"
+    has_compression: true

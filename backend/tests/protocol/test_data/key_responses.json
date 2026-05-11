@@ -1,0 +1,143 @@
+{
+  "key_response_ccc_active": {
+    "id": 1,
+    "user_id": 1,
+    "vehicle_id": 1,
+    "vehicle_name": "My BMW X5",
+    "type": "CCC",
+    "status": "active",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": true,
+      "windows": true
+    },
+    "key_identifier": "key-abc123",
+    "name": "My CCC Key",
+    "description": "Main key for BMW X5",
+    "usage_count": 15,
+    "created_at": "2024-01-15T08:30:00Z",
+    "updated_at": "2024-01-20T10:15:00Z",
+    "is_shared": false
+  },
+  "key_response_icce_shared": {
+    "id": 2,
+    "user_id": 2,
+    "vehicle_id": 1,
+    "vehicle_name": "My BMW X5",
+    "type": "ICCE",
+    "status": "active",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": false,
+      "trunk": false,
+      "windows": false
+    },
+    "key_identifier": "key-def456",
+    "name": "Shared Key",
+    "usage_count": 3,
+    "created_at": "2024-01-16T09:00:00Z",
+    "updated_at": "2024-01-18T14:20:00Z",
+    "is_shared": true,
+    "shared_by": 1
+  },
+  "key_response_expired": {
+    "id": 3,
+    "user_id": 1,
+    "vehicle_id": 1,
+    "type": "CCC",
+    "status": "expired",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": false,
+      "windows": false
+    },
+    "key_identifier": "key-expired",
+    "name": "Expired Key",
+    "expires_at": "2024-01-01T00:00:00Z",
+    "usage_count": 5,
+    "created_at": "2023-12-01T00:00:00Z",
+    "updated_at": "2023-12-01T00:00:00Z",
+    "is_shared": false
+  },
+  "key_list_response": {
+    "code": 200,
+    "message": "获取成功",
+    "data": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "vehicle_id": 1,
+        "vehicle_name": "My BMW X5",
+        "type": "CCC",
+        "status": "active",
+        "permissions": {
+          "unlock": true,
+          "lock": true,
+          "start_engine": true,
+          "trunk": true,
+          "windows": true
+        },
+        "key_identifier": "key-abc123",
+        "name": "My CCC Key",
+        "usage_count": 15,
+        "created_at": "2024-01-15T08:30:00Z",
+        "is_shared": false
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "vehicle_id": 2,
+        "vehicle_name": "Tesla Model 3",
+        "type": "ICCE",
+        "status": "active",
+        "permissions": {
+          "unlock": true,
+          "lock": true,
+          "start_engine": false,
+          "trunk": true,
+          "windows": false
+        },
+        "key_identifier": "key-xyz789",
+        "name": "My ICCE Key",
+        "usage_count": 8,
+        "created_at": "2024-01-10T12:00:00Z",
+        "is_shared": false
+      }
+    ]
+  },
+  "key_share_response": {
+    "code": 200,
+    "message": "分享成功",
+    "data": null
+  },
+  "key_revoke_response": {
+    "code": 200,
+    "message": "吊销成功",
+    "data": null
+  },
+  "error_key_not_found": {
+    "code": 404,
+    "message": "钥匙不存在",
+    "error": "key not found"
+  },
+  "error_key_unauthorized": {
+    "code": 403,
+    "message": "无权访问该钥匙",
+    "error": "permission denied"
+  },
+  "error_key_expired": {
+    "code": 400,
+    "message": "钥匙已过期",
+    "error": "key has expired"
+  },
+  "error_key_type_not_supported": {
+    "code": 400,
+    "message": "不支持的钥匙类型",
+    "error": "key type UNKNOWN is not supported"
+  }
+}

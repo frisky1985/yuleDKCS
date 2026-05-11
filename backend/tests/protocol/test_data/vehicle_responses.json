@@ -1,0 +1,93 @@
+{
+  "vehicle_response_success": {
+    "id": 1,
+    "owner_id": 1,
+    "name": "My BMW X5",
+    "vin": "WBA12345678901234",
+    "plate": "京A12345",
+    "brand": "BMW",
+    "model": "X5",
+    "year": 2024,
+    "color": "Black",
+    "status": "active",
+    "lock_status": "locked",
+    "engine_status": "off",
+    "online_status": "online",
+    "ble_mac": "AA:BB:CC:DD:EE:FF",
+    "uwb_capable": true,
+    "uwb_enabled": true,
+    "software_version": "v1.2.3",
+    "ota_available": false,
+    "created_at": "2024-01-15T08:30:00Z",
+    "updated_at": "2024-01-15T08:30:00Z"
+  },
+  "vehicle_status_response": {
+    "id": 1,
+    "status": "online",
+    "lock_status": "locked",
+    "engine_status": "off",
+    "online_status": "online",
+    "location": {
+      "latitude": 39.9042,
+      "longitude": 116.4074,
+      "altitude": 100.5,
+      "accuracy": 5.0,
+      "timestamp": 1705312200
+    },
+    "last_seen_at": "2024-01-15T08:30:00Z",
+    "software_version": "v1.2.3"
+  },
+  "vehicle_command_response_pending": {
+    "command_id": "cmd-123e4567-e89b-12d3-a456-426614174000",
+    "command": "unlock",
+    "status": "pending",
+    "message": "Command queued",
+    "created_at": "2024-01-15T08:30:00Z"
+  },
+  "vehicle_command_response_executed": {
+    "command_id": "cmd-123e4567-e89b-12d3-a456-426614174000",
+    "command": "unlock",
+    "status": "executed",
+    "message": "Command executed successfully",
+    "created_at": "2024-01-15T08:30:00Z",
+    "executed_at": "2024-01-15T08:30:05Z"
+  },
+  "vehicle_list_response": {
+    "code": 200,
+    "message": "获取成功",
+    "data": {
+      "list": [
+        {
+          "id": 1,
+          "owner_id": 1,
+          "name": "My BMW X5",
+          "vin": "WBA12345678901234",
+          "brand": "BMW",
+          "model": "X5",
+          "year": 2024,
+          "status": "active",
+          "lock_status": "locked",
+          "online_status": "online"
+        }
+      ],
+      "total": 1,
+      "page": 1,
+      "page_size": 10
+    }
+  },
+  "error_response_not_found": {
+    "code": 404,
+    "message": "车辆不存在",
+    "error": "vehicle not found"
+  },
+  "error_response_unauthorized": {
+    "code": 401,
+    "message": "未授权访问",
+    "error": "invalid or missing token"
+  },
+  "error_response_validation": {
+    "code": 400,
+    "message": "请求参数错误",
+    "error": "Key: 'VehicleRegisterRequest.Vin' Error:Field validation for 'Vin' failed on the 'required' tag"
+  }
+}

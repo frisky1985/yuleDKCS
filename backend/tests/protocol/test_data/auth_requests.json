@@ -1,0 +1,32 @@
+{
+  "valid_login_request": {
+    "username": "testuser",
+    "password": "password123"
+  },
+  "valid_register_request": {
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "securepass123"
+  },
+  "invalid_login_request_no_username": {
+    "password": "password123"
+  },
+  "invalid_login_request_no_password": {
+    "username": "testuser"
+  },
+  "invalid_register_request_short_username": {
+    "username": "ab",
+    "email": "test@example.com",
+    "password": "password123"
+  },
+  "invalid_register_request_invalid_email": {
+    "username": "testuser",
+    "email": "invalid-email",
+    "password": "password123"
+  },
+  "invalid_register_request_short_password": {
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "12345"
+  }
+}

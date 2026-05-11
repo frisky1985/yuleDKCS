@@ -1,0 +1,134 @@
+{
+  "ws_ping_message": {
+    "version": "1.0.0",
+    "type": "ping",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "ping-123e4567-e89b-12d3-a456-426614174000",
+    "payload": {}
+  },
+  "ws_pong_message": {
+    "version": "1.0.0",
+    "type": "pong",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "pong-123e4567-e89b-12d3-a456-426614174001",
+    "payload": {
+      "ping_id": "ping-123e4567-e89b-12d3-a456-426614174000"
+    }
+  },
+  "ws_vehicle_status_inbound": {
+    "version": "1.0.0",
+    "type": "vehicle_status",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "status-123e4567-e89b-12d3-a456-426614174002",
+    "payload": {
+      "vehicle_id": 1,
+      "status": "online",
+      "lock_state": "locked",
+      "engine_state": "off",
+      "battery_level": 85,
+      "location": {
+        "latitude": 39.9042,
+        "longitude": 116.4074,
+        "altitude": 100.5,
+        "accuracy": 5.0
+      }
+    }
+  },
+  "ws_vehicle_status_update_outbound": {
+    "version": "1.0.0",
+    "type": "vehicle_status_update",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "update-123e4567-e89b-12d3-a456-426614174003",
+    "payload": {
+      "vehicle_id": 1,
+      "status": "online",
+      "lock_state": "unlocked",
+      "engine_state": "off",
+      "battery_level": 84,
+      "last_updated": "2024-01-15T08:30:00Z"
+    }
+  },
+  "ws_command_outbound": {
+    "version": "1.0.0",
+    "type": "command",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "cmd-123e4567-e89b-12d3-a456-426614174004",
+    "payload": {
+      "command_id": "cmd-123e4567-e89b-12d3-a456-426614174004",
+      "command": "unlock",
+      "params": {}
+    }
+  },
+  "ws_command_result_inbound": {
+    "version": "1.0.0",
+    "type": "command_result",
+    "timestamp": "2024-01-15T08:30:05Z",
+    "id": "result-123e4567-e89b-12d3-a456-426614174005",
+    "payload": {
+      "command_id": "cmd-123e4567-e89b-12d3-a456-426614174004",
+      "status": "success",
+      "result": {
+        "lock_state": "unlocked"
+      }
+    }
+  },
+  "ws_command_result_outbound": {
+    "version": "1.0.0",
+    "type": "command_result",
+    "timestamp": "2024-01-15T08:30:05Z",
+    "id": "result-123e4567-e89b-12d3-a456-426614174006",
+    "payload": {
+      "command_id": "cmd-123e4567-e89b-12d3-a456-426614174004",
+      "status": "success",
+      "result": {
+        "lock_state": "unlocked",
+        "executed_at": "2024-01-15T08:30:05Z"
+      }
+    }
+  },
+  "ws_notification_message": {
+    "version": "1.0.0",
+    "type": "notification",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "notif-123e4567-e89b-12d3-a456-426614174007",
+    "payload": {
+      "level": "info",
+      "title": "钥匙已分享",
+      "message": "用户 XXX 接受了您的钥匙分享"
+    }
+  },
+  "ws_error_invalid_message": {
+    "version": "1.0.0",
+    "type": "error",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "error-123e4567-e89b-12d3-a456-426614174008",
+    "payload": {
+      "code": 400,
+      "message": "无效的消息格式",
+      "details": "missing required field: type"
+    }
+  },
+  "ws_error_unauthorized": {
+    "version": "1.0.0",
+    "type": "error",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "error-123e4567-e89b-12d3-a456-426614174009",
+    "payload": {
+      "code": 401,
+      "message": "未授权",
+      "details": "invalid or missing token"
+    }
+  },
+  "ws_message_without_version": {
+    "type": "ping",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "id": "ping-123e4567-e89b-12d3-a456-426614174000",
+    "payload": {}
+  },
+  "ws_message_without_id": {
+    "version": "1.0.0",
+    "type": "ping",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "payload": {}
+  }
+}

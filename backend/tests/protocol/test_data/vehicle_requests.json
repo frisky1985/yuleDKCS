@@ -1,0 +1,71 @@
+{
+  "valid_register_request": {
+    "vin": "WBA12345678901234",
+    "brand": "BMW",
+    "model": "X5",
+    "year": 2024,
+    "color": "Black",
+    "plate": "京A12345",
+    "name": "My BMW X5",
+    "ble_mac": "AA:BB:CC:DD:EE:FF",
+    "uwb_capable": true
+  },
+  "invalid_register_request_no_vin": {
+    "brand": "BMW",
+    "model": "X5",
+    "year": 2024,
+    "name": "My BMW X5"
+  },
+  "invalid_register_request_short_vin": {
+    "vin": "WBA123",
+    "brand": "BMW",
+    "model": "X5",
+    "year": 2024,
+    "name": "My BMW X5"
+  },
+  "invalid_register_request_future_year": {
+    "vin": "WBA12345678901234",
+    "brand": "BMW",
+    "model": "X5",
+    "year": 2500,
+    "name": "My BMW X5"
+  },
+  "valid_command_request_unlock": {
+    "command": "unlock",
+    "params": {}
+  },
+  "valid_command_request_lock": {
+    "command": "lock",
+    "params": {}
+  },
+  "valid_command_request_engine_start": {
+    "command": "engine_start",
+    "params": {}
+  },
+  "valid_command_request_with_params": {
+    "command": "windows_down",
+    "params": {
+      "percent": 50
+    }
+  },
+  "invalid_command_request_no_command": {
+    "params": {}
+  },
+  "invalid_command_request_unknown": {
+    "command": "fly",
+    "params": {}
+  },
+  "valid_location_request": {
+    "latitude": 39.9042,
+    "longitude": 116.4074,
+    "altitude": 100.5,
+    "accuracy": 5.0
+  },
+  "invalid_location_request_no_latitude": {
+    "longitude": 116.4074
+  },
+  "invalid_location_request_out_of_range": {
+    "latitude": 999.0,
+    "longitude": 116.4074
+  }
+}

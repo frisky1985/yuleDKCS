@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  emqx:
+    image: emqx/emqx:5.4.1
+    container_name: yuledkcs-emqx
+    ports:
+      # MQTT
+      - "1883:1883"
+      # MQTT over TLS
+      - "8883:8883"
+      # WebSocket
+      - "8083:8083"
+      # WebSocket over TLS
+      - "8084:8084"
+      # HTTP API
+      - "18083:18083"
+    environment:
+      # 基础配置
+      - EMQX_NODE_NAME=emqx@127.0.0.1
+      - EMQX_NODE_COOKIE=emqxsecretcookie
+      # 允许匿名访问: false
+      - EMQX_ALLOW_ANONYMOUS=false
+      # 启用 ACL
+      - EMQX_ACL_NOMATCH=deny
+      # 最大连接数
+      - EMQX_ZONE__EXTERNAL__MAX_CLIENTID_LEN=65535
+      - EMQX_LISTENERS__TCP__DEFAULT__MAX_CONNECTIONS=10000
+      - EMQX_LISTENERS__SSL__DEFAULT__MAX_CONNECTIONS=10000
+      # TLS 配置 - MQTT over TLS (8883)
+      - EMQX_LISTENERS__SSL__DEFAULT__ENABLE=true
+      - EMQX_LISTENERS__SSL__DEFAULT__BIND=0.0.0.0:8883
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE=/opt/emqx/etc/certs/server.key
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE=/opt/emqx/etc/certs/server.crt
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE=/opt/emqx/etc/certs/ca.crt
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY=verify_peer
+      - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT=false
+      # WebSocket over TLS (8084)
+      - EMQX_LISTENERS__WSS__DEFAULT__ENABLE=true
+      - EMQX_LISTENERS__WSS__DEFAULT__BIND=0.0.0.0:8084
+      - EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__KEYFILE=/opt/emqx/etc/certs/server.key
+      - EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CERTFILE=/opt/emqx/etc/certs/server.crt
+      - EMQX_LISTENERS__WSS__DEFAULT__SSL_OPTIONS__CACERTFILE=/opt/emqx/etc/certs/ca.crt
+      # 认证配置 - JWT
+      - EMQX_AUTHENTICATION__1__MECHANISM=password_based
+      - EMQX_AUTHENTICATION__1__BACKEND=http
+      - EMQX_AUTHENTICATION__1__ENABLE=true
+      - EMQX_AUTHENTICATION__1__METHOD=post
+      - EMQX_AUTHENTICATION__1__URL=http://yuledkcs-api:8080/api/v1/mqtt/auth
+      - EMQX_AUTHENTICATION__1__HEADERS__CONTENT-TYPE=application/json
+      - EMQX_AUTHENTICATION__1__POOL_SIZE=8
+      - EMQX_AUTHENTICATION__1__CONNECT_TIMEOUT=5s
+      - EMQX_AUTHENTICATION__1__REQUEST_TIMEOUT=5s
+      - EMQX_AUTHENTICATION__1__SSL__ENABLE=false
+      # 授权配置 - HTTP ACL
+      - EMQX_AUTHORIZATION__SOURCES__1__TYPE=http
+      - EMQX_AUTHORIZATION__1__ENABLE=true
+      - EMQX_AUTHORIZATION__1__URL=http://yuledkcs-api:8080/api/v1/mqtt/acl
+      - EMQX_AUTHORIZATION__1__METHOD=post
+      - EMQX_AUTHORIZATION__1__HEADERS__CONTENT-TYPE=application/json
+      - EMQX_AUTHORIZATION__1__POOL_SIZE=8
+      - EMQX_AUTHORIZATION__1__REQUEST_TIMEOUT=5s
+      # 日志配置
+      - EMQX_LOG__CONSOLE__LEVEL=warning
+      - EMQX_LOG__CONSOLE__ENABLE=true
+    volumes:
+      # 证书目录
+      - ./mqtt/certs:/opt/emqx/etc/certs:ro
+      # 持久化数据
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+      # 自定义配置文件
+      - ./mqtt/conf/acl.conf:/opt/emqx/etc/acl.conf:ro
+    networks:
+      - yuledkcs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "emqx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MQTT Bridge Service - Backend 到 MQTT 的桥接
+  mqtt-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.mqtt-bridge
+    container_name: yuledkcs-mqtt-bridge
+    environment:
+      - YULEDKCS_MQTT_BROKER=emqx:1883
+      - YULEDKCS_MQTT_TLS_BROKER=emqx:8883
+      - YULEDKCS_MQTT_WS_BROKER=emqx:8083
+      - YULEDKCS_MQTT_WSS_BROKER=emqx:8084
+      - YULEDKCS_API_URL=http://yuledkcs-api:8080
+      - YULEDKCS_JWT_SECRET=${YULEDKCS_JWT_SECRET}
+      - YULEDKCS_WS_PORT=8085
+    depends_on:
+      emqx:
+        condition: service_healthy
+      api:
+        condition: service_started
+    ports:
+      - "8085:8085"
+    networks:
+      - yuledkcs-network
+    restart: unless-stopped
+
+volumes:
+  emqx_data:
+  emqx_log:
+
+networks:
+  yuledkcs-network:
+    external: true

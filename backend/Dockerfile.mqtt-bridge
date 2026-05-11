@@ -1,0 +1,40 @@
+# MQTT Bridge Service Dockerfile
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# 安装依赖
+RUN apk add --no-cache git
+
+# 复制模块文件
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 编译 MQTT Bridge
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mqtt-bridge ./cmd/mqtt-bridge/main.go
+
+# 运行阶段
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+# 复制二进制文件
+COPY --from=builder /app/mqtt-bridge .
+
+# MQTT 证书目录
+RUN mkdir -p /etc/mqtt/certs
+
+# 暴露端口
+EXPOSE 8085
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8085/health || exit 1
+
+# 启动命令
+CMD ["./mqtt-bridge"]

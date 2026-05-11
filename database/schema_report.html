@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>车云一体化数据库 Schema 报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #718096;
+        }
+        
+        .meta-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-item {
+            background: #f7fafc;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .meta-item strong {
+            color: #4a5568;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            font-size: 1.8rem;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        h3 {
+            font-size: 1.4rem;
+            color: #4a5568;
+            margin: 25px 0 15px 0;
+        }
+        
+        .diagram-container {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f7fafc;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-primary {
+            background: #ebf8ff;
+            color: #3182ce;
+        }
+        
+        .badge-success {
+            background: #f0fff4;
+            color: #38a169;
+        }
+        
+        .badge-warning {
+            background: #fffaf0;
+            color: #dd6b20;
+        }
+        
+        .badge-danger {
+            background: #fff5f5;
+            color: #e53e3e;
+        }
+        
+        .badge-info {
+            background: #e6fffa;
+            color: #319795;
+        }
+        
+        .protocol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .protocol-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .protocol-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .protocol-card h4 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+        
+        .protocol-card.ccc {
+            border-left: 5px solid #3182ce;
+        }
+        
+        .protocol-card.iccoa {
+            border-left: 5px solid #38a169;
+        }
+        
+        .protocol-card.icce {
+            border-left: 5px solid #dd6b20;
+        }
+        
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            color: #e53e3e;
+        }
+        
+        .sql-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            margin: 15px 0;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: white;
+            opacity: 0.8;
+        }
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 车云一体化数据库 Schema 报告</h1>
+            <p class="subtitle">支持 CCC / ICCOA / ICCE 三协议的统一数据库设计</p>
+            <div class="meta-info">
+                <div class="meta-item">
+                    <strong>版本:</strong> v1.0.0
+                </div>
+                <div class="meta-item">
+                    <strong>数据库:</strong> PostgreSQL 15+
+                </div>
+                <div class="meta-item">
+                    <strong>表数量:</strong> 14张核心表
+                </div>
+                <div class="meta-item">
+                    <strong>生成日期:</strong> 2026-05-11
+                </div>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>📊 数据库统计</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">14</div>
+                    <div class="stat-label">核心数据表</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">支持协议</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">100+</div>
+                    <div class="stat-label">数据字段</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">索引数量</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📐 完整 ER 图</h2>
+            <div class="diagram-container">
+                <pre class="mermaid">
+erDiagram
+    USERS ||--o{ VEHICLES : owns
+    USERS ||--o{ DEVICES : has
+    USERS ||--o{ VEHICLE_ALIASES : defines
+    
+    VEHICLES ||--o{ CCC_SLOTS : has
+    VEHICLES ||--o{ ICCOA_KEYS : has
+    VEHICLES ||--o{ ICCE_KEYS : has
+    VEHICLES ||--o{ CERTIFICATES : owns
+    VEHICLES ||--o{ VEHICLE_TELEMETRY : generates
+    VEHICLES ||--o{ OPERATION_LOGS : records
+    
+    DEVICES ||--o{ CCC_SLOTS : binds
+    DEVICES ||--o{ ICCOA_KEYS : binds
+    DEVICES ||--o{ ICCE_KEYS : binds
+    DEVICES ||--o{ SECURE_ELEMENTS : contains
+    DEVICES ||--o{ CERTIFICATES : has
+    
+    SECURE_ELEMENTS ||--o{ CERTIFICATES : stores
+    
+    CCC_SLOTS ||--o{ KEY_SHARES : shared_via
+    CCC_SLOTS ||--o{ CERTIFICATES : authenticated_by
+    CCC_SLOTS ||--o{ OPERATION_LOGS : generates
+    
+    ICCOA_KEYS ||--o{ KEY_SHARES : shared_via
+    
+    ICCE_KEYS ||--o{ KEY_SHARES : shared_via
+    
+    CERTIFICATES ||--o{ CERTIFICATES : parent_of
+    
+    USERS ||--o{ KEY_SHARES : owns
+    USERS ||--o{ KEY_SHARES : receives
+    
+    VEHICLES ||--o{ MESSAGE_QUEUE : processes
+    DEVICES ||--o{ MESSAGE_QUEUE : processes
+    
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string name
+        string phone
+        timestamp created_at
+    }
+    
+    VEHICLES {
+        string vin PK
+        uuid user_id FK
+        string vehicle_model
+        string vehicle_brand
+        string license_plate UK
+        boolean support_ccc
+        boolean support_iccoa
+        boolean support_icce
+    }
+                </pre>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📡 协议支持对比</h2>
+            <div class="protocol-grid">
+                <div class="protocol-card ccc">
+                    <h4>🔐 CCC (Car Connectivity Consortium)</h4>
+                    <ul>
+                        <li><span class="badge badge-primary">8个槽位</span> slot_identifier (0-7)</li>
+                        <li><span class="badge badge-primary">8字节</span> key_identifier</li>
+                        <li><span class="badge badge-primary">16字节</span> device_identifier</li>
+                        <li><span class="badge badge-success">X.509</span> 证书链认证</li>
+                        <li><span class="badge badge-info">SE芯片</span> 强制安全芯片</li>
+                    </ul>
+                </div>
+                <div class="protocol-card iccoa">
+                    <h4>📱 ICCOA (智惠车联开放联盟)</h4>
+                    <ul>
+                        <li><span class="badge badge-primary">无限</span> 软件槽位</li>
+                        <li><span class="badge badge-primary">手机号</span> phone_number</li>
+                        <li><span class="badge badge-primary">Token</span> device_token</li>
+                        <li><span class="badge badge-success">密钥</span> 对称密钥认证</li>
+                        <li><span class="badge badge-info">TEE</span> 可信执行环境</li>
+                    </ul>
+                </div>
+                <div class="protocol-card icce">
+                    <h4>🔑 ICCE (智惠车联生态)</h4>
+                    <ul>
+                        <li><span class="badge badge-primary">Key ID</span> icce_key_identifier</li>
+                        <li><span class="badge badge-primary">计数器</span> 防重放保护</li>
+                        <li><span class="badge badge-primary">密钥对</span> vehicle_pk / device_sk</li>
+                        <li><span class="badge badge-success">可选</span> PKI或密钥</li>
+                        <li><span class="badge badge-info">TEE/SE</span> 灵活配置</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📂 核心数据表详解</h2>
+            
+            <h3>1. 用户与车辆管理</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>表名</th>
+                        <th>主键</th>
+                        <th>核心字段</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>users</code></td>
+                        <td><span class="badge badge-primary">UUID</span></td>
+                        <td>email, password_hash, name</td>
+                        <td>用户账户基础信息</td>
+                    </tr>
+                    <tr>
+                        <td><code>vehicles</code></td>
+                        <td><span class="badge badge-primary">VIN</span></td>
+                        <td>model, brand, support_ccc/iccoa/icce</td>
+                        <td>车辆主档，协议支持标记</td>
+                    </tr>
+                    <tr>
+                        <td><code>vehicle_aliases</code></td>
+                        <td><span class="badge badge-primary">UUID</span></td>
+                        <td>vin, user_id, alias_name</td>
+                        <td>用户自定义车辆别名</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2. 数字钥匙管理</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>表名</th>
+                        <th>协议</th>
+                        <th>核心字段</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>ccc_slots</code></td>
+                        <td><span class="badge badge-info">CCC</span></td>
+                        <td>slot_identifier(0-7), key_identifier</td>
+                        <td>CCC 8槽位管理</td>
+                    </tr>
+                    <tr>
+                        <td><code>iccoa_keys</code></td>
+                        <td><span class="badge badge-success">ICCOA</span></td>
+                        <td>phone_number, auth_key, permission_mask</td>
+                        <td>ICCOA手机钥匙</td>
+                    </tr>
+                    <tr>
+                        <td><code>icce_keys</code></td>
+                        <td><span class="badge badge-warning">ICCE</span></td>
+                        <td>vehicle_pk, device_sk, counter</td>
+                        <td>ICCE公私钥对</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3. 证书与安全</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>表名</th>
+                        <th>证书类型</th>
+                        <th>字段</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>certificates</code></td>
+                        <td><span class="badge badge-primary">X.509</span></td>
+                        <td>cert_data, serial_number, valid_until</td>
+                        <td>统一证书存储</td>
+                    </tr>
+                    <tr>
+                        <td><code>devices</code></td>
+                        <td><span class="badge badge-info">设备</span></td>
+                        <td>device_identifier, se_type, public_key</td>
+                        <td>设备与SE管理</td>
+                    </tr>
+                    <tr>
+                        <td><code>secure_elements</code></td>
+                        <td><span class="badge badge-success">SE</span></td>
+                        <td>se_unique_id, scp03_key_version</td>
+                        <td>SE050等安全芯片</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>🔗 关键关系说明</h2>
+            
+            <h3>核心关系</h3>
+            <ol>
+                <li><strong>users → vehicles</strong>: 一个用户可拥有多辆车 (1:N)</li>
+                <li><strong>vehicles → ccc_slots/iccoa_keys/icce_keys</strong>: 一辆车可有多把钥匙 (1:N)</li>
+                <li><strong>devices → keys</strong>: 一个设备可绑定多把钥匙 (1:N)</li>
+                <li><strong>certificates → certificates</strong>: 证书链自引用 (1:N)</li>
+            </ol>
+
+            <h3>协议特定关系</h3>
+            <ul>
+                <li><span class="badge badge-info">CCC</span>: 车辆→槽位(0-7)→证书链</li>
+                <li><span class="badge badge-success">ICCOA</span>: 手机号→认证密钥→授权分享</li>
+                <li><span class="badge badge-warning">ICCE</span>: 公私钥对→计数器→防重放</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>📋 索引策略</h2>
+            
+            <h3>主键索引</h3>
+            <div class="sql-block">
+-- 所有表主键自动创建索引
+PRIMARY KEY (id) / PRIMARY KEY (vin)
+            </div>
+
+            <h3>唯一索引</h3>
+            <div class="sql-block">
+CREATE UNIQUE INDEX idx_vehicles_vin ON vehicles(vin);
+CREATE UNIQUE INDEX idx_devices_identifier ON devices(device_identifier);
+CREATE UNIQUE INDEX idx_ccc_key_identifier ON ccc_slots(key_identifier);
+CREATE UNIQUE INDEX idx_certs_hash ON certificates(cert_hash);
+            </div>
+
+            <h3>查询优化索引</h3>
+            <div class="sql-block">
+-- 车辆查询
+CREATE INDEX idx_vehicles_user ON vehicles(user_id);
+CREATE INDEX idx_vehicles_status ON vehicles(status);
+CREATE INDEX idx_vehicles_protocol ON vehicles(support_ccc, support_iccoa, support_icce);
+
+-- 钥匙查询
+CREATE INDEX idx_ccc_slots_vin_state ON ccc_slots(vin, slot_state);
+CREATE INDEX idx_iccoa_phone ON iccoa_keys(phone_number);
+
+-- 日志查询
+CREATE INDEX idx_logs_vin_time ON operation_logs(vin, created_at DESC);
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>⚡ 特性亮点</h2>
+            <ul>
+                <li><strong>多协议支持</strong>: 统一数据库设计支持CCC/ICCOA/ICCE</li>
+                <li><strong>灵活扩展</strong>: vehicles表协议标记支持动态协议选择</li>
+                <li><strong>安全存储</strong>: 密钥和证书使用 BYTEA 二进制存储</li>
+                <li><strong>审计追踪</strong>: 全量操作日志分区表设计</li>
+                <li><strong>时序数据</strong>: 遥测数据支持TimescaleDB扩展</li>
+            </ul>
+        </div>
+
+        <footer class="footer">
+            <p>车云一体化数据库 Schema v1.0.0 | 生成于 2026-05-11</p>
+            <p>支持协议: CCC Digital Key 3.0 | ICCOA 1.0 | ICCE 1.0</p>
+        </footer>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            er: {
+                useMaxWidth: true
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,124 +1,66 @@
 import Foundation
 import CoreBluetooth
+import Combine
 
-/// BLE 错误类型
-public enum BLEError: Error, LocalizedError {
-    case bluetoothNotAvailable
-    case bluetoothPoweredOff
-    case deviceNotFound
-    case connectionFailed
-    case disconnected
-    case timeout
-    case invalidData
-    case encryptionFailed
-    case commandFailed(String)
-    case unauthorized
-    case unknown
-    
-    public var errorDescription: String? {
-        switch self {
-        case .bluetoothNotAvailable:
-            return "蓝牙不可用"
-        case .bluetoothPoweredOff:
-            return "蓝牙已关闭"
-        case .deviceNotFound:
-            return "未找到设备"
-        case .connectionFailed:
-            return "连接失败"
-        case .disconnected:
-            return "已断开连接"
-        case .timeout:
-            return "操作超时"
-        case .invalidData:
-            return "无效数据"
-        case .encryptionFailed:
-            return "加密失败"
-        case .commandFailed(let msg):
-            return "命令执行失败: \(msg)"
-        case .unauthorized:
-            return "未授权"
-        case .unknown:
-            return "未知错误"
-        }
-    }
-}
-
-/// 车辆命令
-public enum Command {
-    case unlock
-    case lock
-    case startEngine
-    case stopEngine
-    case openTrunk
-    case closeTrunk
-    case openWindows
-    case closeWindows
-    case honk
-    case flashLights
-    case custom(data: Data)
-    
-    var commandCode: UInt8 {
-        switch self {
-        case .unlock: return 0x01
-        case .lock: return 0x02
-        case .startEngine: return 0x03
-        case .stopEngine: return 0x04
-        case .openTrunk: return 0x05
-        case .closeTrunk: return 0x06
-        case .openWindows: return 0x07
-        case .closeWindows: return 0x08
-        case .honk: return 0x09
-        case .flashLights: return 0x0A
-        case .custom: return 0xFF
-        }
-    }
-    
-    var data: Data {
-        switch self {
-        case .custom(let data):
-            return data
-        default:
-            return Data([commandCode])
-        }
-    }
-}
-
-/// BLE 设备信息
-public struct BLEDevice: Identifiable {
-    public let id: String
-    public let name: String?
-    public let rssi: NSNumber
-    public let advertisementData: [String: Any]
-    public let peripheral: CBPeripheral
-}
-
-/// BLE 管理器
-public final class BLEManager: NSObject {
-    
-    // MARK: - Singleton
+/// BLE Manager for vehicle communication
+///
+/// Handles Bluetooth Low Energy connections, command sending, scanning,
+/// and real-time status monitoring for vehicles.
+public class BLEManager: NSObject, ObservableObject {
     
     public static let shared = BLEManager()
     
-    // MARK: - Properties
+    // MARK: - Published Properties
+    
+    @Published public private(set) var scanResults: [ScanResult] = []
+    @Published public private(set) var isScanning = false
+    @Published public private(set) var connectionState: ConnectionState = .disconnected
+    @Published public private(set) var vehicleStatus: VehicleStatus?
+    
+    // MARK: - BLE UUIDs
+    
+    public static let serviceUUID = CBUUID(string: "0000yule-0000-1000-8000-00805f9b34fb")
+    public static let commandCharUUID = CBUUID(string: "0000cmd1-0000-1000-8000-00805f9b34fb")
+    public static let responseCharUUID = CBUUID(string: "0000resp-0000-1000-8000-00805f9b34fb")
+    public static let statusCharUUID = CBUUID(string: "0000stat-0000-1000-8000-00805f9b34fb")
+    
+    // MARK: - Command Codes
+    
+    public enum CommandCode: UInt8 {
+        case lock = 0x01
+        case unlock = 0x02
+        case startEngine = 0x03
+        case stopEngine = 0x04
+        case openTrunk = 0x05
+        case openWindows = 0x06
+        case closeWindows = 0x07
+        case findVehicle = 0x08
+        case getStatus = 0x09
+    }
+    
+    // MARK: - Connection State
+    
+    public enum ConnectionState: Equatable {
+        case disconnected
+        case scanning
+        case connecting
+        case connected(String)
+        case error(String)
+    }
+    
+    // MARK: - Private Properties
     
     private var centralManager: CBCentralManager!
-    private var discoveredDevices: [String: BLEDevice] = [:]
     private var connectedPeripheral: CBPeripheral?
-    private var targetServiceUUID: CBUUID?
-    private var targetCharacteristicUUID: CBUUID?
+    private var commandCharacteristic: CBCharacteristic?
+    private var responseCharacteristic: CBCharacteristic?
+    private var statusCharacteristic: CBCharacteristic?
     
-    private var connectionCompletion: ((Result<Void, Error>) -> Void)?
-    private var commandCompletion: ((Result<Void, Error>) -> Void)?
-    private var scanCompletion: ((Result<[BLEDevice], Error>) -> Void)?
+    private var pendingCommands: [String: (Result<Data, Error>) -> Void] = [:]
+    private var scanTimer: Timer?
     
+    private var cancellables = Set<AnyCancellable>()
     private let queue = DispatchQueue(label: "com.yuledkcs.ble", qos: .userInitiated)
-    private var commandTimeoutTimer: Timer?
-    
-    // MARK: - Service UUIDs
-    
-    private let vehicleServiceUUID = CBUUID(string: "A000")
-    private let commandCharacteristicUUID = CBUUID(string: "A001")
-    private let responseCharacteristicUUID = CBUUID(string: "A002")
     
     // MARK: - Initialization
     
@@ -127,148 +69,167 @@ public final class BLEManager: NSObject {
         centralManager = CBCentralManager(delegate: self, queue: queue)
     }
     
-    // MARK: - Public Methods
+    // MARK: - Scanning
     
-    /// 扫描附近的车辆设备
+    /// Start scanning for nearby vehicles
     /// - Parameters:
-    ///   - timeout: 扫描超时时间（秒）
-    ///   - completion: 回调
-    public func scanForVehicles(timeout: TimeInterval = 10.0, completion: @escaping (Result<[BLEDevice], Error>) -> Void) {
-        queue.async {
-            guard self.centralManager.state == .poweredOn else {
-                DispatchQueue.main.async {
-                    completion(.failure(BLEError.bluetoothPoweredOff))
-                }
-                return
-            }
-            
-            self.discoveredDevices.removeAll()
-            self.scanCompletion = completion
-            
-            // 开始扫描
-            self.centralManager.scanForPeripherals(
-                withServices: [self.vehicleServiceUUID],
-                options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
-            )
-            
-            // 设置超时
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak self] in
-                self?.stopScan()
-                let devices = Array(self?.discoveredDevices.values ?? [])
-                DispatchQueue.main.async {
-                    self?.scanCompletion?(.success(devices))
-                    self?.scanCompletion = nil
-                }
-            }
+    ///   - timeout: Scan timeout in seconds
+    public func startScan(timeout: TimeInterval = 10.0) {
+        guard centralManager.state == .poweredOn else {
+            connectionState = .error("蓝牙未开启")
+            return
+        }
+        
+        isScanning = true
+        connectionState = .scanning
+        scanResults = []
+        
+        centralManager.scanForPeripherals(
+            withServices: [BLEManager.serviceUUID],
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
+        )
+        
+        // Auto stop after timeout
+        scanTimer?.invalidate()
+        scanTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
+            self?.stopScan()
         }
     }
     
-    /// 停止扫描
+    /// Stop scanning for devices
     public func stopScan() {
-        queue.async {
-            self.centralManager.stopScan()
+        centralManager.stopScan()
+        isScanning = false
+        scanTimer?.invalidate()
+        scanTimer = nil
+        
+        if case .scanning = connectionState {
+            connectionState = .disconnected
         }
     }
     
-    /// 连接到车辆设备
+    // MARK: - Connection
+    
+    /// Connect to a vehicle via BLE
     /// - Parameters:
-    ///   - deviceId: 设备 ID
-    ///   - completion: 回调
-    public func connect(to deviceId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        queue.async {
+    ///   - address: UUID of the BLE device
+    ///   - autoReconnect: Enable auto-reconnect
+    public func connect(to address: UUID, autoReconnect: Bool = true) {
+        stopScan()
+        
+        guard let peripheral = centralManager.retrievePeripherals(withIdentifiers: [address]).first else {
+            connectionState = .error("设备未找到")
+            return
+        }
+        
+        connectionState = .connecting
+        connectedPeripheral = peripheral
+        peripheral.delegate = self
+        
+        centralManager.connect(peripheral, options: [
+            CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+            CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+        ])
+    }
+    
+    /// Connect to nearest vehicle
+    public func connectToNearest(completion: @escaping (Result<String, Error>) -> Void) {
+        guard let nearest = scanResults.first else {
+            completion(.failure(YuleDKCSError.bleNotAvailable))
+            return
+        }
+        
+        connect(to: nearest.peripheral.identifier)
+        
+        // Wait for connection
+        $connectionState
+            .filter { state in
+                if case .connected = state { return true }
+                if case .error = state { return true }
+                return false
+            }
+            .first()
+            .sink { state in
+                switch state {
+                case .connected(let address):
+                    completion(.success(address))
+                case .error(let message):
+                    completion(.failure(YuleDKCSError.connectionFailed))
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// Disconnect from the current device
+    public func disconnect() {
+        guard let peripheral = connectedPeripheral else { return }
+        centralManager.cancelPeripheralConnection(peripheral)
+    }
+    
+    // MARK: - Commands
+    
+    /// Send a command to the connected vehicle
+    public func sendCommand(
+        keyId: String,
+        command: Command,
+        completion: @escaping (Result<CommandResponse, Error>) -> Void
+    ) {
+        guard let peripheral = connectedPeripheral,
+              peripheral.state == .connected else {
+            completion(.failure(YuleDKCSError.connectionFailed))
+            return
+        }
+        
+        guard let characteristic = commandCharacteristic else {
+            completion(.failure(YuleDKCSError.bleNotAvailable))
+            return
+        }
+        
+        // Check permission
+        guard KeyManager.shared.hasPermission(keyId: keyId, permission: command.toPermission()) else {
+            completion(.failure(YuleDKCSError.permissionDenied))
+            return
+        }
+        
+        queue.async { [weak self] in
             do {
-                try YuleDKCS.shared.checkInitialized()
+                let packet = try self?.buildCommandPacket(keyId: keyId, command: command)
+                guard let data = packet else { return }
                 
-                guard self.centralManager.state == .poweredOn else {
+                let commandId = UUID().uuidString
+                
+                // Store completion handler
+                self?.pendingCommands[commandId] = { result in
                     DispatchQueue.main.async {
-                        completion(.failure(BLEError.bluetoothPoweredOff))
-                    }
-                    return
-                }
-                
-                guard let device = self.discoveredDevices[deviceId] else {
-                    DispatchQueue.main.async {
-                        completion(.failure(BLEError.deviceNotFound))
-                    }
-                    return
-                }
-                
-                self.connectionCompletion = completion
-                self.centralManager.connect(device.peripheral, options: nil)
-                
-                // 设置连接超时
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
-                    if self?.connectedPeripheral == nil {
-                        self?.centralManager.cancelPeripheralConnection(device.peripheral)
-                        DispatchQueue.main.async {
-                            self?.connectionCompletion?(.failure(BLEError.timeout))
-                            self?.connectionCompletion = nil
+                        switch result {
+                        case .success(let responseData):
+                            let response = self?.parseResponse(data: responseData) ?? CommandResponse(success: false, message: "解析失败")
+                            
+                            // Record usage
+                            KeyManager.shared.recordUsage(
+                                keyId: keyId,
+                                operation: command.description,
+                                status: response.success ? .success : .failure,
+                                failureReason: response.success ? nil : response.message
+                            )
+                            
+                            completion(.success(response))
+                            
+                        case .failure(let error):
+                            KeyManager.shared.recordUsage(
+                                keyId: keyId,
+                                operation: command.description,
+                                status: .failure,
+                                failureReason: error.localizedDescription
+                            )
+                            completion(.failure(error))
                         }
                     }
                 }
                 
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-            }
-        }
-    }
-    
-    /// 断开连接
-    public func disconnect() {
-        queue.async {
-            guard let peripheral = self.connectedPeripheral else { return }
-            self.centralManager.cancelPeripheralConnection(peripheral)
-        }
-    }
-    
-    /// 发送命令到车辆
-    /// - Parameters:
-    ///   - command: 命令
-    ///   - completion: 回调
-    public func sendCommand(_ command: Command, completion: @escaping (Result<Void, Error>) -> Void) {
-        queue.async {
-            do {
-                try YuleDKCS.shared.checkInitialized()
-                
-                guard let peripheral = self.connectedPeripheral else {
-                    DispatchQueue.main.async {
-                        completion(.failure(BLEError.disconnected))
-                    }
-                    return
-                }
-                
-                guard peripheral.state == .connected else {
-                    DispatchQueue.main.async {
-                        completion(.failure(BLEError.disconnected))
-                    }
-                    return
-                }
-                
-                // 加密命令数据
-                let encryptedData = try self.encryptCommand(command)
-                
-                self.commandCompletion = completion
-                
-                // 查找特征值并写入
-                guard let characteristic = self.findCommandCharacteristic() else {
-                    DispatchQueue.main.async {
-                        completion(.failure(BLEError.invalidData))
-                    }
-                    return
-                }
-                
-                peripheral.writeValue(encryptedData, for: characteristic, type: .withResponse)
-                
-                // 设置命令超时
-                self.commandTimeoutTimer?.invalidate()
-                self.commandTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
-                    DispatchQueue.main.async {
-                        self?.commandCompletion?(.failure(BLEError.timeout))
-                        self?.commandCompletion = nil
-                    }
-                }
+                peripheral.writeValue(data, for: characteristic, type: .withResponse)
                 
             } catch {
                 DispatchQueue.main.async {
@@ -278,63 +239,125 @@ public final class BLEManager: NSObject {
         }
     }
     
-    /// 检查是否已连接
-    public var isConnected: Bool {
-        return connectedPeripheral?.state == .connected
+    // MARK: - Convenience Methods
+    
+    public func lock(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .lock, completion: completion)
+    }
+    
+    public func unlock(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .unlock, completion: completion)
+    }
+    
+    public func startEngine(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .startEngine, completion: completion)
+    }
+    
+    public func stopEngine(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .stopEngine, completion: completion)
+    }
+    
+    public func openTrunk(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .openTrunk, completion: completion)
+    }
+    
+    public func openWindows(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .openWindows, completion: completion)
+    }
+    
+    public func closeWindows(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .closeWindows, completion: completion)
+    }
+    
+    public func findVehicle(keyId: String, completion: @escaping (Result<CommandResponse, Error>) -> Void) {
+        sendCommand(keyId: keyId, command: .findVehicle, completion: completion)
+    }
+    
+    /// Request current vehicle status
+    public func requestVehicleStatus() {
+        guard let peripheral = connectedPeripheral,
+              let characteristic = commandCharacteristic else { return }
+        
+        let data = Data([CommandCode.getStatus.rawValue])
+        peripheral.writeValue(data, for: characteristic, type: .withResponse)
     }
     
     // MARK: - Private Methods
     
-    private func encryptCommand(_ command: Command) throws -> Data {
-        // 获取当前钥匙
-        guard let key = KeyManager.shared.listKeys().first else {
-            throw BLEError.unauthorized
+    private func buildCommandPacket(keyId: String, command: Command) throws -> Data {
+        guard let key = KeyManager.shared.getKey(keyId: keyId) else {
+            throw YuleDKCSError.keyNotFound
         }
         
-        // 使用加密包装器加密
-        let commandData = command.data
-        let result = CryptoWrapper.shared.encrypt(data: commandData, keyId: key.id)
+        let timestamp = Int64(Date().timeIntervalSince1970)
         
-        switch result {
-        case .success(let encryptedData):
-            // 添加协议头
-            var packet = Data()
-            packet.append(0xAA) // 协议头
-            packet.append(UInt8(encryptedData.count))
-            packet.append(contentsOf: encryptedData)
-            
-            // 计算并添加 CRC
-            let crc = calculateCRC(data: packet)
-            packet.append(crc)
-            
-            return packet
-            
-        case .failure(let error):
-            throw error
-        }
-    }
-    
-    private func calculateCRC(data: Data) -> UInt8 {
-        var crc: UInt8 = 0
-        for byte in data {
-            crc ^= byte
-        }
-        return crc
-    }
-    
-    private func findCommandCharacteristic() -> CBCharacteristic? {
-        guard let peripheral = connectedPeripheral else { return nil }
-        
-        for service in peripheral.services ?? [] {
-            if service.uuid == vehicleServiceUUID {
-                for characteristic in service.characteristics ?? [] {
-                    if characteristic.uuid == commandCharacteristicUUID {
-                        return characteristic
-                    }
-                }
+        let commandByte: UInt8 = {
+            switch command {
+            case .lock: return CommandCode.lock.rawValue
+            case .unlock: return CommandCode.unlock.rawValue
+            case .startEngine: return CommandCode.startEngine.rawValue
+            case .stopEngine: return CommandCode.stopEngine.rawValue
+            case .openTrunk: return CommandCode.openTrunk.rawValue
+            case .openWindows: return CommandCode.openWindows.rawValue
+            case .closeWindows: return CommandCode.closeWindows.rawValue
+            case .findVehicle: return CommandCode.findVehicle.rawValue
+            case .custom(let data): return data.first ?? 0
             }
+        }()
+        
+        // Build packet: [VERSION][KEY_ID][TIMESTAMP][COMMAND][SIGNATURE]
+        var packet = Data()
+        packet.append(0x01) // Version
+        
+        // Key ID (16 bytes)
+        let keyIdData = keyId.data(using: .utf8) ?? Data()
+        packet.append(keyIdData.prefix(16))
+        packet.append(contentsOf: Array(repeating: 0, count: max(0, 16 - keyIdData.count)))
+        
+        // Timestamp (8 bytes, big-endian)
+        var timestampBytes = timestamp.bigEndian
+        packet.append(UnsafeBufferPointer(start: &timestampBytes, count: MemoryLayout<Int64>.size))
+        
+        // Command
+        packet.append(commandByte)
+        
+        // Sign packet
+        let dataToSign = packet
+        let signature = try NativeLib.signCommand(data: dataToSign, keyData: key.keyData)
+        packet.append(signature)
+        
+        return packet
+    }
+    
+    private func parseResponse(data: Data) -> CommandResponse {
+        guard data.count >= 1 else {
+            return CommandResponse(success: false, message: "无效响应")
         }
-        return nil
+        
+        let status = data[0]
+        return CommandResponse(
+            success: status == 0x00,
+            message: status == 0x00 ? "成功" : "失败: \(status)"
+        )
+    }
+    
+    private func handleStatusUpdate(data: Data) {
+        guard data.count >= 5 else { return }
+        
+        let statusByte = data[0]
+        let battery = data[1]
+        let fuel = data[2]
+        
+        vehicleStatus = VehicleStatus(
+            doorLocked: (statusByte & 0x01) != 0,
+            engineRunning: (statusByte & 0x02) != 0,
+            trunkOpen: (statusByte & 0x04) != 0,
+            windowsOpen: (statusByte & 0x08) != 0,
+            batteryLevel: Int(battery),
+            fuelLevel: Int(fuel),
+            alarmActive: (statusByte & 0x10) != 0,
+            timestamp: Date().timeIntervalSince1970
+        )
     }
 }
 
@@ -343,21 +366,8 @@ public final class BLEManager: NSObject {
 extension BLEManager: CBCentralManagerDelegate {
     
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        switch central.state {
-        case .poweredOn:
-            print("[YuleDKCS] Bluetooth is powered on")
-        case .poweredOff:
-            print("[YuleDKCS] Bluetooth is powered off")
-        case .unauthorized:
-            print("[YuleDKCS] Bluetooth unauthorized")
-        case .unsupported:
-            print("[YuleDKCS] Bluetooth unsupported")
-        case .resetting:
-            print("[YuleDKCS] Bluetooth resetting")
-        case .unknown:
-            print("[YuleDKCS] Bluetooth unknown state")
-        @unknown default:
-            print("[YuleDKCS] Bluetooth unknown state")
+        if central.state != .poweredOn {
+            connectionState = .error("蓝牙未开启")
         }
     }
     
@@ -367,36 +377,48 @@ extension BLEManager: CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        let device = BLEDevice(
-            id: peripheral.identifier.uuidString,
-            name: peripheral.name ?? advertisementData[CBAdvertisementDataLocalNameKey] as? String,
-            rssi: RSSI,
-            advertisementData: advertisementData,
-            peripheral: peripheral
-        )
+        let result = ScanResult(peripheral: peripheral, rssi: RSSI.intValue)
         
-        discoveredDevices[peripheral.identifier.uuidString] = device
-        print("[YuleDKCS] Discovered device: \(device.name ?? "Unknown") (RSSI: \(RSSI))")
-    }
-    
-    public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("[YuleDKCS] Connected to \(peripheral.name ?? "Unknown")")
-        connectedPeripheral = peripheral
-        peripheral.delegate = self
-        peripheral.discoverServices([vehicleServiceUUID])
-    }
-    
-    public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        print("[YuleDKCS] Failed to connect: \(error?.localizedDescription ?? "Unknown")")
-        DispatchQueue.main.async {
-            self.connectionCompletion?(.failure(error ?? BLEError.connectionFailed))
-            self.connectionCompletion = nil
+        DispatchQueue.main.async { [weak self] in
+            // Update or add result
+            if let index = self?.scanResults.firstIndex(where: { $0.peripheral.identifier == peripheral.identifier }) {
+                self?.scanResults[index] = result
+            } else {
+                self?.scanResults.append(result)
+            }
+            
+            // Sort by RSSI
+            self?.scanResults.sort { $0.rssi > $1.rssi }
         }
     }
     
-    public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        print("[YuleDKCS] Disconnected from \(peripheral.name ?? "Unknown")")
-        connectedPeripheral = nil
+    public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        DispatchQueue.main.async { [weak self] in
+            self?.connectionState = .connected(peripheral.identifier.uuidString)
+        }
+        peripheral.discoverServices([BLEManager.serviceUUID])
+    }
+    
+    public func centralManager(
+        _ central: CBCentralManager,
+        didFailToConnect peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        DispatchQueue.main.async { [weak self] in
+            self?.connectionState = .error(error?.localizedDescription ?? "连接失败")
+        }
+    }
+    
+    public func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
+        DispatchQueue.main.async { [weak self] in
+            self?.connectionState = .disconnected
+            self?.connectedPeripheral = nil
+            self?.vehicleStatus = nil
+        }
     }
 }
 
@@ -405,24 +427,13 @@ extension BLEManager: CBCentralManagerDelegate {
 extension BLEManager: CBPeripheralDelegate {
     
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        guard error == nil else {
-            print("[YuleDKCS] Error discovering services: \(error!.localizedDescription)")
-            DispatchQueue.main.async {
-                self.connectionCompletion?(.failure(error!))
-                self.connectionCompletion = nil
-            }
-            return
-        }
-        
         guard let services = peripheral.services else { return }
         
-        for service in services {
-            if service.uuid == vehicleServiceUUID {
-                peripheral.discoverCharacteristics(
-                    [commandCharacteristicUUID, responseCharacteristicUUID],
-                    for: service
-                )
-            }
+        for service in services where service.uuid == BLEManager.serviceUUID {
+            peripheral.discoverCharacteristics(
+                [BLEManager.commandCharUUID, BLEManager.responseCharUUID, BLEManager.statusCharUUID],
+                for: service
+            )
         }
     }
     
@@ -431,37 +442,25 @@ extension BLEManager: CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        guard error == nil else {
-            print("[YuleDKCS] Error discovering characteristics: \(error!.localizedDescription)")
-            DispatchQueue.main.async {
-                self.connectionCompletion?(.failure(error!))
-                self.connectionCompletion = nil
+        guard let characteristics = service.characteristics else { return }
+        
+        for characteristic in characteristics {
+            switch characteristic.uuid {
+            case BLEManager.commandCharUUID:
+                commandCharacteristic = characteristic
+            case BLEManager.responseCharUUID:
+                responseCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            case BLEManager.statusCharUUID:
+                statusCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            default:
+                break
             }
-            return
         }
         
-        // 连接成功
-        DispatchQueue.main.async {
-            self.connectionCompletion?(.success(()))
-            self.connectionCompletion = nil
-        }
-    }
-    
-    public func peripheral(
-        _ peripheral: CBPeripheral,
-        didWriteValueFor characteristic: CBCharacteristic,
-        error: Error?
-    ) {
-        commandTimeoutTimer?.invalidate()
-        
-        DispatchQueue.main.async {
-            if let error = error {
-                self.commandCompletion?(.failure(error))
-            } else {
-                self.commandCompletion?(.success(()))
-            }
-            self.commandCompletion = nil
-        }
+        // Request initial status
+        requestVehicleStatus()
     }
     
     public func peripheral(
@@ -471,15 +470,57 @@ extension BLEManager: CBPeripheralDelegate {
     ) {
         guard let data = characteristic.value else { return }
         
-        // 处理响应数据
-        print("[YuleDKCS] Received response: \(data.hexString)")
+        switch characteristic.uuid {
+        case BLEManager.responseCharUUID:
+            handleResponse(data: data)
+        case BLEManager.statusCharUUID:
+            handleStatusUpdate(data: data)
+        default:
+            break
+        }
+    }
+    
+    private func handleResponse(data: Data) {
+        guard data.count >= 2 else { return }
+        
+        let commandId = data[1]
+        let callback = pendingCommands.removeValue(forKey: String(commandId))
+        
+        if data[0] == 0x00 {
+            callback?(.success(data))
+        } else {
+            callback?(.failure(YuleDKCSError.commandFailed))
+        }
     }
 }
 
-// MARK: - Data Extension
+// MARK: - Supporting Types
 
-extension Data {
-    var hexString: String {
-        return map { String(format: "%02X", $0) }.joined(separator: " ")
+public struct ScanResult: Identifiable {
+    public let id = UUID()
+    public let peripheral: CBPeripheral
+    public let rssi: Int
+    
+    public var name: String? { peripheral.name }
+}
+
+public struct CommandResponse {
+    public let success: Bool
+    public let message: String
+}
+
+private extension Command {
+    func toPermission() -> Permission {
+        switch self {
+        case .lock: return .lock
+        case .unlock: return .unlock
+        case .startEngine: return .startEngine
+        case .stopEngine: return .stopEngine
+        case .openTrunk: return .openTrunk
+        case .openWindows: return .openWindows
+        case .closeWindows: return .closeWindows
+        case .findVehicle: return .findVehicle
+        case .custom: return .unlock
+        }
     }
 }

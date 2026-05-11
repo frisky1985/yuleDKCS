@@ -169,9 +169,26 @@ error_t ccc_start_pairing(
     memcpy(&request_data[offset], session->challenge, CCC_CHALLENGE_LEN);
     offset += CCC_CHALLENGE_LEN;
     
-    /* 证书 (M1: 简化版本) */
-    request_data[offset++] = 0x00;
-    request_data[offset++] = 0x00;
+    /* 证书 - 使用 X.509 DER 序列化 */
+    if (session->device_cert_chain.cert_count > 0) {
+        size_t cert_len = sizeof(request_data) - offset - 2;
+        error_t ret = ccc_serialize_certificate(
+            &session->device_cert_chain.certs[0],
+            &request_data[offset + 2],
+            &cert_len
+        );
+        if (ret != OK) {
+            return ret;
+        }
+        /* 证书长度 (2字节大端) */
+        request_data[offset++] = (cert_len >> 8) & 0xFF;
+        request_data[offset++] = cert_len & 0xFF;
+        offset += cert_len;
+    } else {
+        /* 无证书时发送0长度 */
+        request_data[offset++] = 0x00;
+        request_data[offset++] = 0x00;
+    }
     
     *request_len = offset;
     
@@ -290,8 +307,31 @@ error_t ccc_complete_pairing(
     memcpy(&confirmation_data[offset], challenge_response, 64);
     offset += 64;
     
-    /* 添加设备证书 */
-    /* TODO: 完整证书序列化 */
+    /* 添加设备证书链 */
+    if (session->device_cert_chain.cert_count > 0) {
+        /* 证书链长度 (2字节) */
+        size_t chain_data_len = 0;
+        
+        for (int i = 0; i < session->device_cert_chain.cert_count; i++) {
+            size_t cert_len = *confirmation_len - offset - chain_data_len - 4;
+            error_t ret = ccc_serialize_certificate(
+                &session->device_cert_chain.certs[i],
+                &confirmation_data[offset + 4 + chain_data_len],
+                &cert_len
+            );
+            if (ret != OK) {
+                return ret;
+            }
+            chain_data_len += cert_len;
+        }
+        
+        confirmation_data[offset++] = (chain_data_len >> 8) & 0xFF;
+        confirmation_data[offset++] = chain_data_len & 0xFF;
+        offset += chain_data_len;
+    } else {
+        confirmation_data[offset++] = 0x00;
+        confirmation_data[offset++] = 0x00;
+    }
     
     *confirmation_len = offset;
     

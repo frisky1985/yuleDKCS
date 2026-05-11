@@ -1,0 +1,87 @@
+# MQTT Broker 部署配置
+# EMQ X Enterprise - 企业级 MQTT 消息代理
+#
+# 使用方法:
+#   docker-compose -f docker-compose.mqtt.yml up -d
+
+version: '3.8'
+
+services:
+  emqx:
+    image: emqx/emqx-enterprise:5.8.0
+    container_name: yuledkcs-mqtt
+    restart: always
+    ports:
+      # MQTT 协议
+      - "1883:1883"
+      # MQTT over TLS
+      - "8883:8883"
+      # WebSocket
+      - "8083:8083"
+      # WebSocket over TLS
+      - "8084:8084"
+      # HTTP API
+      - "18083:18083"
+    volumes:
+      # 配置文件
+      - ./mqtt/config/emqx.conf:/opt/emqx/etc/emqx.conf:ro
+      # SSL 证书
+      - ./mqtt/certs:/opt/emqx/etc/certs:ro
+      # 数据持久化
+      - emqx-data:/opt/emqx/data
+      - emqx-logs:/opt/emqx/log
+    environment:
+      # 节点名称
+      - EMQX_NODE_NAME=emqx@127.0.0.1
+      # Dashboard 认证
+      - EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+      - EMQX_DASHBOARD__DEFAULT_PASSWORD=${EMQX_ADMIN_PASSWORD:-YuleDKCS2024}
+      # 设备认证
+      - EMQX_ALLOW_ANONYMOUS=false
+      - EMQX_AUTHENTICATION__1__MECHANISM=jwt
+      - EMQX_AUTHENTICATION__1__BACKEND=builtin_jwt
+      - EMQX_AUTHENTICATION__1__SECRET=${JWT_SECRET:-yuleDKCS-secret-key}
+      - EMQX_AUTHENTICATION__1__ALGORITHM=hmac-sha256
+      # 连接配置
+      - EMQX_MAX_CONNECTIONS=10000
+      - EMQX_MAX_CLIENTID_LEN=65535
+      # 日志级别
+      - EMQX_LOG__LEVEL=warning
+    networks:
+      - yuledkcs-network
+    healthcheck:
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MQTT 桥接服务 - 连接 Backend 和 MQTT Broker
+  mqtt-bridge:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.mqtt
+    container_name: yuledkcs-mqtt-bridge
+    restart: always
+    environment:
+      - MQTT_BROKER_HOST=emqx
+      - MQTT_BROKER_PORT=1883
+      - MQTT_TLS_ENABLED=false
+      - BACKEND_API_URL=http://backend:8080
+      - JWT_SECRET=${JWT_SECRET:-yuleDKCS-secret-key}
+    depends_on:
+      emqx:
+        condition: service_healthy
+    networks:
+      - yuledkcs-network
+
+volumes:
+  emqx-data:
+    driver: local
+  emqx-logs:
+    driver: local
+
+networks:
+  yuledkcs-network:
+    external: true
+    name: yuledkcs_default

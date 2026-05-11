@@ -376,12 +376,47 @@ error_t ccc_share_key(
     size_t *share_len
 );
 
+/******************************************************************************
+ * 基于证书的验证函数声明
+ ******************************************************************************/
+
+/**
+ * @brief 序列化 CCC 证书为 X.509 DER 格式
+ */
+error_t ccc_serialize_certificate(const ccc_certificate_t *cert, uint8_t *out, size_t *out_len);
+
+/**
+ * @brief 从 X.509 DER 格式解析 CCC 证书
+ */
+error_t ccc_parse_certificate(const uint8_t *data, size_t data_len, ccc_certificate_t *cert);
+
+/**
+ * @brief 验证单个 X.509 证书
+ */
+error_t ccc_verify_certificate(const ccc_certificate_t *cert, const uint8_t *trusted_pubkey);
+
 /**
  * @brief 验证证书链
  */
 error_t ccc_validate_cert_chain(
     const ccc_cert_chain_t *cert_chain,
     const ccc_certificate_t *trusted_root
+);
+
+/**
+ * @brief 获取证书序列化后的长度
+ */
+size_t ccc_get_certificate_length(const ccc_certificate_t *cert);
+
+/**
+ * @brief 生成自签名证书 (用于测试)
+ */
+error_t ccc_generate_self_signed_certificate(
+    ccc_cert_type_t cert_type,
+    const uint8_t *subject_id,
+    const uint8_t *key_pair,
+    uint32_t validity_days,
+    ccc_certificate_t *cert
 );
 
 /**

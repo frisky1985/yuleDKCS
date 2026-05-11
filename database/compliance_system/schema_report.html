@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yuleDKCS 数据库设计报告 v1.0.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <style>
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .mermaid { background: #1e1e1e; border-radius: 8px; padding: 20px; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold">yuleDKCS</h1>
+                        <p class="text-sm text-white/80">数字钥匙合规检测系统</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="px-3 py-1 bg-white/20 rounded-full text-sm">版本 v1.0.0</span>
+                    <span class="px-3 py-1 bg-green-500/80 rounded-full text-sm">PostgreSQL 15+</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- 概览卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-500 text-sm">总表数量</p>
+                        <p class="text-2xl font-bold text-gray-800">15</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-lg">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-500 text-sm">合规规则表</p>
+                        <p class="text-2xl font-bold text-gray-800">3</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-lg">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-500 text-sm">支持协议</p>
+                        <p class="text-2xl font-bold text-gray-800">3</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-md p-6 card-hover transition-all">
+                <div class="flex items-center">
+                    <div class="p-3 bg-orange-100 rounded-lg">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-gray-500 text-sm">分区表</p>
+                        <p class="text-2xl font-bold text-gray-800">5</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 协议支持 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">支持的数字钥匙协议</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="border-2 border-blue-200 rounded-lg p-4 hover:border-blue-400 transition-all">
+                    <div class="flex items-center mb-3">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <span class="text-xl font-bold text-blue-600">C</span>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="font-bold text-gray-800">CCC</h3>
+                            <p class="text-sm text-gray-500">Car Connectivity Consortium</p>
+                        </div>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✅ Digital Key 3.0 规范</li>
+                        <li>✅ SE安全元验证</li>
+                        <li>✅ 证书链验证</li>
+                        <li>✅ BLE/NFC/UWB 抓包</li>
+                    </ul>
+                </div>
+                <div class="border-2 border-green-200 rounded-lg p-4 hover:border-green-400 transition-all">
+                    <div class="flex items-center mb-3">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <span class="text-xl font-bold text-green-600">I</span>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="font-bold text-gray-800">ICCOA</h3>
+                            <p class="text-sm text-gray-500">智慧车联生态联盟</p>
+                        </div>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✅ 数字钥匙规范</li>
+                        <li>✅ 国产SE验证</li>
+                        <li>✅ 证书管理</li>
+                        <li>✅ BLE通信抓包</li>
+                    </ul>
+                </div>
+                <div class="border-2 border-purple-200 rounded-lg p-4 hover:border-purple-400 transition-all">
+                    <div class="flex items-center mb-3">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <span class="text-xl font-bold text-purple-600">E</span>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="font-bold text-gray-800">ICCE</h3>
+                            <p class="text-sm text-gray-500">智慧车联与电动车</p>
+                        </div>
+                    </div>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✅ 数字钥匙标准</li>
+                        <li>✅ SE验证</li>
+                        <li>✅ 证书体系</li>
+                        <li>✅ 通信记录</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ER图 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">数据库 ER 图</h2>
+            <div class="mermaid">
+erDiagram
+    USERS ||--o{ TEST_TARGETS : manages
+    USERS ||--o{ TEST_TASKS : executes
+    USERS ||--o{ COMPLIANCE_REPORTS : generates
+    COMPLIANCE_MODULES ||--o{ COMPLIANCE_RULES : contains
+    COMPLIANCE_RULES ||--o{ RULE_TEST_POINTS : has
+    TEST_TARGETS ||--o{ TARGET_CERTIFICATES : has
+    TEST_TARGETS ||--o{ TEST_TASKS : tested_by
+    TEST_SUITES ||--o{ TEST_TASKS : creates
+    TEST_TASKS ||--o{ TEST_RESULTS : produces
+    TEST_TASKS ||--o{ PACKET_CAPTURES : records
+    COMPLIANCE_RULES ||--o{ TEST_RESULTS : evaluated_in
+    PACKET_CAPTURES ||--o{ COMMUNICATION_FLOWS : contains
+    COMPLIANCE_REPORTS ||--o{ REPORT_SECTIONS : includes
+    
+    USERS { uuid user_id PK string username UK string role }
+    COMPLIANCE_RULES { uuid rule_id PK string rule_code UK string protocol jsonb validation_logic }
+    TEST_TARGETS { uuid target_id PK string target_type jsonb supported_protocols string vin }
+    TEST_TASKS { uuid task_id PK string status string overall_result }
+    TEST_RESULTS { uuid result_id PK string result_status jsonb evidence_files }
+    COMPLIANCE_REPORTS { uuid report_id PK string overall_compliance decimal compliance_percentage }
+            </div>
+        </div>
+
+        <!-- 核心表详情 -->
+        <div class="space-y-6">
+            <!-- compliance_rules -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">compliance_rules (合规规则表)</h3>
+                    <p class="text-blue-100 text-sm">核心规则定义，支持多协议版本</p>
+                </div>
+                <div class="p-6">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">字段名</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">类型</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">约束</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-blue-600">rule_id</td>
+                                <td class="px-4 py-2">UUID</td>
+                                <td class="px-4 py-2">PK</td>
+                                <td class="px-4 py-2">规则唯一标识</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-blue-600">rule_code</td>
+                                <td class="px-4 py-2">VARCHAR(50)</td>
+                                <td class="px-4 py-2">UK, NOT NULL</td>
+                                <td class="px-4 py-2">规则编号 (如: CCC-DK3-SEC-001)</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-blue-600">protocol</td>
+                                <td class="px-4 py-2">VARCHAR(20)</td>
+                                <td class="px-4 py-2">CHECK IN ('CCC','ICCOA','ICCE')</td>
+                                <td class="px-4 py-2">归属协议</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-blue-600">severity</td>
+                                <td class="px-4 py-2">VARCHAR(20)</td>
+                                <td class="px-4 py-2">CHECK IN ('mandatory','recommended','optional')</td>
+                                <td class="px-4 py-2">强制性级别</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-blue-600">validation_logic</td>
+                                <td class="px-4 py-2">JSONB</td>
+                                <td class="px-4 py-2">NOT NULL</td>
+                                <td class="px-4 py-2">验证逻辑定义 (可执行配置)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- test_tasks -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-green-500 to-green-600 px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">test_tasks (测试任务表)</h3>
+                    <p class="text-green-100 text-sm">测试执行实例，支持流水线状态追踪</p>
+                </div>
+                <div class="p-6">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">字段名</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">类型</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">约束</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-green-600">task_id</td>
+                                <td class="px-4 py-2">UUID</td>
+                                <td class="px-4 py-2">PK</td>
+                                <td class="px-4 py-2">任务唯一标识</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-green-600">target_id</td>
+                                <td class="px-4 py-2">UUID</td>
+                                <td class="px-4 py-2">FK > test_targets</td>
+                                <td class="px-4 py-2">测试对象</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-green-600">status</td>
+                                <td class="px-4 py-2">VARCHAR(30)</td>
+                                <td class="px-4 py-2">DEFAULT 'pending'</td>
+                                <td class="px-4 py-2">pending/running/completed/failed</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-green-600">progress</td>
+                                <td class="px-4 py-2">INTEGER</td>
+                                <td class="px-4 py-2">计算字段</td>
+                                <td class="px-4 py-2">completed/total</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- test_results -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">test_results (测试结果表)</h3>
+                    <p class="text-purple-100 text-sm">按月分区，存储详细验证结果和证据</p>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4 p-3 bg-purple-50 rounded-lg">
+                        <span class="text-purple-700 font-semibold">🔧 分区策略:</span>
+                        <span class="text-purple-600 text-sm">PARTITION BY RANGE (created_at) - 按月分区，支持历史数据归档</span>
+                    </div>
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">字段名</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">类型</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">约束</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-purple-600">result_id</td>
+                                <td class="px-4 py-2">UUID</td>
+                                <td class="px-4 py-2">PK</td>
+                                <td class="px-4 py-2">结果唯一标识</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-purple-600">result_status</td>
+                                <td class="px-4 py-2">VARCHAR(20)</td>
+                                <td class="px-4 py-2">CHECK IN 7状态</td>
+                                <td class="px-4 py-2">pass/fail/warning/skip/error/inconclusive</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-purple-600">evidence_files</td>
+                                <td class="px-4 py-2">JSONB</td>
+                                <td class="px-4 py-2">DEFAULT '[]'</td>
+                                <td class="px-4 py-2">证据文件路径列表</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-purple-600">log_data</td>
+                                <td class="px-4 py-2">TEXT</td>
+                                <td class="px-4 py-2">-</td>
+                                <td class="px-4 py-2">详细测试日志</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- packet_captures -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-4">
+                    <h3 class="text-lg font-bold text-white">packet_captures (抓包记录表)</h3>
+                    <p class="text-orange-100 text-sm">实时通信抓包，支持BLE/NFC/UWB</p>
+                </div>
+                <div class="p-6">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">字段名</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">类型</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">约束</th>
+                                <th class="px-4 py-2 text-left font-semibold text-gray-700">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-orange-600">capture_id</td>
+                                <td class="px-4 py-2">UUID</td>
+                                <td class="px-4 py-2">PK</td>
+                                <td class="px-4 py-2">抓包唯一标识</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-orange-600">protocol_layer</td>
+                                <td class="px-4 py-2">VARCHAR(30)</td>
+                                <td class="px-4 py-2">-</td>
+                                <td class="px-4 py-2">ble/nfc/uwb/mqtt/https</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-orange-600">file_path</td>
+                                <td class="px-4 py-2">VARCHAR(500)</td>
+                                <td class="px-4 py-2">-</td>
+                                <td class="px-4 py-2">pcapng/pcap 文件路径</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-2 font-mono text-orange-600">packet_count</td>
+                                <td class="px-4 py-2">INTEGER</td>
+                                <td class="px-4 py-2">-</td>
+                                <td class="px-4 py-2">包数量统计</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 视图说明 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mt-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">使用视图</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="border rounded-lg p-4">
+                    <h4 class="font-bold text-blue-600 mb-2">compliance_overview</h4>
+                    <p class="text-sm text-gray-600 mb-2">合规规则统计概览</p>
+                    <code class="text-xs bg-gray-100 p-2 rounded block">按 protocol + version 分组统计规则数量</code>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="font-bold text-green-600 mb-2">task_overview</h4>
+                    <p class="text-sm text-gray-600 mb-2">测试任务进度概览</p>
+                    <code class="text-xs bg-gray-100 p-2 rounded block">包含进度百分比计算字段</code>
+                </div>
+                <div class="border rounded-lg p-4">
+                    <h4 class="font-bold text-purple-600 mb-2">latest_results</h4>
+                    <p class="text-sm text-gray-600 mb-2">最新测试结果</p>
+                    <code class="text-xs bg-gray-100 p-2 rounded block">使用 DISTINCT ON 获取每条规则最新结果</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分区表列表 -->
+        <div class="bg-white rounded-xl shadow-md p-6 mt-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">分区表列表</h2>
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700">表名</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700">分区键</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700">分区类型</th>
+                        <th class="px-4 py-2 text-left font-semibold text-gray-700">现有分区</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 font-mono">test_results</td>
+                        <td class="px-4 py-2">created_at</td>
+                        <td class="px-4 py-2">RANGE (月)</td>
+                        <td class="px-4 py-2">2024_01, 2024_02, 2024_03</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 font-mono">audit_logs</td>
+                        <td class="px-4 py-2">executed_at</td>
+                        <td class="px-4 py-2">RANGE (月)</td>
+                        <td class="px-4 py-2">2024_01</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 脚本下载 -->
+        <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl shadow-md p-6 mt-8 text-white">
+            <h2 class="text-xl font-bold mb-4">数据库脚本</h2>
+            <p class="text-gray-300 mb-4">执行以下命令初始化数据库:</p>
+            <div class="bg-black/50 rounded-lg p-4 font-mono text-sm">
+                <code class="text-green-400"># 连接 PostgreSQL</code><br>
+                <code class="text-gray-300">psql -U dkcs_user -d dkcs_db</code><br><br>
+                <code class="text-green-400"># 执行 Schema 脚本</code><br>
+                <code class="text-gray-300">\i schema_v1.0.0.sql</code>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-gray-400">© 2026 yuleDKCS | 数字钥匙合规检测系统</p>
+            <p class="text-gray-500 text-sm mt-2">数据库设计 v1.0.0 | 支持 CCC/ICCOA/ICCE 三大协议</p>
+        </div>
+    </footer>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose'
+        });
+    </script>
+</body>
+</html>
