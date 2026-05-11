@@ -1,90 +1,196 @@
-# Yule Digital Key Connectivity Stack (yuleDKCS)
+# yuleDKCS - 数字钥匙连接系统
 
-Yule数字钥匙连接协议栈 - 支持多协议的车载数字钥匙解决方案
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](CHANGELOG_v2.0.0.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## 特性
+yuleDKCS（Yule Digital Key Connectivity Stack）是一个完整的车辆数字钥匙解决方案，支持 CCC、ICCOA、ICCE 等主流数字钥匙协议，提供从车辆嵌入式到云端、移动端的全栈技术实现。
 
-- **多协议支持**: CCC R3 / ICCE / ICCOA
-- **统一 API**: 一套接口适配多种协议
-- **安全架构**: 支持硬件SE、TEE、SIM等安全元件
-- **多连接方式**: BLE / NFC / UWB
-- **跨平台**: C99 标准，可移植到各种嵌入式平台
-
-## 协议支持
-
-| 协议 | 版本 | 连接方式 | 加密算法 | SE 支持 |
-|-------|-------|---------|----------|---------|
-| CCC | R3 | BLE/NFC/UWB | P-256/AES-128-GCM | eSE/TEE/SIM |
-| ICCE | 2.0 | BLE/NFC | SM2/SM4 | 国产SE |
-| ICCOA | 1.2 | BLE/NFC | P-256/AES-128 | eSE/TEE |
-
-## 快速开始
-
-### 构建
-
-```bash
-mkdir build && cd build
-cmake ..
-make
-make test
-sudo make install
-```
-
-### 基本使用
-
-```c
-#include "dkcs.h"
-
-// 初始化
-session_config_t config = {
-    .protocol = PROTOCOL_CCC,
-    .conn_type = CONN_BLE,
-    .se_type = SE_ESE
-};
-dkcs_init(&config);
-
-// 配对
-uint8_t vin[17] = "LSVNV2182E2100001";
-dkcs_pairing_start(PROTOCOL_CCC, vin, callback, NULL);
-
-// 解锁车辆
-uint8_t key_id[16] = {...};
-dkcs_vehicle_unlock(key_id, vin);
-
-// 清理
-dkcs_deinit();
-```
-
-## 目录结构
+## 项目结构
 
 ```
 yuleDKCS/
-├── include/          # 头文件
-│   ├── dkcs.h    # 主头文件
-│   ├── ccc.h     # CCC 协议
-│   ├── icce.h    # ICCE 协议
-│   └── iccoa.h   # ICCOA 协议
-├── src/              # 源码
-│   ├── ccc/           # CCC 实现
-│   ├── icce/          # ICCE 实现
-│   ├── iccoa/         # ICCOA 实现
-│   └── common/        # 通用实现
-├── tests/            # 测试
-└── examples/         # 示例
+├── backend/          # 后端服务 - Go语言实现
+├── frontend/         # 前端管理后台 - React + TypeScript
+├── mobile/           # 移动SDK - Android/iOS/Flutter
+├── embedded/         # 嵌入式SDK - C/C++
+├── docs/             # 文档
+├── deploy/           # 部署配置
+└── README.md         # 项目说明
 ```
 
-## 文档
+### 模块说明
 
-- [API 参考](docs/api_reference.md)
-- [CCC 协议实现](docs/ccc_implementation.md)
-- [ICCE 协议实现](docs/icce_implementation.md)
-- [ICCOA 协议实现](docs/iccoa_implementation.md)
-- [SE 接口指南](docs/se_interface_guide.md)
+#### 🔧 backend/ - 后端服务
+- **技术栈**: Go, PostgreSQL, Redis, MQTT, WebSocket
+- **功能**: API服务、数据库管理、消息中介、设备管理
+- **特色**: 多租户支持、实时通信、分布式部署
+- [查看详情](backend/README.md)
+
+#### 🎮 frontend/ - 前端管理后台
+- **技术栈**: React 18, TypeScript, Material-UI
+- **功能**: 钥匙管理、车辆管理、数据可视化、监控面板
+- **特色**: 响应式设计、暗色主题、实时更新
+- [查看详情](frontend/README.md)
+
+#### 📱 mobile/ - 移动SDK
+- **Android**: Kotlin, BLE 5.0, Android Keystore
+- **iOS**: Swift, CoreBluetooth, Secure Enclave
+- **Flutter**: Dart, 跨平台支持
+- **功能**: 钥匙管理、BLE连接、车辆控制、实时状态
+- [查看详情](mobile/android/README.md) | [iOS指南](mobile/ios/README.md)
+
+#### 🚗 embedded/ - 嵌入式SDK
+- **技术栈**: C/C++, AUTOSAR, FreeRTOS, SE050安全芯片
+- **功能**: 多协议支持(CCC/ICCOA/ICCE)、UWB定位、安全加密
+- **特色**: ASIL-D功能安全等级、AUTOSAR集成、SE050硬件加密
+- [查看详情](embedded/sdk/README.md)
+
+#### 📚 docs/ - 文档
+- `架构设计`: 系统架构、模块设计
+- `协议规范`: CCC/ICCOA/ICCE协议实现细节
+- `API文档`: REST API和SDK接口
+- `使用指南`: 快速入门、部署指南
+- `测试报告`: 测试覆盖率、MISRA合规
+- [查看所有文档](docs/)
+
+#### 🚀 deploy/ - 部署配置
+- Docker配置和组合
+- Kubernetes Helm Charts
+- 各环境配置文件
+- 部署自动化脚本
+- [查看详情](deploy/)
+
+## 快速开始
+
+### 环境要求
+
+- **后端**: Go 1.21+, PostgreSQL 14+, Redis 7+
+- **前端**: Node.js 18+, npm 9+
+- **移动**: Android Studio Hedgehog+ / Xcode 15+
+- **嵌入式**: GCC 11+, CMake 3.20+, ARM GCC Toolchain
+
+### 安装和运行
+
+```bash
+# 克隆仓库
+git clone https://github.com/frisky1985/yuleDKCS.git
+cd yuleDKCS
+
+# 启动后端
+cd backend
+go mod download
+go run main.go
+
+# 启动前端(新窗口)
+cd ../frontend
+npm install
+npm run dev
+
+# 构建嵌入式SDK
+cd ../embedded
+mkdir build && cd build
+cmake ..
+make
+```
+
+## 功能特性
+
+### 🔑 数字钥匙管理
+- 多协议支持（CCC/ICCOA/ICCE）
+- 钥匙分享和授权管理
+- 使用记录和审计日志
+- 有效期和权限精细控制
+
+### 📡 车辆连接
+- BLE 5.0 低功耗连接
+- UWB 精确定位（可选）
+- 多车辆同时管理
+- 离线操作支持
+
+### 🚗 车辆控制
+- 解锁/锁车
+- 引擎启动/停止
+- 车窗/后备箱控制
+- 寻车功能
+
+### 🔐 安全保障
+- SE050硬件安全元
+- ECC P-256 加密签名
+- SCP03 安全通道
+- 生物识别验证
+
+## 开发指南
+
+### 代码规范
+- 嵌入式代码遵守 MISRA C:2012 规范
+- Go 代码使用 gofmt 和 golangci-lint
+- TypeScript 使用 ESLint + Prettier
+
+### 测试
+```bash
+# 后端测试
+cd backend
+go test ./...
+
+# 前端测试
+cd frontend
+npm run test
+
+# 嵌入式测试
+cd embedded/build
+make test
+```
+
+### 文档更新
+请确保代码变更同步更新相关文档：
+- API变更→更新 `docs/api/`
+- 架构变更→更新 `docs/architecture/`
+- 协议变更→更新 `docs/protocol-specs/`
+
+## 项目进度
+
+- [x] 系统架构设计
+- [x] 后端服务开发
+- [x] 前端管理后台
+- [x] Android SDK
+- [x] iOS SDK
+- [x] 嵌入式SDK
+- [x] 协议实现(CCC/ICCOA/ICCE)
+- [x] 安全加密模块
+- [x] UWB定位支持
+- [x] 自动化部署
+
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 打开 Pull Request
+
+请确保使用 [Conventional Commits](https://www.conventionalcommits.org/) 提交规范。
 
 ## 版本历史
 
-- v1.0.0 (2026-05-08): 初始版本，支持 CCC R3、ICCE 2.0、ICCOA 1.2
+- **v2.0.0** (2026-05-11) - 完整的数字钥匙生态系统
+- **v1.0.0** (2026-03-01) - 首个正式版本
 
-## 许可
+查看完整版本历史：[CHANGELOG](docs/guides/CHANGELOG_v2.0.0.md)
 
-MIT License - 上海予乐电子科技有限公司
+## 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 联系我们
+
+- 邮箱: support@yuledkcs.com
+- 问题反馈: [GitHub Issues](https://github.com/frisky1985/yuleDKCS/issues)
+- 文档网站: https://docs.yuledkcs.com
+
+---
+
+<p align="center">
+  <strong>yuleDKCS</strong> - 让数字钥匙连接更安全、更便捷
+</p>
