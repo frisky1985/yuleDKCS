@@ -1,4 +1,5 @@
 import { api } from './client';
+import { transformKeyList, transformKey, transformKeyLogList, parseResponse } from './transform';
 
 export interface Vehicle {
   id: string;
@@ -73,68 +74,140 @@ export interface ShareKeyResponse {
 
 export const keysApi = {
   // 获取钥匙列表
-  getMyKeys: (params?: { status?: string; protocol?: string; page?: number; limit?: number }) =>
-    api.get('/keys', { params }).then(r => r.data),
+  getMyKeys: async (params?: { status?: string; protocol?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/keys', { params });
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data?.list) {
+      return {
+        ...parsed.data,
+        list: transformKeyList(parsed.data.list),
+      };
+    }
+    return parsed.data;
+  },
 
   // 获取分享给我的钥匙
-  getSharedKeys: () =>
-    api.get('/keys/shared').then(r => r.data),
+  getSharedKeys: async () => {
+    const response = await api.get('/keys/shared');
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data?.list) {
+      return {
+        ...parsed.data,
+        list: transformKeyList(parsed.data.list),
+      };
+    }
+    return parsed.data;
+  },
 
   // 获取钥匙详情
-  getKeyDetail: (keyId: string) =>
-    api.get(`/keys/${keyId}`).then(r => r.data),
+  getKeyDetail: async (keyId: string) => {
+    const response = await api.get(`/keys/${keyId}`);
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data) {
+      return transformKey(parsed.data);
+    }
+    return parsed.data;
+  },
 
   // 激活钥匙
-  activateKey: (keyId: string) =>
-    api.post(`/keys/${keyId}/activate`).then(r => r.data),
+  activateKey: async (keyId: string) => {
+    const response = await api.post(`/keys/${keyId}/activate`);
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data) {
+      return transformKey(parsed.data);
+    }
+    return parsed.data;
+  },
 
   // 停用钥匙
-  deactivateKey: (keyId: string) =>
-    api.post(`/keys/${keyId}/deactivate`).then(r => r.data),
+  deactivateKey: async (keyId: string) => {
+    const response = await api.post(`/keys/${keyId}/deactivate`);
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data) {
+      return transformKey(parsed.data);
+    }
+    return parsed.data;
+  },
 
   // 撤销钥匙
-  revokeKey: (keyId: string) =>
-    api.delete(`/keys/${keyId}`).then(r => r.data),
+  revokeKey: async (keyId: string) => {
+    const response = await api.delete(`/keys/${keyId}`);
+    return parseResponse(response.data);
+  },
 
   // 批量撤销
-  revokeKeys: (keyIds: string[]) =>
-    api.post('/keys/batch/revoke', { key_ids: keyIds }).then(r => r.data),
+  revokeKeys: async (keyIds: string[]) => {
+    const response = await api.post('/keys/batch/revoke', { key_ids: keyIds });
+    return parseResponse(response.data);
+  },
 
   // 分享钥匙
-  shareKey: (data: ShareKeyRequest) =>
-    api.post('/keys/share', data).then(r => r.data as ShareKeyResponse),
+  shareKey: async (data: ShareKeyRequest) => {
+    const response = await api.post('/keys/share', data);
+    return parseResponse(response.data);
+  },
 
   // 获取分享记录
-  getShareHistory: (keyId: string) =>
-    api.get(`/keys/${keyId}/shares`).then(r => r.data),
+  getShareHistory: async (keyId: string) => {
+    const response = await api.get(`/keys/${keyId}/shares`);
+    return parseResponse(response.data);
+  },
 
   // 撤销分享
-  revokeShare: (shareId: string) =>
-    api.delete(`/keys/shares/${shareId}`).then(r => r.data),
+  revokeShare: async (shareId: string) => {
+    const response = await api.delete(`/keys/shares/${shareId}`);
+    return parseResponse(response.data);
+  },
 
   // 更新权限
-  updatePermissions: (keyId: string, permissions: KeyPermission[]) =>
-    api.put(`/keys/${keyId}/permissions`, { permissions }).then(r => r.data),
+  updatePermissions: async (keyId: string, permissions: KeyPermission[]) => {
+    const response = await api.put(`/keys/${keyId}/permissions`, { permissions });
+    return parseResponse(response.data);
+  },
 
   // 获取使用记录
-  getUsageLogs: (keyId: string, params?: { start_date?: string; end_date?: string; page?: number; limit?: number }) =>
-    api.get(`/keys/${keyId}/logs`, { params }).then(r => r.data),
+  getUsageLogs: async (keyId: string, params?: { start_date?: string; end_date?: string; page?: number; limit?: number }) => {
+    const response = await api.get(`/keys/${keyId}/logs`, { params });
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data?.list) {
+      return {
+        ...parsed.data,
+        list: transformKeyLogList(parsed.data.list),
+      };
+    }
+    return parsed.data;
+  },
 
   // 获取所有使用记录
-  getAllUsageLogs: (params?: { start_date?: string; end_date?: string; operation?: string; page?: number; limit?: number }) =>
-    api.get('/keys/logs/all', { params }).then(r => r.data),
+  getAllUsageLogs: async (params?: { start_date?: string; end_date?: string; operation?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/keys/logs/all', { params });
+    const parsed = parseResponse(response.data);
+    if (parsed.success && parsed.data?.list) {
+      return {
+        ...parsed.data,
+        list: transformKeyLogList(parsed.data.list),
+      };
+    }
+    return parsed.data;
+  },
 
   // 生成二维码
-  generateQRCode: (keyId: string, type: 'share' | 'activate' | 'temp') =>
-    api.post(`/keys/${keyId}/qrcode`, { type }).then(r => r.data),
+  generateQRCode: async (keyId: string, type: 'share' | 'activate' | 'temp') => {
+    const response = await api.post(`/keys/${keyId}/qrcode`, { type });
+    return parseResponse(response.data);
+  },
 
   // 扫码激活
-  scanQRCode: (qrData: string) =>
-    api.post('/keys/scan', { qr_data: qrData }).then(r => r.data),
+  scanQRCode: async (qrData: string) => {
+    const response = await api.post('/keys/scan', { qr_data: qrData });
+    return parseResponse(response.data);
+  },
 
   // 延长有效期
-  extendExpiry: (keyId: string, days: number) =>
-    api.post(`/keys/${keyId}/extend`, { days }).then(r => r.data),
+  extendExpiry: async (keyId: string, days: number) => {
+    const response = await api.post(`/keys/${keyId}/extend`, { days });
+    return parseResponse(response.data);
+  },
 };
 
 export default keysApi;
