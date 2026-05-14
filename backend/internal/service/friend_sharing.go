@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"yuleDKCS/backend/internal/model"
-	"yuleDKCS/backend/internal/repository"
+	"github.com/frisky1985/yuleDKCS/backend/internal/model"
+	"github.com/frisky1985/yuleDKCS/backend/internal/repository"
 	"yuleDKCS/backend/pkg/logger"
 	"yuleDKCS/backend/pkg/notification"
 )

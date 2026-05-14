@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"yuleDKCS/backend/internal/models"
-	"yuleDKCS/backend/internal/repository"
+	"github.com/frisky1985/yuleDKCS/backend/internal/models"
+	"github.com/frisky1985/yuleDKCS/backend/internal/repository"
 	"yuleDKCS/backend/tests/fixtures"
 )
 

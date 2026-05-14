@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"yuleDKCS/backend/internal/models"
+	"github.com/frisky1985/yuleDKCS/backend/internal/models"
 	"gorm.io/gorm"
 )
 

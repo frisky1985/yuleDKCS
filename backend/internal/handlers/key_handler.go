@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"yuleDKCS/backend/internal/models"
-	"yuleDKCS/backend/internal/services"
+	"github.com/frisky1985/yuleDKCS/backend/internal/models"
+	"github.com/frisky1985/yuleDKCS/backend/internal/services"
 	"github.com/gin-gonic/gin"
 )
 

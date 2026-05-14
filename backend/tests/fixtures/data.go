@@ -3,7 +3,7 @@ package fixtures
 import (
 	"time"
 
-	"yuleDKCS/backend/internal/models"
+	"github.com/frisky1985/yuleDKCS/backend/internal/models"
 )
 
 // TestUser 测试用户数据

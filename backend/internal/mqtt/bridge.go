@@ -9,7 +9,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"yuleDKCS/backend/internal/service"
+	"github.com/frisky1985/yuleDKCS/backend/internal/service"
 	"yuleDKCS/backend/pkg/logger"
 )
 
