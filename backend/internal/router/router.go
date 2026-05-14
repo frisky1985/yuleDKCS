@@ -4,20 +4,26 @@ import (
 	"database/sql"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/config"
 	"github.com/frisky1985/yuleDKCS/backend/internal/handlers"
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
+	"github.com/frisky1985/yuleDKCS/backend/internal/repository"
+	"github.com/frisky1985/yuleDKCS/backend/internal/services"
 )
 
 // Setup 初始化路由
-func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB) {
+func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 	// 使用 Gin 默认中间件（Logger + Recovery）
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
 	// Prometheus指标中间件
 	r.Use(middleware.PrometheusMiddleware())
+
+	// CORS配置
+	r.Use(middleware.CORS())
 
 	// 创建健康检查器
 	healthChecker := handlers.NewHealthChecker(cfg, db)
@@ -29,6 +35,16 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB) {
 
 	// Prometheus指标端点
 	r.GET("/metrics", handlers.MetricsHandler())
+
+	// 初始化依赖
+	userRepo := repository.NewUserRepository(gormDB)
+	keyRepo := repository.NewKeyRepository(gormDB)
+
+	userService := services.NewUserService(userRepo)
+	keyService := services.NewKeyService(keyRepo, userRepo)
+
+	userHandler := handlers.NewUserHandler(userService)
+	keyHandler := handlers.NewKeyHandler(keyService)
 
 	// API 路由组
 	api := r.Group("/api/v1")
@@ -42,17 +58,18 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB) {
 		// 认证路由组
 		auth := api.Group("/auth")
 		{
-			auth.POST("/login", loginHandler)
-			auth.POST("/register", registerHandler)
-			auth.POST("/refresh", refreshTokenHandler)
+			auth.POST("/login", userHandler.Login)
+			auth.POST("/register", userHandler.Register)
+			auth.POST("/refresh", middleware.RefreshToken)
 		}
 
 		// 需要认证的路由
 		authorized := api.Group("/")
-		// TODO: 添加 JWT 中间件
-		// authorized.Use(middleware.JWTAuth(cfg.JWT.Secret))
+		authorized.Use(middleware.JWTAuth())
 		{
-			authorized.GET("/user/profile", getUserProfile)
+			authorized.GET("/user/profile", userHandler.GetProfile)
+			// 注册钥匙相关路由
+			keyHandler.RegisterRoutes(authorized)
 		}
 	}
 
@@ -69,26 +86,11 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB) {
 func ping(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"message": "pong",
+		"service": "yuleDKCS",
+		"version": "1.0.0",
 	})
 }
 
-// 处理器函数占位符
-func loginHandler(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "Not implemented"})
-}
-
-func registerHandler(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "Not implemented"})
-}
-
-func refreshTokenHandler(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "Not implemented"})
-}
-
-func getUserProfile(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "Not implemented"})
-}
-
 func websocketHandler(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "Not implemented"})
+	c.JSON(501, gin.H{"error": "WebSocket not implemented yet"})
 }

@@ -19,7 +19,7 @@ import (
 )
 
 // Run 启动 API 服务器
-func Run(db *sql.DB) error {
+func Run(db *sql.DB, gormDB *gorm.DB) error {
 	// 加载配置
 	cfg, err := config.Load()
 	if err != nil {
@@ -33,7 +33,7 @@ func Run(db *sql.DB) error {
 	r := gin.New()
 
 	// 初始化路由
-	router.Setup(r, cfg, db)
+	router.Setup(r, cfg, db, gormDB)
 
 	// 创建 HTTP 服务器
 	srv := &http.Server{

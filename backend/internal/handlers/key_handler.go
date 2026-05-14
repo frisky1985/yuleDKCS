@@ -28,9 +28,12 @@ func (h *KeyHandler) RegisterRoutes(router *gin.RouterGroup) {
 		keys.POST("/issue", h.IssueKey)
 		keys.GET("", h.GetUserKeys)
 		keys.GET("/:id", h.GetKeyDetail)
+		keys.POST("/:id/activate", h.ActivateKey)
+		keys.POST("/:id/deactivate", h.DeactivateKey)
 		keys.POST("/:id/share", h.ShareKey)
 		keys.DELETE("/:id", h.RevokeKey)
 		keys.PUT("/:id/permissions", h.UpdatePermissions)
+		keys.GET("/:id/logs", h.GetKeyLogs)
 		keys.GET("/shared/list", h.GetSharedKeys)
 		keys.GET("/:id/shares", h.GetKeyShares)
 		keys.DELETE("/shares/:share_id", h.RevokeShare)
@@ -516,4 +519,137 @@ func keyToResponse(key *models.Key) models.KeyResponse {
 	}
 
 	return resp
+}
+
+// ActivateKey 激活钥匙
+// POST /api/v1/keys/:id/activate
+func (h *KeyHandler) ActivateKey(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未认证",
+		})
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的钥匙ID",
+		})
+		return
+	}
+
+	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "钥匙不存在",
+		})
+		return
+	}
+
+	// 更新状态为激活
+	key.Status = "active"
+	// TODO: 调用服务层更新状态
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "钥匙已激活",
+		"data":    keyToResponse(key),
+	})
+}
+
+// DeactivateKey 停用钥匙
+// POST /api/v1/keys/:id/deactivate
+func (h *KeyHandler) DeactivateKey(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未认证",
+		})
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的钥匙ID",
+		})
+		return
+	}
+
+	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "钥匙不存在",
+		})
+		return
+	}
+
+	// 更新状态为停用
+	key.Status = "inactive"
+	// TODO: 调用服务层更新状态
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "钥匙已停用",
+		"data":    keyToResponse(key),
+	})
+}
+
+// GetKeyLogs 获取钥匙使用日志
+// GET /api/v1/keys/:id/logs
+func (h *KeyHandler) GetKeyLogs(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "未认证",
+		})
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的钥匙ID",
+		})
+		return
+	}
+
+	// 验证钥匙访问权限
+	_, err = h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "无权访问此钥匙日志",
+		})
+		return
+	}
+
+	// 分页参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	// TODO: 调用服务层获取日志
+	// 临时返回空数组
+	logs := []gin.H{}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取成功",
+		"data": gin.H{
+			"list":      logs,
+			"total":     0,
+			"page":      page,
+			"page_size": pageSize,
+		},
+	})
 }

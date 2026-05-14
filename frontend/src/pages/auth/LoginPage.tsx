@@ -15,29 +15,35 @@ import {
   Container,
   useTheme,
   useMediaQuery,
+  Alert,
+  CircularProgress,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   Google,
   Apple,
-  Wechat,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/auth';
+import { authApi } from '../../api/auth';
 
 const LoginPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const navigate = useNavigate();
+  const { login } = useAuthStore();
 
   const [formData, setFormData] = useState({
-    account: '',
+    username: '',
     password: '',
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, checked, type } = e.target;
@@ -49,12 +55,13 @@ const LoginPage: React.FC = () => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    setErrorMsg('');
   };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.account.trim()) {
-      newErrors.account = '请输入手机号或邮箱';
+    if (!formData.username.trim()) {
+      newErrors.username = '请输入用户名';
     }
     if (!formData.password) {
       newErrors.password = '请输入密码';
@@ -65,17 +72,50 @@ const LoginPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      // TODO: Implement login API call
-      console.log('Login:', formData);
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      const response = await authApi.login({
+        username: formData.username,
+        password: formData.password,
+      });
+
+      if (response.code === 200) {
+        // 保存认证信息
+        login(response.data.user, response.data.token);
+        
+        // 如果选了"记住我"，可以在此处设置更长的token有效期
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+        }
+
+        // 跳转到首页
+        navigate('/');
+      } else {
+        setErrorMsg(response.message || '登录失败');
+      }
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.response?.data?.message) {
+        setErrorMsg(error.response.data.message);
+      } else if (error.response?.status === 401) {
+        setErrorMsg('用户名或密码错误');
+      } else {
+        setErrorMsg('网络错误，请稍后重试');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSocialLogin = (provider: string) => {
-    // TODO: Implement social login
     console.log('Social login:', provider);
+    // TODO: 实现社交登录
   };
 
   const containerVariants = {
@@ -133,18 +173,25 @@ const LoginPage: React.FC = () => {
             </motion.div>
 
             <Box component="form" onSubmit={handleSubmit} noValidate>
+              {errorMsg && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {errorMsg}
+                </Alert>
+              )}
+
               <motion.div variants={itemVariants}>
                 <TextField
                   fullWidth
-                  label="手机号/邮箱"
-                  name="account"
-                  value={formData.account}
+                  label="用户名"
+                  name="username"
+                  value={formData.username}
                   onChange={handleChange}
-                  error={!!errors.account}
-                  helperText={errors.account}
+                  error={!!errors.username}
+                  helperText={errors.username}
                   margin="normal"
-                  autoComplete="email"
+                  autoComplete="username"
                   autoFocus
+                  disabled={loading}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,
@@ -226,6 +273,8 @@ const LoginPage: React.FC = () => {
                   fullWidth
                   variant="contained"
                   size="large"
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
                   sx={{
                     py: 1.5,
                     borderRadius: 2,
@@ -238,7 +287,7 @@ const LoginPage: React.FC = () => {
                     },
                   }}
                 >
-                  登录
+                  {loading ? '登录中...' : '登录'}
                 </Button>
               </motion.div>
             </Box>

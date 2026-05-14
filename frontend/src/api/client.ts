@@ -3,12 +3,12 @@ import { useAuthStore } from '../store/auth'
 
 // 获取 API 基础 URL
 const getBaseURL = () => {
-  // 优先使用环境变量，否则根据当前环境判断
+  // 优先使用环境变量
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL
   }
-  // 开发环境使用相对路径（通过 Vite proxy）
-  return import.meta.env.DEV ? '' : 'https://api.yuledkcs.com'
+  // 开发环境使用本地后端服务
+  return import.meta.env.DEV ? 'http://localhost:8080/api/v1' : 'https://api.yuledkcs.com/api/v1'
 }
 
 // 创建 Axios 实例

@@ -1,0 +1,75 @@
+# 本地开发环境 Docker Compose
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: yuledkcs-postgres
+    environment:
+      POSTGRES_USER: yuledkcs
+      POSTGRES_PASSWORD: yuledkcs_dev
+      POSTGRES_DB: yuledkcs
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../backend/database/migrations:/docker-entrypoint-initdb.d/migrations
+      - ../backend/database/seeds:/docker-entrypoint-initdb.d/seeds
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yuledkcs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: yuledkcs-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: yuledkcs-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./configs/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqtt_data:/mosquitto/data
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: yuledkcs-backend
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=yuledkcs
+      - DB_PASSWORD=yuledkcs_dev
+      - DB_NAME=yuledkcs
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - SERVER_PORT=8080
+      - SERVER_MODE=debug
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend:/app
+      - go_cache:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: ["air", "-c", ".air.toml"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  mqtt_data:
+  go_cache:
