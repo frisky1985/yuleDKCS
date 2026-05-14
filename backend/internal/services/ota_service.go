@@ -22,7 +22,7 @@ var (
 	ErrInvalidChecksum     = errors.New("校验和不匹配")
 	ErrOTAInProgress       = errors.New("已有OTA更新正在进行")
 	ErrInvalidStatus       = errors.New("无效的OTA状态")
-	ErrVehicleNotFound     = errors.New("车辆不存在")
+	// ErrVehicleNotFound 引用 vehicle_service.go 中定义的错误
 )
 
 // OTAService OTA服务接口
