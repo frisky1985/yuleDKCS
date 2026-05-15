@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 Light Theme -->
+    <style name="Theme.DigitalKey" parent="Theme.Material3.Light.NoActionBar">
+        <!-- Primary -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryContainer">@color/primary_light</item>
+
+        <!-- Secondary -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="colorSecondaryContainer">@color/secondary_light</item>
+
+        <!-- Tertiary / Accent -->
+        <item name="colorTertiary">@color/accent</item>
+        <item name="colorOnTertiary">@color/on_primary</item>
+
+        <!-- Background -->
+        <item name="android:colorBackground">@color/background_light</item>
+        <item name="colorSurface">@color/surface_light</item>
+        <item name="colorOnSurface">@color/text_primary_light</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary_light</item>
+
+        <!-- Error -->
+        <item name="colorError">#C62828</item>
+        <item name="colorOnError">#FFFFFF</item>
+
+        <!-- Outline -->
+        <item name="colorOutline">@color/divider_light</item>
+
+        <!-- Status Bar -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/surface_light</item>
+    </style>
+
+    <!-- Toolbar style -->
+    <style name="Theme.DigitalKey.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="titleTextColor">@color/on_primary</item>
+        <item name="subtitleTextColor">@color/on_primary</item>
+    </style>
+</resources>

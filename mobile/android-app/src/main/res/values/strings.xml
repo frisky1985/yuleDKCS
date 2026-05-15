@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">数字钥匙</string>
+
+    <!-- 通用 -->
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="done">完成</string>
+    <string name="next">下一步</string>
+    <string name="back">返回</string>
+    <string name="retry">重试</string>
+    <string name="copy">复制</string>
+    <string name="share">分享</string>
+    <string name="success">成功</string>
+    <string name="failed">失败</string>
+    <string name="pending">处理中</string>
+    <string name="error">错误</string>
+    <string name="loading">加载中…</string>
+
+    <!-- 主界面 -->
+    <string name="add_key">添加钥匙</string>
+    <string name="no_keys">暂无钥匙</string>
+    <string name="add_first_key">点击右下角按钮添加第一把钥匙</string>
+    <string name="key">钥匙</string>
+    <string name="vehicle">车辆</string>
+
+    <!-- 钥匙详情 -->
+    <string name="key_detail">钥匙详情</string>
+    <string name="issued_by">发放者：%s</string>
+    <string name="issued_at">发放时间</string>
+    <string name="expires">有效期至</string>
+    <string name="permissions">权限列表</string>
+    <string name="no_permissions">暂无权限</string>
+    <string name="permission_count">%d项权限</string>
+    <string name="edit_key_name">编辑钥匙名称</string>
+    <string name="hint_key_name">输入钥匙名称</string>
+    <string name="update_success">更新成功</string>
+    <string name="update_failed">更新失败</string>
+    <string name="delete_key">删除钥匙</string>
+    <string name="delete_key_title">删除钥匙</string>
+    <string name="delete_key_message">确定要删除钥匙「%s」吗？此操作不可恢复。</string>
+    <string name="delete_key_confirm">确定要删除此钥匙吗？此操作不可恢复。</string>
+    <string name="delete_key_success">钥匙已删除</string>
+    <string name="delete_key_failed">删除失败，请重试</string>
+    <string name="vehicle_control">车控</string>
+    <string name="issuer">发放者</string>
+
+    <!-- 钥匙状态 -->
+    <string name="status_active">正常</string>
+    <string name="status_inactive">已停用</string>
+    <string name="status_expired">已过期</string>
+    <string name="status_pending">等待激活</string>
+    <string name="status_revoked">已撤销</string>
+
+    <!-- 权限标签 -->
+    <string name="perm_unlock">解锁</string>
+    <string name="perm_lock">锁车</string>
+    <string name="perm_start_engine">启动引擎</string>
+    <string name="perm_stop_engine">熄火</string>
+    <string name="perm_open_trunk">后备箱</string>
+    <string name="perm_open_hood">前备箱</string>
+    <string name="perm_climate">空调</string>
+    <string name="perm_window">车窗</string>
+    <string name="perm_valet">代客泊车</string>
+    <string name="perm_speed_limit">速度限制</string>
+    <string name="perm_geofence">地理围栏</string>
+    <string name="perm_remote_start">远程启动</string>
+    <string name="perm_car_find">寻车</string>
+    <string name="perm_share">分享</string>
+    <string name="perm_manage">管理</string>
+
+    <!-- 添加钥匙 -->
+    <string name="enter_activation_code">输入激活码</string>
+    <string name="activation_code_hint">请输入收到的激活码</string>
+    <string name="activation_code">激活码</string>
+    <string name="enter_key_name">设置钥匙名称</string>
+    <string name="key_name_hint">为您的钥匙取一个易记的名字</string>
+    <string name="key_name">钥匙名称</string>
+    <string name="activating_key">正在激活钥匙…</string>
+    <string name="please_wait">请稍候</string>
+    <string name="add_success">钥匙添加成功</string>
+    <string name="add_failed">添加失败</string>
+    <string name="add_key_success">「%s」已成功添加</string>
+
+    <!-- 分享钥匙 -->
+    <string name="share_key">分享钥匙</string>
+    <string name="recipient_name">接收者姓名</string>
+    <string name="select_permissions">选择分享权限</string>
+    <string name="share_message">附言（选填）</string>
+    <string name="error_recipient_required">请输入接收者姓名</string>
+    <string name="error_permission_required">请至少选择一项权限</string>
+    <string name="share_created_info">「%s」的分享码已生成</string>
+    <string name="share_code">分享码</string>
+    <string name="share_code_copied">分享码已复制到剪贴板</string>
+
+    <!-- 车控 -->
+    <string name="quick_actions">快捷操作</string>
+    <string name="lock">锁车</string>
+    <string name="unlock">解锁</string>
+    <string name="find_car">寻车</string>
+    <string name="remote_start">远程启动</string>
+    <string name="trunk">后备箱</string>
+    <string name="flash">闪灯</string>
+    <string name="climate">空调</string>
+    <string name="windows">车窗</string>
+    <string name="start">启动</string>
+    <string name="ac">空调</string>
+    <string name="locking">正在锁车…</string>
+    <string name="unlocking">正在解锁…</string>
+    <string name="finding_car">正在寻车…</string>
+    <string name="remote_starting">正在远程启动…</string>
+    <string name="opening_trunk">正在打开后备箱…</string>
+    <string name="flashing">正在闪灯…</string>
+    <string name="climate_on">正在开启空调…</string>
+    <string name="vehicle_offline">车辆离线，无法执行操作</string>
+    <string name="online">在线</string>
+    <string name="offline">离线</string>
+
+    <!-- 车辆 -->
+    <string name="no_vehicle">暂无车辆</string>
+    <string name="no_vehicle_hint">请联系管理员添加车辆</string>
+    <string name="no_history">暂无操作记录</string>
+    <string name="no_history_hint">执行车控操作后将在此显示记录</string>
+    <string name="command">操作</string>
+
+    <!-- 操作历史 -->
+    <string name="tab_control">控制</string>
+    <string name="tab_history">历史</string>
+    <string name="tab_vehicles">车辆</string>
+    <string name="cmd_lock">锁车</string>
+    <string name="cmd_unlock">解锁</string>
+    <string name="cmd_start_engine">启动引擎</string>
+    <string name="cmd_stop_engine">熄火</string>
+    <string name="cmd_trunk">后备箱</string>
+    <string name="cmd_find_car">寻车</string>
+    <string name="cmd_remote_start">远程启动</string>
+    <string name="cmd_flash">闪灯鸣笛</string>
+    <string name="cmd_climate">空调控制</string>
+    <string name="cmd_window">车窗控制</string>
+    <string name="cmd_other">其他操作</string>
+
+    <!-- 设置 -->
+    <string name="settings">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_security">通知与安全</string>
+    <string name="settings_storage">存储</string>
+    <string name="settings_about">关于</string>
+    <string name="dark_mode">深色模式</string>
+    <string name="notifications">推送通知</string>
+    <string name="biometric">生物识别解锁</string>
+    <string name="clear_cache">清除缓存</string>
+    <string name="clear_cache_hint">可释放约 XX MB 存储空间</string>
+    <string name="cache_cleared">缓存已清除</string>
+    <string name="cache_clear_failed">清除失败</string>
+    <string name="about_us">关于我们</string>
+    <string name="about_content">数字钥匙 - 您的智能车钥匙\n\n版本 %1$s (%2$d)</string>
+    <string name="privacy">隐私政策</string>
+    <string name="terms">用户协议</string>
+    <string name="version">版本</string>
+    <string name="version_format">v%s (%d)</string>
+    <string name="logout">退出登录</string>
+    <string name="logout_confirm">确定要退出登录吗？</string>
+</resources>

@@ -1,0 +1,33 @@
+# CCC Alliance Adapter Configuration
+# Place in src/main/resources of adapter-ccc module
+
+adapter:
+  enabled: true
+  ccc:
+    enabled: true
+    api-url: ${CCC_API_URL:https://api.ccc-alliance.example.com}
+    client-id: ${CCC_CLIENT_ID:}
+    client-secret: ${CCC_CLIENT_SECRET:}
+    connection-timeout: 10000
+    read-timeout: 30000
+
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    grpc:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    com.digitalkey.adapter.ccc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

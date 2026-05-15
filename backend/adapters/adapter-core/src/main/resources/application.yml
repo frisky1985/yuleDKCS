@@ -1,0 +1,38 @@
+# Adapter Core Module Configuration
+# Default settings for all adapters
+
+spring:
+  application:
+    name: adapter-core
+  
+  # Enable configuration refresh
+  cloud:
+    kubernetes:
+      enabled: false  # Disable K8s config for standalone use
+
+# Adapter defaults
+adapter:
+  enabled: true
+  timeout-ms: 30000
+  retry-enabled: true
+  max-retries: 3
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.digitalkey.adapter: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,0 +1,74 @@
+# gRPC Server Application Configuration
+
+spring:
+  application:
+    name: adapter-grpc-server
+
+# Adapter configuration
+adapter:
+  enabled: true
+  grpc:
+    enabled: true
+  
+  # Default timeout settings
+  timeout-ms: 30000
+  retry-enabled: true
+  max-retries: 3
+  
+  # CCC configuration
+  ccc:
+    enabled: ${CCC_ENABLED:true}
+    api-url: ${CCC_API_URL:https://api.ccc-alliance.example.com}
+    client-id: ${CCC_CLIENT_ID:}
+    client-secret: ${CCC_CLIENT_SECRET:}
+    connection-timeout: 10000
+    read-timeout: 30000
+  
+  # ICCOA configuration
+  iccoa:
+    enabled: ${ICCOA_ENABLED:true}
+    api-url: ${ICCOA_API_URL:https://api.iccoa.example.com}
+    app-id: ${ICCOA_APP_ID:}
+    app-secret: ${ICCOA_APP_SECRET:}
+    region: ${ICCOA_REGION:cn}
+  
+  # ICCE configuration
+  icce:
+    enabled: ${ICCE_ENABLED:true}
+    api-url: ${ICCE_API_URL:https://api.icce.example.com}
+    api-key: ${ICCE_API_KEY:}
+    tenant-id: ${ICCE_TENANT_ID:}
+
+# gRPC Server configuration
+grpc:
+  server:
+    port: 6565
+    reflection-service-enabled: true
+    max-inbound-message-size: 10485760  # 10MB
+
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    grpc:
+      enabled: true
+
+# Server configuration
+server:
+  port: ${SERVER_PORT:8080}
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.digitalkey.adapter: DEBUG
+    net.devh.boot.grpc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
