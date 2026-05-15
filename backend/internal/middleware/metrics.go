@@ -113,21 +113,41 @@ var (
 
 func init() {
 	// 注册自定义指标
-	prometheus.MustRegister(HTTPRequestsTotal)
-	prometheus.MustRegister(HTTPRequestDuration)
-	prometheus.MustRegister(HTTPResponseSize)
-	prometheus.MustRegister(ActiveUsersGauge)
-	prometheus.MustRegister(KeyOperationsTotal)
-	prometheus.MustRegister(VehicleOperationsTotal)
-	prometheus.MustRegister(WebsocketConnectionsGauge)
-	prometheus.MustRegister(DatabaseQueriesTotal)
-	prometheus.MustRegister(DatabaseQueryDuration)
-	prometheus.MustRegister(CacheOperationsTotal)
-	prometheus.MustRegister(OTAUpdatesTotal)
+	registerMetric(HTTPRequestsTotal)
+	registerMetric(HTTPRequestDuration)
+	registerMetric(HTTPResponseSize)
+	registerMetric(ActiveUsersGauge)
+	registerMetric(KeyOperationsTotal)
+	registerMetric(VehicleOperationsTotal)
+	registerMetric(WebsocketConnectionsGauge)
+	registerMetric(DatabaseQueriesTotal)
+	registerMetric(DatabaseQueryDuration)
+	registerMetric(CacheOperationsTotal)
+	registerMetric(OTAUpdatesTotal)
 
 	// 注册Go运行时指标
-	prometheus.MustRegister(collectors.NewGoCollector())
-	prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	registerCollector(collectors.NewGoCollector())
+	registerCollector(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+}
+
+// registerMetric 安全注册指标
+func registerMetric(metric prometheus.Collector) {
+	if err := prometheus.DefaultRegisterer.Register(metric); err != nil {
+		// 已注册则忽略
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			panic(err)
+		}
+	}
+}
+
+// registerCollector 安全注册collector
+func registerCollector(collector prometheus.Collector) {
+	if err := prometheus.DefaultRegisterer.Register(collector); err != nil {
+		// 已注册则忽略
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			panic(err)
+		}
+	}
 }
 
 // PrometheusMiddleware 收集HTTP请求的Prometheus指标
