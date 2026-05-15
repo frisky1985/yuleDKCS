@@ -1,13 +1,13 @@
 /******************************************************************************
- * @file    ccc_crypto.h
- * @brief   CCC 配对证书 X.509 序列化头文件
+ * @file    ccc_certificate.h
+ * @brief   CCC 配对证书 X.509 序列化
  * @author  YuleTech
  * @version 1.0.0
  * @date    2026-05-09
  ******************************************************************************/
 
-#ifndef CCC_CRYPTO_H
-#define CCC_CRYPTO_H
+#ifndef CCC_CERTIFICATE_H
+#define CCC_CERTIFICATE_H
 
 #ifdef __cplusplus
 extern "C" {

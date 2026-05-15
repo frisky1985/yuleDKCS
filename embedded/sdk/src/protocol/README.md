@@ -8,8 +8,8 @@
 
 | 文件 | 说明 |
 |------|------|
-| `ccc_crypto.c` | X.509 证书序列化/解析核心实现 |
-| `ccc_crypto.h` | 头文件，定义所有公开接口 |
+| `ccc_certificate.c` | X.509 证书序列化/解析核心实现 |
+| `ccc_certificate.h` | 头文件，定义所有公开接口 |
 
 ## 实现的功能
 
@@ -169,8 +169,8 @@ ret = ccc_verify_certificate(&parsed, trusted_root_pubkey);
 ```bash
 cd /home/admin/yuleDKCS
 gcc -I include -I embedded/sdk/src/protocol -I src \
-    tests/test_ccc_crypto.c \
-    embedded/sdk/src/protocol/ccc_crypto.c \
+    tests/test_ccc_certificate.c \
+    embedded/sdk/src/protocol/ccc_certificate.c \
     -o test_ccc_crypto -std=c99
 ./test_ccc_crypto
 ```
