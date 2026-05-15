@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/config"
-	"github.com/frisky1985/yuleDKCS/backend/internal/handlers"
 	"github.com/frisky1985/yuleDKCS/backend/internal/router"
 )
 
@@ -49,8 +49,6 @@ func Run(db *sql.DB, gormDB *gorm.DB) error {
 		}
 	}()
 
-	// 设置应用为就绪状态
-	handlers.SetReady(true)
 	log.Println("Application is ready")
 
 	// 等待中断信号
@@ -58,8 +56,6 @@ func Run(db *sql.DB, gormDB *gorm.DB) error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	// 设置应用为未就绪状态
-	handlers.SetReady(false)
 	log.Println("Shutting down server...")
 
 	// 优雅关闭

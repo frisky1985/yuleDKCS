@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -16,8 +17,8 @@ import (
 // 符合 ISO/SAE 21434 标准 - 入侵检测和防护系统要求
 // WP-13: 入侵检测系统、WP-15: 安全监控
 
-// RateLimitConfig 限流配置
-type RateLimitConfig struct {
+// AntiBrushRateConfig 防刷限流配置
+type AntiBrushRateConfig struct {
 	// IP级别限流
 	IPRateLimit    int           // IP每分钟最大请求数
 	IPBurstLimit   int           // IP突发请求限制
@@ -37,9 +38,9 @@ type RateLimitConfig struct {
 	AbnormalRequestSize int64         // 异常请求大小（KB）
 }
 
-// DefaultRateLimitConfig 默认限流配置
-func DefaultRateLimitConfig() *RateLimitConfig {
-	return &RateLimitConfig{
+// DefaultAntiBrushRateConfig 默认防刷限流配置
+func DefaultAntiBrushRateConfig() *AntiBrushRateConfig {
+	return &AntiBrushRateConfig{
 		IPRateLimit:       100,
 		IPBurstLimit:      20,
 		IPBlockDuration:   30 * time.Minute,
@@ -61,7 +62,7 @@ func DefaultRateLimitConfig() *RateLimitConfig {
 // AntiBrushMiddleware 防刷中间件
 type AntiBrushMiddleware struct {
 	redisClient *redis.Client
-	config      *RateLimitConfig
+	config      *AntiBrushRateConfig
 	localCache  *localRateCache
 }
 
@@ -80,9 +81,9 @@ type rateRecord struct {
 }
 
 // NewAntiBrushMiddleware 创建防刷中间件
-func NewAntiBrushMiddleware(redisClient *redis.Client, config *RateLimitConfig) *AntiBrushMiddleware {
+func NewAntiBrushMiddleware(redisClient *redis.Client, config *AntiBrushRateConfig) *AntiBrushMiddleware {
 	if config == nil {
-		config = DefaultRateLimitConfig()
+		config = DefaultAntiBrushRateConfig()
 	}
 	
 	middleware := &AntiBrushMiddleware{
@@ -201,7 +202,7 @@ func (ab *AntiBrushMiddleware) getClientID(c *gin.Context) string {
 
 // isBlocked 检查客户端是否被封禁
 func (ab *AntiBrushMiddleware) isBlocked(clientID string, userID interface{}) bool {
-	ctx := ab.redisClient.Context()
+	ctx := context.Background()
 	
 	// 检查IP封禁
 	ipBlocked, _ := ab.redisClient.Exists(ctx, "block:ip:"+clientID).Result()
@@ -232,7 +233,7 @@ func (ab *AntiBrushMiddleware) isBlocked(clientID string, userID interface{}) bo
 
 // checkIPRateLimit 检查IP限流
 func (ab *AntiBrushMiddleware) checkIPRateLimit(clientID string) bool {
-	ctx := ab.redisClient.Context()
+	ctx := context.Background()
 	key := "ratelimit:ip:" + clientID
 	
 	// 使用Redis原子操作进行限流
@@ -247,7 +248,7 @@ func (ab *AntiBrushMiddleware) checkIPRateLimit(clientID string) bool {
 
 // checkUserRateLimit 检查用户限流
 func (ab *AntiBrushMiddleware) checkUserRateLimit(userID string) bool {
-	ctx := ab.redisClient.Context()
+	ctx := context.Background()
 	key := "ratelimit:user:" + userID
 	
 	pipe := ab.redisClient.Pipeline()
@@ -264,7 +265,7 @@ func (ab *AntiBrushMiddleware) checkAPIRateLimit(path, clientID string) bool {
 	// 匹配API限流规则
 	for pattern, limit := range ab.config.APIRateLimits {
 		if strings.HasPrefix(path, pattern) || strings.Contains(path, pattern) {
-			ctx := ab.redisClient.Context()
+			ctx := context.Background()
 			key := fmt.Sprintf("ratelimit:api:%s:%s", pattern, clientID)
 			
 			pipe := ab.redisClient.Pipeline()
@@ -319,14 +320,14 @@ func (ab *AntiBrushMiddleware) recordError(clientID string) {
 		record.blockUntil = &blockedUntil
 		
 		// 同步到Redis
-		ctx := ab.redisClient.Context()
+		ctx := context.Background()
 		ab.redisClient.Set(ctx, "block:ip:"+clientID, "1", ab.config.IPBlockDuration)
 	}
 }
 
 // blockUser 封禁用户
 func (ab *AntiBrushMiddleware) blockUser(userID string, duration time.Duration) {
-	ctx := ab.redisClient.Context()
+	ctx := context.Background()
 	ab.redisClient.Set(ctx, "block:user:"+userID, "1", duration)
 }
 
@@ -346,7 +347,7 @@ func (ab *AntiBrushMiddleware) logSecurityEvent(c *gin.Context, eventType, clien
 	}
 	
 	// 存储到Redis用于后续分析和告警
-	ctx := ab.redisClient.Context()
+	ctx := context.Background()
 	eventKey := fmt.Sprintf("security:event:%s:%d", eventType, time.Now().Unix())
 	eventData := fmt.Sprintf("%v", event)
 	ab.redisClient.Set(ctx, eventKey, eventData, 7*24*time.Hour)

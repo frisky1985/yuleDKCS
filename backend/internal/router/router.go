@@ -26,24 +26,27 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 	r.Use(middleware.CORS())
 
 	// 创建健康检查器
-	healthChecker := handlers.NewHealthChecker(cfg, db)
+	healthChecker := handlers.NewHealthHandler(cfg)
 
 	// 健康检查端点
-	r.GET("/health", healthChecker.HealthCheck)
-	r.GET("/health/live", healthChecker.LivenessCheck)
-	r.GET("/health/ready", healthChecker.ReadinessCheck)
+	r.GET("/health", healthChecker.Liveness)
+	r.GET("/health/live", healthChecker.Liveness)
+	r.GET("/health/ready", healthChecker.Readiness)
 
 	// Prometheus指标端点
-	r.GET("/metrics", handlers.MetricsHandler())
+	r.GET("/metrics", healthChecker.Metrics())
 
 	// 初始化依赖
 	userRepo := repository.NewUserRepository(gormDB)
+	vehicleRepo := repository.NewVehicleRepository(gormDB)
 	keyRepo := repository.NewKeyRepository(gormDB)
 
 	userService := services.NewUserService(userRepo)
-	keyService := services.NewKeyService(keyRepo, userRepo)
+	vehicleService := services.NewVehicleService(vehicleRepo, keyRepo)
+	keyService := services.NewKeyService(keyRepo, vehicleRepo, userRepo)
 
 	userHandler := handlers.NewUserHandler(userService)
+	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 	keyHandler := handlers.NewKeyHandler(keyService)
 
 	// API 路由组
@@ -68,7 +71,16 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 		authorized.Use(middleware.JWTAuth())
 		{
 			authorized.GET("/user/profile", userHandler.GetProfile)
-			// 注册钥匙相关路由
+			
+			// 车辆相关路由
+			authorized.POST("/vehicles", vehicleHandler.RegisterVehicle)
+			authorized.GET("/vehicles", vehicleHandler.GetUserVehicles)
+			authorized.GET("/vehicles/:id", vehicleHandler.GetVehicle)
+			authorized.GET("/vehicles/:id/status", vehicleHandler.GetVehicleStatus)
+			authorized.POST("/vehicles/:id/commands", vehicleHandler.SendCommand)
+			authorized.GET("/vehicles/:id/commands/:command_id", vehicleHandler.GetCommandStatus)
+			
+			// 钥匙相关路由
 			keyHandler.RegisterRoutes(authorized)
 		}
 	}

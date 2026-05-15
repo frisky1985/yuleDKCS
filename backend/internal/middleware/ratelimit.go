@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -98,24 +99,25 @@ func (l *SlidingWindowLimiter) Allow(key string) (bool, time.Duration) {
 	fullKey := fmt.Sprintf("%s:%s", l.keyPrefix, key)
 	
 	// 使用 Redis 有序集合实现滑动窗口
+	ctx := context.Background()
 	pipe := l.redis.Pipeline()
 	
 	// 移除窗口外的记录
-	pipe.ZRemRangeByScore(l.redis.Context(), fullKey, "0", strconv.FormatInt(windowStart, 10))
+	pipe.ZRemRangeByScore(ctx, fullKey, "0", strconv.FormatInt(windowStart, 10))
 	
 	// 获取当前窗口内的记录数
-	countCmd := pipe.ZCard(l.redis.Context(), fullKey)
+	countCmd := pipe.ZCard(ctx, fullKey)
 	
 	// 添加当前请求
-	pipe.ZAdd(l.redis.Context(), fullKey, redis.Z{
+	pipe.ZAdd(ctx, fullKey, redis.Z{
 		Score:  float64(now),
 		Member: now,
 	})
 	
 	// 设置键的过期时间
-	pipe.Expire(l.redis.Context(), fullKey, l.config.Window)
+	pipe.Expire(ctx, fullKey, l.config.Window)
 	
-	_, err := pipe.Exec(l.redis.Context())
+	_, err := pipe.Exec(ctx)
 	if err != nil {
 		// Redis 失败时允许请求，避免影响服务
 		return true, 0
@@ -125,8 +127,8 @@ func (l *SlidingWindowLimiter) Allow(key string) (bool, time.Duration) {
 	
 	// 检查是否超过限制
 	if int(count) >= l.config.Requests {
-		// 计算剩余等待时间
-		oldest, _ := l.redis.ZRangeWithScores(l.redis.Context(), fullKey, 0, 0).Result()
+	// 计算剩余等待时间
+	oldest, _ := l.redis.ZRangeWithScores(ctx, fullKey, 0, 0).Result()
 		if len(oldest) > 0 {
 			oldestTimestamp := int64(oldest[0].Score)
 			resetTime := time.Unix(0, oldestTimestamp).Add(l.config.Window)

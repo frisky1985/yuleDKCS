@@ -377,8 +377,8 @@ func (s *keyService) GenerateCCCKey(ctx context.Context, vehicleID uint) (string
 		return "", err
 	}
 	
-	// CCC协议特定的数据结构
-	cccData := map[string]interface{}{
+	// CCC协议特定的数据结构(保留以便将来扩展)
+	_ = map[string]interface{}{
 		"protocol":    "CCC",
 		"version":     "2.0",
 		"vehicle_id":  vehicleID,

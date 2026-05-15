@@ -17,8 +17,9 @@ type Config struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Port int    `mapstructure:"port"`
-	Mode string `mapstructure:"mode"`
+	Port       int    `mapstructure:"port"`
+	Mode       string `mapstructure:"mode"`
+	AppVersion string `mapstructure:"app_version"`
 }
 
 // DatabaseConfig 数据库配置
@@ -84,6 +85,7 @@ func setDefaults() {
 	// Server 默认值
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.mode", "release")
+	viper.SetDefault("server.app_version", "1.0.0")
 
 	// Database 默认值
 	viper.SetDefault("database.host", "localhost")

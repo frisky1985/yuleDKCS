@@ -111,7 +111,7 @@ func (h *HealthHandler) SystemInfo(c *gin.Context) {
 	
 	c.JSON(http.StatusOK, SystemInfoResponse{
 		Status:     "healthy",
-		Version:    h.cfg.AppVersion,
+		Version:    h.cfg.Server.AppVersion,
 		GoVersion:  runtime.Version(),
 		Uptime:     time.Since(h.startTime).String(),
 		Goroutines: runtime.NumGoroutine(),

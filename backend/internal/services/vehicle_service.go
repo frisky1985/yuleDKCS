@@ -21,6 +21,7 @@ var (
 	ErrVehicleOffline     = errors.New("车辆离线")
 	ErrCommandTimeout     = errors.New("命令超时")
 	ErrInvalidLocation    = errors.New("无效的位置信息")
+	// 使用 key_service.go 中定义的 ErrUnauthorized
 )
 
 // VehicleCommandStatus 车辆命令状态
@@ -350,7 +351,7 @@ func (s *vehicleService) GetCommandStatus(ctx context.Context, commandID string)
 
 // UpdateLocation 更新车辆位置
 func (s *vehicleService) UpdateLocation(ctx context.Context, vehicleID uint, userID uint, req *models.VehicleLocationRequest) error {
-	vehicle, err := s.vehicleRepo.GetByID(ctx, vehicleID)
+	_, err := s.vehicleRepo.GetByID(ctx, vehicleID)
 	if err != nil {
 		if err.Error() == "车辆不存在" {
 			return ErrVehicleNotFound
@@ -493,7 +494,7 @@ func (s *vehicleService) GetVehicleByBleMAC(ctx context.Context, mac string) (*m
 
 // Heartbeat 车辆心跳
 func (s *vehicleService) Heartbeat(ctx context.Context, vehicleID uint, data map[string]interface{}) error {
-	vehicle, err := s.vehicleRepo.GetByID(ctx, vehicleID)
+	_, err := s.vehicleRepo.GetByID(ctx, vehicleID)
 	if err != nil {
 		return err
 	}
