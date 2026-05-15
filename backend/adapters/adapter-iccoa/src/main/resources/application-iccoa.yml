@@ -1,0 +1,28 @@
+# ICCOA Adapter Configuration
+# Place in src/main/resources of adapter-iccoa module
+
+adapter:
+  enabled: true
+  iccoa:
+    enabled: true
+    api-url: ${ICCOA_API_URL:https://api.iccoa.example.com}
+    app-id: ${ICCOA_APP_ID:}
+    app-secret: ${ICCOA_APP_SECRET:}
+    region: ${ICCOA_REGION:cn}  # cn or us
+
+# Spring Boot Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    com.digitalkey.adapter.iccoa: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

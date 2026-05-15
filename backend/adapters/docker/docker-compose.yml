@@ -1,0 +1,44 @@
+# Docker Compose for DigitalKey Adapter Service
+version: '3.8'
+
+services:
+  adapter-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: digitalkey-adapter
+    ports:
+      - "8080:8080"  # HTTP/Actuator
+      - "6565:6565"  # gRPC
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx512m
+      - SPRING_PROFILES_ACTIVE=docker
+      # CCC
+      - CCC_ENABLED=true
+      - CCC_API_URL=${CCC_API_URL:-https://api.ccc-alliance.example.com}
+      - CCC_CLIENT_ID=${CCC_CLIENT_ID:-}
+      - CCC_CLIENT_SECRET=${CCC_CLIENT_SECRET:-}
+      # ICCOA
+      - ICCOA_ENABLED=true
+      - ICCOA_API_URL=${ICCOA_API_URL:-https://api.iccoa.example.com}
+      - ICCOA_APP_ID=${ICCOA_APP_ID:-}
+      - ICCOA_APP_SECRET=${ICCOA_APP_SECRET:-}
+      # ICCE
+      - ICCE_ENABLED=true
+      - ICCE_API_URL=${ICCE_API_URL:-https://api.icce.example.com}
+      - ICCE_API_KEY=${ICCE_API_KEY:-}
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - adapter-network
+
+networks:
+  adapter-network:
+    driver: bridge
