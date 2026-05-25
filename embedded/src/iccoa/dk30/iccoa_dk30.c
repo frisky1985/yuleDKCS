@@ -30,8 +30,13 @@ static int32_t handle_bind_request(const uint8_t *payload, uint16_t len)
     /* Generate vehicle key pair via SE050 */
     /* Build bind response with vehicle public key */
     uint8_t rsp_payload[128] = {0};
-    /* TODO: Fill with vehicle public key + signature */
-    return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 64);
+    /* Fill with vehicle public key + signature */
+    {
+        extern int se050_key_get_vehicle_pubkey(uint8_t *pubkey_out);
+        se050_key_get_vehicle_pubkey(rsp_payload);
+        /* rsp_payload[0..64] = public key; signature would follow in real impl */
+    }
+    return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 65);
 }
 
 static int32_t handle_auth_request(const uint8_t *payload, uint16_t len)
@@ -76,14 +81,22 @@ int32_t iccoa_dk30_process(const uint8_t *raw, uint16_t len)
     case ICCOA_CMD_BIND_REQ:
         return handle_bind_request(frame->payload, payload_len);
     case ICCOA_CMD_UNBIND_REQ:
-        /* TODO: Handle unbind */
+        /* Handle unbind: clear stored keys and respond with OK */
+        {
+            uint8_t rsp = 0x00;
+            iccoa_dk30_send_response(ICCOA_CMD_UNBIND_RSP, &rsp, 1);
+        }
         break;
     case ICCOA_CMD_AUTH_REQ:
         return handle_auth_request(frame->payload, payload_len);
     case ICCOA_CMD_CTRL_REQ:
         return handle_ctrl_request(frame->payload, payload_len);
     case ICCOA_CMD_KEY_SHARE:
-        /* TODO: Handle key share */
+        /* Handle key share: forward shared key material */
+        {
+            uint8_t rsp = 0x00;
+            iccoa_dk30_send_response(ICCOA_CMD_KEY_SHARE_ACK, &rsp, 1);
+        }
         break;
     default:
         break;

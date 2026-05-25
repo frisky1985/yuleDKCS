@@ -73,7 +73,15 @@ static int32_t ctrl_engine(uint8_t start)
     /* 安全检查: 引擎启动需要特定条件 */
     if (start) {
         /* 检查刹车状态、挡位等 */
-        /* TODO: 添加安全检查逻辑 */
+        /* 安全条件: 引擎未启动 + 车门已关闭 */
+        if (g_vehicle_status.engine_status != 0) {
+            return ICCOA_ERR_BUSY; /* 引擎已运行 */
+        }
+        uint8_t door_status = 0;
+        hal_vehicle_get_door_status(&door_status);
+        if (door_status != 0) {
+            return ICCOA_ERR_DENIED; /* 车门未关 */
+        }
     }
 
     int ret = hal_vehicle_start_engine(start);
@@ -238,5 +246,9 @@ void iccoa_service_update_status(void)
     hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
     hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
 
-    /* TODO: 触发状态通知到已连接的手机 */
+    /* 触发状态通知到已连接的手机 */
+    uint8_t ntf_buf[1 + sizeof(iccoa_vehicle_status_t)];
+    ntf_buf[0] = (uint8_t)ICCOA_CMD_STATUS_NTF;
+    memcpy(ntf_buf + 1, &g_vehicle_status, sizeof(g_vehicle_status));
+    iccoa_ble_send(ntf_buf, sizeof(ntf_buf));
 }

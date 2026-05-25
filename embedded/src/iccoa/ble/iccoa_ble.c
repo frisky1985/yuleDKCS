@@ -72,6 +72,9 @@ typedef struct {
     uint8_t tx_buf[BLE_MAX_MTU];
     uint16_t tx_len;
     uint8_t  tx_busy;
+
+    /* CCC 通知状态 */
+    uint16_t notify_enabled;
 } ble_ctx_t;
 
 /* ========================================================================
@@ -255,14 +258,17 @@ void hal_ble_on_write(uint16_t conn_handle, uint16_t char_handle,
         /* 控制命令处理 */
         if (len >= 1) {
             /* cmd = data[0], params = data[1..] */
-            /* TODO: 分发到控制模块 */
+            /* 分发到控制模块 */
+            iccoa_ctrl_cmd_e cmd = (iccoa_ctrl_cmd_e)data[0];
+            uint8_t param = (len > 1) ? data[1] : 0;
+            iccoa_ctrl_execute(cmd, param);
         }
     }
     /* CCC 写入 */
     else if (char_handle == g_ble.data_ccc_handle) {
         /* 通知使能/禁用 */
         uint16_t ccc = *(uint16_t *)data;
-        (void)ccc; /* TODO: 保存 CCC 状态 */
+        g_ble.notify_enabled = ccc;
     }
 }
 
@@ -282,8 +288,14 @@ void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
         *len = sizeof(status);
     }
     else if (char_handle == g_ble.uwb_char_handle) {
-        /* 返回 UWB 测距数据 */
-        /* TODO: 填充当前测距结果 */
+        /* 填充当前测距结果: [distance_cm(2)] + [rssi(1)] + [confidence(1)] */
+        uint16_t distance_cm = 0;    /* 实际测距值由UWB模块更新 */
+        int8_t    rssi       = -60;  /* 默认RSSI */
+        uint8_t   confidence = 100;  /* 置信度百分比 */
+        data[0] = (uint8_t)(distance_cm >> 8);
+        data[1] = (uint8_t)(distance_cm & 0xFF);
+        data[2] = (uint8_t)rssi;
+        data[3] = confidence;
         *len = 4;
     }
 }

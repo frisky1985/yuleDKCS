@@ -647,6 +647,16 @@ const char* iccoa_error_to_string(iccoa_error_code_t err);
 void iccoa_free_message(iccoa_message_t *msg);
 
 /**
+ * @brief 传输层发送回调函数类型
+ */
+typedef error_t (*iccoa_transport_send_t)(const uint8_t *data, size_t len);
+
+/**
+ * @brief 设置传输层发送回调
+ */
+void iccoa_set_transport_send(iccoa_transport_send_t send_fn);
+
+/**
  * @brief 释放会话资源
  */
 void iccoa_session_destroy(iccoa_session_context_t *session);

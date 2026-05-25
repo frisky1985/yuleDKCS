@@ -18,6 +18,7 @@
 
 static uint8_t g_iccoa_state = ICCOA_STATE_UNINITIALIZED;
 static iccoa_se_interface_t g_se_interface;
+static iccoa_transport_send_t g_transport_send = NULL;
 
 /******************************************************************************
  * 内部辅助函数
@@ -501,7 +502,21 @@ error_t iccoa_send_command(
         return ret;
     }
     
-    /* TODO: 通过传输层发送 */
+    /* 序列化并通过传输层发送 */
+    uint8_t tx_buf[ICCOA_MAX_PAYLOAD_LEN];
+    size_t tx_len = sizeof(tx_buf);
+    ret = iccoa_serialize_message(&request, tx_buf, &tx_len);
+    iccoa_free_message(&request);
+    if (ret != OK) {
+        return ret;
+    }
+    
+    if (g_transport_send != NULL) {
+        ret = g_transport_send(tx_buf, tx_len);
+        if (ret != OK) {
+            return ret;
+        }
+    }
     
     iccoa_update_activity(session);
     
@@ -671,6 +686,14 @@ void iccoa_session_destroy(iccoa_session_context_t *session)
     memset(session->device_private_key, 0, sizeof(session->device_private_key));
     
     free(session);
+}
+
+/******************************************************************************
+ * 设置传输层发送回调
+ ******************************************************************************/
+void iccoa_set_transport_send(iccoa_transport_send_t send_fn)
+{
+    g_transport_send = send_fn;
 }
 
 /******************************************************************************

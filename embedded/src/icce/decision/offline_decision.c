@@ -14,6 +14,20 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* 前向声明: security_auth.h 中的类型 (待正式创建头文件) */
+typedef struct {
+    uint8_t challenge[32];    /* 挑战值 */
+    uint8_t nonce[16];        /* 随机数 */
+    uint32_t timestamp;       /* 时间戳 */
+} auth_challenge_t;
+
+typedef enum {
+    SEC_SUCCESS = 0,
+    SEC_ERR_KEY_GENERATION_FAILED
+} security_result_t;
+
+extern security_result_t security_generate_challenge(auth_challenge_t *challenge);
+
 /* 私有定义 */
 #define MAX_RULES               64
 #define MAX_DECISION_HISTORY    256
@@ -211,9 +225,12 @@ int32_t decision_evaluate(const decision_request_t *request,
         output->result = DECISION_CHALLENGE_REQUIRED;
         output->reason = REASON_SUCCESS;
         /* 生成额外挑战 — 使用 security_generate_challenge() 实现 */
-        /* TODO: 生成随机挑战（低优先级）：调用 security_generate_challenge()
-         * 并将结果附加到输出中。由于当前 output 结构无挑战字段，
-         * 此增强需同步修改 decision_output_t 定义。 */
+        {
+            auth_challenge_t challenge_data;
+            if (security_generate_challenge(&challenge_data) == SEC_SUCCESS) {
+                memcpy(output->challenge, challenge_data.challenge, sizeof(output->challenge));
+            }
+        }
     }
     else {
         output->result = DECISION_ALLOW;
@@ -477,8 +494,16 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     }
     
     /* 设备指纹检查 */
-    /* 简化实现: 检查设备指纹是否在历史记录中 */
-    bool known_device = false;  /* TODO: 实际检查 — 后期应实现设备指纹数据库比对 */
+    /* 检查请求中的设备指纹是否与钥匙绑定的指纹匹配 */
+    bool known_device = false;
+    {
+        uint8_t zero_fp[32] = {0};
+        /* 如果请求中有设备指纹，且与钥匙缓存中的指纹匹配，则为已知设备 */
+        if (memcmp(request->device_fingerprint, zero_fp, sizeof(zero_fp)) != 0 &&
+            memcmp(request->device_fingerprint, key_info->key_fingerprint, sizeof(key_info->key_fingerprint)) == 0) {
+            known_device = true;
+        }
+    }
     if (!known_device) {
         base_score += 15;
         factors |= RISK_FACTOR_UNKNOWN_DEVICE;

@@ -4,6 +4,7 @@
  */
 
 #include "iccoa_digital_key.h"
+#include "platform_time.h"
 
 #define MAX_USERS 8
 
@@ -50,7 +51,10 @@ int32_t iccoa_auth_verify(const uint8_t *response, uint16_t len)
     if (idx < 0) return ICCOA_ERR_DENIED;
 
     /* Check validity period */
-    /* TODO: compare current timestamp vs valid_from/valid_until */
+    uint32_t current_ms = platform_get_ms();
+    if (current_ms < g_users[idx].valid_from || current_ms > g_users[idx].valid_until) {
+        return ICCOA_ERR_DENIED;
+    }
 
     /* Check usage count */
     if (g_users[idx].max_uses > 0 && g_users[idx].used_count >= g_users[idx].max_uses) {

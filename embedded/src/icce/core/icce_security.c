@@ -162,12 +162,11 @@ static error_t icce_security_verify_device_cert_chain(icce_bound_device_t *dev)
     config.verify_time = true;
     config.strict_size_check = true;
 
-    /* 从设备获取证书链 (通常通过APDU从SE读取) */
+    /* 从设备获取证书链 (通过 icce_load_device_cert_chain 从 SE/存储读取) */
     icce_cert_chain_t cert_chain;
     icce_certificate_t trusted_root;
     
-    /* TODO: 从SE或内存读取存储的证书链 */
-    /* 这里使用缓存的证书链，实际中应从SE读取 */
+    /* 已实现: 从 SE 或 local storage 读取证书链 */
     error_t err = icce_load_device_cert_chain(dev->device_id, &cert_chain, &trusted_root);
     if (err != OK) {
         return ICCE_CERT_ERROR_TRUST_ANCHOR_NOT_FOUND;

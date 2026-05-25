@@ -403,13 +403,29 @@ static int32_t handle_share(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload,
     /* Payload: [friend_id(16)] + [permissions(1)] + [valid_hours(2)] */
     if (req->payload_len < 19) return ICCOA_ERR_PARAM;
 
-    /* TODO: 生成分享钥匙并上传云端 — 此功能需要云端API配合:
-     * 1. 调用 se050_key_generate_shared(req->payload, req->payload[16], valid_hours)
-     * 2. 通过 MQTT/HTTPS 上传分享钥材料至云端
-     * 3. 云端将分享钥匙下发至目标设备 */
-    (void)req;
-    rsp_payload[0] = 0x00;
-    *rsp_len = 1;
+    /* 生成分享钥匙材料 */
+    uint16_t valid_hours = ((uint16_t)req->payload[17] << 8) | req->payload[18];
+    extern int se050_key_generate_shared(const uint8_t *friend_id,
+                                          uint8_t permissions,
+                                          uint16_t valid_hours,
+                                          uint8_t *shared_key_out);
+    uint8_t shared_key[64] = {0};
+    int se_ret = se050_key_generate_shared(req->payload,
+                                            req->payload[16],
+                                            valid_hours,
+                                            shared_key);
+    if (se_ret != 0) {
+        rsp_payload[0] = 0x01; /* error */
+        *rsp_len = 1;
+        return ICCOA_ERR_HARDWARE;
+    }
+
+    /* 返回分享钥匙材料; 云端API上传保留为后续实现:
+     * - 通过 MQTT/HTTPS 上传 share_key_material 至云端
+     * - 云端将分享钥匙下发至目标设备 */
+    rsp_payload[0] = 0x00; /* success */
+    memcpy(rsp_payload + 1, shared_key, sizeof(shared_key));
+    *rsp_len = 1 + sizeof(shared_key);
 
     return ICCOA_OK;
 }
