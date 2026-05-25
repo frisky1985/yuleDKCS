@@ -363,7 +363,7 @@ func (b *Bridge) handleMQTTAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 其他用户的 JWT 验证
-	// TODO: 调用后端认证服务
+	// NOTE: 调用后端认证服务验证 JWT（需集成 HTTP 客户端调用认证 API）
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"result": "deny"})

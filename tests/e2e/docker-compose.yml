@@ -1,0 +1,256 @@
+# ==============================================================================
+# yuleDKCS E2E 测试环境 Docker Compose
+#
+# 启动完整的 E2E 测试环境:
+#   - 后端 API 服务
+#   - PostgreSQL 数据库
+#   - Redis 缓存
+#   - MQTT 消息代理
+#   - 模拟车辆设备
+#
+# 用法:
+#   cd tests/e2e
+#   docker compose up -d          # 启动环境
+#   docker compose logs -f        # 查看日志
+#   ./test_full_key_lifecycle.sh  # 运行生命周期测试
+#   ./test_multi_protocol.sh      # 运行多协议测试
+#   docker compose down -v        # 清理环境
+# ==============================================================================
+
+version: '3.8'
+
+services:
+
+  # ── PostgreSQL 数据库 ──────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: yuledkcs-e2e-postgres
+    environment:
+      POSTGRES_USER: yuledkcs
+      POSTGRES_PASSWORD: yuledkcs_e2e
+      POSTGRES_DB: yuledkcs_e2e
+    ports:
+      - "5433:5432"  # 使用不同端口避免与开发环境冲突
+    volumes:
+      - postgres_e2e_data:/var/lib/postgresql/data
+      - ../../backend/database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ../../backend/database/seeds:/docker-entrypoint-initdb.d/seeds:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yuledkcs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── Redis 缓存 ─────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: yuledkcs-e2e-redis
+    ports:
+      - "6380:6379"  # 使用不同端口避免冲突
+    volumes:
+      - redis_e2e_data:/data
+    command: redis-server --appendonly yes --requirepass yuledkcs_e2e
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── MQTT 消息代理 ──────────────────────────────────────────────────────────
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: yuledkcs-e2e-mqtt
+    ports:
+      - "1884:1883"  # MQTT (不同端口)
+      - "9002:9001"  # WebSocket (不同端口)
+    volumes:
+      - mqtt_e2e_data:/mosquitto/data
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── 后端 API 服务 ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: development  # 使用 development 阶段以获得热重载
+    container_name: yuledkcs-e2e-backend
+    environment:
+      # 数据库
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: yuledkcs
+      DB_PASSWORD: yuledkcs_e2e
+      DB_NAME: yuledkcs_e2e
+      SKIP_DB: "false"
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: yuledkcs_e2e
+      # MQTT
+      MQTT_BROKER: mqtt://mqtt:1883
+      MQTT_CLIENT_ID: yuledkcs-e2e-backend
+      # 服务配置
+      SERVER_PORT: 8080
+      SERVER_MODE: debug
+      JWT_SECRET: e2e-test-secret-key-do-not-use-in-production
+      JWT_EXPIRATION: 24h
+      # 日志
+      LOG_LEVEL: debug
+      # E2E 测试标志 (可用于启用测试桩)
+      E2E_TESTING: "true"
+    ports:
+      - "8081:8080"  # 使用不同端口避免冲突
+    volumes:
+      - ../../backend:/app
+      - go_e2e_cache:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── 模拟车辆设备 (CCC 协议) ────────────────────────────────────────────────
+  vehicle-sim-ccc:
+    image: alpine:latest
+    container_name: yuledkcs-e2e-vehicle-ccc
+    command: >
+      sh -c "
+        apk add --no-cache mosquitto-clients jq curl &&
+        echo 'CCC Vehicle Simulator started' &&
+        while true; do
+          # 模拟车辆状态报告 (BLE/RKE 心跳)
+          echo '{\"vin\":\"SIMCCC00000000001\",\"protocol\":\"CCC\",\"status\":\"parked\",\"timestamp\":'\"\$$(date +%s)\"'}' | \
+            mosquitto_pub -h mqtt -p 1883 -t yuledkcs/vehicle/ccc/status -l &&
+          sleep 30
+        done
+      "
+    depends_on:
+      - mqtt
+      - backend
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── 模拟车辆设备 (ICCE 协议) ────────────────────────────────────────────────
+  vehicle-sim-icce:
+    image: alpine:latest
+    container_name: yuledkcs-e2e-vehicle-icce
+    command: >
+      sh -c "
+        apk add --no-cache mosquitto-clients jq curl &&
+        echo 'ICCE Vehicle Simulator started' &&
+        while true; do
+          # 模拟车辆状态报告
+          echo '{\"vin\":\"SIMICCE00000000002\",\"protocol\":\"ICCE\",\"status\":\"idle\",\"timestamp\":'\"\$$(date +%s)\"'}' | \
+            mosquitto_pub -h mqtt -p 1883 -t yuledkcs/vehicle/icce/status -l &&
+          sleep 30
+        done
+      "
+    depends_on:
+      - mqtt
+      - backend
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── 模拟车辆设备 (ICCOA 协议) ──────────────────────────────────────────────
+  vehicle-sim-iccoa:
+    image: alpine:latest
+    container_name: yuledkcs-e2e-vehicle-iccoa
+    command: >
+      sh -c "
+        apk add --no-cache mosquitto-clients jq curl &&
+        echo 'ICCOA Vehicle Simulator started' &&
+        while true; do
+          # 模拟车辆状态报告
+          echo '{\"vin\":\"SIMICCOA0000000003\",\"protocol\":\"ICCOA\",\"status\":\"charging\",\"timestamp\":'\"\$$(date +%s)\"'}' | \
+            mosquitto_pub -h mqtt -p 1883 -t yuledkcs/vehicle/iccoa/status -l &&
+          sleep 30
+        done
+      "
+    depends_on:
+      - mqtt
+      - backend
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── 模拟手机设备 (测试用) ──────────────────────────────────────────────────
+  device-sim-mobile:
+    image: alpine:latest
+    container_name: yuledkcs-e2e-device-mobile
+    command: >
+      sh -c "
+        apk add --no-cache mosquitto-clients jq curl &&
+        echo 'Mobile Device Simulator started' &&
+        # 等待后端就绪
+        until curl -sf http://backend:8080/health/live > /dev/null 2>&1; do
+          sleep 2
+        done
+        echo 'Backend is ready, mobile simulator active' &&
+        while true; do
+          # 模拟手机心跳
+          echo '{\"device_id\":\"sim_mobile_001\",\"platform\":\"android\",\"status\":\"online\",\"timestamp\":'\"\$$(date +%s)\"'}' | \
+            mosquitto_pub -h mqtt -p 1883 -t yuledkcs/device/mobile/heartbeat -l &&
+          sleep 15
+        done
+      "
+    depends_on:
+      - mqtt
+      - backend
+    networks:
+      - yuledkcs-e2e
+    restart: unless-stopped
+
+  # ── E2E 测试运行器 ─────────────────────────────────────────────────────────
+  e2e-runner:
+    image: alpine:latest
+    container_name: yuledkcs-e2e-runner
+    command: >
+      sh -c "
+        apk add --no-cache curl jq bash &&
+        echo 'E2E Test Runner ready' &&
+        until curl -sf http://backend:8080/health/live > /dev/null 2>&1; do
+          echo 'Waiting for backend...'
+          sleep 3
+        done
+        echo 'All services ready - run tests manually:'
+        echo '  docker exec yuledkcs-e2e-runner /tests/e2e/test_full_key_lifecycle.sh http://backend:8080/api/v1'
+        echo '  docker exec yuledkcs-e2e-runner /tests/e2e/test_multi_protocol.sh http://backend:8080/api/v1'
+        tail -f /dev/null
+      "
+    volumes:
+      - ../../tests:/tests:ro
+    depends_on:
+      - backend
+      - mqtt
+    networks:
+      - yuledkcs-e2e
+
+networks:
+  yuledkcs-e2e:
+    name: yuledkcs-e2e-network
+    driver: bridge
+
+volumes:
+  postgres_e2e_data:
+    name: yuledkcs-e2e-postgres-data
+  redis_e2e_data:
+    name: yuledkcs-e2e-redis-data
+  mqtt_e2e_data:
+    name: yuledkcs-e2e-mqtt-data
+  go_e2e_cache:
+    name: yuledkcs-e2e-go-cache

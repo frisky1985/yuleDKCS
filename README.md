@@ -139,6 +139,21 @@ npm run test
 # 嵌入式测试
 cd embedded/build
 make test
+
+# E2E 集成测试 (需要 Docker)
+cd tests/e2e
+
+# 启动 E2E 测试环境
+docker compose up -d
+
+# 等待所有服务就绪后，运行完整钥匙生命周期测试
+./test_full_key_lifecycle.sh http://localhost:8081/api/v1
+
+# 运行多协议互操作测试
+./test_multi_protocol.sh http://localhost:8081/api/v1
+
+# 清理测试环境
+docker compose down -v
 ```
 
 ### 文档更新

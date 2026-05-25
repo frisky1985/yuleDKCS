@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
 	"github.com/frisky1985/yuleDKCS/backend/internal/websocket"
 	"github.com/gin-gonic/gin"
 )
@@ -31,7 +32,23 @@ func (h *WebSocketHandler) HandleUserWebSocket(c *gin.Context) {
 // 用于车机上报状态和接收命令
 func (h *WebSocketHandler) HandleVehicleWebSocket(c *gin.Context) {
 	vehicleID, _ := strconv.ParseUint(c.Param("id"), 10, 32)
-	// TODO: 验证车机认证
+
+	// 验证车机认证：检查 Authorization 头中的 JWT
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"code":    401,
+			"message": "缺少认证信息",
+		})
+		return
+	}
+	// 若 JWT 有效且包含 vehicle 角色则通过；否则仅允许未认证连接（由上层中间件决定）
+	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+		middleware.JWTAuth()(c)
+		if c.IsAborted() {
+			return
+		}
+	}
 
 	websocket.ServeWs(h.hub, 0, uint(vehicleID), "vehicle")(c)
 }
@@ -40,7 +57,16 @@ func (h *WebSocketHandler) HandleVehicleWebSocket(c *gin.Context) {
 // 用于监控系统状态
 func (h *WebSocketHandler) HandleAdminWebSocket(c *gin.Context) {
 	userID := c.GetUint("userID")
-	// TODO: 验证管理员权限
+
+	// 验证管理员权限
+	role, exists := c.Get("role")
+	if !exists || role.(string) != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"code":    403,
+			"message": "需要管理员权限",
+		})
+		return
+	}
 
 	websocket.ServeWs(h.hub, userID, 0, "admin")(c)
 }

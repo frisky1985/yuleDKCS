@@ -552,8 +552,27 @@ func (h *KeyHandler) ActivateKey(c *gin.Context) {
 	}
 
 	// 更新状态为激活
-	key.Status = "active"
-	// TODO: 调用服务层更新状态
+	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusActive); err != nil {
+		switch err {
+		case services.ErrKeyNotFound:
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    404,
+				"message": "钥匙不存在",
+			})
+		case services.ErrUnauthorized:
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    403,
+				"message": "无权激活此钥匙",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    500,
+				"message": "激活钥匙失败",
+				"error":   err.Error(),
+			})
+		}
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
@@ -593,8 +612,27 @@ func (h *KeyHandler) DeactivateKey(c *gin.Context) {
 	}
 
 	// 更新状态为停用
-	key.Status = "inactive"
-	// TODO: 调用服务层更新状态
+	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusInactive); err != nil {
+		switch err {
+		case services.ErrKeyNotFound:
+			c.JSON(http.StatusNotFound, gin.H{
+				"code":    404,
+				"message": "钥匙不存在",
+			})
+		case services.ErrUnauthorized:
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    403,
+				"message": "无权停用此钥匙",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    500,
+				"message": "停用钥匙失败",
+				"error":   err.Error(),
+			})
+		}
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
@@ -638,8 +676,8 @@ func (h *KeyHandler) GetKeyLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 
-	// TODO: 调用服务层获取日志
-	// 临时返回空数组
+	// NOTE: 调用服务层获取日志（需先实现 KeyLog 模型与仓库接口）
+	// 暂返回空数组
 	logs := []gin.H{}
 
 	c.JSON(http.StatusOK, gin.H{

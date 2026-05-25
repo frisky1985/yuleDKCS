@@ -31,6 +31,7 @@ type KeyService interface {
 	GetUserKeys(ctx context.Context, userID uint, page, pageSize int) ([]models.Key, int64, error)
 	GetVehicleKeys(ctx context.Context, vehicleID uint, userID uint, page, pageSize int) ([]models.Key, int64, error)
 	RevokeKey(ctx context.Context, keyID uint, userID uint) error
+	UpdateKeyStatus(ctx context.Context, keyID uint, userID uint, status models.KeyStatus) error
 	UpdateKeyPermissions(ctx context.Context, keyID uint, userID uint, permissions models.KeyPermissions) error
 	
 	// 钥匙分享
@@ -251,6 +252,21 @@ func (s *keyService) UpdateKeyPermissions(ctx context.Context, keyID uint, userI
 	}
 
 	return s.keyRepo.UpdatePermissions(ctx, keyID, permissions)
+}
+
+// UpdateKeyStatus 更新钥匙状态
+func (s *keyService) UpdateKeyStatus(ctx context.Context, keyID uint, userID uint, status models.KeyStatus) error {
+	key, err := s.keyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		return err
+	}
+
+	// 只有钥匙所有者可以修改状态
+	if key.UserID != userID {
+		return ErrUnauthorized
+	}
+
+	return s.keyRepo.UpdateStatus(ctx, keyID, status)
 }
 
 // ShareKey 分享钥匙

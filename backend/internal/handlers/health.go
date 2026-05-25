@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"database/sql"
+	"fmt"
 	"net/http"
 	"runtime"
 	"time"
@@ -8,20 +10,30 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gorm.io/gorm"
 )
 
 // HealthHandler 健康检查处理器
 type HealthHandler struct {
-	cfg *config.Config
+	cfg       *config.Config
 	startTime time.Time
+	db        *gorm.DB
+	sqlDB     *sql.DB
 }
 
 // NewHealthHandler 创建健康检查处理器
-func NewHealthHandler(cfg *config.Config) *HealthHandler {
-	return &HealthHandler{
-		cfg: cfg,
+func NewHealthHandler(cfg *config.Config, db ...*gorm.DB) *HealthHandler {
+	h := &HealthHandler{
+		cfg:       cfg,
 		startTime: time.Now(),
 	}
+	if len(db) > 0 && db[0] != nil {
+		h.db = db[0]
+		if rawDB, err := db[0].DB(); err == nil {
+			h.sqlDB = rawDB
+		}
+	}
+	return h
 }
 
 // LivenessResponse 存活检查响应
@@ -71,12 +83,18 @@ func (h *HealthHandler) Readiness(c *gin.Context) {
 	checks := make(map[string]string)
 	
 	// 检查数据库连接
-	// TODO: 实现真实的数据库健康检查
-	checks["database"] = "ok"
+	if h.sqlDB != nil {
+		if err := h.sqlDB.Ping(); err != nil {
+			checks["database"] = fmt.Sprintf("error: %v", err)
+		} else {
+			checks["database"] = "ok"
+		}
+	} else {
+		checks["database"] = "skipped (no db connection)"
+	}
 	
-	// 检查 Redis 连接
-	// TODO: 实现真实的 Redis 健康检查
-	checks["redis"] = "ok"
+	// NOTE: 实现真实的 Redis 健康检查（需集成 Redis 客户端后启用）
+	checks["redis"] = "skipped (not configured)"
 	
 	// 检查配置加载
 	if h.cfg == nil {

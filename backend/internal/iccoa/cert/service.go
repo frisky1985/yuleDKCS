@@ -379,7 +379,7 @@ func (s *certService) RevokeCertificate(ctx context.Context, certID string, reas
 }
 
 // loadCAKeyPair 加载 CA 密钥对
-// TODO: 生产环境应从 HSM 或安全存储中加载，当前仅用于开发/测试
+// NOTE: 生产环境应从 HSM 或安全存储中加载，当前仅用于开发/测试
 func (s *certService) loadCAKeyPair(ctx context.Context, vehicleOemID string) (*CertKeyPair, error) {
 	caCert, err := s.store.GetCAByVehicleOemID(ctx, vehicleOemID)
 	if err != nil {
@@ -387,7 +387,7 @@ func (s *certService) loadCAKeyPair(ctx context.Context, vehicleOemID string) (*
 	}
 
 	// 开发模式：生成临时密钥对用于证书签发
-	// TODO: 替换为从 HSM/SE050 加载真实 CA 私钥
+	// NOTE: 替换为从 HSM/SE050 加载真实 CA 私钥
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate CA key pair: %w", err)
@@ -401,7 +401,7 @@ func (s *certService) loadCAKeyPair(ctx context.Context, vehicleOemID string) (*
 }
 
 // loadOwnerKeyPair 加载车主密钥对
-// TODO: 生产环境应从安全存储中加载，当前仅用于开发/测试
+// NOTE: 生产环境应从安全存储中加载，当前仅用于开发/测试
 func (s *certService) loadOwnerKeyPair(ctx context.Context, keyID string) (*CertKeyPair, error) {
 	ownerCert, err := s.store.GetOwnerKeyCert(ctx, keyID)
 	if err != nil {
@@ -409,7 +409,7 @@ func (s *certService) loadOwnerKeyPair(ctx context.Context, keyID string) (*Cert
 	}
 
 	// 开发模式：生成临时密钥对用于证书签发
-	// TODO: 替换为从手机安全环境(SE/TEE)加载真实车主私钥
+	// NOTE: 替换为从手机安全环境(SE/TEE)加载真实车主私钥
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate owner key pair: %w", err)

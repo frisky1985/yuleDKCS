@@ -26,7 +26,7 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 	r.Use(middleware.CORS())
 
 	// 创建健康检查器
-	healthChecker := handlers.NewHealthHandler(cfg)
+	healthChecker := handlers.NewHealthHandler(cfg, gormDB)
 
 	// 健康检查端点
 	r.GET("/health", healthChecker.Liveness)

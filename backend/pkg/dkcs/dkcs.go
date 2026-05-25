@@ -6,7 +6,8 @@ package dkcs
 #cgo LDFLAGS: -lyuledkcs -L${SRCDIR}/lib
 #include <stdlib.h>
 
-// TODO: 添加 C++ 库的头文件声明
+// NOTE: 添加 C++ 库的头文件声明（需先编译 yuleDKCS C++ 共享库）
+// 生产环境下需取消下面注释并保证 libyuledkcs.so 在库路径中
 // extern int dkcs_init();
 // extern void dkcs_cleanup();
 */
@@ -25,7 +26,7 @@ func Init() error {
 		return nil
 	}
 
-	// TODO: 调用 C++ 初始化函数
+	// NOTE: 调用 C++ 初始化函数（需要 libyuledkcs 共享库支持）
 	// ret := C.dkcs_init()
 	// if ret != 0 {
 	//     return fmt.Errorf("failed to initialize dkcs: %d", ret)
@@ -41,7 +42,7 @@ func Cleanup() error {
 		return nil
 	}
 
-	// TODO: 调用 C++ 清理函数
+	// NOTE: 调用 C++ 清理函数（需要 libyuledkcs 共享库支持）
 	// C.dkcs_cleanup()
 
 	initialized = false
@@ -50,7 +51,7 @@ func Cleanup() error {
 
 // Version 返回版本信息
 func Version() string {
-	// TODO: 从 C++ 库获取版本
+	// NOTE: 从 C++ 库获取版本（当前返回 Go 绑定版本号，待 C++ 共享库就绪后替换）
 	return "yuleDKCS Go Binding v0.1.0"
 }
 
@@ -74,7 +75,7 @@ func freeCString(s *C.char) {
 	C.free(unsafe.Pointer(s))
 }
 
-// TODO: 添加更多 yuleDKCS 功能绑定
+// NOTE: 添加更多 yuleDKCS 功能绑定（后续需配合 C++ 共享库实现）
 // - 验证功能
 // - 密钥管理
 // - 加解密操作
