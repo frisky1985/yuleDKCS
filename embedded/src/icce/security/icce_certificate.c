@@ -17,6 +17,8 @@
 #include "icce.h"
 #include "icce_certificate.h"
 #include "dkcs.h"
+#include "sm3.h"
+#include "sm2.h"
 
 /******************************************************************************
  * 内部常量定义
@@ -463,19 +465,9 @@ static error_t sm3_hash(const uint8_t *data, size_t len, uint8_t digest[32])
     if (data == NULL || digest == NULL) {
         return ERROR_INVALID_PARAM;
     }
-    
-    /* 在真实实现中，这里应调用硬件SE或软件SM3实现
-     * 例如: 调用 SE 接口或第三方库如 gmssl, mbedtls-sm2 等
-     */
-    
-    /* 占位实现 - 实际项目中需替换为真实SM3 */
-    /* 此处仅返回错误，强制要求插件式实现 */
-    (void)len;
-    
-    /* TODO: 集成真实的SM3实现 */
-    /* 例如: return se_interface->sm3_hash(data, len, digest); */
-    
-    return ERROR_NOT_SUPPORTED;
+
+    sm3_digest(data, len, digest);
+    return OK;
 }
 
 /******************************************************************************
@@ -489,21 +481,11 @@ error_t icce_sm2_verify_signature(const uint8_t digest[32],
     if (digest == NULL || signature == NULL || public_key == NULL) {
         return ERROR_INVALID_PARAM;
     }
-    
-    /* 在真实实现中，这里应调用硬件SE或软件SM2实现 */
-    /* 例如: 调用 SE 接口: se_interface->sm2_verify(digest, 32, public_key, signature) */
-    
-    /* 占位实现 - 实际项目中需替换为真实SM2验签 */
-    
-    /* TODO: 集成真实的SM2验签实现 */
-    /* 例如: 
-     * sm2_context ctx;
-     * sm2_init(&ctx);
-     * sm2_load_public_key(&ctx, public_key);
-     * return sm2_verify(&ctx, digest, 32, signature);
-     */
-    
-    return ERROR_NOT_SUPPORTED;
+
+    int ret = sm2_verify(public_key, digest, signature);
+    if (ret == 0) return OK;
+    if (ret == -2) return ERROR_INVALID_PARAM;
+    return ICCE_ERR_VERIFY_SIGNATURE;
 }
 
 /******************************************************************************
