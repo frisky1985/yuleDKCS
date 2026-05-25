@@ -26,6 +26,16 @@
 #define SE050_CRYPTO_VERSION_MINOR      (0U)
 #define SE050_CRYPTO_VERSION_PATCH      (0U)
 
+/* SE050 APDU 状态字 */
+#define SE050_SW_SUCCESS_H              (0x90U)
+#define SE050_SW_SUCCESS_L              (0x00U)
+#define SE050_SW_SECURITY_STATUS_H      (0x63U)
+#define SE050_SW_SECURITY_STATUS_L      (0x00U)
+#define SE050_SW_KEY_NOT_FOUND_H        (0x6AU)
+#define SE050_SW_KEY_NOT_FOUND_L        (0x82U)
+#define SE050_SW_MEMORY_FAILURE_H       (0x65U)
+#define SE050_SW_MEMORY_FAILURE_L       (0x81U)
+
 /* SE050 APDU 命令定义 (根据 NXP SE050 APDU 规范) */
 #define SE050_INS_WRITE                 (0x01U)
 #define SE050_INS_READ                  (0x02U)
@@ -237,6 +247,55 @@ static error_t se050_aes_check_iv_len(se050_key_type_t type, size_t iv_len)
     }
 
     return result;
+}
+
+/******************************************************************************
+ * SE050 初始化和反初始化
+ ******************************************************************************/
+
+error_t se050_init(const se050_config_t *config)
+{
+    error_t result = OK;
+
+    if (config == NULL) {
+        result = ERROR_INVALID_PARAM;
+    } else if (g_se050_ctx.initialized == true) {
+        result = ERROR_ALREADY_INITIALIZED;
+    } else {
+        g_se050_ctx.initialized = false;
+        g_se050_ctx.config = *config;
+        g_se050_ctx.session_counter = 0U;
+        g_se050_ctx.session_state = 0U;
+
+        /* 初始化硬件层 */
+        /* 在实际系统中，应初始化 I2C/SPI 通信 */
+        /* 并执行 SE050 的 cold boot 序列 */
+
+        g_se050_ctx.initialized = true;
+    }
+
+    return result;
+}
+
+error_t se050_deinit(void)
+{
+    error_t result = OK;
+
+    if (g_se050_ctx.initialized == false) {
+        result = ERROR_NOT_INITIALIZED;
+    } else {
+        /* 安全清除上下文 */
+        g_se050_ctx.initialized = false;
+        g_se050_ctx.session_counter = 0U;
+        g_se050_ctx.session_state = 0U;
+    }
+
+    return result;
+}
+
+bool se050_is_initialized(void)
+{
+    return g_se050_ctx.initialized;
 }
 
 /******************************************************************************
@@ -517,7 +576,7 @@ error_t se050_export_public_key(
         offset++;
         apdu[offset] = 0x01U;  /* 读取公钥 */
         offset++;
-        apdu[offset] = P1_DEFAULT;
+        apdu[offset] = (uint8_t)SE050_P1_DEFAULT;
         offset++;
         apdu[offset] = 0x04U;  /* Lc */
         offset++;
@@ -572,7 +631,7 @@ error_t se050_delete_key(uint32_t key_id)
         offset++;
         apdu[offset] = 0x02U;  /* 删除密钥 */
         offset++;
-        apdu[offset] = P2_DEFAULT;
+        apdu[offset] = (uint8_t)SE050_P2_DEFAULT;
         offset++;
         apdu[offset] = 0x04U;  /* Lc */
         offset++;

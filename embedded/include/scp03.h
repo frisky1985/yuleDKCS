@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +24,19 @@ extern "C" {
 /*==============================================================================
  * CONSTANTS AND MACROS
  *============================================================================*/
+
+/** SCP03 success return code */
+#define SCP03_SUCCESS               0
+
+/** SCP03 error codes */
+#define SCP03_ERR_INVALID_PARAM    -1
+#define SCP03_ERR_KEY_DERIVATION   -2
+#define SCP03_ERR_AUTH             -3
+#define SCP03_ERR_COMM             -4
+#define SCP03_ERR_ENCRYPT          -5
+#define SCP03_ERR_MAC              -6
+#define SCP03_ERR_BUFFER           -7
+#define SCP03_ERR_SESSION_CLOSED   -8
 
 /** Key size in bytes - supports AES-128/192/256 */
 #define SCP03_KEY_SIZE_16   16  /**< AES-128 key size */
@@ -269,6 +283,73 @@ void scp03_session_init(scp03_session_t *session);
  * @param session       Pointer to session context
  */
 void scp03_session_clear(scp03_session_t *session);
+
+/**
+ * @brief Check if encryption is required for the given security level
+ *
+ * @param level     Security level to check
+ * @return true if encryption is required, false otherwise
+ */
+bool scp03_is_encryption_required(scp03_security_level_t level);
+
+/**
+ * @brief Check if MAC is required for the given security level
+ *
+ * @param level     Security level to check
+ * @return true if MAC is required, false otherwise
+ */
+bool scp03_is_mac_required(scp03_security_level_t level);
+
+/**
+ * @brief Compute AES-CMAC (RFC 4493)
+ *
+ * Public API for CMAC computation used by KDF and APDU security.
+ *
+ * @param key       AES key
+ * @param key_len   Key length in bytes (16, 24, or 32)
+ * @param data      Input data
+ * @param data_len  Data length
+ * @param mac       Output MAC buffer
+ * @param mac_len   Desired MAC length (max 16)
+ * @return 0 on success, negative error code on failure
+ */
+int scp03_aes_cmac(const uint8_t *key, size_t key_len,
+                   const uint8_t *data, size_t data_len,
+                   uint8_t *mac, size_t mac_len);
+
+/**
+ * @brief AES-CTR encryption (also used for decryption)
+ *
+ * @param key       AES key
+ * @param key_len   Key length in bytes
+ * @param iv        Initial counter value (16 bytes)
+ * @param iv_len    IV length (must be 16)
+ * @param input     Plaintext input
+ * @param output    Ciphertext output
+ * @param data_len  Data length
+ * @return 0 on success, negative error code on failure
+ */
+int scp03_aes_ctr_encrypt(const uint8_t *key, size_t key_len,
+                          const uint8_t *iv, size_t iv_len,
+                          const uint8_t *input, uint8_t *output,
+                          size_t data_len);
+
+/**
+ * @brief AES-CTR decryption (identical to encryption)
+ *
+ * @param key       AES key
+ * @param key_len   Key length in bytes
+ * @param iv        Initial counter value (16 bytes)
+ * @param iv_len    IV length (must be 16)
+ * @param input     Ciphertext input
+ * @param output    Plaintext output
+ * @param data_len  Data length
+ * @return 0 on success, negative error code on failure
+ */
+int scp03_aes_ctr_decrypt(const uint8_t *key, size_t key_len,
+                          const uint8_t *iv, size_t iv_len,
+                          const uint8_t *input, uint8_t *output,
+                          size_t data_len);
 
 #ifdef __cplusplus
 }

@@ -721,38 +721,10 @@ int scp03_unwrap_apdu(scp03_session_t *session,
 
 /*==============================================================================
  * SESSION INITIALIZATION AND CLEANUP
+ *
+ * NOTE: scp03_session_init() and scp03_session_clear() are implemented
+ * in scp03_session.c to avoid ODR violations. Only wrappers that delegate
+ * to the canonical implementation are provided here.
  *============================================================================*/
 
-void scp03_session_init(scp03_session_t *session)
-{
-    if (session == NULL) {
-        return;
-    }
-    
-    memset(session, 0, sizeof(scp03_session_t));
-    session->mac_counter = 1;
-    session->first_command = 1;
-}
-
-void scp03_session_clear(scp03_session_t *session)
-{
-    if (session == NULL) {
-        return;
-    }
-    
-    /* Securely clear session keys */
-    for (int i = 0; i < SCP03_KEY_COUNT; i++) {
-        memset(session->session_keys[i], 0, SCP03_KEY_SIZE_32);
-    }
-    
-    /* Clear all sensitive data */
-    memset(session->mac_chaining_value, 0, SCP03_ICV_SIZE);
-    memset(session->host_challenge, 0, SCP03_CHALLENGE_SIZE);
-    memset(session->card_challenge, 0, SCP03_CHALLENGE_SIZE);
-    memset(session->session_id, 0, SCP03_CHALLENGE_SIZE);
-    memset(session->icv, 0, SCP03_ICV_SIZE);
-    
-    /* Reset flags */
-    session->session_open = 0;
-    session->first_command = 0;
-}
+/* scp03_session_init and scp03_session_clear implemented in scp03_session.c */

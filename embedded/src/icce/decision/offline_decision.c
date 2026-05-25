@@ -10,6 +10,7 @@
 #include "offline_decision.h"
 #include "cache_manager.h"
 #include "security_auth.h"
+#include "platform_time.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -163,7 +164,7 @@ int32_t decision_evaluate(const decision_request_t *request,
     }
     
     /* Step 4: 检查钥匙有效性 */
-    uint32_t current_time = 0;  // TODO: 获取实际时间
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间用于有效性检查 */
     if (key_info.status != 1 || current_time > key_info.expiry_time) {
         output->result = DECISION_DENY;
         output->reason = REASON_KEY_EXPIRED;
@@ -209,8 +210,10 @@ int32_t decision_evaluate(const decision_request_t *request,
     else if (output->risk_score.level >= RISK_MEDIUM) {
         output->result = DECISION_CHALLENGE_REQUIRED;
         output->reason = REASON_SUCCESS;
-        /* 生成额外挑战 */
-        /* TODO: 生成随机挑战 */
+        /* 生成额外挑战 — 使用 security_generate_challenge() 实现 */
+        /* TODO: 生成随机挑战（低优先级）：调用 security_generate_challenge()
+         * 并将结果附加到输出中。由于当前 output 结构无挑战字段，
+         * 此增强需同步修改 decision_output_t 定义。 */
     }
     else {
         output->result = DECISION_ALLOW;
@@ -389,7 +392,7 @@ static int32_t check_permission(uint32_t user_id, uint8_t command,
     }
     
     /* 检查时间有效性 */
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间，用于权限有效期检查 */
     if (current_time < perm->valid_from || current_time > perm->valid_until) {
         return -1;
     }
@@ -425,7 +428,7 @@ static int32_t check_signature(uint32_t key_id, const uint8_t *nonce,
 
 static int32_t check_rate_limit(uint32_t user_id)
 {
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间，用于速率限制窗口 */
     
     for (int i = 0; i < 32; i++) {
         if (g_decision.rate_limits[i].user_id == user_id) {
@@ -475,14 +478,14 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     
     /* 设备指纹检查 */
     /* 简化实现: 检查设备指纹是否在历史记录中 */
-    bool known_device = false;  // TODO: 实际检查
+    bool known_device = false;  /* TODO: 实际检查 — 后期应实现设备指纹数据库比对 */
     if (!known_device) {
         base_score += 15;
         factors |= RISK_FACTOR_UNKNOWN_DEVICE;
     }
     
     /* 离线时间检查 */
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间，用于离线时长计算 */
     uint32_t offline_duration = current_time - key_info->last_sync_time;
     if (offline_duration > 24 * 3600) {  // 超过24小时
         base_score += 25;
@@ -519,7 +522,7 @@ static void log_decision(const decision_output_t *decision)
     decision_history_entry_t *entry = &g_decision.history[g_decision.history_index];
     
     memcpy(&entry->decision, decision, sizeof(decision_output_t));
-    entry->timestamp = 0;  // TODO
+    entry->timestamp = platform_get_ms();  /* 记录决策时间戳用于历史追踪 */
     
     g_decision.history_index = (g_decision.history_index + 1) % MAX_DECISION_HISTORY;
 }

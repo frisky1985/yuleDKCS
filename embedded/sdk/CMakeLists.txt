@@ -20,7 +20,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # ---- mbedtls 精简库 ----
 # 使用项目自带的 mbedtls 源码，自定义配置
-set(MBEDTLS_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_config.h")
+set(MBEDTLS_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/mbedtls_config.h")
 
 add_library(mbedcrypto STATIC
     mbedtls/library/aes.c
@@ -36,8 +36,9 @@ add_library(mbedcrypto STATIC
     mbedtls/library/entropy.c
     mbedtls/library/entropy_poll.c
     mbedtls/library/gcm.c
+    mbedtls/library/hkdf.c
     mbedtls/library/md.c
-    mbedtls/library/oID.c
+    mbedtls/library/oid.c
     mbedtls/library/pem.c
     mbedtls/library/pk.c
     mbedtls/library/pkparse.c
@@ -50,7 +51,8 @@ add_library(mbedcrypto STATIC
 )
 
 target_include_directories(mbedcrypto PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include>
+    $<INSTALL_INTERFACE:include/mbedtls>
 )
 
 target_compile_definitions(mbedcrypto PRIVATE
@@ -65,8 +67,9 @@ add_library(sm_crypto STATIC
 )
 
 target_include_directories(sm_crypto PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/sm/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/sm/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mbedtls/include>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(sm_crypto PUBLIC mbedcrypto)

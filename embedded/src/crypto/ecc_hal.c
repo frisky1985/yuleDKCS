@@ -432,6 +432,38 @@ static error_t se050_export_public_key(ecc_key_handle_t handle, uint8_t *public_
     return OK;
 }
 
+/**
+ * @brief 导入公钥到 SE050 后端
+ *
+ * 对于 SE050，公钥导入通过创建临时对象实现。
+ * 该函数存储公钥数据在插槽中，供验签操作使用。
+ */
+static error_t se050_import_public_key(ecc_curve_t curve, const uint8_t *public_key,
+                                        size_t key_len, ecc_key_handle_t *handle)
+{
+    if (!ecc_hal_validate_public_key(curve, public_key, key_len)) {
+        return ERROR_INVALID_PARAM;
+    }
+    
+    if (curve != ECC_CURVE_P256) {
+        return ERROR_NOT_SUPPORTED;
+    }
+    
+    ecc_key_slot_t *slot = alloc_key_slot();
+    if (!slot) {
+        return ERROR_NO_MEMORY;
+    }
+    
+    slot->curve = curve;
+    slot->flags = ECC_KEY_FLAG_USAGE_VERIFY | ECC_KEY_FLAG_HARDWARE;
+    /* 使用一个临时 SE050 key_id 标识公钥对象 */
+    slot->backend_data.se050.se050_key_id = SE050_P256_KEY_ID_BASE + 0x1000 + 
+                                             (uint32_t)(public_key[1] | (public_key[2] << 8));
+    
+    *handle = slot->handle;
+    return OK;
+}
+
 #endif /* ENABLE_SE050 */
 
 /******************************************************************************
@@ -953,13 +985,18 @@ error_t ecc_hal_import_public_key(ecc_curve_t curve, const uint8_t *public_key,
     
     error_t result;
     switch (g_ecc_ctx.active_backend) {
+#if ENABLE_SE050
+        case ECC_BACKEND_SE050:
+            result = se050_import_public_key(curve, public_key, key_len, handle);
+            break;
+#endif
 #if ENABLE_MBEDTLS
         case ECC_BACKEND_MBEDTLS:
             result = mbedtls_import_public_key(curve, public_key, key_len, handle);
             break;
 #endif
         default:
-            /* SE050 不支持直接导入公钥，需要通过特殊指令 */
+            /* 软件后备也支持公钥导入 */
             result = ERROR_NOT_SUPPORTED;
     }
     

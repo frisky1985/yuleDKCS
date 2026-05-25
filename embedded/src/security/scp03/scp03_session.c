@@ -13,6 +13,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+/* Include mbedTLS for AES-ECB operations used in CMAC subkey generation */
+#include "mbedtls/cipher.h"
+
 /*==============================================================================
  * KDF LABELS (GlobalPlatform SCP03 Specification)
  *============================================================================*/
@@ -359,6 +362,16 @@ int scp03_unwrap_apdu(scp03_session_t *session,
  * STATIC FUNCTION IMPLEMENTATIONS
  *============================================================================*/
 
+bool scp03_is_encryption_required(scp03_security_level_t level)
+{
+    return ((level == SCP03_I_0C) || (level == SCP03_I_14));
+}
+
+bool scp03_is_mac_required(scp03_security_level_t level)
+{
+    return ((level == SCP03_I_04) || (level == SCP03_I_0C) || (level == SCP03_I_14));
+}
+
 static void secure_clear(void *ptr, size_t len)
 {
     volatile uint8_t *p = (volatile uint8_t *)ptr;
@@ -414,12 +427,12 @@ static int aes_ecb_encrypt(
     const uint8_t *plaintext,
     uint8_t *ciphertext)
 {
-    /* 
-     * This is a simplified AES-ECB implementation for key derivation.
-     * In production, this should use hardware acceleration via SE050
-     * or a proper software AES implementation.
-     */
-    
+    mbedtls_cipher_context_t ctx;
+    const mbedtls_cipher_info_t *cipher_info;
+    mbedtls_cipher_type_t cipher_type;
+    size_t out_len = 0;
+    int ret;
+
     /* Validate parameters */
     if ((key == NULL) || (plaintext == NULL) || (ciphertext == NULL)) {
         return -1;
@@ -429,19 +442,42 @@ static int aes_ecb_encrypt(
         return -1;
     }
 
-    /* 
-     * TODO: Replace with actual AES-ECB implementation
-     * For now, this is a stub that would need to be connected to:
-     * 1. SE050 AES operations, or
-     * 2. A software AES library (like mbedTLS)
-     */
-    
-    (void)key;
-    (void)key_len;
-    
-    /* Copy plaintext to ciphertext (placeholder) */
-    memcpy(ciphertext, plaintext, 16);
-    
+    /* Select cipher type based on key length */
+    if (key_len == 16U) {
+        cipher_type = MBEDTLS_CIPHER_AES_128_ECB;
+    } else if (key_len == 24U) {
+        cipher_type = MBEDTLS_CIPHER_AES_192_ECB;
+    } else {
+        cipher_type = MBEDTLS_CIPHER_AES_256_ECB;
+    }
+
+    mbedtls_cipher_init(&ctx);
+
+    cipher_info = mbedtls_cipher_info_from_type(cipher_type);
+    if (cipher_info == NULL) {
+        mbedtls_cipher_free(&ctx);
+        return -1;
+    }
+
+    ret = mbedtls_cipher_setup(&ctx, cipher_info);
+    if (ret != 0) {
+        mbedtls_cipher_free(&ctx);
+        return -1;
+    }
+
+    ret = mbedtls_cipher_setkey(&ctx, key, (int)(key_len * 8), MBEDTLS_ENCRYPT);
+    if (ret != 0) {
+        mbedtls_cipher_free(&ctx);
+        return -1;
+    }
+
+    ret = mbedtls_cipher_update(&ctx, plaintext, 16, ciphertext, &out_len);
+    if (ret != 0) {
+        mbedtls_cipher_free(&ctx);
+        return -1;
+    }
+
+    mbedtls_cipher_free(&ctx);
     return 0;
 }
 

@@ -13,6 +13,7 @@
  */
 
 #include "iccoa_digital_key.h"
+#include "platform_time.h"
 #include <stdlib.h>
 
 /* ========================================================================
@@ -157,7 +158,7 @@ static int32_t dk40_alloc_session(const uint8_t *peer_id)
 
             memcpy(g_sessions[i].peer_id, peer_id, 16);
             g_sessions[i].state = SESSION_STATE_BIND_PENDING;
-            g_sessions[i].last_activity = 0; /* TODO: 获取时间戳 */
+            g_sessions[i].last_activity = platform_get_ms(); /* 获取时间戳 */
             g_sessions[i].last_msg_id = 0;
             g_sessions[i].permissions = 0;
             g_sessions[i].last_distance = -1;
@@ -263,7 +264,18 @@ static int32_t handle_bind(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload, 
     /* 验证签名 (SE050) */
     extern int se050_verify_ecdsa(const uint8_t *pub_key, const uint8_t *hash,
                                    const uint8_t *sig, uint16_t sig_len);
-    /* TODO: 计算 hash = SHA256(peer_id || pub_key || session_token) */
+    extern int crypto_sha256(const uint8_t *in, uint16_t in_len, uint8_t *out);
+    /* 计算 hash = SHA256(peer_id || pub_key || session_token) */
+    uint8_t hash_input[16 + 64 + 4];
+    uint8_t hash_output[32];
+    memcpy(hash_input, g_sessions[idx].peer_id, 16);
+    memcpy(hash_input + 16, pub_key, 64);
+    memcpy(hash_input + 80, g_sessions[idx].token, 4);
+    crypto_sha256(hash_input, sizeof(hash_input), hash_output);
+    int32_t verify_ret = se050_verify_ecdsa(pub_key, hash_output, sig, 72);
+    if (verify_ret != 0) {
+        return ICCOA_ERR_SECURITY;
+    }
 
     /* 存储用户公钥和权限 */
     g_sessions[idx].permissions = requested_perm;
@@ -271,7 +283,9 @@ static int32_t handle_bind(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload, 
 
     /* Response: [result(1)] + [vehicle_pub_key(64)] */
     rsp_payload[0] = 0x00; /* 成功 */
-    /* TODO: 填充车辆公钥 */
+    /* 填充车辆公钥 — 从SE050获取本端公钥，填入rsp_payload+1 */
+    extern int se050_key_get_vehicle_pubkey(uint8_t *pubkey_out);
+    se050_key_get_vehicle_pubkey(rsp_payload + 1);
     *rsp_len = 65;
 
     return ICCOA_OK;
@@ -389,7 +403,11 @@ static int32_t handle_share(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload,
     /* Payload: [friend_id(16)] + [permissions(1)] + [valid_hours(2)] */
     if (req->payload_len < 19) return ICCOA_ERR_PARAM;
 
-    /* TODO: 生成分享钥匙并上传云端 */
+    /* TODO: 生成分享钥匙并上传云端 — 此功能需要云端API配合:
+     * 1. 调用 se050_key_generate_shared(req->payload, req->payload[16], valid_hours)
+     * 2. 通过 MQTT/HTTPS 上传分享钥材料至云端
+     * 3. 云端将分享钥匙下发至目标设备 */
+    (void)req;
     rsp_payload[0] = 0x00;
     *rsp_len = 1;
 

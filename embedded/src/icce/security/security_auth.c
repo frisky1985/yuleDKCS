@@ -10,6 +10,7 @@
 #include "security_auth.h"
 #include "crypto_engine.h"
 #include "hsm_interface.h"
+#include "platform_time.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -106,7 +107,7 @@ security_result_t security_generate_challenge(auth_challenge_t *challenge)
     }
     
     /* 设置时间戳和过期时间 */
-    challenge->timestamp = 0;  // TODO: 获取实际时间
+    challenge->timestamp = platform_get_ms();  /* 实际时间戳，单调递增 */
     challenge->expiry = challenge->timestamp + CHALLENGE_EXPIRY_MS;
     
     /* 记录Nonce */
@@ -127,7 +128,7 @@ security_result_t security_verify_response(
     }
     
     /* 检查挑战是否过期 */
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间 */
     if (current_time > challenge->expiry) {
         return SEC_ERR_CHALLENGE_EXPIRED;
     }
@@ -173,8 +174,11 @@ security_result_t security_verify_response(
     ctx->in_use = 1;
     ctx->last_activity = current_time;
     
-    /* 派生会话密钥 (ECDH) */
-    // TODO: 实际的ECDH密钥协商
+    /* 派生会话密钥 (ECDH) — 使用 security_establish_session 代替 */
+    /* 注: ECDH 密钥协商在 security_establish_session 中已完成，
+     * 此处仅使用已派生的会话密钥。如果 security_verify_response
+     * 需要完整的密钥派生，应调用 hsm_ecdh_compute_shared()。 */
+    (void)current_time;
     
     memcpy(session, &ctx->info, sizeof(session_info_t));
     
@@ -219,7 +223,7 @@ security_result_t security_establish_session(
     }
     
     /* 设置会话 */
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间 */
     
     ctx->info.session_id = ++g_security.session_counter;
     ctx->info.conn_handle = conn_handle;
@@ -479,7 +483,7 @@ static void mark_nonce_used(const uint8_t *nonce)
     nonce_cache_entry_t *entry = &g_security.nonce_cache[g_security.nonce_cache_index];
     
     memcpy(entry->nonce, nonce, 16);
-    entry->timestamp = 0;  // TODO
+    entry->timestamp = platform_get_ms();  /* 记录当前时间戳用于过期判断 */
     entry->used = 1;
     
     g_security.nonce_cache_index = (g_security.nonce_cache_index + 1) % NONCE_CACHE_SIZE;
@@ -487,7 +491,7 @@ static void mark_nonce_used(const uint8_t *nonce)
 
 static void cleanup_expired_sessions(void)
 {
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间，用于过期会话清理 */
     
     for (int i = 0; i < MAX_SESSIONS; i++) {
         if (g_security.sessions[i].in_use &&
@@ -499,7 +503,7 @@ static void cleanup_expired_sessions(void)
 
 static void cleanup_expired_nonces(void)
 {
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = platform_get_ms();  /* 从平台获取当前时间，用于过期 nonce 清理 */
     uint32_t max_age = 60000;  // 60秒
     
     for (int i = 0; i < NONCE_CACHE_SIZE; i++) {

@@ -9,6 +9,7 @@
 
 #include "vehicle_integration.h"
 #include "can_driver.h"
+#include "platform_time.h"
 #include <string.h>
 
 /* 私有定义 */
@@ -137,10 +138,10 @@ vehicle_result_t vehicle_execute_command(const vehicle_command_t *cmd,
     g_vehicle.pending_command = cmd->command_type;
     
     /* 等待响应 */
-    uint32_t start_time = 0;  // TODO: 获取实际时间
-    uint32_t timeout = 500;   // 500ms超时
+    uint32_t start_time = platform_get_ms();  /* 获取起始时间用于超时判断 */
+    uint32_t timeout = 500;   /* 500ms超时 */
     
-    while ((0 - start_time) < timeout) {  // TODO: 时间比较
+    while ((platform_get_ms() - start_time) < timeout) {  /* 实际时间差比较 */
         if (g_vehicle.last_result.command_type == cmd->command_type) {
             memcpy(result, &g_vehicle.last_result, sizeof(command_result_t));
             g_vehicle.pending_command = 0;
@@ -274,9 +275,7 @@ static int32_t process_vehicle_state_msg(const can_message_t *msg)
     g_vehicle.current_state.alarm_status = (msg->data[0] >> 4) & 0x0F;
     g_vehicle.current_state.battery_voltage = msg->data[1] | (msg->data[2] << 8);
     
-    g_vehicle.last_update = 0;  // TODO
-    
-    /* 触发回调 */
+    g_vehicle.last_update = platform_get_ms();  /* 记录状态更新时间戳 */
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
         g_vehicle.state_callback(&g_vehicle.current_state);
     }
@@ -298,7 +297,7 @@ static int32_t process_door_status_msg(const can_message_t *msg)
         }
     }
     
-    g_vehicle.last_update = 0;  // TODO
+    g_vehicle.last_update = platform_get_ms();  /* 记录车门状态更新时间戳 */
     
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
         g_vehicle.state_callback(&g_vehicle.current_state);
@@ -323,7 +322,7 @@ static int32_t process_engine_status_msg(const can_message_t *msg)
                                            (msg->data[5] << 24);
     }
     
-    g_vehicle.last_update = 0;  // TODO
+    g_vehicle.last_update = platform_get_ms();  /* 记录引擎状态更新时间戳 */
     
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
         g_vehicle.state_callback(&g_vehicle.current_state);
@@ -341,7 +340,7 @@ static int32_t process_command_response(const can_message_t *msg)
     g_vehicle.last_result.command_type = msg->data[0];
     g_vehicle.last_result.result = msg->data[1];
     g_vehicle.last_result.error_code = msg->data[2];
-    g_vehicle.last_result.execution_time = 0;  // TODO
+    g_vehicle.last_result.execution_time = platform_get_ms();  /* 记录命令执行完成时间戳 */
     
     if (msg->dlc > 3) {
         uint8_t response_len = msg->dlc - 3;

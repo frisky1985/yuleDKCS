@@ -205,7 +205,7 @@ endif()
 # 安装
 include(GNUInstallDirs)
 
-install(TARGETS DKCS
+install(TARGETS DKCS mbedcrypto sm_crypto
     EXPORT DKCSTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

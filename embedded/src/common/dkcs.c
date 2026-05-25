@@ -12,6 +12,7 @@
 #include "ccc.h"
 #include "icce.h"
 #include "iccoa.h"
+#include "platform_time.h"
 
 /******************************************************************************
  * 内部状态
@@ -152,7 +153,10 @@ error_t dkcs_pairing_start(
                 return ret;
             }
             
-            /* TODO: 发送配对请求并处理响应 */
+            /* TODO: 发送配对请求并处理响应 — 通过 BLE/NFC 传输层发送
+             * ccc_session->request 中已包含构造完成的配对请求数据,
+             * 后续应调用 ble_send(ccc_session->request, request_len) 发送,
+             * 并等待手机回复后调用 ccc_handle_pairing_response() 处理。 */
             
             callback(OK, NULL, user_ctx);
             break;
@@ -170,7 +174,11 @@ error_t dkcs_pairing_start(
                 return ret;
             }
             
-            /* TODO: 完整配对流程 */
+            /* TODO: 完整配对流程 — ICCE 配对应包含:
+             * 1. icce_pairing_send_request(icce_session) 通过传输层发送
+             * 2. icce_pairing_handle_response(icce_session, response, len)
+             * 3. 验证手机证书并派生会话密钥
+             * 4. 完成后回调 callback(OK, &icce_info, user_ctx) */
             
             icce_session_destroy(icce_session);
             callback(OK, NULL, user_ctx);
@@ -189,7 +197,11 @@ error_t dkcs_pairing_start(
                 return ret;
             }
             
-            /* TODO: 完整配对流程 */
+            /* TODO: 完整配对流程 — ICCOA 配对应包含:
+             * 1. iccoa_pairing_send_request(iccoa_session) 通过 BLE/UWB 发送
+             * 2. iccoa_pairing_handle_response(iccoa_session, response, len)
+             * 3. 派生会话密钥并建立安全通道
+             * 4. 完成后回调 callback(OK, NULL, user_ctx) */
             
             iccoa_session_destroy(iccoa_session);
             callback(OK, NULL, user_ctx);
@@ -350,10 +362,13 @@ error_t dkcs_key_list(key_info_t *keys, size_t *key_count)
         return ERROR_INVALID_PARAM;
     }
     
-    /* TODO: 从安全存储读取钥匙列表 */
+    /* TODO: 从安全存储读取钥匙列表 — 应调用 storage_list_keys() 遍历安全存储区
+     * 1. 调用 se050_key_enumerate() 获取所有钥匙句柄
+     * 2. 对每个句柄调用 se050_key_get_info() 填充 key_info
+     * 3. 如果 *key_count 不足, 返回 ERROR_BUFFER_TOO_SMALL */
+    *key_count = 0;
     
     return OK;
-}
 
 /******************************************************************************
  * 导入钥匙
