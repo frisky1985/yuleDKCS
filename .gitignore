@@ -1,0 +1,62 @@
+# === 编译产物 ===
+*.o
+*.a
+*.out
+*.obj
+*.lib
+*.dll
+*.so
+*.dylib
+
+# === 构建目录 ===
+build/
+cmake-build-*/
+backend/bin/
+frontend/dist/
+frontend/.next/
+
+# === Go ===
+backend/vendor/
+
+# === Node.js ===
+node_modules/
+frontend/node_modules/
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === 安全与凭证 ===
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+*.cert
+**/secrets/
+credentials.json
+
+# === 日志 ===
+*.log
+logs/
+embedded/sdk/mbedtls/build/
+
+# === 操作系统 ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Docker ===
+.docker/

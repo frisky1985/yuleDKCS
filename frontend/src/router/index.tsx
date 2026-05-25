@@ -5,6 +5,8 @@ import DashboardPage from '../pages/Dashboard'
 import KeysPage from '../pages/KeysPage'
 import KeyDetailPage from '../pages/KeyDetailPage'
 import KeyUsageLogsPage from '../pages/KeyUsageLogsPage'
+import VehiclesPage from '../pages/VehiclesPage'
+import VehicleDetailPage from '../pages/VehicleDetailPage'
 
 // 受保护路由组件
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -59,6 +61,22 @@ const AppRouter = () => {
           element={
             <ProtectedRoute>
               <KeyUsageLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vehicles"
+          element={
+            <ProtectedRoute>
+              <VehiclesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vehicles/:vehicleId"
+          element={
+            <ProtectedRoute>
+              <VehicleDetailPage />
             </ProtectedRoute>
           }
         />

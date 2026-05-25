@@ -11,6 +11,7 @@
  ******************************************************************************/
 
 #include "uwb_hal.h"
+#include "dw3000_spi_bus.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -508,10 +509,20 @@ static int dw3000_read_reg(dw3000_context_t *ctx, uint32_t reg_addr, uint8_t *da
         header_len = 3;
     }
     
-    /* SPI交互 (平台特定) */
-    /* 实际应调用dw3000_spi_read等函数 */
-    
-    return 0;
+    /* 通过 SPI 总线读取 */
+    const dw3000_spi_bus_t *bus = dw3000_spi_bus_get();
+    if (!bus || !bus->read) {
+        return DW3000_SPI_ERROR_PARAM;
+    }
+
+    /* 构建 SPI 读命令头 + 读取数据 */
+    /* DW3000 读操作: 发送 header 后接收 len 字节数据 */
+    uint8_t header_with_rw[sizeof(header) + 1];
+    memcpy(header_with_rw, header, header_len);
+    header_with_rw[header_len] = 0x00;  /* 填充字节 (DW3000 协议) */
+
+    /* 发送 header + 接收数据 */
+    return bus->transfer(header_with_rw, data, len);
 }
 
 static int dw3000_write_reg(dw3000_context_t *ctx, uint32_t reg_addr, const uint8_t *data, size_t len)
@@ -533,8 +544,21 @@ static int dw3000_write_reg(dw3000_context_t *ctx, uint32_t reg_addr, const uint
         header[2] = (uint8_t)(reg_addr & 0x7F);
         header_len = 3;
     }
-    
-    return 0;
+
+    /* 通过 SPI 总线写入 */
+    const dw3000_spi_bus_t *bus = dw3000_spi_bus_get();
+    if (!bus || !bus->write) {
+        return DW3000_SPI_ERROR_PARAM;
+    }
+
+    /* 构建 SPI 写命令 + 数据: header + data 连续传输 */
+    uint8_t tx_buf[sizeof(header) + 256];
+    memcpy(tx_buf, header, header_len);
+    if (data && len > 0) {
+        memcpy(tx_buf + header_len, data, len);
+    }
+
+    return bus->write(reg_addr, tx_buf, header_len + len);
 }
 
 static int dw3000_read_32(dw3000_context_t *ctx, uint32_t reg_addr, uint32_t *value)
