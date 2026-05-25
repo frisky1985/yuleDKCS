@@ -115,6 +115,39 @@ interface YuleDKCSApi {
     ): Response<ApiResponse>
     
     // ========== Vehicles ==========
+    @POST("vehicles")
+    suspend fun registerVehicle(
+        @Header("Authorization") token: String,
+        @Body request: VehicleRegistrationRequest
+    ): Response<RegisterVehicleResponse>
+
+    @GET("vehicles")
+    suspend fun listVehicles(
+        @Header("Authorization") token: String,
+        @Query("page") page: Int? = null,
+        @Query("page_size") pageSize: Int? = null
+    ): Response<VehiclesListResponse>
+
+    @GET("vehicles/{vehicleId}")
+    suspend fun getVehicleDetail(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String
+    ): Response<VehicleDetailResponse>
+
+    @POST("vehicles/{vehicleId}/commands")
+    suspend fun sendCommand(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String,
+        @Body command: SendCommandRequest
+    ): Response<CommandActionResponse>
+
+    @GET("vehicles/{vehicleId}/commands/{commandId}")
+    suspend fun getCommandStatus(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String,
+        @Path("commandId") commandId: String
+    ): Response<CommandStatusResponse>
+
     @GET("vehicles/{vehicleId}/status")
     suspend fun getVehicleStatus(
         @Header("Authorization") token: String,
@@ -200,7 +233,7 @@ data class KeyActionResponse(
 )
 
 data class ShareKeyRequest(
-    val shared_to_username: String,
+    val user_id: Long,
     val expires_at: String?,
     val permissions: Map<String, Boolean>
 )
@@ -269,4 +302,84 @@ data class IssueKeyRequest(
     val name: String?,
     val description: String?,
     val permissions: Map<String, Boolean>?
+)
+
+// ========== Vehicle Endpoint Data Classes ==========
+
+data class VehicleRegistrationRequest(
+    val vin: String,
+    val plate: String?,
+    val model: String?,
+    val manufacturer: String?,
+    val year: Int?,
+    val color: String?
+)
+
+data class RegisterVehicleResponse(
+    val code: Int,
+    val message: String,
+    val data: VehicleData?
+)
+
+data class VehiclesListResponse(
+    val code: Int,
+    val message: String,
+    val data: VehiclesListData?
+)
+
+data class VehiclesListData(
+    val vehicles: List<VehicleData>,
+    val total: Int,
+    val page: Int,
+    val page_size: Int
+)
+
+data class VehicleDetailResponse(
+    val code: Int,
+    val message: String,
+    val data: VehicleData?
+)
+
+data class VehicleData(
+    val id: String,
+    val vin: String,
+    val plate: String?,
+    val model: String?,
+    val manufacturer: String?,
+    val year: Int?,
+    val color: String?,
+    val status: String,
+    val is_online: Boolean,
+    val last_seen: Long?,
+    val battery_level: Int?,
+    val created_at: String,
+    val updated_at: String?
+)
+
+data class SendCommandRequest(
+    val command: String,
+    val key_id: String?,
+    val params: Map<String, String>?
+)
+
+data class CommandActionResponse(
+    val code: Int,
+    val message: String,
+    val data: CommandData?
+)
+
+data class CommandStatusResponse(
+    val code: Int,
+    val message: String,
+    val data: CommandData?
+)
+
+data class CommandData(
+    val id: String,
+    val vehicle_id: String,
+    val command: String,
+    val status: String,
+    val result: String?,
+    val created_at: String,
+    val completed_at: String?
 )

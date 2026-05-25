@@ -173,20 +173,6 @@ public enum Command: CustomStringConvertible {
 
 // MARK: - Share
 
-public struct ShareKeyRequest: Codable {
-    public let recipient: String
-    public let permissions: [String]
-    public let expiresInDays: Int
-    public let message: String?
-    
-    public init(recipient: String, permissions: [String], expiresInDays: Int, message: String? = nil) {
-        self.recipient = recipient
-        self.permissions = permissions
-        self.expiresInDays = expiresInDays
-        self.message = message
-    }
-}
-
 public struct ShareKeyResponse: Codable {
     public let shareId: String
     public let qrCodeUrl: String

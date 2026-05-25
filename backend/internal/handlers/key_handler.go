@@ -54,7 +54,7 @@ func (h *KeyHandler) IssueKey(c *gin.Context) {
 	}
 
 	// 从上下文中获取用户ID
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -96,7 +96,7 @@ func (h *KeyHandler) IssueKey(c *gin.Context) {
 // GetUserKeys 获取用户钥匙列表
 // GET /api/v1/keys
 func (h *KeyHandler) GetUserKeys(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -139,7 +139,7 @@ func (h *KeyHandler) GetUserKeys(c *gin.Context) {
 // GetKeyDetail 获取钥匙详情
 // GET /api/v1/keys/:id
 func (h *KeyHandler) GetKeyDetail(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -190,7 +190,7 @@ func (h *KeyHandler) GetKeyDetail(c *gin.Context) {
 // ShareKey 分享钥匙
 // POST /api/v1/keys/:id/share
 func (h *KeyHandler) ShareKey(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -261,7 +261,7 @@ func (h *KeyHandler) ShareKey(c *gin.Context) {
 // RevokeKey 撤销钥匙
 // DELETE /api/v1/keys/:id
 func (h *KeyHandler) RevokeKey(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -310,7 +310,7 @@ func (h *KeyHandler) RevokeKey(c *gin.Context) {
 // UpdatePermissions 更新钥匙权限
 // PUT /api/v1/keys/:id/permissions
 func (h *KeyHandler) UpdatePermissions(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -369,7 +369,7 @@ func (h *KeyHandler) UpdatePermissions(c *gin.Context) {
 // GetSharedKeys 获取用户收到的分享钥匙
 // GET /api/v1/keys/shared/list
 func (h *KeyHandler) GetSharedKeys(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -398,7 +398,7 @@ func (h *KeyHandler) GetSharedKeys(c *gin.Context) {
 // GetKeyShares 获取钥匙的分享列表
 // GET /api/v1/keys/:id/shares
 func (h *KeyHandler) GetKeyShares(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -449,7 +449,7 @@ func (h *KeyHandler) GetKeyShares(c *gin.Context) {
 // RevokeShare 撤销分享
 // DELETE /api/v1/keys/shares/:share_id
 func (h *KeyHandler) RevokeShare(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -524,7 +524,7 @@ func keyToResponse(key *models.Key) models.KeyResponse {
 // ActivateKey 激活钥匙
 // POST /api/v1/keys/:id/activate
 func (h *KeyHandler) ActivateKey(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -584,7 +584,7 @@ func (h *KeyHandler) ActivateKey(c *gin.Context) {
 // DeactivateKey 停用钥匙
 // POST /api/v1/keys/:id/deactivate
 func (h *KeyHandler) DeactivateKey(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,
@@ -644,7 +644,7 @@ func (h *KeyHandler) DeactivateKey(c *gin.Context) {
 // GetKeyLogs 获取钥匙使用日志
 // GET /api/v1/keys/:id/logs
 func (h *KeyHandler) GetKeyLogs(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"code":    401,

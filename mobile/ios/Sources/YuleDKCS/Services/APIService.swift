@@ -3,8 +3,15 @@ import Combine
 
 /// API 服务协议
 public protocol APIServiceProtocol {
+    // Auth
     func login(username: String, password: String) -> AnyPublisher<LoginResponse, Error>
     func register(username: String, email: String, password: String) -> AnyPublisher<AuthResponse, Error>
+    func refreshToken() -> AnyPublisher<AuthResponse, Error>
+    
+    // User
+    func getProfile() -> AnyPublisher<UserProfileResponse, Error>
+    
+    // Keys
     func getKeys(page: Int?, pageSize: Int?) -> AnyPublisher<KeysListResponse, Error>
     func getKeyDetail(keyId: String) -> AnyPublisher<DigitalKey, Error>
     func activateKey(keyId: String) -> AnyPublisher<DigitalKey, Error>
@@ -12,6 +19,18 @@ public protocol APIServiceProtocol {
     func getKeyLogs(keyId: String, page: Int?, pageSize: Int?) -> AnyPublisher<LogsResponse, Error>
     func shareKey(keyId: String, request: ShareKeyRequest) -> AnyPublisher<ShareResponse, Error>
     func revokeKey(keyId: String) -> AnyPublisher<Void, Error>
+    func issueKey(request: KeyIssueRequest) -> AnyPublisher<KeyIssueResponse, Error>
+    func updatePermissions(keyId: Int, permissions: KeyPermissions) -> AnyPublisher<ApiResponse, Error>
+    func getSharedKeys(page: Int?, pageSize: Int?) -> AnyPublisher<SharedKeysListResponse, Error>
+    func getKeyShares(keyId: Int, page: Int?, pageSize: Int?) -> AnyPublisher<KeySharesListResponse, Error>
+    func revokeShare(shareId: Int) -> AnyPublisher<ApiResponse, Error>
+    
+    // Vehicles
+    func registerVehicle(request: RegisterVehicleRequest) -> AnyPublisher<RegisterVehicleResponse, Error>
+    func listVehicles(page: Int?, pageSize: Int?) -> AnyPublisher<VehiclesListResponse, Error>
+    func getVehicle(vehicleId: Int) -> AnyPublisher<VehicleDetailResponse, Error>
+    func sendCommand(vehicleId: Int, command: SendCommandRequest) -> AnyPublisher<SendCommandResponse, Error>
+    func getCommandStatus(vehicleId: Int, commandId: Int) -> AnyPublisher<CommandStatusResponse, Error>
 }
 
 /// API 服务实现
@@ -60,7 +79,7 @@ public class APIService: APIServiceProtocol {
         return authToken != nil
     }
     
-    // MARK: - API Methods
+    // MARK: - Auth API Methods
     
     public func login(username: String, password: String) -> AnyPublisher<LoginResponse, Error> {
         let request = LoginRequest(username: username, password: password)
@@ -77,6 +96,24 @@ public class APIService: APIServiceProtocol {
         let request = RegisterRequest(username: username, email: email, password: password)
         return performRequest(endpoint: "/auth/register", method: "POST", body: request)
     }
+    
+    public func refreshToken() -> AnyPublisher<AuthResponse, Error> {
+        return performRequest(endpoint: "/auth/refresh", method: "POST")
+            .handleEvents(receiveOutput: { [weak self] response in
+                if let token = response.data?.token {
+                    self?.setAuthToken(token)
+                }
+            })
+            .eraseToAnyPublisher()
+    }
+    
+    // MARK: - User API Methods
+    
+    public func getProfile() -> AnyPublisher<UserProfileResponse, Error> {
+        return performRequest(endpoint: "/user/profile", method: "GET")
+    }
+    
+    // MARK: - Keys API Methods
     
     public func getKeys(page: Int? = nil, pageSize: Int? = nil) -> AnyPublisher<KeysListResponse, Error> {
         var queryItems: [URLQueryItem] = []
@@ -120,6 +157,69 @@ public class APIService: APIServiceProtocol {
         return performRequest(endpoint: "/keys/\(keyId)", method: "DELETE")
             .map { (_: ApiResponse) in () }
             .eraseToAnyPublisher()
+    }
+    
+    public func issueKey(request: KeyIssueRequest) -> AnyPublisher<KeyIssueResponse, Error> {
+        return performRequest(endpoint: "/keys/issue", method: "POST", body: request)
+    }
+    
+    public func updatePermissions(keyId: Int, permissions: KeyPermissions) -> AnyPublisher<ApiResponse, Error> {
+        return performRequest(endpoint: "/keys/\(keyId)/permissions", method: "PUT", body: permissions)
+    }
+    
+    public func getSharedKeys(page: Int? = nil, pageSize: Int? = nil) -> AnyPublisher<SharedKeysListResponse, Error> {
+        var queryItems: [URLQueryItem] = []
+        if let page = page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        if let pageSize = pageSize {
+            queryItems.append(URLQueryItem(name: "page_size", value: String(pageSize)))
+        }
+        return performRequest(endpoint: "/keys/shared/list", method: "GET", queryItems: queryItems)
+    }
+    
+    public func getKeyShares(keyId: Int, page: Int? = nil, pageSize: Int? = nil) -> AnyPublisher<KeySharesListResponse, Error> {
+        var queryItems: [URLQueryItem] = []
+        if let page = page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        if let pageSize = pageSize {
+            queryItems.append(URLQueryItem(name: "page_size", value: String(pageSize)))
+        }
+        return performRequest(endpoint: "/keys/\(keyId)/shares", method: "GET", queryItems: queryItems)
+    }
+    
+    public func revokeShare(shareId: Int) -> AnyPublisher<ApiResponse, Error> {
+        return performRequest(endpoint: "/keys/shares/\(shareId)", method: "DELETE")
+    }
+    
+    // MARK: - Vehicles API Methods
+    
+    public func registerVehicle(request: RegisterVehicleRequest) -> AnyPublisher<RegisterVehicleResponse, Error> {
+        return performRequest(endpoint: "/vehicles", method: "POST", body: request)
+    }
+    
+    public func listVehicles(page: Int? = nil, pageSize: Int? = nil) -> AnyPublisher<VehiclesListResponse, Error> {
+        var queryItems: [URLQueryItem] = []
+        if let page = page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        if let pageSize = pageSize {
+            queryItems.append(URLQueryItem(name: "page_size", value: String(pageSize)))
+        }
+        return performRequest(endpoint: "/vehicles", method: "GET", queryItems: queryItems)
+    }
+    
+    public func getVehicle(vehicleId: Int) -> AnyPublisher<VehicleDetailResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)", method: "GET")
+    }
+    
+    public func sendCommand(vehicleId: Int, command: SendCommandRequest) -> AnyPublisher<SendCommandResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/commands", method: "POST", body: command)
+    }
+    
+    public func getCommandStatus(vehicleId: Int, commandId: Int) -> AnyPublisher<CommandStatusResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/commands/\(commandId)", method: "GET")
     }
     
     // MARK: - Private Methods
@@ -190,6 +290,7 @@ public enum APIError: Error {
 
 // MARK: - Request/Response Models
 
+// Auth
 struct LoginRequest: Codable {
     let username: String
     let password: String
@@ -201,11 +302,40 @@ struct RegisterRequest: Codable {
     let password: String
 }
 
+// Keys
 struct ShareKeyRequest: Codable {
-    let shared_to_username: String
+    let user_id: Int
     let expires_at: String?
     let permissions: [String: Bool]
 }
+
+struct KeyIssueRequest: Codable {
+    let vehicle_id: Int
+    let type: String
+    let expires_at: String?
+    let permissions: [String: Bool]
+}
+
+struct KeyPermissions: Codable {
+    let permissions: [String: Bool]
+}
+
+// Vehicles
+struct RegisterVehicleRequest: Codable {
+    let vin: String
+    let brand: String
+    let model: String
+    let year: Int
+    let color: String
+    let plate_number: String?
+}
+
+struct SendCommandRequest: Codable {
+    let command: String
+    let parameters: [String: String]?
+}
+
+// MARK: - Response Models
 
 public struct LoginResponse: Codable {
     public let code: Int
@@ -230,6 +360,22 @@ public struct UserData: Codable {
     public let username: String
     public let email: String
     public let role: String
+}
+
+public struct UserProfileResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: UserProfileData?
+}
+
+public struct UserProfileData: Codable {
+    public let id: String
+    public let username: String
+    public let email: String
+    public let phone: String?
+    public let avatar: String?
+    public let role: String
+    public let created_at: String
 }
 
 public struct KeysListResponse: Codable {
@@ -269,6 +415,139 @@ public struct ShareData: Codable {
     public let qr_code_url: String
     public let share_link: String
     public let expires_at: String
+}
+
+public struct KeyIssueResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: DigitalKey?
+}
+
+public struct SharedKeysListResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: SharedKeysData?
+}
+
+public struct SharedKeysData: Codable {
+    public let list: [DigitalKey]
+    public let total: Int
+    public let page: Int
+    public let page_size: Int
+}
+
+public struct KeySharesListResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: KeySharesData?
+}
+
+public struct KeySharesData: Codable {
+    public let list: [KeyShareItem]
+    public let total: Int
+    public let page: Int
+    public let page_size: Int
+}
+
+public struct KeyShareItem: Codable, Identifiable {
+    public let id: Int
+    public let key_id: Int
+    public let shared_to: SharedUserInfo
+    public let permissions: [String: Bool]
+    public let status: String
+    public let created_at: String
+    public let expires_at: String?
+}
+
+public struct SharedUserInfo: Codable {
+    public let id: Int
+    public let username: String
+    public let avatar: String?
+}
+
+public struct RegisterVehicleResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: VehicleData?
+}
+
+public struct VehicleData: Codable {
+    public let id: Int
+    public let vin: String
+    public let brand: String
+    public let model: String
+    public let year: Int
+    public let color: String
+    public let plate_number: String?
+}
+
+public struct VehiclesListResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: VehiclesListData?
+}
+
+public struct VehiclesListData: Codable {
+    public let list: [VehicleItem]
+    public let total: Int
+    public let page: Int
+    public let page_size: Int
+}
+
+public struct VehicleItem: Codable, Identifiable {
+    public let id: Int
+    public let vin: String
+    public let brand: String
+    public let model: String
+    public let year: Int
+    public let color: String
+    public let plate_number: String?
+    public let status: String?
+}
+
+public struct VehicleDetailResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: VehicleDetailData?
+}
+
+public struct VehicleDetailData: Codable {
+    public let id: Int
+    public let vin: String
+    public let brand: String
+    public let model: String
+    public let year: Int
+    public let color: String
+    public let plate_number: String?
+    public let status: String?
+    public let ble_address: String?
+    public let created_at: String
+}
+
+public struct SendCommandResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: CommandData?
+}
+
+public struct CommandData: Codable {
+    public let command_id: Int
+    public let status: String
+}
+
+public struct CommandStatusResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: CommandStatusData?
+}
+
+public struct CommandStatusData: Codable {
+    public let command_id: Int
+    public let command: String
+    public let status: String
+    public let result: String?
+    public let created_at: String
+    public let completed_at: String?
 }
 
 struct ApiResponse: Codable {

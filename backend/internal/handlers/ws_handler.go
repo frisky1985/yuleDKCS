@@ -71,13 +71,26 @@ func (h *WebSocketHandler) HandleAdminWebSocket(c *gin.Context) {
 	websocket.ServeWs(h.hub, userID, 0, "admin")(c)
 }
 
+// HandleWebSocket 通用 WebSocket 连接处理
+// 用于 /ws 端点，从 JWT 中获取用户信息后进行升级
+func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
+	userID := c.GetUint("userID")
+	vehicleID, _ := strconv.ParseUint(c.Query("vehicle_id"), 10, 32)
+
+	websocket.ServeWs(h.hub, userID, uint(vehicleID), "user")(c)
+}
+
 // GetConnectionStats 获取 WebSocket 连接统计
 func (h *WebSocketHandler) GetConnectionStats(c *gin.Context) {
 	stats := map[string]interface{}{
 		"total_connections": h.hub.GetClientCount(),
 	}
 
-	c.JSON(http.StatusOK, stats)
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "获取成功",
+		"data":    stats,
+	})
 }
 
 // SendCommandToVehicle 通过 WebSocket 发送命令到车辆
@@ -90,7 +103,11 @@ func (h *WebSocketHandler) SendCommandToVehicle(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "请求参数错误",
+			"error":   err.Error(),
+		})
 		return
 	}
 
@@ -106,8 +123,11 @@ func (h *WebSocketHandler) SendCommandToVehicle(c *gin.Context) {
 	h.hub.BroadcastToVehicle(uint(vehicleID), data)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":    "command sent",
-		"vehicle_id": vehicleID,
-		"command":    req.Command,
+		"code":    200,
+		"message": "命令已发送",
+		"data": gin.H{
+			"vehicle_id": vehicleID,
+			"command":    req.Command,
+		},
 	})
 }

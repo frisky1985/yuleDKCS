@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
@@ -133,10 +134,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	// userID 是 string 类型，需要转换
 	idStr := userID.(string)
-	var id uint
-	for _, ch := range idStr {
-		id = id*10 + uint(ch-'0')
+	idUint64, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的用户ID",
+		})
+		return
 	}
+	id := uint(idUint64)
 
 	user, err := h.userService.GetUserByID(c.Request.Context(), id)
 	if err != nil {

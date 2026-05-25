@@ -11,6 +11,7 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
 	"github.com/frisky1985/yuleDKCS/backend/internal/repository"
 	"github.com/frisky1985/yuleDKCS/backend/internal/services"
+	"github.com/frisky1985/yuleDKCS/backend/internal/websocket"
 )
 
 // Setup 初始化路由
@@ -79,6 +80,8 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 			authorized.GET("/vehicles/:id/status", vehicleHandler.GetVehicleStatus)
 			authorized.POST("/vehicles/:id/commands", vehicleHandler.SendCommand)
 			authorized.GET("/vehicles/:id/commands/:command_id", vehicleHandler.GetCommandStatus)
+			authorized.PUT("/vehicles/:id/location", vehicleHandler.UpdateLocation)
+			authorized.POST("/vehicles/:id/heartbeat", vehicleHandler.Heartbeat)
 			
 			// 钥匙相关路由
 			keyHandler.RegisterRoutes(authorized)
@@ -86,23 +89,24 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 	}
 
 	// WebSocket 路由
-	r.GET("/ws", websocketHandler)
+	// 初始化 WebSocket Hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+	wsHandler := handlers.NewWebSocketHandler(wsHub)
+	r.GET("/ws", middleware.JWTAuth(), wsHandler.HandleWebSocket)
 
 	// 404 处理
 	r.NoRoute(func(c *gin.Context) {
-		c.JSON(404, gin.H{"error": "Not Found"})
+		c.JSON(404, gin.H{"code": 404, "message": "接口不存在"})
 	})
 }
 
 // 处理器函数占位符
 func ping(c *gin.Context) {
 	c.JSON(200, gin.H{
+		"code":    200,
 		"message": "pong",
 		"service": "yuleDKCS",
 		"version": "1.0.0",
 	})
-}
-
-func websocketHandler(c *gin.Context) {
-	c.JSON(501, gin.H{"error": "WebSocket not implemented yet"})
 }

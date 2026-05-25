@@ -4,7 +4,7 @@
 
 - **基础URL**: `https://api.yuledkcs.com/api/v1`
 - **开发环境**: `http://localhost:8080/api/v1`
-- **认证方式**: `Authorization: Bearer <jwt_token>`
+- **认证方式**: `Authorization: Bearer ***`
 - **内容类型**: `application/json`
 - **版本**: 1.0.0
 
@@ -39,6 +39,8 @@
 | 车辆 | GET | `/api/v1/vehicles/:id/status` | 是 | 获取车辆状态 |
 | 车辆 | POST | `/api/v1/vehicles/:id/commands` | 是 | 发送车辆命令 |
 | 车辆 | GET | `/api/v1/vehicles/:id/commands/:command_id` | 是 | 查询命令状态 |
+| 车辆 | PUT | `/api/v1/vehicles/:id/location` | 是 | 更新车辆位置 |
+| 车辆 | POST | `/api/v1/vehicles/:id/heartbeat` | 是 | 车辆心跳 |
 | OTA | POST | `/api/v1/ota/firmwares` | 是 | 创建固件 |
 | OTA | GET | `/api/v1/ota/firmwares` | 是 | 获取固件列表 |
 | OTA | GET | `/api/v1/ota/firmwares/:id` | 是 | 获取固件详情 |
@@ -719,6 +721,81 @@ Authorization: Bearer <token>
   "message": "车辆已解锁",
   "created_at": "2026-05-26T10:00:00Z",
   "executed_at": "2026-05-26T10:00:05Z"
+}
+```
+
+
+### 5.7 更新车辆位置
+
+```http
+PUT /api/v1/vehicles/:id/location
+Authorization: Bearer ***
+Content-Type: application/json
+
+{
+  "latitude": 39.9042,
+  "longitude": 116.4074,
+  "altitude": 50.0,
+  "accuracy": 10.0,
+  "speed": 0.0,
+  "heading": 0.0,
+  "timestamp": 1719300000
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| latitude | float | 是 | 纬度 (-90 ~ 90) |
+| longitude | float | 是 | 经度 (-180 ~ 180) |
+| altitude | float | 否 | 海拔 (米) |
+| accuracy | float | 否 | 定位精度 (米) |
+| speed | float | 否 | 速度 (km/h) |
+| heading | float | 否 | 朝向 (度, 0=北) |
+| timestamp | int64 | 是 | Unix 时间戳 (秒) |
+
+**响应 (200):**
+```json
+{
+  "code": 200,
+  "message": "位置更新成功"
+}
+```
+
+### 5.8 车辆心跳
+
+```http
+POST /api/v1/vehicles/:id/heartbeat
+Authorization: Bearer ***
+Content-Type: application/json
+
+{
+  "lock_status": "locked",
+  "engine_status": "off",
+  "battery_level": 85,
+  "location": {
+    "latitude": 39.9042,
+    "longitude": 116.4074
+  },
+  "timestamp": 1719300000
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| lock_status | string | 否 | 门锁状态: `locked`, `unlocked` |
+| engine_status | string | 否 | 引擎状态: `on`, `off` |
+| battery_level | int | 否 | 电量百分比 (0-100) |
+| location | object | 否 | 位置信息 (latitude/longitude) |
+| timestamp | int64 | 是 | Unix 时间戳 (秒) |
+
+**响应 (200):**
+```json
+{
+  "code": 200,
+  "message": "心跳接收成功",
+  "data": {
+    "next_heartbeat_interval": 60
+  }
 }
 ```
 
