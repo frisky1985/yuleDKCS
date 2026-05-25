@@ -1,0 +1,9 @@
+维度,CCC,ICCOA,ICCE
+规范版本,CCC Digital Key R3,ICCOA-DK-001 (4.0),ICCE-DK-001 (2.0)
+协议模式,BLE/NFC/UWB,BLE/NFC,BLE/NFC
+证书链,最多4层,CA/非CA双模式,国密证书链
+钥匙类型,Owner/Friend/Guest,Owner/Friend,Owner/Friend/Temp
+分享深度,最多3级,最多1级(中间),最多2级
+地理围栏,有,有,有
+SE要求,必须,必须,必须 (国密SE)
+算法栈,ECDSA/AES/SHA-256,ECDSA/AES/SHA-256,SM2/SM4/SM3

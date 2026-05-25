@@ -1,0 +1,172 @@
+# golangci-lint configuration for yuleDKCS backend
+# Run: golangci-lint run --timeout 5m
+
+run:
+  timeout: 5m
+  go: '1.22'
+  skip-dirs:
+    - vendor
+    - third_party
+  skip-files:
+    - ".*\\.pb\\.go$"  # Skip generated protobuf files
+    - ".*_mock\\.go$" # Skip generated mock files
+
+linters:
+  enable:
+    # Default
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    # Recommended
+    - gocritic
+    - gofmt
+    - goimports
+    - gosec
+    - misspell
+    - revive
+    - typecheck
+    - unconvert
+    - unparam
+    - whitespace
+    # Additional
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - gocognit
+    - goconst
+    - gocyclo
+    - godot
+    - gofumpt
+    - lll
+    - loggercheck
+    - mirror
+    - musttag
+    - nakedret
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - perfsprint
+    - prealloc
+    - predeclared
+    - reassign
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - tenv
+    - testableexamples
+    - thelper
+    - tparallel
+
+linters-settings:
+  errcheck:
+    check-blank: true
+    exclude-functions:
+      - (*database/sql.DB).Close
+      - (*database/sql.Rows).Close
+      - (*database/sql.Stmt).Close
+      - (*os.File).Close
+
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+    disabled-checks:
+      - wrapperFunc
+      - dupImport
+
+  gocyclo:
+    min-complexity: 15
+
+  gosec:
+    severity: medium
+    confidence: medium
+    excludes:
+      - G104  # Audit errors not checked (handled by errcheck)
+
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+
+  revive:
+    severity: warning
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  staticcheck:
+    checks: ["all"]
+
+  stylecheck:
+    checks: ["all"]
+
+  misspell:
+    locale: US
+
+  lll:
+    line-length: 120
+    tab-width: 4
+
+issues:
+  exclude-use-default: false
+  exclude:
+    # Exclude shadow checking in test files
+    - 'shadow: declaration of "err" shadows declaration'
+  exclude-rules:
+    # Exclude some linters from running on tests
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - lll
+    
+    # Exclude known linter issues in generated files
+    - path: ".*\\.pb\\.go"
+      linters:
+        - all
+    
+    # Relax some rules for cmd/entry points
+    - path: cmd/
+      linters:
+        - gocyclo
+        - gocognit
+    
+    # Exclude shadow checking for common patterns
+    - text: 'shadow: declaration of "err"'
+      linters:
+        - govet
+  
+  max-issues-per-linter: 0
+  max-same-issues: 0

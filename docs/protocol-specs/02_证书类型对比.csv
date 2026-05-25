@@ -1,0 +1,7 @@
+类型代码,CCC,ICCOA,ICCE,大小限制,OID
+0x01,Device,VehicleOemCA (A),VehicleCA,无限制,1.3.6.1.4.1.59129.1.1
+0x02,Vehicle,Vehicle (B),Vehicle,无限制,1.3.6.1.4.1.59129.1.2
+0x03,Server,OwnerDK (C),OwnerDK,≤700字节,1.3.6.1.4.1.59129.1.3
+0x04,Intermediate,MidShare (D),SharedDK,≤700字节,1.3.6.1.4.1.59129.1.4
+0x05,Root,SharedDK (E),TempAccess,≤700字节,1.3.6.1.4.1.59129.1.5
+0x0B,-,SharedDK_V2 (K),-,≤800字节,1.3.6.1.4.1.59129.1.5

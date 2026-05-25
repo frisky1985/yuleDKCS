@@ -1,0 +1,12 @@
+# yuleDKCS Grafana Dashboard 配置
+apiVersion: 1
+
+providers:
+  - name: 'yuleDKCS'
+    orgId: 1
+    folder: 'yuleDKCS'
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /etc/grafana/provisioning/dashboards

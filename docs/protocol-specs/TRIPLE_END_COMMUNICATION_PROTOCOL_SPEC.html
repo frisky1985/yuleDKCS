@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>yuleDKCS 三端通信协议规范</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #4472C4;
+            border-bottom: 3px solid #4472C4;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #2E75B5;
+            border-bottom: 1px solid #2E75B5;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            font-size: 11px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4472C4;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .header-info {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>yuleDKCS 三端通信协议规范</h1>
+    <div class="header-info">
+        <p>版本: v1.0.0 | 日期: 2026-05-15 | 作者: YuleTech | 状态: 定稿</p>
+    </div>
+
+    <div class="section">
+        <h2>1. 协议栈对比</h2>
+        <table>
+            <tr><th>维度</th><th>CCC</th><th>ICCOA</th></tr>
+            <tr><td>规范版本</td><td>CCC Digital Key R3</td><td>ICCOA-DK-001 (4.0)</td></tr>
+            <tr><td>协议模式</td><td>BLE/NFC/UWB</td><td>BLE/NFC</td></tr>
+            <tr><td>证书链</td><td>最多4层</td><td>CA/非CA双模式</td></tr>
+            <tr><td>钥匙类型</td><td>Owner/Friend/Guest</td><td>Owner/Friend</td></tr>
+            <tr><td>分享深度</td><td>最多3级</td><td>最多1级(中间)</td></tr>
+            <tr><td>地理围栏</td><td>有</td><td>有</td></tr>
+            <tr><td>SE要求</td><td>必须</td><td>必须</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>2. 证书类型对比</h2>
+        <table>
+            <tr><th>类型代码</th><th>CCC</th><th>ICCOA</th><th>大小限制</th><th>OID</th></tr>
+            <tr><td>0x01</td><td>Device</td><td>VehicleOemCA (A)</td><td>无限制</td><td>1.3.6.1.4.1.59129.1.1</td></tr>
+            <tr><td>0x02</td><td>Vehicle</td><td>Vehicle (B)</td><td>无限制</td><td>1.3.6.1.4.1.59129.1.2</td></tr>
+            <tr><td>0x03</td><td>Server</td><td>OwnerDK (C)</td><td>&lt;=700字节</td><td>1.3.6.1.4.1.59129.1.3</td></tr>
+            <tr><td>0x04</td><td>Intermediate</td><td>MidShare (D)</td><td>&lt;=700字节</td><td>1.3.6.1.4.1.59129.1.4</td></tr>
+            <tr><td>0x05</td><td>Root</td><td>SharedDK (E)</td><td>&lt;=700字节</td><td>1.3.6.1.4.1.59129.1.5</td></tr>
+            <tr><td>0x0B</td><td>-</td><td>SharedDK_V2 (K)</td><td>&lt;=800字节</td><td>1.3.6.1.4.1.59129.1.5</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>3. 证书模式对比</h2>
+        <h3>CCC 证书链 (固定4层)</h3>
+        <p>Root CA → Intermediate → Vehicle → Device</p>
+        
+        <h3>ICCOA CA模式 (5层)</h3>
+        <p>VehicleOemCA (A) → Vehicle (B) → Owner (C) → MidShare (D) → Friend (E)</p>
+        
+        <h3>ICCOA 非CA模式 (简化, ICCOA 4.0)</h3>
+        <p>VehicleOemCA (A) → Vehicle (B) → Owner (C)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ Friend (K) [直接由A签发]</p>
+    </div>
+
+    <div class="section">
+        <h2>4. ICCOA TLV 类型定义</h2>
+        <table>
+            <tr><th>类型代码</th><th>名称</th><th>长度</th><th>描述</th></tr>
+            <tr><td>0x01</td><td>VERSION</td><td>2</td><td>协议版本</td></tr>
+            <tr><td>0x02</td><td>DEVICE_ID</td><td>16</td><td>设备标识符</td></tr>
+            <tr><td>0x03</td><td>KEY_ID</td><td>16</td><td>钥匙标识符</td></tr>
+            <tr><td>0x04</td><td>TOKEN</td><td>32</td><td>认证令牌</td></tr>
+            <tr><td>0x05</td><td>PUBLIC_KEY</td><td>65</td><td>EC P-256公钥</td></tr>
+            <tr><td>0x06</td><td>SIGNATURE</td><td>64</td><td>ECDSA签名</td></tr>
+            <tr><td>0x07</td><td>CERTIFICATE</td><td>变长</td><td>X.509证书</td></tr>
+            <tr><td>0x08</td><td>CHALLENGE</td><td>16</td><td>挑战随机数</td></tr>
+            <tr><td>0x0A</td><td>SESSION_ID</td><td>4</td><td>会话标识符</td></tr>
+            <tr><td>0x0B</td><td>MAC</td><td>16</td><td>AES-CMAC值</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>5. 命令集定义</h2>
+        <table>
+            <tr><th>命令码</th><th>命令名称</th><th>类别</th><th>描述</th></tr>
+            <tr><td>0x00</td><td>GET_VERSION</td><td>系统</td><td>获取版本信息</td></tr>
+            <tr><td>0x10</td><td>PAIRING_START</td><td>配对</td><td>开始配对</td></tr>
+            <tr><td>0x11</td><td>PAIRING_EXCHANGE_KEY</td><td>配对</td><td>交换密钥</td></tr>
+            <tr><td>0x14</td><td>PAIRING_COMPLETE</td><td>配对</td><td>完成配对</td></tr>
+            <tr><td>0x20</td><td>SESSION_CREATE</td><td>会话</td><td>创建会话</td></tr>
+            <tr><td>0x30</td><td>KEY_REGISTER</td><td>钥匙管理</td><td>注册钥匙</td></tr>
+            <tr><td>0x37</td><td>KEY_SHARE</td><td>钥匙管理</td><td>分享钥匙</td></tr>
+            <tr><td>0x40</td><td>VEHICLE_UNLOCK</td><td>车辆控制</td><td>解锁车辆</td></tr>
+            <tr><td>0x41</td><td>VEHICLE_LOCK</td><td>车辆控制</td><td>上锁车辆</td></tr>
+            <tr><td>0x42</td><td>ENGINE_START</td><td>车辆控制</td><td>启动发动机</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>6. 错误码定义</h2>
+        <table>
+            <tr><th>错误码</th><th>错误名称</th><th>描述</th></tr>
+            <tr><td>0x00</td><td>OK</td><td>成功</td></tr>
+            <tr><td>0x01</td><td>ERR_UNSUPPORTED_CMD</td><td>不支持的命令</td></tr>
+            <tr><td>0x02</td><td>ERR_INVALID_PARAM</td><td>无效参数</td></tr>
+            <tr><td>0x04</td><td>ERR_AUTH_FAILED</td><td>认证失败</td></tr>
+            <tr><td>0x05</td><td>ERR_KEY_NOT_FOUND</td><td>钥匙不存在</td></tr>
+            <tr><td>0x07</td><td>ERR_KEY_EXPIRED</td><td>钥匙已过期</td></tr>
+            <tr><td>0x08</td><td>ERR_SESSION_INVALID</td><td>会话无效</td></tr>
+            <tr><td>0x0A</td><td>ERR_TIMEOUT</td><td>超时</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>7. 实现状态总览</h2>
+        <table>
+            <tr><th>端</th><th>技术栈</th><th>核心功能</th><th>完成度</th><th>状态</th></tr>
+            <tr><td>后端(Backend)</td><td>Go + PostgreSQL + Redis</td><td>ICCOA证书服务, RESTful API</td><td>95%</td><td>✓ 核心完成</td></tr>
+            <tr><td>前端(Frontend)</td><td>React + TypeScript</td><td>钥匙管理UI, API客户端</td><td>90%</td><td>✓ 核心完成</td></tr>
+            <tr><td>移动端(Mobile)</td><td>Android(Kotlin)/iOS(Swift)</td><td>SDK, BLE通信, 钥匙管理</td><td>85%</td><td>✓ 核心完成</td></tr>
+            <tr><td>车端(Embedded)</td><td>C/C++ (ARM Cortex-M)</td><td>CCC/ICCOA协议栈, BLE/NFC驱动</td><td>80%</td><td>✓ 核心完成</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>8. 加密算法规范</h2>
+        <table>
+            <tr><th>算法类别</th><th>算法名称</th><th>CCC</th><th>ICCOA</th><th>说明</th></tr>
+            <tr><td>对称加密</td><td>AES-128-CCM</td><td>✓</td><td>✓</td><td>认证加密</td></tr>
+            <tr><td>非对称加密</td><td>ECDH P-256</td><td>✓</td><td>✓</td><td>密钥协商</td></tr>
+            <tr><td>消息认证</td><td>AES-CMAC</td><td>✓</td><td>✓</td><td>消息完整性</td></tr>
+            <tr><td>散列函数</td><td>SHA-256</td><td>✓</td><td>✓</td><td>散列计算</td></tr>
+            <tr><td>数字签名</td><td>ECDSA P-256</td><td>✓</td><td>✓</td><td>数字签名</td></tr>
+            <tr><td>密钥派生</td><td>HKDF-SHA256</td><td>✓</td><td>✓</td><td>密钥派生</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>9. 参考文档</h2>
+        <ol>
+            <li>CCC Digital Key Release 3 Specification</li>
+            <li>ICCOA/T 002-2024 数字钥匙技术规范</li>
+            <li>ISO/IEC 18013-5 移动驾驶凭证</li>
+            <li>NIST SP 800-56A 密钥协议</li>
+            <li>RFC 7748/8032 ECDH/EdDSA</li>
+            <li>RFC 5869 HKDF</li>
+        </ol>
+    </div>
+
+    <hr>
+    <p style="text-align: center; color: #666; font-size: 10px;">
+        本文档由 YuleDKCS 项目自动生成系统创建 | 最后更新: 2026-05-15
+    </p>
+</body>
+</html>

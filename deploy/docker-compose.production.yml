@@ -1,0 +1,190 @@
+# yuleDKCS 生产环境 Docker Compose 配置
+# 使用方式: docker-compose -f docker-compose.production.yml up -d
+
+version: '3.8'
+
+services:
+  # API服务
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: yuledkcs-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-yuledkcs}
+      - DB_USER=${DB_USER:-yuledkcs}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - MQTT_BROKER=emqx
+      - MQTT_PORT=1883
+      - LOG_LEVEL=info
+      - ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      emqx:
+        condition: service_healthy
+    networks:
+      - yuledkcs-network
+    volumes:
+      - ./logs/api:/app/logs
+    healthcheck:
+      test: ["CMD", "/api", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MQTT桥接
+  mqtt-bridge:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.mqtt-bridge
+    container_name: yuledkcs-mqtt-bridge
+    restart: unless-stopped
+    environment:
+      - MQTT_BROKER=emqx
+      - MQTT_PORT=1883
+      - API_URL=http://api:8080
+      - LOG_LEVEL=info
+    depends_on:
+      - api
+      - emqx
+    networks:
+      - yuledkcs-network
+
+  # PostgreSQL数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: yuledkcs-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME:-yuledkcs}
+      - POSTGRES_USER=${DB_USER:-yuledkcs}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../backend/database/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - yuledkcs-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-yuledkcs} -d ${DB_NAME:-yuledkcs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: yuledkcs-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - yuledkcs-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # EMQX MQTT Broker
+  emqx:
+    image: emqx/emqx:5.4.0
+    container_name: yuledkcs-emqx
+    restart: unless-stopped
+    environment:
+      - EMQX_NODE_NAME=emqx@127.0.0.1
+      - EMQX_LISTENERS__SSL__DEFAULT__ENABLE=false
+      - EMQX_AUTHENTICATION__1__MECHANISM=password_based
+      - EMQX_AUTHENTICATION__1__BACKEND=built_in_database
+      - EMQX_AUTHENTICATION__1__USER_ID_TYPE=username
+    ports:
+      - "1883:1883"     # MQTT
+      - "8083:8083"     # MQTT/WebSocket
+      - "8883:8883"     # MQTT/SSL
+      - "18083:18083"   # Dashboard
+    volumes:
+      - emqx-data:/opt/emqx/data
+      - emqx-log:/opt/emqx/log
+    networks:
+      - yuledkcs-network
+    healthcheck:
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: yuledkcs-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - api
+      - emqx
+    networks:
+      - yuledkcs-network
+
+  # 监控: Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: yuledkcs-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - yuledkcs-network
+
+  # 监控: Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: yuledkcs-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - yuledkcs-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  emqx-data:
+  emqx-log:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  yuledkcs-network:
+    driver: bridge

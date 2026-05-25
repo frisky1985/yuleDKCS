@@ -1,0 +1,6 @@
+端,技术栈,核心功能,完成度,状态
+后端(Backend),Go + PostgreSQL + Redis,ICCOA证书服务 RESTful API,95%,✓ 核心完成
+前端(Frontend),React + TypeScript,钥匙管理UI API客户端,90%,✓ 核心完成
+移动端(Mobile),Android(Kotlin)/iOS(Swift),SDK BLE通信 钥匙管理,85%,✓ 核心完成
+车端(Embedded),C/C++ (ARM Cortex-M),CCC/ICCOA/ICCE协议栈 BLE/NFC驱动,85%,✓ 核心完成
+ICCE模块(Embedded),C/C++ (ARM Cortex-M),ICCE国密证书 自定义二进制格式 SM2/SM3/SM4,80%,✓ 核心完成

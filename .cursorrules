@@ -1,0 +1,93 @@
+# yuleDKCS Cursor Rules
+
+## Project Type
+Triple-end Digital Key system: Go Backend + TypeScript Frontend + Swift/Kotlin Mobile + C Embedded
+
+## Critical Rules
+
+1. **Always run tests before committing**
+   - Backend: `go test -race ./...`
+   - Frontend: `npm run test`
+   - Check CI passes
+
+2. **Type Safety First**
+   - Go: Enable all linters in .golangci.yml
+   - TypeScript: Strict mode, no `any` without comment
+   - Swift: Strict concurrency checking
+   - C: MISRA C:2012 compliance
+
+3. **No Secrets in Code**
+   - Use environment variables
+   - Never commit .env files
+   - Check with `git diff --cached` before commit
+
+4. **Error Handling**
+   - Go: Wrap errors with context: `fmt.Errorf("context: %w", err)`
+   - TypeScript: Try-catch with typed errors
+   - C: Check all return codes
+
+5. **Documentation**
+   - Update AGENTS.md if patterns change
+   - Add ADRs for architectural decisions
+   - Update API docs for endpoint changes
+
+## Code Patterns
+
+### Go Backend
+```go
+// Dependency injection via constructors
+type Service struct { repo Repository }
+func NewService(r Repository) *Service { return &Service{repo: r} }
+
+// Context-aware functions
+func (s *Service) Do(ctx context.Context, id string) error {
+    // Implementation
+}
+```
+
+### TypeScript Frontend
+```typescript
+// Strict typing
+interface Props { id: string }
+
+// Async with error handling
+const fetchData = async (): Promise<Data> => {
+  const res = await api.get('/endpoint');
+  if (!res.ok) throw new Error(res.statusText);
+  return res.json();
+};
+```
+
+### Embedded C
+```c
+// Static for internal linkage
+static status_t g_status;
+
+// Error checking
+dk_error_t err = init();
+if (err != DK_OK) { return err; }
+```
+
+## Testing
+- Unit tests: Co-located with source
+- Integration: tests/ directory
+- Coverage: ≥80% backend, ≥70% frontend
+
+## Git
+- Conventional commits: `type(scope): description`
+- One concern per PR
+- PR requires review
+
+## Commands Quick Reference
+| Action | Backend | Frontend |
+|--------|---------|----------|
+| Test | `go test ./...` | `npm run test` |
+| Lint | `golangci-lint run` | `npm run lint` |
+| Build | `go build ./...` | `npm run build` |
+
+## File Organization
+- backend/: Go code
+- frontend/: TypeScript/React
+- mobile/: iOS, Android, Flutter
+- embedded/: C/C++ firmware
+- docs/: Architecture & design
