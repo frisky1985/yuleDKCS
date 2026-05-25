@@ -1,0 +1,135 @@
+# yuleDKCS 文档站配置
+site_name: yuleDKCS 数字钥匙连接系统
+docs_dir: docs_site
+site_description: yuleDKCS - Yule Digital Key Connectivity Stack 全栈文档
+site_author: YuleTech
+site_url: https://frisky1985.github.io/yuleDKCS/
+repo_url: https://github.com/frisky1985/yuleDKCS
+repo_name: frisky1985/yuleDKCS
+edit_uri: blob/main/docs_site/
+
+copyright: Copyright &copy; 2025-2026 YuleTech
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到暗色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到亮色模式
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/frisky1985/yuleDKCS
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.progressbar
+  - pymdownx.magiclink
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - toc:
+      permalink: true
+      title: 目录
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enabled: !ENV [CI, false]
+      fallback_to_build_date: true
+  - minify:
+      minify_html: true
+  - awesome-pages
+  - glightbox
+
+nav:
+  - 首页: index.md
+  - 项目概览:
+    - README: README.md
+    - 架构设计: architecture.md
+    - 部署计划: deploy/DEPLOYMENT_PLAN.md
+    - 任务状态: TASK_STATUS.md
+  - 协议规范:
+    - 三端通信协议: protocol-specs/TRIPLE_END_COMMUNICATION_PROTOCOL.md
+    - 数字钥匙数据库协议: protocol-specs/DIGITAL_KEY_DATABASE_PROTOCOL.md
+    - API 端点: protocol-specs/API_ENDPOINTS.md
+    - 协议对比: protocol-specs/AUTOMOTIVE-TRIPLE-END-SPEC-PROTOCOL-COMPARISON.md
+  - API 文档:
+    - API 参考: api/API_REFERENCE.md
+    - Swagger 规范: api/swagger.yaml
+  - 设计文档:
+    - PRD: design/PRD.md
+    - 项目计划: design/PROJECT-PLAN.md
+    - API 契约: design/API-CONTRACT.md
+    - 测试计划: design/TEST-PLAN.md
+    - 开发任务: design/DEV-TASKS.md
+    - 云端开发指南: design/CLOUD-DEV-GUIDE.md
+    - 嵌入式开发指南: design/EMBEDDED-DEV-GUIDE.md
+    - 应用开发指南: design/APP-DEV-GUIDE.md
+    - 代码审查 v2: design/CODE-REVIEW-V2.md
+    - S32K3 迁移指南: design/S32K3-MIGRATION-GUIDE.md
+  - 开发指南:
+    - 开发者指南: DEVELOPER_GUIDE.md
+    - 移动 SDK 使用: MOBILE_SDK_USAGE_GUIDE.md
+    - 三端集成指南: guides/TRIPLE_INTEGRATION_GUIDE.md
+    - Agent 指南: AGENTS.md
+    - CLAUDE.md: CLAUDE.md
+  - 证书与安全:
+    - ICCE 证书实现: ICCE_CERTIFICATE_IMPLEMENTATION.md
+    - ICCOA 证书实现: ICCOA_CERTIFICATE_IMPLEMENTATION.md
+    - SE 集成: SE_INTEGRATION.md
+  - 测试与质量:
+    - 端到端协议验证: end_to_end_protocol_validation.md
+    - 嵌入式 SDK 协议审查: embedded_sdk_protocol_review.md
+    - 协议比较: protocol_comparison.md
+    - 问题修复报告: ISSUES_FIXED_REPORT.md
+    - P1 问题修复: P1_ISSUES_FIXED_REPORT.md
+    - 数字钥匙功能: DIGITAL_KEY_FEATURES.md
+    - 三端通信协议修正: COMMUNICATION_PROTOCOL_FIXES.md
+  - 版本历史:
+    - CHANGELOG: CHANGELOG.md

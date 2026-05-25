@@ -1,0 +1,69 @@
+/* yuleDKCS 文档站自定义样式 */
+
+:root {
+  --md-primary-fg-color:        #3949ab;
+  --md-primary-fg-color--light: #5c6bc0;
+  --md-primary-fg-color--dark:  #283593;
+  --md-accent-fg-color:         #26c6da;
+}
+
+/* 首页标题样式 */
+.md-typeset h1 {
+  font-weight: 700;
+  color: var(--md-primary-fg-color);
+}
+
+/* 代码块样式 */
+.md-typeset pre > code {
+  border-radius: 6px;
+}
+
+/* 表格样式增强 */
+.md-typeset table:not([class]) {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--md-primary-fg-color);
+  color: white;
+  font-weight: 600;
+}
+
+/* Admonition 样式优化 */
+.md-typeset .admonition {
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* 进度条样式 */
+.md-typeset progress {
+  height: 12px;
+  border-radius: 6px;
+  background: #e0e0e0;
+}
+
+.md-typeset progress::-webkit-progress-value {
+  background: linear-gradient(90deg, #3949ab, #26c6da);
+  border-radius: 6px;
+}
+
+/* 图片自适应 */
+.md-typeset img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* 导航标签 */
+.md-tabs__link {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 76.1875em) {
+  .md-typeset h1 {
+    font-size: 1.5rem;
+  }
+}
