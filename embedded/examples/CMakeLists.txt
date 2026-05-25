@@ -1,5 +1,10 @@
 # 示例程序 CMakeLists.txt
 
+# CCC 参考实现示例 (完整数字钥匙流程演示)
+if(ENABLE_CCC)
+    add_subdirectory(ccc_reference)
+endif()
+
 # CCC 示例
 if(ENABLE_CCC)
     add_executable(example_ccc_pairing
