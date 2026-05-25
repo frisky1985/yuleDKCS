@@ -5,6 +5,9 @@
 
 #include "icce_digital_key.h"
 #include "icce_certificate.h"
+#include <mbedtls/ecdsa.h>
+#include <mbedtls/ecp.h>
+#include <mbedtls/sha256.h>
 
 #define MAX_BOUND_DEVICES  8
 
@@ -38,7 +41,22 @@ int32_t icce_security_bind(const uint8_t *device_pubkey, uint16_t len)
     dev->key_slot = g_device_count + 1;
     dev->active = true;
 
-    /* TODO: SE050 key import */
+#if defined(ICCE_USE_SE050)
+    /* 导入设备公钥到 SE050 安全元件
+     * NXP Plug & Trust API:
+     *   smStatus_t status = Se05x_API_ImportKey(
+     *       s_ctx, dev->key_slot,
+     *       kSE05x_ECKeyType_P256_Public,
+     *       device_pubkey, 64);
+     *   if (status != kSE05x_OK) {
+     *       memset(dev, 0, sizeof(icce_bound_device_t));
+     *       return ICCE_ERR_SECURITY;
+     *   }
+     */
+#else
+    /* 软件模式: 公钥已在内存中，无需导入 */
+    (void)dev->key_slot;
+#endif /* ICCE_USE_SE050 */
     
     /* Verify device certificate chain */
     error_t err = icce_security_verify_device_cert_chain(dev);
@@ -55,19 +73,62 @@ int32_t icce_security_auth(const uint8_t *challenge, uint16_t chal_len,
                            const uint8_t *signature, uint16_t sig_len)
 {
     if (!challenge || !signature) return ICCE_ERR_PARAM;
+    if (chal_len < 16 || sig_len != 64) return ICCE_ERR_PARAM;
 
-    /* Verify ECDSA signature against stored device public keys */
-    /* challenge: 16 bytes random from vehicle */
-    /* signature: 64 bytes (r || s) P-256 */
-
+    /* 对每个已绑定设备尝试验证签名 */
     for (uint8_t i = 0; i < g_device_count; i++) {
         if (!g_devices[i].active) continue;
 
-        /* TODO: SE050 ECDSA verify */
-        /* if (verify succeeds) return ICCE_OK; */
+#if defined(ICCE_USE_SE050)
+        /* === SE050 硬件路径 === */
+        /* 使用 SE050 ECDSA P-256 验签
+         * NXP Plug & Trust API:
+         *   smStatus_t status = Se05x_API_ECCMultyStepVerify(
+         *       s_ctx, g_devices[i].key_slot,
+         *       kSE05x_Algo_ECDSA_HA256,
+         *       challenge, chal_len,
+         *       signature, sig_len);
+         *   if (status == kSE05x_Match) return ICCE_OK;
+         */
+        (void)chal_len;
+
+        /* 暂未集成 SE050 中间件，回退软件实现 */
+        /* 删除此段后启用上面注释的 SE050 调用 */
+
+#endif /* ICCE_USE_SE050 */
+
+        /* === 软件回退路径 (mbedtls ECDSA) === */
+        /* 将设备公钥从 64 字节 (x||y) 转换为 65 字节未压缩格式 */
+        uint8_t pubkey[65];
+        pubkey[0] = 0x04;  /* 未压缩标志 */
+        memcpy(pubkey + 1, g_devices[i].device_pubkey, 64);
+
+        /* 计算 SHA-256 挑战哈希 */
+        uint8_t digest[32];
+        mbedtls_sha256(challenge, chal_len, digest, 0);
+
+        /* 使用 mbedtls ECDSA P-256 验签 */
+        mbedtls_ecdsa_context ecdsa;
+        mbedtls_ecdsa_init(&ecdsa);
+
+        int ret = mbedtls_ecp_group_load(&ecdsa.grp, MBEDTLS_ECP_DP_SECP256R1);
+        if (ret == 0) {
+            ret = mbedtls_ecp_point_read_binary(&ecdsa.grp, &ecdsa.Q, pubkey, 65);
+        }
+
+        if (ret == 0) {
+            ret = mbedtls_ecdsa_read_signature(&ecdsa, digest, 32,
+                                                signature, sig_len);
+            if (ret == 0) {
+                mbedtls_ecdsa_free(&ecdsa);
+                return ICCE_OK;  /* 签名验证通过 */
+            }
+        }
+
+        mbedtls_ecdsa_free(&ecdsa);
     }
 
-    return ICCE_ERR_SECURITY;
+    return ICCE_ERR_SECURITY;  /* 所有设备验证失败 */
 }
 
 int32_t icce_security_verify_session(uint16_t session_id)
