@@ -2,12 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   Vehicle,
   DigitalKey,
-  KeyShare,
-  ActivityLog,
   Notification,
   User,
-  VehicleControlCommand,
-  PermissionType,
 } from '../types';
 
 // 模拟 API 基础 URL
@@ -26,6 +22,11 @@ const fetchApi = async <T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
   return response.json();
 };
+
+type KeyShare = any;
+type ActivityLog = any;
+type VehicleControlCommand = { vehicleId: string | number; type: string; params?: Record<string, unknown> };
+type PermissionType = string;
 
 // ========== User Hooks ==========
 export const useCurrentUser = () => {
@@ -61,7 +62,7 @@ export const useVehicleStatus = (vehicleId: string) => {
 };
 
 export const useVehicleLocation = (vehicleId: string) => {
-  return useQuery<Vehicle['location']>({
+  return useQuery<any>({
     queryKey: ['vehicles', vehicleId, 'location'],
     queryFn: () => fetchApi(`/vehicles/${vehicleId}/location`),
     enabled: !!vehicleId,

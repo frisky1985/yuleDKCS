@@ -87,7 +87,7 @@ const LoginPage: React.FC = () => {
 
       if (response.code === 200) {
         // 保存认证信息
-        login(response.data.user, response.data.token);
+        login(response.data.user as any, response.data.token);
         
         // 如果选了"记住我"，可以在此处设置更长的token有效期
         if (formData.rememberMe) {
@@ -331,20 +331,6 @@ const LoginPage: React.FC = () => {
                   }}
                 >
                   <Apple />
-                </IconButton>
-                <IconButton
-                  onClick={() => handleSocialLogin('wechat')}
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    border: `1px solid ${theme.palette.divider}`,
-                    borderRadius: 2,
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover,
-                    },
-                  }}
-                >
-                  <Wechat sx={{ color: '#07C160' }} />
                 </IconButton>
               </Box>
             </motion.div>

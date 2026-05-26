@@ -5,13 +5,12 @@ import {
   Box, Typography, Paper, Grid, Chip, Button, IconButton,
   Tabs, Tab, Divider, List, ListItem, ListItemText, ListItemIcon,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Switch, FormControlLabel, TextField, MenuItem, Select, FormControl,
-  InputLabel, CircularProgress, Alert, Tooltip
+  CircularProgress, Alert
 } from '@mui/material';
 import {
-  ArrowBack, Edit, Share, Delete, Pause, Play,
-  LockOpen, Lock, DirectionsCar, AccessTime,
-  LocationOn, QrCode, History, Settings,
+  ArrowBack, Edit, Share, Delete, Pause, PlayArrow,
+  DirectionsCar,
+  QrCode, History, Settings,
   CheckCircle, Warning, Error as ErrorIcon
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
@@ -41,18 +40,17 @@ export default function KeyDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState(0);
-  const [showShareDialog, setShowShareDialog] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
 
   const { data: keyDetail, isLoading, error } = useQuery<DigitalKey>({
     queryKey: ['key', keyId],
-    queryFn: () => keysApi.getKeyDetail(keyId!),
+    queryFn: () => keysApi.getKeyDetail(keyId!) as Promise<DigitalKey>,
     enabled: !!keyId,
   });
 
   const { data: usageLogs } = useQuery<{ logs: KeyUsageLog[]; total: number }>({
     queryKey: ['keyLogs', keyId],
-    queryFn: () => keysApi.getUsageLogs(keyId!, { limit: 50 }),
+    queryFn: () => keysApi.getUsageLogs(keyId!, { limit: 50 }) as Promise<{ logs: KeyUsageLog[]; total: number }>,
     enabled: !!keyId && activeTab === 1,
   });
 
@@ -238,7 +236,7 @@ export default function KeyDetailPage() {
                     <Button
                       variant="outlined"
                       startIcon={<Share />}
-                      onClick={() => setShowShareDialog(true)}
+                      onClick={() => navigate(`/keys/${keyId}/share`)}
                       fullWidth
                     >
                       分享钥匙
@@ -267,7 +265,7 @@ export default function KeyDetailPage() {
                     <Button
                       variant="outlined"
                       color="success"
-                      startIcon={<Play />}
+                      startIcon={<PlayArrow />}
                       onClick={() => activateMutation.mutate()}
                       fullWidth
                       disabled={isExpired || keyDetail.status === 'revoked'}
@@ -312,7 +310,7 @@ export default function KeyDetailPage() {
                     当前权限
                   </Typography>
                   <List>
-                    {keyDetail.permissions.map((perm) => (
+                    {keyDetail.permissions.map((perm: KeyPermission) => (
                       <ListItem key={perm.type}>
                         <ListItemIcon>
                           {perm.enabled ? (
@@ -366,7 +364,7 @@ export default function KeyDetailPage() {
                     </Typography>
                   ) : (
                     <List>
-                      {usageLogs?.logs.map((log) => (
+                      {usageLogs?.logs.map((log: KeyUsageLog) => (
                         <ListItem key={log.id} divider>
                           <ListItemIcon>
                             {log.status === 'success' ? (

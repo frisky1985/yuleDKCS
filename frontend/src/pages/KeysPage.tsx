@@ -3,12 +3,11 @@ import {
   Box, Typography, Tabs, Tab, Card, CardContent, Chip,
   Avatar, Button, IconButton, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Select, MenuItem, FormControl,
-  InputLabel, List, ListItem, ListItemText, ListItemSecondaryAction,
-  FormControlLabel, Checkbox, Divider
+  InputLabel, FormControlLabel, Checkbox, Divider
 } from '@mui/material';
 import {
-  Share, Delete, Key, ContentCopy, QrCode,
-  AccessTime, CheckCircle, Cancel
+  Share, Delete, Key, QrCode,
+  AccessTime
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,12 +32,12 @@ export default function KeysPage() {
 
   const { data: myKeys } = useQuery<Key[]>({
     queryKey: ['keys', 'my'],
-    queryFn: () => api.get('/keys').then(r => r.data.keys),
+    queryFn: () => api.get('/keys').then((r: any) => r.data.keys),
   });
 
   const { data: sharedKeys } = useQuery<Key[]>({
     queryKey: ['keys', 'shared'],
-    queryFn: () => api.get('/keys/shared/list').then(r => r.data.keys),
+    queryFn: () => api.get('/keys/shared/list').then((r: any) => r.data.keys),
   });
 
   const revokeMutation = useMutation({

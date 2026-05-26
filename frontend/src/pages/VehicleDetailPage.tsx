@@ -9,10 +9,10 @@ import {
 } from '@mui/material'
 import {
   ArrowBack, Edit, Delete, DirectionsCar,
-  Lock, LockOpen, PowerSettingsNew, Motorcycle,
-  LocalShipping, AcUnit, VolumeUp, FlashOn,
-  LocationOn, Key, AccessTime, History,
-  CheckCircle, Error as ErrorIcon, SignalCellularAlt,
+  Lock, LockOpen, PowerSettingsNew,
+  LocalShipping, VolumeUp, FlashOn,
+  LocationOn, Key, AccessTime,
+  CheckCircle, Error as ErrorIcon,
   Battery90, Speed,
 } from '@mui/icons-material'
 import { motion } from 'framer-motion'

@@ -8,8 +8,6 @@
  * - 订阅车辆状态和命令结果
  */
 
-import { API_BASE_URL, getAuthToken } from '../api/client';
-
 // WebSocket 消息类型
 export enum WsMessageType {
   VEHICLE_STATUS = 'vehicle_status',
@@ -96,6 +94,22 @@ interface WebSocketConfig {
 }
 
 // 默认配置
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+
+// 获取认证 Token
+function getAuthToken(): string | null {
+  try {
+    const stored = localStorage.getItem('auth-storage');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.state?.token || null;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+}
+
 const DEFAULT_CONFIG: WebSocketConfig = {
   url: `${API_BASE_URL.replace(/^http/, 'ws')}/ws`,
   reconnectInterval: 3000,      // 3秒后重连
@@ -113,9 +127,9 @@ class WebSocketService {
   private config: WebSocketConfig;
   private connectionState: WsConnectionState = WsConnectionState.DISCONNECTED;
   private reconnectAttempts = 0;
-  private heartbeatTimer: NodeJS.Timeout | null = null;
-  private heartbeatTimeoutTimer: NodeJS.Timeout | null = null;
-  private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private messageHandlers: Map<WsMessageType, Set<MessageHandler>> = new Map();
   private stateChangeHandlers: Set<StateChangeHandler> = new Set();
   private pendingMessages: WsMessage[] = [];
@@ -478,7 +492,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 export function useWebSocket() {
   const [state, setState] = useState<WsConnectionState>(WsConnectionState.DISCONNECTED);
-  const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
+  const [lastMessage] = useState<WsMessage | null>(null);
   const ws = getWebSocketService();
 
   useEffect(() => {

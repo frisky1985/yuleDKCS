@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
 	"github.com/frisky1985/yuleDKCS/backend/internal/services"
 	"github.com/gin-gonic/gin"

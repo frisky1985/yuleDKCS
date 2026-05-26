@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
 	"strconv"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
@@ -36,10 +35,7 @@ func (h *WebSocketHandler) HandleVehicleWebSocket(c *gin.Context) {
 	// 验证车机认证：检查 Authorization 头中的 JWT
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "缺少认证信息",
-		})
+		Unauthorized(c, "缺少认证信息")
 		return
 	}
 	// 若 JWT 有效且包含 vehicle 角色则通过；否则仅允许未认证连接（由上层中间件决定）
@@ -61,10 +57,7 @@ func (h *WebSocketHandler) HandleAdminWebSocket(c *gin.Context) {
 	// 验证管理员权限
 	role, exists := c.Get("role")
 	if !exists || role.(string) != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{
-			"code":    403,
-			"message": "需要管理员权限",
-		})
+		Forbidden(c, "需要管理员权限")
 		return
 	}
 
@@ -86,11 +79,7 @@ func (h *WebSocketHandler) GetConnectionStats(c *gin.Context) {
 		"total_connections": h.hub.GetClientCount(),
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    stats,
-	})
+	SuccessMsg(c, "获取成功", stats)
 }
 
 // SendCommandToVehicle 通过 WebSocket 发送命令到车辆
@@ -103,11 +92,7 @@ func (h *WebSocketHandler) SendCommandToVehicle(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
@@ -122,12 +107,8 @@ func (h *WebSocketHandler) SendCommandToVehicle(c *gin.Context) {
 	data, _ := json.Marshal(message)
 	h.hub.BroadcastToVehicle(uint(vehicleID), data)
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "命令已发送",
-		"data": gin.H{
-			"vehicle_id": vehicleID,
-			"command":    req.Command,
-		},
+	SuccessMsg(c, "命令已发送", gin.H{
+		"vehicle_id": vehicleID,
+		"command":    req.Command,
 	})
 }

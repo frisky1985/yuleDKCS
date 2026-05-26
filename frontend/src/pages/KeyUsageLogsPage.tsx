@@ -4,16 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, Chip, IconButton, TextField,
-  MenuItem, Select, FormControl, InputLabel, Grid, Button, DatePicker,
-  LocalizationProvider, AdapterDateFns
+  MenuItem, Select, FormControl, InputLabel, Grid, Button
 } from '@mui/material';
 import {
-  ArrowBack, FilterList, Download, LocationOn,
+  ArrowBack, Download, LocationOn,
   CheckCircle, Error as ErrorIcon, Schedule
 } from '@mui/icons-material';
 import { keysApi, type KeyUsageLog } from '../api/keys';
-import { format, parseISO } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { format } from 'date-fns';
 
 const operationLabels: Record<string, string> = {
   unlock: '解锁',
@@ -49,10 +47,10 @@ export default function KeyUsageLogsPage() {
   });
 
   const handleExport = () => {
-    const logs = logsData?.logs || [];
+    const logs = (logsData as any)?.logs || [];
     const csvContent = [
       ['时间', '操作', '状态', '设备', '位置', '失败原因'].join(','),
-      ...logs.map(log => [
+      ...logs.map((log: KeyUsageLog) => [
         format(new Date(log.timestamp), 'yyyy-MM-dd HH:mm:ss'),
         operationLabels[log.operation] || log.operation,
         log.status,
@@ -69,7 +67,7 @@ export default function KeyUsageLogsPage() {
     link.click();
   };
 
-  const filteredLogs = (logsData?.logs || []).filter(log => {
+  const filteredLogs = ((logsData as any)?.logs || []).filter((log: KeyUsageLog) => {
     if (statusFilter && log.status !== statusFilter) return false;
     return true;
   });
@@ -175,7 +173,7 @@ export default function KeyUsageLogsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredLogs.map((log) => (
+                filteredLogs.map((log: KeyUsageLog) => (
                   <TableRow key={log.id} hover>
                     <TableCell>
                       {format(new Date(log.timestamp), 'MM-dd HH:mm:ss')}
@@ -230,7 +228,7 @@ export default function KeyUsageLogsPage() {
         </TableContainer>
         <TablePagination
           component="div"
-          count={logsData?.total || 0}
+          count={(logsData as any)?.total || 0}
           page={page}
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { 
-  Box, Typography, Card, CardContent, Button, Grid, 
+  Box, Typography, Card, CardContent, Button, 
   Avatar, Chip, List, ListItem, ListItemText, ListItemAvatar,
   IconButton, LinearProgress, Fab, Badge
 } from '@mui/material';
@@ -35,16 +35,16 @@ interface Activity {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const [notifications, setNotifications] = useState(3);
+  const [notifications] = useState(3);
 
   const { data: vehicles } = useQuery<Vehicle[]>({
     queryKey: ['vehicles'],
-    queryFn: () => api.get('/vehicles').then(r => r.data.vehicles),
+    queryFn: () => api.get('/vehicles').then((r: any) => r.data.vehicles),
   });
 
   const { data: activities } = useQuery<Activity[]>({
     queryKey: ['activities'],
-    queryFn: () => api.get('/activities/recent').then(r => r.data),
+    queryFn: () => api.get('/activities/recent').then((r: any) => r.data),
   });
 
   const quickActions = [
@@ -63,7 +63,7 @@ export default function DashboardPage() {
               欢迎回来，
             </Typography>
             <Typography variant="h5" fontWeight="bold">
-              {user?.name || '用户'}
+              {user?.username || '用户'}
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>

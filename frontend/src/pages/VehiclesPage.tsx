@@ -4,12 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Box, Typography, Card, CardContent, Grid, Chip, Button, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  CircularProgress, Alert, LinearProgress, Tooltip, Fab,
+  CircularProgress, Alert, LinearProgress, Tooltip,
 } from '@mui/material'
 import {
   DirectionsCar, Add, Delete, Edit, ChevronRight,
-  Battery90, SignalCellularAlt, LocationOn,
-  Lock, LockOpen, MoreVert,
+  Battery90, LocationOn,
 } from '@mui/icons-material'
 import { motion } from 'framer-motion'
 import { vehiclesApi, type Vehicle } from '../api/vehicles'

@@ -48,6 +48,7 @@ apiClient.interceptors.response.use(
 )
 
 export default apiClient
+export const api = apiClient
 
 // API 响应类型
 export interface ApiResponse<T = unknown> {

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/models"
@@ -45,21 +44,14 @@ func (h *KeyHandler) RegisterRoutes(router *gin.RouterGroup) {
 func (h *KeyHandler) IssueKey(c *gin.Context) {
 	var req models.IssueKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	// 从上下文中获取用户ID
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
@@ -67,30 +59,16 @@ func (h *KeyHandler) IssueKey(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case services.ErrInvalidKeyType:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "无效的钥匙类型",
-			})
+			BadRequest(c, "无效的钥匙类型")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权为此车辆发行钥匙",
-			})
+			Forbidden(c, "无权为此车辆发行钥匙")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "发行钥匙失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "发行钥匙失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    201,
-		"message": "钥匙发行成功",
-		"data":    keyToResponse(key),
-	})
+	SuccessCreated(c, keyToResponse(key))
 }
 
 // GetUserKeys 获取用户钥匙列表
@@ -98,10 +76,7 @@ func (h *KeyHandler) IssueKey(c *gin.Context) {
 func (h *KeyHandler) GetUserKeys(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
@@ -111,11 +86,7 @@ func (h *KeyHandler) GetUserKeys(c *gin.Context) {
 
 	keys, total, err := h.keyService.GetUserKeys(c.Request.Context(), userID.(uint), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取钥匙列表失败",
-			"error":   err.Error(),
-		})
+		InternalError(c, "获取钥匙列表失败", err.Error())
 		return
 	}
 
@@ -124,16 +95,11 @@ func (h *KeyHandler) GetUserKeys(c *gin.Context) {
 		response[i] = keyToResponse(&key)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data": gin.H{
-			"list":      response,
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
+	SuccessList(c, map[string]interface{}{
+		"list":      response,
+		"page":      page,
+		"page_size": pageSize,
+	}, total)
 }
 
 // GetKeyDetail 获取钥匙详情
@@ -141,19 +107,13 @@ func (h *KeyHandler) GetUserKeys(c *gin.Context) {
 func (h *KeyHandler) GetKeyDetail(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
+		BadRequest(c, "无效的钥匙ID")
 		return
 	}
 
@@ -161,30 +121,16 @@ func (h *KeyHandler) GetKeyDetail(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
+			NotFound(c, "钥匙不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权访问此钥匙",
-			})
+			Forbidden(c, "无权访问此钥匙")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "获取钥匙详情失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "获取钥匙详情失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    keyToResponse(key),
-	})
+	SuccessMsg(c, "获取成功", keyToResponse(key))
 }
 
 // ShareKey 分享钥匙
@@ -192,29 +138,19 @@ func (h *KeyHandler) GetKeyDetail(c *gin.Context) {
 func (h *KeyHandler) ShareKey(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
+		BadRequest(c, "无效的钥匙ID")
 		return
 	}
 
 	var req models.ShareKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
@@ -222,40 +158,20 @@ func (h *KeyHandler) ShareKey(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
+			NotFound(c, "钥匙不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权分享此钥匙",
-			})
+			Forbidden(c, "无权分享此钥匙")
 		case services.ErrCannotShareToSelf:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "不能分享给自己",
-			})
+			BadRequest(c, "不能分享给自己")
 		case services.ErrInvalidPermissions:
-			c.JSON(http.StatusBadRequest, gin.H{
-				"code":    400,
-				"message": "分享权限超过原钥匙权限",
-			})
+			BadRequest(c, "分享权限超过原钥匙权限")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "分享钥匙失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "分享钥匙失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    201,
-		"message": "钥匙分享成功",
-		"data":    share,
-	})
+	SuccessCreated(c, share)
 }
 
 // RevokeKey 撤销钥匙
@@ -263,48 +179,29 @@ func (h *KeyHandler) ShareKey(c *gin.Context) {
 func (h *KeyHandler) RevokeKey(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
+		BadRequest(c, "无效的钥匙ID")
 		return
 	}
 
 	if err := h.keyService.RevokeKey(c.Request.Context(), uint(keyID), userID.(uint)); err != nil {
 		switch err {
 		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
+			NotFound(c, "钥匙不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权撤销此钥匙",
-			})
+			Forbidden(c, "无权撤销此钥匙")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "撤销钥匙失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "撤销钥匙失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "钥匙已撤销",
-	})
+	SuccessMsg(c, "钥匙已撤销", nil)
 }
 
 // UpdatePermissions 更新钥匙权限
@@ -312,58 +209,35 @@ func (h *KeyHandler) RevokeKey(c *gin.Context) {
 func (h *KeyHandler) UpdatePermissions(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
+		BadRequest(c, "无效的钥匙ID")
 		return
 	}
 
 	var req models.UpdatePermissionsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	if err := h.keyService.UpdateKeyPermissions(c.Request.Context(), uint(keyID), userID.(uint), req.Permissions); err != nil {
 		switch err {
 		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
+			NotFound(c, "钥匙不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权修改此钥匙权限",
-			})
+			Forbidden(c, "无权修改此钥匙权限")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "更新权限失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "更新权限失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "权限更新成功",
-	})
+	SuccessMsg(c, "权限更新成功", nil)
 }
 
 // GetSharedKeys 获取用户收到的分享钥匙
@@ -371,28 +245,17 @@ func (h *KeyHandler) UpdatePermissions(c *gin.Context) {
 func (h *KeyHandler) GetSharedKeys(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	shares, err := h.keyService.GetSharedKeys(c.Request.Context(), userID.(uint))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "获取分享列表失败",
-			"error":   err.Error(),
-		})
+		InternalError(c, "获取分享列表失败", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    shares,
-	})
+	SuccessMsg(c, "获取成功", shares)
 }
 
 // GetKeyShares 获取钥匙的分享列表
@@ -400,19 +263,13 @@ func (h *KeyHandler) GetSharedKeys(c *gin.Context) {
 func (h *KeyHandler) GetKeyShares(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
+		BadRequest(c, "无效的钥匙ID")
 		return
 	}
 
@@ -420,30 +277,16 @@ func (h *KeyHandler) GetKeyShares(c *gin.Context) {
 	if err != nil {
 		switch err {
 		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
+			NotFound(c, "钥匙不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权查看此钥匙的分享",
-			})
+			Forbidden(c, "无权查看此钥匙的分享")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "获取分享列表失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "获取分享列表失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    shares,
-	})
+	SuccessMsg(c, "获取成功", shares)
 }
 
 // RevokeShare 撤销分享
@@ -451,48 +294,140 @@ func (h *KeyHandler) GetKeyShares(c *gin.Context) {
 func (h *KeyHandler) RevokeShare(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	shareID, err := strconv.ParseUint(c.Param("share_id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的分享ID",
-		})
+		BadRequest(c, "无效的分享ID")
 		return
 	}
 
 	if err := h.keyService.RevokeShare(c.Request.Context(), uint(shareID), userID.(uint)); err != nil {
 		switch err {
 		case services.ErrShareNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "分享记录不存在",
-			})
+			NotFound(c, "分享记录不存在")
 		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权撤销此分享",
-			})
+			Forbidden(c, "无权撤销此分享")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "撤销分享失败",
-				"error":   err.Error(),
-			})
+			InternalError(c, "撤销分享失败", err.Error())
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "分享已撤销",
-	})
+	SuccessMsg(c, "分享已撤销", nil)
+}
+
+// ActivateKey 激活钥匙
+// POST /api/v1/keys/:id/activate
+func (h *KeyHandler) ActivateKey(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		BadRequest(c, "无效的钥匙ID")
+		return
+	}
+
+	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		NotFound(c, "钥匙不存在")
+		return
+	}
+
+	// 更新状态为激活
+	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusActive); err != nil {
+		switch err {
+		case services.ErrKeyNotFound:
+			NotFound(c, "钥匙不存在")
+		case services.ErrUnauthorized:
+			Forbidden(c, "无权激活此钥匙")
+		default:
+			InternalError(c, "激活钥匙失败", err.Error())
+		}
+		return
+	}
+
+	SuccessMsg(c, "钥匙已激活", keyToResponse(key))
+}
+
+// DeactivateKey 停用钥匙
+// POST /api/v1/keys/:id/deactivate
+func (h *KeyHandler) DeactivateKey(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		BadRequest(c, "无效的钥匙ID")
+		return
+	}
+
+	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		NotFound(c, "钥匙不存在")
+		return
+	}
+
+	// 更新状态为停用
+	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusInactive); err != nil {
+		switch err {
+		case services.ErrKeyNotFound:
+			NotFound(c, "钥匙不存在")
+		case services.ErrUnauthorized:
+			Forbidden(c, "无权停用此钥匙")
+		default:
+			InternalError(c, "停用钥匙失败", err.Error())
+		}
+		return
+	}
+
+	SuccessMsg(c, "钥匙已停用", keyToResponse(key))
+}
+
+// GetKeyLogs 获取钥匙使用日志
+// GET /api/v1/keys/:id/logs
+func (h *KeyHandler) GetKeyLogs(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		Unauthorized(c, "未认证")
+		return
+	}
+
+	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		BadRequest(c, "无效的钥匙ID")
+		return
+	}
+
+	// 验证钥匙访问权限
+	_, err = h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
+	if err != nil {
+		Forbidden(c, "无权访问此钥匙日志")
+		return
+	}
+
+	// 分页参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	// NOTE: 调用服务层获取日志（需先实现 KeyLog 模型与仓库接口）
+	// 暂返回空数组
+	logs := []gin.H{}
+
+	SuccessList(c, map[string]interface{}{
+		"list":      logs,
+		"page":      page,
+		"page_size": pageSize,
+	}, 0)
 }
 
 // keyToResponse 转换钥匙为响应格式
@@ -519,175 +454,4 @@ func keyToResponse(key *models.Key) models.KeyResponse {
 	}
 
 	return resp
-}
-
-// ActivateKey 激活钥匙
-// POST /api/v1/keys/:id/activate
-func (h *KeyHandler) ActivateKey(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
-		return
-	}
-
-	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
-		return
-	}
-
-	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "钥匙不存在",
-		})
-		return
-	}
-
-	// 更新状态为激活
-	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusActive); err != nil {
-		switch err {
-		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
-		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权激活此钥匙",
-			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "激活钥匙失败",
-				"error":   err.Error(),
-			})
-		}
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "钥匙已激活",
-		"data":    keyToResponse(key),
-	})
-}
-
-// DeactivateKey 停用钥匙
-// POST /api/v1/keys/:id/deactivate
-func (h *KeyHandler) DeactivateKey(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
-		return
-	}
-
-	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
-		return
-	}
-
-	key, err := h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "钥匙不存在",
-		})
-		return
-	}
-
-	// 更新状态为停用
-	if err := h.keyService.UpdateKeyStatus(c.Request.Context(), uint(keyID), userID.(uint), models.KeyStatusInactive); err != nil {
-		switch err {
-		case services.ErrKeyNotFound:
-			c.JSON(http.StatusNotFound, gin.H{
-				"code":    404,
-				"message": "钥匙不存在",
-			})
-		case services.ErrUnauthorized:
-			c.JSON(http.StatusForbidden, gin.H{
-				"code":    403,
-				"message": "无权停用此钥匙",
-			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    500,
-				"message": "停用钥匙失败",
-				"error":   err.Error(),
-			})
-		}
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "钥匙已停用",
-		"data":    keyToResponse(key),
-	})
-}
-
-// GetKeyLogs 获取钥匙使用日志
-// GET /api/v1/keys/:id/logs
-func (h *KeyHandler) GetKeyLogs(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
-		return
-	}
-
-	keyID, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的钥匙ID",
-		})
-		return
-	}
-
-	// 验证钥匙访问权限
-	_, err = h.keyService.GetKey(c.Request.Context(), uint(keyID), userID.(uint))
-	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{
-			"code":    403,
-			"message": "无权访问此钥匙日志",
-		})
-		return
-	}
-
-	// 分页参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-
-	// NOTE: 调用服务层获取日志（需先实现 KeyLog 模型与仓库接口）
-	// 暂返回空数组
-	logs := []gin.H{}
-
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data": gin.H{
-			"list":      logs,
-			"total":     0,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
 }

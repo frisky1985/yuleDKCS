@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/frisky1985/yuleDKCS/backend/internal/models"
@@ -21,47 +20,30 @@ func NewVehicleHandler(vehicleService services.VehicleService) *VehicleHandler {
 func (h *VehicleHandler) RegisterVehicle(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	var req models.VehicleRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	vehicle, err := h.vehicleService.RegisterVehicle(c.Request.Context(), userID.(uint), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    201,
-		"message": "创建成功",
-		"data":    vehicle,
-	})
+	SuccessCreated(c, vehicle)
 }
 
 // GetUserVehicles 获取用户车辆列表
 func (h *VehicleHandler) GetUserVehicles(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
@@ -70,137 +52,90 @@ func (h *VehicleHandler) GetUserVehicles(c *gin.Context) {
 
 	vehicles, total, err := h.vehicleService.GetUserVehicles(c.Request.Context(), userID.(uint), page, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data": gin.H{
-			"vehicles": vehicles,
-			"total":    total,
-			"page":     page,
-			"pageSize": pageSize,
-		},
-	})
+	SuccessList(c, map[string]interface{}{
+		"vehicles": vehicles,
+		"page":     page,
+		"pageSize": pageSize,
+	}, total)
 }
 
 // GetVehicle 获取车辆详情
 func (h *VehicleHandler) GetVehicle(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的车辆ID",
-		})
+		BadRequest(c, "无效的车辆ID")
 		return
 	}
 
 	vehicle, err := h.vehicleService.GetVehicle(c.Request.Context(), uint(vehicleID), userID.(uint))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "车辆不存在",
-		})
+		NotFound(c, "车辆不存在")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    vehicle,
-	})
+	SuccessMsg(c, "获取成功", vehicle)
 }
 
 // GetVehicleStatus 获取车辆实时状态
 func (h *VehicleHandler) GetVehicleStatus(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的车辆ID",
-		})
+		BadRequest(c, "无效的车辆ID")
 		return
 	}
 
 	status, err := h.vehicleService.GetVehicleStatus(c.Request.Context(), uint(vehicleID), userID.(uint))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    status,
-	})
+	SuccessMsg(c, "获取成功", status)
 }
 
 // SendCommand 发送车辆控制命令
 func (h *VehicleHandler) SendCommand(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的车辆ID",
-		})
+		BadRequest(c, "无效的车辆ID")
 		return
 	}
 
 	var req models.VehicleCommandRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	status, err := h.vehicleService.SendCommand(c.Request.Context(), uint(vehicleID), userID.(uint), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{
+	c.JSON(202, gin.H{
 		"code":    202,
 		"message": "命令已发送",
 		"data": gin.H{
@@ -214,44 +149,28 @@ func (h *VehicleHandler) SendCommand(c *gin.Context) {
 func (h *VehicleHandler) UpdateLocation(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
 	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的车辆ID",
-		})
+		BadRequest(c, "无效的车辆ID")
 		return
 	}
 
 	var req models.VehicleLocationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	if err := h.vehicleService.UpdateLocation(c.Request.Context(), uint(vehicleID), userID.(uint), &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "位置更新成功",
-	})
+	SuccessMsg(c, "位置更新成功", nil)
 }
 
 // GetCommandStatus 获取命令执行状态
@@ -260,51 +179,31 @@ func (h *VehicleHandler) GetCommandStatus(c *gin.Context) {
 
 	status, err := h.vehicleService.GetCommandStatus(c.Request.Context(), commandID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "命令不存在",
-		})
+		NotFound(c, "命令不存在")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "获取成功",
-		"data":    status,
-	})
+	SuccessMsg(c, "获取成功", status)
 }
 
 // Heartbeat 车辆心跳上报
 func (h *VehicleHandler) Heartbeat(c *gin.Context) {
 	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的车辆ID",
-		})
+		BadRequest(c, "无效的车辆ID")
 		return
 	}
 
 	var data map[string]interface{}
 	if err := c.ShouldBindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	if err := h.vehicleService.Heartbeat(c.Request.Context(), uint(vehicleID), data); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": err.Error(),
-		})
+		InternalError(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "心跳上报成功",
-	})
+	SuccessMsg(c, "心跳上报成功", nil)
 }

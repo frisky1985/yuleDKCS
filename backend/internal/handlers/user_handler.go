@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/frisky1985/yuleDKCS/backend/internal/middleware"
 	"github.com/frisky1985/yuleDKCS/backend/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // UserHandler 用户处理器
@@ -40,20 +39,13 @@ type RegisterRequest struct {
 func (h *UserHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	user, err := h.userService.ValidateCredentials(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "用户名或密码错误",
-		})
+		Unauthorized(c, "用户名或密码错误")
 		return
 	}
 
@@ -64,25 +56,18 @@ func (h *UserHandler) Login(c *gin.Context) {
 		user.Role,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":    500,
-			"message": "生成 Token 失败",
-		})
+		InternalError(c, "生成 Token 失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    200,
-		"message": "登录成功",
-		"data": gin.H{
-			"token": token,
-			"type":  "Bearer",
-			"user": gin.H{
-				"id":       user.ID,
-				"username": user.Username,
-				"email":    user.Email,
-				"role":     user.Role,
-			},
+	SuccessMsg(c, "登录成功", gin.H{
+		"token": token,
+		"type":  "Bearer",
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"role":     user.Role,
 		},
 	})
 }
@@ -92,31 +77,20 @@ func (h *UserHandler) Login(c *gin.Context) {
 func (h *UserHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "请求参数错误",
-			"error":   err.Error(),
-		})
+		BadRequest(c, "请求参数错误", err.Error())
 		return
 	}
 
 	user, err := h.userService.CreateUser(c.Request.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": err.Error(),
-		})
+		BadRequest(c, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"code":    201,
-		"message": "注册成功",
-		"data": gin.H{
-			"id":       user.ID,
-			"username": user.Username,
-			"email":    user.Email,
-		},
+	SuccessCreated(c, gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
 	})
 }
 
@@ -125,10 +99,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"code":    401,
-			"message": "未认证",
-		})
+		Unauthorized(c, "未认证")
 		return
 	}
 
@@ -136,32 +107,23 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	idStr := userID.(string)
 	idUint64, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    400,
-			"message": "无效的用户ID",
-		})
+		BadRequest(c, "无效的用户ID")
 		return
 	}
 	id := uint(idUint64)
 
 	user, err := h.userService.GetUserByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"code":    404,
-			"message": "用户不存在",
-		})
+		NotFound(c, "用户不存在")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code": 200,
-		"data": gin.H{
-			"id":        user.ID,
-			"username":  user.Username,
-			"email":     user.Email,
-			"phone":     user.Phone,
-			"role":      user.Role,
-			"created_at": user.CreatedAt,
-		},
+	Success(c, gin.H{
+		"id":         user.ID,
+		"username":   user.Username,
+		"email":      user.Email,
+		"phone":      user.Phone,
+		"role":       user.Role,
+		"created_at": user.CreatedAt,
 	})
 }

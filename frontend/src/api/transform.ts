@@ -6,7 +6,7 @@
 import { DigitalKey, KeyPermission, KeyUsageLog } from './keys';
 
 // 后端原始数据格式
-interface BackendKey {
+export interface BackendKey {
   id: number;
   user_id: number;
   vehicle_id: number;
@@ -44,7 +44,7 @@ interface BackendVehicle {
   plate_number?: string;
 }
 
-interface BackendKeyLog {
+export interface BackendKeyLog {
   id: number;
   key_id: number;
   user_id: number;

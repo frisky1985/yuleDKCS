@@ -3,11 +3,10 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
   TextField, Stepper, Step, StepLabel, Box, Typography,
   FormControlLabel, Checkbox, Grid, Chip, Divider, Alert,
-  ToggleButtonGroup, ToggleButton, Slider
+  ToggleButtonGroup, ToggleButton, Slider, Paper
 } from '@mui/material';
-import { QrCode, Email, Phone, Link as LinkIcon } from '@mui/icons-material';
+import { QrCode, Email, Phone } from '@mui/icons-material';
 import { keysApi, type KeyPermission } from '../api/keys';
-import { addDays } from 'date-fns';
 
 interface ShareKeyDialogProps {
   open: boolean;
@@ -42,7 +41,6 @@ export default function ShareKeyDialog({ open, onClose, keyId, vehicleName }: Sh
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['unlock', 'lock']);
   const [expiryDays, setExpiryDays] = useState(7);
   const [maxUses, setMaxUses] = useState<number | null>(null);
-  const [timeRange, setTimeRange] = useState<{ start: string; end: string } | null>(null);
   const [shareResult, setShareResult] = useState<{ qrCodeUrl: string; shareLink: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -74,8 +72,8 @@ export default function ShareKeyDialog({ open, onClose, keyId, vehicleName }: Sh
       });
 
       setShareResult({
-        qrCodeUrl: result.qr_code_url,
-        shareLink: result.share_link,
+        qrCodeUrl: (result as any)?.qr_code_url || '',
+        shareLink: (result as any)?.share_link || '',
       });
       setActiveStep(3); // 完成步骤
     } catch (error) {

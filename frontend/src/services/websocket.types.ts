@@ -33,7 +33,7 @@ export interface WSMessage {
   type: WSMessageType
   timestamp: string
   id: string
-  payload: Record<string, unknown>
+  payload: unknown
 }
 
 // =============================================================================

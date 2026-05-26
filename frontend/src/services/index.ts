@@ -2,9 +2,9 @@
  * Services exports
  */
 
-export { WebSocketService, wsService, useWebSocket, WS_MESSAGE_TYPES } from './websocket'
+export { getWebSocketService, resetWebSocketService, useWebSocket, WsMessageType, WsConnectionState } from './websocket'
 export type {
-  UseWebSocketOptions,
+  WsMessage, VehicleStatusMessage, CommandResultMessage,
 } from './websocket'
 
 export type {
