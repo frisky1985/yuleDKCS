@@ -804,11 +804,11 @@ func (s *keyTrackingService) GetUsageStatistics(ctx context.Context, keyID strin
 
 	// 查询最活跃小时 (MostActiveHour)
 	activeHourQuery := `
-		SELECT EXTRACT(HOUR FROM created_at)::int AS hour, COUNT(*) AS cnt
+		SELECT EXTRACT(HOUR FROM created_at)::int AS hour
 		FROM key_usage_records
 		WHERE key_id = $1 AND created_at >= $2
 		GROUP BY hour
-		ORDER BY cnt DESC
+		ORDER BY COUNT(*) DESC
 		LIMIT 1
 	`
 	var mostActiveHour sql.NullInt64

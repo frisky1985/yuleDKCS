@@ -12,6 +12,7 @@
 package model
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"time"
 )
@@ -105,7 +106,7 @@ type Location struct {
 	Timestamp int64   `json:"timestamp" db:"timestamp"`
 }
 
-func (l Location) Value() (interface{}, error) {
+func (l Location) Value() (driver.Value, error) {
 	return json.Marshal(l)
 }
 
@@ -208,7 +209,7 @@ type KeyRealtimeStatus struct {
  ******************************************************************************/
 type JSONMap map[string]interface{}
 
-func (m JSONMap) Value() (interface{}, error) {
+func (m JSONMap) Value() (driver.Value, error) {
 	if m == nil {
 		return nil, nil
 	}

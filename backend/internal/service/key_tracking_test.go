@@ -233,7 +233,7 @@ func TestKeyTrackingService_RecordUsage(t *testing.T) {
 
 	// Mock counter update
 	mock.ExpectExec("INSERT INTO key_usage_counters").
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Mock realtime status upsert
@@ -258,6 +258,11 @@ func TestKeyTrackingService_RecordUsage(t *testing.T) {
 	// Mock counter query for anomaly detection
 	mock.ExpectQuery("SELECT usage_count FROM key_usage_counters").
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnError(sql.ErrNoRows)
+
+	// Mock GetRealtimeStatus for consecutive failures check in anomaly detection
+	mock.ExpectQuery("SELECT key_id, current_status, last_usage_time, last_usage_type, last_location").
+		WithArgs(record.KeyID).
 		WillReturnError(sql.ErrNoRows)
 
 	mock.ExpectCommit()
@@ -291,8 +296,8 @@ func TestKeyTrackingService_GetUsageHistory(t *testing.T) {
 		"success", "error_code", "error_message", "session_id", "protocol",
 		"ranging_distance", "metadata", "created_at",
 	}).
-		AddRow(1, query.KeyID, model.KeyUsageTypeUnlock, "vehicle_001", "device_001", "user_001", nil, true, 0, "", "session_1", "CCC", nil, nil, time.Now()).
-		AddRow(2, query.KeyID, model.KeyUsageTypeLock, "vehicle_001", "device_001", "user_001", nil, true, 0, "", "session_2", "CCC", nil, nil, time.Now().Add(-time.Hour))
+		AddRow(1, query.KeyID, model.KeyUsageTypeUnlock, "vehicle_001", "device_001", "user_001", nil, true, 0, "", "session_1", "CCC", 0.0, nil, time.Now()).
+		AddRow(2, query.KeyID, model.KeyUsageTypeLock, "vehicle_001", "device_001", "user_001", nil, true, 0, "", "session_2", "CCC", 0.0, nil, time.Now().Add(-time.Hour))
 
 	mock.ExpectQuery("SELECT id, key_id, usage_type, vehicle_id, device_id, user_id, location").
 		WithArgs(query.KeyID, query.Limit, query.Offset).
@@ -410,7 +415,7 @@ func TestKeyTrackingService_GetUsageStatistics(t *testing.T) {
 	// Mock MostActiveHour query
 	mock.ExpectQuery("SELECT EXTRACT").
 		WithArgs(keyID, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"hour", "cnt"}).AddRow(int64(14), int64(20)))
+		WillReturnRows(sqlmock.NewRows([]string{"hour"}).AddRow(int64(14)))
 
 	// Mock ConsecutiveFailures query
 	mock.ExpectQuery("SELECT consecutive_failures").
@@ -429,11 +434,11 @@ func TestKeyTrackingService_GetUsageStatistics(t *testing.T) {
 	assert.Equal(t, int64(32), stats.TotalUsage)
 	assert.Equal(t, int64(30), stats.SuccessfulUsage)
 	assert.Equal(t, int64(2), stats.FailedUsage)
-	assert.Equal(t, int64(20), stats.UsageByType["unlock"])
+	assert.Equal(t, int64(22), stats.UsageByType["unlock"])
 	assert.Equal(t, int64(10), stats.UsageByType["lock"])
 	assert.Equal(t, int64(30), stats.UsageByProtocol["CCC"])
 	assert.Equal(t, int64(2), stats.UsageByProtocol["ICCOA"])
-	assert.InDelta(t, 2.3, stats.AverageRangingDist, 0.1)
+	assert.InDelta(t, 2.15, stats.AverageRangingDist, 0.01)
 	assert.Equal(t, 14, stats.MostActiveHour)
 	assert.Equal(t, 0, stats.ConsecutiveFailures)
 	assert.Equal(t, 1, stats.AnomalyCount)
@@ -528,12 +533,12 @@ func TestKeyTrackingService_GetAnomalyEvents(t *testing.T) {
 		"id", "key_id", "user_id", "anomaly_type", "severity", "description", "location",
 		"evidence", "status", "resolved_by", "resolved_at", "resolution", "created_at",
 	}).
-		AddRow(int64(1), query.KeyID, "user_001", model.AnomalyTypeRapidUsage, 3,
-			"Rapid usage detected", nil, model.JSONMap{"usage_count": 60},
-			"new", nil, nil, "", now).
-		AddRow(int64(2), query.KeyID, "user_001", model.AnomalyTypeOutsideGeofence, 4,
-			"Outside geofence", &model.Location{Latitude: 40.0, Longitude: 116.0},
-			model.JSONMap{"distance": 1500}, "new", nil, nil, "", now.Add(-time.Hour))
+		AddRow(int64(1), query.KeyID, "user_001", string(model.AnomalyTypeRapidUsage), 3,
+			"Rapid usage detected", nil, []byte(`{"usage_count": 60}`),
+			"new", "", nil, "", now).
+		AddRow(int64(2), query.KeyID, "user_001", string(model.AnomalyTypeOutsideGeofence), 4,
+			"Outside geofence", []byte(`{"latitude":40,"longitude":116}`),
+			[]byte(`{"distance": 1500}`), "new", "", nil, "", now.Add(-time.Hour))
 
 	mock.ExpectQuery("SELECT id, key_id, user_id, anomaly_type, severity, description, location").
 		WithArgs(query.KeyID, query.MinSeverity, query.Limit, query.Offset).
@@ -769,9 +774,9 @@ func TestKeyTrackingService_GenerateAuditReport(t *testing.T) {
 			AddRow("lock", "CCC", true, 10, nil))
 
 	// Mock MostActiveHour query
-	mock.ExpectQuery(`SELECT EXTRACT\(HOUR FROM created_at\)::int AS hour, COUNT\(\*\) AS cnt`).
+	mock.ExpectQuery(`SELECT EXTRACT\(HOUR FROM created_at\)::int AS hour`).
 		WithArgs(keyID, sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"hour", "cnt"}).AddRow(14, 20))
+		WillReturnRows(sqlmock.NewRows([]string{"hour"}).AddRow(14))
 
 	// Mock ConsecutiveFailures query
 	mock.ExpectQuery("SELECT consecutive_failures FROM key_realtime_status").
