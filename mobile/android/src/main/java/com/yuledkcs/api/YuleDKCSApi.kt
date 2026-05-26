@@ -153,6 +153,48 @@ interface YuleDKCSApi {
         @Header("Authorization") token: String,
         @Path("vehicleId") vehicleId: String
     ): Response<VehicleStatusResponse>
+
+    // ========== OTA / Firmware ==========
+    @GET("firmware")
+    suspend fun listFirmware(
+        @Header("Authorization") token: String
+    ): Response<FirmwareListResponse>
+
+    @POST("firmware")
+    suspend fun uploadFirmware(
+        @Header("Authorization") token: String,
+        @Body request: FirmwareUploadRequest
+    ): Response<FirmwareUploadResponse>
+
+    @GET("firmware/{firmwareId}")
+    suspend fun getFirmwareDetail(
+        @Header("Authorization") token: String,
+        @Path("firmwareId") firmwareId: String
+    ): Response<FirmwareDetailResponse>
+
+    @POST("vehicles/{vehicleId}/ota/check")
+    suspend fun checkOTAUpdate(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String
+    ): Response<OTAUpdateCheckResponse>
+
+    @POST("vehicles/{vehicleId}/ota/confirm")
+    suspend fun confirmOTAUpdate(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String
+    ): Response<ApiResponse>
+
+    @GET("vehicles/{vehicleId}/ota/status")
+    suspend fun getOTAStatus(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String
+    ): Response<OTAStatusResponse>
+
+    @GET("vehicles/{vehicleId}/ota/history")
+    suspend fun getOTAudHistory(
+        @Header("Authorization") token: String,
+        @Path("vehicleId") vehicleId: String
+    ): Response<OTAudHistoryResponse>
 }
 
 // ========== Request/Response Data Classes ==========
@@ -381,5 +423,105 @@ data class CommandData(
     val status: String,
     val result: String?,
     val created_at: String,
+    val completed_at: String?
+)
+
+// ========== OTA / Firmware Data Classes ==========
+
+data class FirmwareListResponse(
+    val code: Int,
+    val message: String,
+    val data: FirmwareListData?
+)
+
+data class FirmwareListData(
+    val list: List<FirmwareItem>,
+    val total: Int
+)
+
+data class FirmwareItem(
+    val id: Int,
+    val name: String,
+    val version: String,
+    val size: Int,
+    val md5: String,
+    val description: String?,
+    val created_at: String
+)
+
+data class FirmwareUploadRequest(
+    val name: String,
+    val version: String,
+    val file_url: String,
+    val md5: String,
+    val description: String?
+)
+
+data class FirmwareUploadResponse(
+    val code: Int,
+    val message: String,
+    val data: FirmwareItem?
+)
+
+data class FirmwareDetailResponse(
+    val code: Int,
+    val message: String,
+    val data: FirmwareDetailData?
+)
+
+data class FirmwareDetailData(
+    val id: Int,
+    val name: String,
+    val version: String,
+    val size: Int,
+    val md5: String,
+    val description: String?,
+    val created_at: String,
+    val updated_at: String?
+)
+
+data class OTAUpdateCheckResponse(
+    val code: Int,
+    val message: String,
+    val data: OTAUpdateCheckData?
+)
+
+data class OTAUpdateCheckData(
+    val has_update: Boolean,
+    val firmware: FirmwareItem?,
+    val latest_version: String?
+)
+
+data class OTAStatusResponse(
+    val code: Int,
+    val message: String,
+    val data: OTAStatusData?
+)
+
+data class OTAStatusData(
+    val status: String,
+    val progress: Int?,
+    val firmware: FirmwareItem?,
+    val started_at: String?,
+    val completed_at: String?
+)
+
+data class OTAudHistoryResponse(
+    val code: Int,
+    val message: String,
+    val data: OTAudHistoryData?
+)
+
+data class OTAudHistoryData(
+    val list: List<OTAudHistoryItem>,
+    val total: Int
+)
+
+data class OTAudHistoryItem(
+    val id: Int,
+    val firmware: FirmwareItem,
+    val status: String,
+    val progress: Int?,
+    val started_at: String,
     val completed_at: String?
 )

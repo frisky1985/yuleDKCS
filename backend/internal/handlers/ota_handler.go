@@ -23,6 +23,7 @@ func NewOTAHandler(otaService services.OTAService) *OTAHandler {
 
 // RegisterRoutes 注册路由
 func (h *OTAHandler) RegisterRoutes(router *gin.RouterGroup) {
+	// OTA管理组
 	ota := router.Group("/ota")
 	{
 		// 固件管理
@@ -41,12 +42,24 @@ func (h *OTAHandler) RegisterRoutes(router *gin.RouterGroup) {
 		ota.POST("/firmwares/:id/download", h.DownloadFirmware)
 	}
 
-	// 车辆OTA状态
+	// 固件管理（符合任务规范的路径）
+	firmware := router.Group("/firmware")
+	{
+		firmware.GET("", h.ListFirmwares)
+		firmware.POST("", h.CreateFirmware)
+		firmware.GET("/:id", h.GetFirmware)
+		firmware.PUT("/:id", h.UpdateFirmware)
+		firmware.DELETE("/:id", h.DeleteFirmware)
+	}
+
+	// 车辆OTA路由
 	vehicles := router.Group("/vehicles")
 	{
 		vehicles.GET("/:id/ota/status", h.GetVehicleOTAStatus)
 		vehicles.PUT("/:id/ota/status", h.UpdateOTAStatus)
 		vehicles.POST("/:id/ota/start", h.StartOTA)
+		vehicles.POST("/:id/ota/check", h.CheckOTAUpdate)
+		vehicles.POST("/:id/ota/confirm", h.ConfirmOTA)
 		vehicles.GET("/:id/ota/history", h.GetOTAHistory)
 	}
 }
@@ -569,6 +582,72 @@ func (h *OTAHandler) GetOTAHistory(c *gin.Context) {
 			"page":      page,
 			"page_size": pageSize,
 		},
+	})
+}
+
+// CheckOTAUpdate 检查车辆OTA更新
+// POST /api/v1/vehicles/:id/ota/check
+func (h *OTAHandler) CheckOTAUpdate(c *gin.Context) {
+	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的车辆ID",
+		})
+		return
+	}
+
+	result, err := h.otaService.CheckUpdateForVehicle(c.Request.Context(), uint(vehicleID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "检查更新失败",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "检查完成",
+		"data":    result,
+	})
+}
+
+// ConfirmOTA 确认OTA更新
+// POST /api/v1/vehicles/:id/ota/confirm
+func (h *OTAHandler) ConfirmOTA(c *gin.Context) {
+	vehicleID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "无效的车辆ID",
+		})
+		return
+	}
+
+	var req struct {
+		FirmwareID uint `json:"firmware_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 请求体为空或格式错误时使用默认值
+		req.FirmwareID = 0
+	}
+
+	status, err := h.otaService.ConfirmOTA(c.Request.Context(), uint(vehicleID), req.FirmwareID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "确认OTA更新失败",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "OTA更新已确认",
+		"data":    otaStatusToResponse(status),
 	})
 }
 

@@ -50,6 +50,10 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 	vehicleHandler := handlers.NewVehicleHandler(vehicleService)
 	keyHandler := handlers.NewKeyHandler(keyService)
 
+	// OTA 服务与处理器
+	otaService := services.NewOTAService(gormDB)
+	otaHandler := handlers.NewOTAHandler(otaService)
+
 	// API 路由组
 	api := r.Group("/api/v1")
 	{
@@ -85,6 +89,9 @@ func Setup(r *gin.Engine, cfg *config.Config, db *sql.DB, gormDB *gorm.DB) {
 			
 			// 钥匙相关路由
 			keyHandler.RegisterRoutes(authorized)
+
+			// OTA 相关路由
+			otaHandler.RegisterRoutes(authorized)
 		}
 	}
 

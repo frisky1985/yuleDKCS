@@ -57,6 +57,11 @@ type OTAService interface {
 	// 批量操作
 	GetVehiclesNeedingUpdate(ctx context.Context, firmwareID uint) ([]uint, error)
 	ScheduleBatchUpdate(ctx context.Context, firmwareID uint, vehicleIDs []uint) error
+
+	// 车辆OTA确认
+	ConfirmOTA(ctx context.Context, vehicleID uint, firmwareID uint) (*models.VehicleOTAStatus, error)
+	// 车辆OTA检查
+	CheckUpdateForVehicle(ctx context.Context, vehicleID uint) (*models.CheckUpdateResponse, error)
 }
 
 // otaService OTA服务实现
@@ -420,6 +425,58 @@ func (s *otaService) ScheduleBatchUpdate(ctx context.Context, firmwareID uint, v
 	}
 
 	return nil
+}
+
+// ConfirmOTA 确认OTA更新（将pending状态转为downloading）
+func (s *otaService) ConfirmOTA(ctx context.Context, vehicleID uint, firmwareID uint) (*models.VehicleOTAStatus, error) {
+	var status models.VehicleOTAStatus
+	if err := s.db.WithContext(ctx).Where("vehicle_id = ? AND status = ?", vehicleID, models.OTAStatusPending).
+		Order("created_at DESC").First(&status).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("没有待确认的OTA更新")
+		}
+		return nil, err
+	}
+
+	// 将状态更新为下载中
+	now := time.Now()
+	updates := map[string]interface{}{
+		"status":     models.OTAStatusDownloading,
+		"started_at": &now,
+		"progress":   0,
+	}
+	if firmwareID > 0 {
+		updates["firmware_id"] = firmwareID
+	}
+	if err := s.db.WithContext(ctx).Model(&status).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+
+	status.Status = models.OTAStatusDownloading
+	status.StartedAt = &now
+	return &status, nil
+}
+
+// CheckUpdateForVehicle 根据车辆ID检查OTA更新
+func (s *otaService) CheckUpdateForVehicle(ctx context.Context, vehicleID uint) (*models.CheckUpdateResponse, error) {
+	// 获取车辆信息
+	var vehicle models.Vehicle
+	if err := s.db.WithContext(ctx).First(&vehicle, vehicleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("车辆不存在")
+		}
+		return nil, err
+	}
+
+	// 使用车辆的当前软件版本和硬件版本检查更新
+	req := &models.CheckUpdateRequest{
+		CurrentVersion:  vehicle.SoftwareVersion,
+		HardwareVersion: vehicle.HardwareVersion,
+		FirmwareType:    string(models.FirmwareTypeECU),
+		VehicleID:       vehicleID,
+	}
+
+	return s.CheckUpdate(ctx, req)
 }
 
 // isValidFirmwareType 验证固件类型

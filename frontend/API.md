@@ -545,6 +545,93 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 
 ---
 
+## OTA / 固件管理 API
+
+### GET /firmware
+获取固件列表。
+
+**请求头**: `Authorization: Bearer <token>`
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "ECU v2.1.0",
+        "version": "2.1.0",
+        "size": 16777216,
+        "md5": "a1b2c3d4e5f6...",
+        "description": "性能优化和安全修复",
+        "created_at": "2025-01-15T08:00:00Z"
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+### POST /firmware
+上传固件。
+
+**请求体**:
+```json
+{
+  "name": "ECU v2.1.0",
+  "version": "2.1.0",
+  "file_url": "https://storage.example.com/firmware/ecu-v2.1.0.bin",
+  "md5": "a1b2c3d4e5f6...",
+  "description": "性能优化和安全修复"
+}
+```
+
+### GET /firmware/{id}
+获取固件详情。
+
+### PUT /firmware/{id}
+更新固件信息。
+
+### DELETE /firmware/{id}
+删除固件。
+
+### POST /vehicles/{id}/ota/check
+检查车辆是否有新固件更新。
+
+**响应**:
+```json
+{
+  "code": 200,
+  "message": "检查完成",
+  "data": {
+    "has_update": true,
+    "firmware": { "...": "..." },
+    "latest_version": "2.1.0"
+  }
+}
+```
+
+### POST /vehicles/{id}/ota/confirm
+确认OTA更新（将待确认状态转为下载中）。
+
+**请求体**:
+```json
+{ "firmware_id": 1 }
+```
+
+### GET /vehicles/{id}/ota/status
+获取车辆OTA状态。
+
+### POST /vehicles/{id}/ota/start
+启动OTA更新。
+
+### GET /vehicles/{id}/ota/history
+获取OTA更新历史。
+
+---
+
 ## 数字钥匙 API
 
 ### GET /keys

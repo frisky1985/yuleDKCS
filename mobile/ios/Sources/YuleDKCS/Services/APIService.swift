@@ -31,6 +31,15 @@ public protocol APIServiceProtocol {
     func getVehicle(vehicleId: Int) -> AnyPublisher<VehicleDetailResponse, Error>
     func sendCommand(vehicleId: Int, command: SendCommandRequest) -> AnyPublisher<SendCommandResponse, Error>
     func getCommandStatus(vehicleId: Int, commandId: Int) -> AnyPublisher<CommandStatusResponse, Error>
+    
+    // OTA / Firmware
+    func getFirmwareList() -> AnyPublisher<FirmwareListResponse, Error>
+    func uploadFirmware(request: FirmwareUploadRequest) -> AnyPublisher<FirmwareUploadResponse, Error>
+    func getFirmwareDetail(firmwareId: Int) -> AnyPublisher<FirmwareDetailResponse, Error>
+    func checkOTAUpdate(vehicleId: Int) -> AnyPublisher<OTAUpdateCheckResponse, Error>
+    func confirmOTAUpdate(vehicleId: Int) -> AnyPublisher<ApiResponse, Error>
+    func getOTAStatus(vehicleId: Int) -> AnyPublisher<OTAStatusResponse, Error>
+    func getOTAudHistory(vehicleId: Int) -> AnyPublisher<OTAudHistoryResponse, Error>
 }
 
 /// API 服务实现
@@ -220,6 +229,36 @@ public class APIService: APIServiceProtocol {
     
     public func getCommandStatus(vehicleId: Int, commandId: Int) -> AnyPublisher<CommandStatusResponse, Error> {
         return performRequest(endpoint: "/vehicles/\(vehicleId)/commands/\(commandId)", method: "GET")
+    }
+    
+    // MARK: - OTA / Firmware API Methods
+    
+    public func getFirmwareList() -> AnyPublisher<FirmwareListResponse, Error> {
+        return performRequest(endpoint: "/firmware", method: "GET")
+    }
+    
+    public func uploadFirmware(request: FirmwareUploadRequest) -> AnyPublisher<FirmwareUploadResponse, Error> {
+        return performRequest(endpoint: "/firmware", method: "POST", body: request)
+    }
+    
+    public func getFirmwareDetail(firmwareId: Int) -> AnyPublisher<FirmwareDetailResponse, Error> {
+        return performRequest(endpoint: "/firmware/\(firmwareId)", method: "GET")
+    }
+    
+    public func checkOTAUpdate(vehicleId: Int) -> AnyPublisher<OTAUpdateCheckResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/ota/check", method: "POST")
+    }
+    
+    public func confirmOTAUpdate(vehicleId: Int) -> AnyPublisher<ApiResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/ota/confirm", method: "POST")
+    }
+    
+    public func getOTAStatus(vehicleId: Int) -> AnyPublisher<OTAStatusResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/ota/status", method: "GET")
+    }
+    
+    public func getOTAudHistory(vehicleId: Int) -> AnyPublisher<OTAudHistoryResponse, Error> {
+        return performRequest(endpoint: "/vehicles/\(vehicleId)/ota/history", method: "GET")
     }
     
     // MARK: - Private Methods
@@ -547,6 +586,106 @@ public struct CommandStatusData: Codable {
     public let status: String
     public let result: String?
     public let created_at: String
+    public let completed_at: String?
+}
+
+// MARK: - OTA / Firmware Response Models
+
+public struct FirmwareListResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: FirmwareListData?
+}
+
+public struct FirmwareListData: Codable {
+    public let list: [FirmwareItem]
+    public let total: Int
+}
+
+public struct FirmwareItem: Codable, Identifiable {
+    public let id: Int
+    public let name: String
+    public let version: String
+    public let size: Int
+    public let md5: String
+    public let description: String?
+    public let created_at: String
+}
+
+public struct FirmwareUploadRequest: Codable {
+    public let name: String
+    public let version: String
+    public let file_url: String
+    public let md5: String
+    public let description: String?
+}
+
+public struct FirmwareUploadResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: FirmwareItem?
+}
+
+public struct FirmwareDetailResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: FirmwareDetailData?
+}
+
+public struct FirmwareDetailData: Codable {
+    public let id: Int
+    public let name: String
+    public let version: String
+    public let size: Int
+    public let md5: String
+    public let description: String?
+    public let created_at: String
+    public let updated_at: String?
+}
+
+public struct OTAUpdateCheckResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: OTAUpdateCheckData?
+}
+
+public struct OTAUpdateCheckData: Codable {
+    public let has_update: Bool
+    public let firmware: FirmwareItem?
+    public let latest_version: String?
+}
+
+public struct OTAStatusResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: OTAStatusData?
+}
+
+public struct OTAStatusData: Codable {
+    public let status: String
+    public let progress: Int?
+    public let firmware: FirmwareItem?
+    public let started_at: String?
+    public let completed_at: String?
+}
+
+public struct OTAudHistoryResponse: Codable {
+    public let code: Int
+    public let message: String
+    public let data: OTAudHistoryData?
+}
+
+public struct OTAudHistoryData: Codable {
+    public let list: [OTAudHistoryItem]
+    public let total: Int
+}
+
+public struct OTAudHistoryItem: Codable, Identifiable {
+    public let id: Int
+    public let firmware: FirmwareItem
+    public let status: String
+    public let progress: Int?
+    public let started_at: String
     public let completed_at: String?
 }
 
