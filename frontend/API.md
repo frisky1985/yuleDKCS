@@ -8,10 +8,13 @@
 
 - [通用说明](#通用说明)
 - [认证 API](#认证-api)
-- [仪表盘 API](#仪表盘-api)
 - [车辆 API](#车辆-api)
 - [数字钥匙 API](#数字钥匙-api)
+- [OTA / 固件管理 API](#ota--固件管理-api)
 - [用户 API](#用户-api)
+- [系统 API](#系统-api)
+- [附录: 状态码速查](#附录-状态码速查)
+- [附录: 版本历史](#附录-版本历史)
 
 ---
 
@@ -21,7 +24,7 @@
 
 ```http
 Content-Type: application/json
-Authorization: Bearer <jwt_token>   # 需要认证的接口
+Authorization: Bearer ***   # 需要认证的接口
 ```
 
 ### 统一响应格式
@@ -92,7 +95,7 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
   "code": 200,
   "message": "登录成功",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "token": "eyJhbG...NiIs...",
     "type": "Bearer",
     "user": {
       "id": "1",
@@ -103,6 +106,14 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
   }
 }
 ```
+
+| 字段        | 类型     | 说明                           |
+| ----------- | -------- | ------------------------------ |
+| `token`     | `string` | JWT access token               |
+| `type`      | `string` | Token 类型，固定 `Bearer`      |
+| `user`      | `object` | 用户基本信息                   |
+
+---
 
 ### POST /auth/register
 
@@ -140,27 +151,13 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
-### POST /auth/logout
-
-用户登出（可选，用于后端记录会话失效）。
-
-**请求头:** 需要 `Authorization`
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "登出成功",
-  "data": null
-}
-```
+---
 
 ### POST /auth/refresh
 
 刷新 Token。
 
-**请求头:** 需要 `Authorization`
+**请求头:** 需要 `Authorization: Bearer <旧 token>`
 
 **响应 (200):**
 
@@ -169,155 +166,20 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
   "code": 200,
   "message": "Token 刷新成功",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "token": "eyJhbG...NiIs...",
     "type": "Bearer"
   }
 }
 ```
 
----
-
-## 仪表盘 API
-
-### GET /dashboard/stats
-
-获取仪表盘统计数据。
-
-**请求头:** 需要 `Authorization`
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "total_vehicles": 3,
-    "active_keys": 5,
-    "today_operations": 12,
-    "alerts": 1
-  }
-}
-```
-
-| 字段               | 类型     | 说明               |
-| ------------------ | -------- | ------------------ |
-| `total_vehicles`   | `number` | 车辆总数           |
-| `active_keys`      | `number` | 有效钥匙数         |
-| `today_operations` | `number` | 今日操作次数       |
-| `alerts`           | `number` | 未处理告警数       |
-
-### GET /activities/recent
-
-获取最近活动记录。
-
-**请求头:** 需要 `Authorization`
-
-**查询参数:**
-
-| 参数    | 类型     | 默认值 | 说明     |
-| ------- | -------- | ------ | -------- |
-| `limit` | `number` | `20`   | 返回条数 |
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": [
-    {
-      "id": 1,
-      "type": "unlock",
-      "message": "已解锁车门",
-      "timestamp": "2025-05-25T10:30:00Z",
-      "vehicle": "Tesla Model 3"
-    }
-  ]
-}
-```
+| 字段    | 类型     | 说明                      |
+| ------- | -------- | ------------------------- |
+| `token` | `string` | 新 JWT access token       |
+| `type`  | `string` | Token 类型，固定 `Bearer` |
 
 ---
 
 ## 车辆 API
-
-### GET /vehicles
-
-获取当前用户的所有车辆列表。
-
-**请求头:** 需要 `Authorization`
-
-**查询参数:**
-
-| 参数   | 类型     | 默认值 | 说明             |
-| ------ | -------- | ------ | ---------------- |
-| `page` | `number` | `1`    | 页码             |
-| `limit`| `number` | `20`   | 每页条数         |
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "vehicles": [
-      {
-        "id": 1,
-        "vin": "LVGBE42KXNG123456",
-        "brand": "Tesla",
-        "model": "Model 3",
-        "year": 2024,
-        "color": "珍珠白",
-        "plate_number": "京A12345",
-        "status": "online",
-        "battery_level": 85,
-        "location": { "lat": 39.9042, "lng": 116.4074 },
-        "created_at": "2025-01-15T08:00:00Z",
-        "updated_at": "2025-05-25T12:00:00Z"
-      }
-    ],
-    "total": 3,
-    "page": 1,
-    "limit": 20
-  }
-}
-```
-
-### GET /vehicles/:id
-
-获取单个车辆详情。
-
-**请求头:** 需要 `Authorization`
-
-**路径参数:**
-
-| 参数 | 类型     | 说明   |
-| ---- | -------- | ------ |
-| `id` | `number` | 车辆ID |
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": 1,
-    "vin": "LVGBE42KXNG123456",
-    "brand": "Tesla",
-    "model": "Model 3",
-    "year": 2024,
-    "color": "珍珠白",
-    "plate_number": "京A12345",
-    "status": "online",
-    "battery_level": 85,
-    "location": { "lat": 39.9042, "lng": 116.4074 },
-    "created_at": "2025-01-15T08:00:00Z",
-    "updated_at": "2025-05-25T12:00:00Z"
-  }
-}
-```
 
 ### POST /vehicles
 
@@ -366,9 +228,56 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
-### PUT /vehicles/:id
+---
 
-更新车辆信息。
+### GET /vehicles
+
+获取当前用户的所有车辆列表。
+
+**请求头:** 需要 `Authorization`
+
+**查询参数:**
+
+| 参数    | 类型     | 默认值 | 说明             |
+| ------- | -------- | ------ | ---------------- |
+| `page`  | `number` | `1`    | 页码             |
+| `limit` | `number` | `20`   | 每页条数         |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "vehicles": [
+      {
+        "id": 1,
+        "vin": "LVGBE42KXNG123456",
+        "brand": "Tesla",
+        "model": "Model 3",
+        "year": 2024,
+        "color": "珍珠白",
+        "plate_number": "京A12345",
+        "status": "online",
+        "battery_level": 85,
+        "location": { "lat": 39.9042, "lng": 116.4074 },
+        "created_at": "2025-01-15T08:00:00Z",
+        "updated_at": "2025-05-25T12:00:00Z"
+      }
+    ],
+    "total": 3,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+---
+
+### GET /vehicles/:id
+
+获取单个车辆详情。
 
 **请求头:** 需要 `Authorization`
 
@@ -378,54 +287,30 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 | ---- | -------- | ------ |
 | `id` | `number` | 车辆ID |
 
-**请求体:**
-
-```json
-{
-  "color": "烈焰红",
-  "plate_number": "京C13579"
-}
-```
-
 **响应 (200):**
 
 ```json
 {
   "code": 200,
-  "message": "车辆信息更新成功",
+  "message": "success",
   "data": {
     "id": 1,
     "vin": "LVGBE42KXNG123456",
     "brand": "Tesla",
     "model": "Model 3",
     "year": 2024,
-    "color": "烈焰红",
-    "plate_number": "京C13579"
+    "color": "珍珠白",
+    "plate_number": "京A12345",
+    "status": "online",
+    "battery_level": 85,
+    "location": { "lat": 39.9042, "lng": 116.4074 },
+    "created_at": "2025-01-15T08:00:00Z",
+    "updated_at": "2025-05-25T12:00:00Z"
   }
 }
 ```
 
-### DELETE /vehicles/:id
-
-删除车辆。
-
-**请求头:** 需要 `Authorization`
-
-**路径参数:**
-
-| 参数 | 类型     | 说明   |
-| ---- | -------- | ------ |
-| `id` | `number` | 车辆ID |
-
-**响应 (200):**
-
-```json
-{
-  "code": 200,
-  "message": "车辆删除成功",
-  "data": null
-}
-```
+---
 
 ### GET /vehicles/:id/status
 
@@ -472,7 +357,9 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 | `battery_level`| `number`  | 电量百分比 0-100                           |
 | `fuel_level`   | `number`  | 油量百分比 0-100 (燃油车)                  |
 
-### POST /vehicles/:id/control
+---
+
+### POST /vehicles/:id/commands
 
 发送车辆控制命令。
 
@@ -512,9 +399,52 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
-### GET /vehicles/:id/keys
+---
 
-获取车辆关联的数字钥匙列表。
+### GET /vehicles/:id/commands/:command_id
+
+获取车辆命令执行结果。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数         | 类型     | 说明         |
+| ------------ | -------- | ------------ |
+| `id`         | `number` | 车辆ID       |
+| `command_id` | `string` | 命令ID       |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "command_id": "cmd_abc123",
+    "vehicle_id": 1,
+    "command": "unlock",
+    "status": "completed",
+    "result": {
+      "success": true,
+      "message": "车门已解锁"
+    },
+    "created_at": "2025-05-25T12:00:00Z",
+    "completed_at": "2025-05-25T12:00:03Z"
+  }
+}
+```
+
+| 字段      | 类型     | 说明                                            |
+| --------- | -------- | ----------------------------------------------- |
+| `status`  | `string` | `pending` / `processing` / `completed` / `failed` |
+| `result`  | `object` | 命令执行结果详情                                 |
+
+---
+
+### PUT /vehicles/:id/location
+
+更新车辆位置信息。
 
 **请求头:** 需要 `Authorization`
 
@@ -524,115 +454,147 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 | ---- | -------- | ------ |
 | `id` | `number` | 车辆ID |
 
+**请求体:**
+
+```json
+{
+  "latitude": 39.9042,
+  "longitude": 116.4074,
+  "altitude": 50,
+  "accuracy": 10,
+  "speed": 0,
+  "heading": 180,
+  "timestamp": "2025-05-25T12:00:00Z"
+}
+```
+
+| 字段        | 类型     | 必填 | 说明                 |
+| ----------- | -------- | ---- | -------------------- |
+| `latitude`  | `number` | 是   | 纬度                 |
+| `longitude` | `number` | 是   | 经度                 |
+| `altitude`  | `number` | 否   | 海拔 (米)            |
+| `accuracy`  | `number` | 否   | 定位精度 (米)        |
+| `speed`     | `number` | 否   | 速度 (km/h)          |
+| `heading`   | `number` | 否   | 朝向角度 0-360       |
+| `timestamp` | `string` | 否   | 定位时间戳 (ISO 8601) |
+
 **响应 (200):**
 
 ```json
 {
   "code": 200,
-  "message": "success",
-  "data": [
-    {
-      "id": "1",
-      "type": "CCC",
-      "key_type": "owner",
-      "status": "active",
-      "permissions": { "unlock": true, "lock": true, "start_engine": true },
-      "created_at": "2025-01-15T08:00:00Z"
-    }
-  ]
+  "message": "位置更新成功",
+  "data": null
 }
 ```
 
 ---
 
-## OTA / 固件管理 API
+### POST /vehicles/:id/heartbeat
 
-### GET /firmware
-获取固件列表。
+车辆心跳上报。
 
-**请求头**: `Authorization: Bearer <token>`
+**请求头:** 需要 `Authorization`
 
-**响应示例**:
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**请求体:**
+
+```json
+{
+  "status": "online",
+  "battery_level": 85,
+  "lock_state": "locked",
+  "engine_state": "stopped",
+  "timestamp": "2025-05-25T12:00:00Z"
+}
+```
+
+| 字段           | 类型     | 必填 | 说明                                              |
+| -------------- | -------- | ---- | ------------------------------------------------- |
+| `status`       | `string` | 是   | `online` / `offline` / `sleeping`                 |
+| `battery_level`| `number` | 否   | 电量百分比 0-100                                  |
+| `lock_state`   | `string` | 否   | `locked` / `unlocked`                             |
+| `engine_state` | `string` | 否   | `running` / `stopped`                             |
+| `timestamp`    | `string` | 否   | 心跳时间戳 (ISO 8601)                             |
+
+**响应 (200):**
+
 ```json
 {
   "code": 200,
-  "message": "success",
-  "data": {
-    "list": [
-      {
-        "id": 1,
-        "name": "ECU v2.1.0",
-        "version": "2.1.0",
-        "size": 16777216,
-        "md5": "a1b2c3d4e5f6...",
-        "description": "性能优化和安全修复",
-        "created_at": "2025-01-15T08:00:00Z"
-      }
-    ],
-    "total": 1
-  }
+  "message": "心跳接收成功",
+  "data": null
 }
 ```
-
-### POST /firmware
-上传固件。
-
-**请求体**:
-```json
-{
-  "name": "ECU v2.1.0",
-  "version": "2.1.0",
-  "file_url": "https://storage.example.com/firmware/ecu-v2.1.0.bin",
-  "md5": "a1b2c3d4e5f6...",
-  "description": "性能优化和安全修复"
-}
-```
-
-### GET /firmware/{id}
-获取固件详情。
-
-### PUT /firmware/{id}
-更新固件信息。
-
-### DELETE /firmware/{id}
-删除固件。
-
-### POST /vehicles/{id}/ota/check
-检查车辆是否有新固件更新。
-
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "检查完成",
-  "data": {
-    "has_update": true,
-    "firmware": { "...": "..." },
-    "latest_version": "2.1.0"
-  }
-}
-```
-
-### POST /vehicles/{id}/ota/confirm
-确认OTA更新（将待确认状态转为下载中）。
-
-**请求体**:
-```json
-{ "firmware_id": 1 }
-```
-
-### GET /vehicles/{id}/ota/status
-获取车辆OTA状态。
-
-### POST /vehicles/{id}/ota/start
-启动OTA更新。
-
-### GET /vehicles/{id}/ota/history
-获取OTA更新历史。
 
 ---
 
 ## 数字钥匙 API
+
+### POST /keys/issue
+
+为用户签发新的数字钥匙。
+
+**请求头:** 需要 `Authorization`
+
+**请求体:**
+
+```json
+{
+  "vehicle_id": 1,
+  "key_type": "owner",
+  "protocol": "CCC",
+  "permissions": {
+    "unlock": true,
+    "lock": true,
+    "start_engine": true,
+    "trunk": true,
+    "windows": false
+  },
+  "expires_in_days": 365
+}
+```
+
+| 字段               | 类型      | 必填 | 说明                                       |
+| ------------------ | --------- | ---- | ------------------------------------------ |
+| `vehicle_id`       | `number`  | 是   | 车辆ID                                     |
+| `key_type`         | `string`  | 是   | 钥匙类型: `owner` / `guest` / `temp`       |
+| `protocol`         | `string`  | 是   | 协议类型: `CCC` / `ICCOA` / `ICCE`         |
+| `permissions`      | `object`  | 否   | 权限配置                                   |
+| `expires_in_days`  | `number`  | 否   | 有效期天数 (默认: 永久)                    |
+
+**响应 (201):**
+
+```json
+{
+  "code": 201,
+  "message": "钥匙签发成功",
+  "data": {
+    "id": "key_abc123",
+    "vehicle_id": 1,
+    "key_type": "owner",
+    "protocol": "CCC",
+    "status": "active",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true,
+      "trunk": true,
+      "windows": false
+    },
+    "key_identifier": "key_abc123",
+    "expires_at": "2026-05-25T12:00:00Z",
+    "created_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
 
 ### GET /keys
 
@@ -642,12 +604,12 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 
 **查询参数:**
 
-| 参数       | 类型     | 默认值 | 说明                                |
-| ---------- | -------- | ------ | ----------------------------------- |
-| `status`   | `string` | -      | 过滤: `active`, `inactive`, `expired`, `revoked` |
-| `protocol` | `string` | -      | 过滤: `CCC`, `ICCOA`, `ICCE`        |
-| `page`     | `number` | `1`    | 页码                                |
-| `limit`    | `number` | `20`   | 每页条数                            |
+| 参数       | 类型     | 默认值 | 说明                                                |
+| ---------- | -------- | ------ | --------------------------------------------------- |
+| `status`   | `string` | -      | 过滤: `active`, `inactive`, `expired`, `revoked`     |
+| `protocol` | `string` | -      | 过滤: `CCC`, `ICCOA`, `ICCE`                        |
+| `page`     | `number` | `1`    | 页码                                                |
+| `limit`    | `number` | `20`   | 每页条数                                            |
 
 **响应 (200):**
 
@@ -694,17 +656,9 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
-### GET /keys/shared
+---
 
-获取分享给我的钥匙列表。
-
-**请求头:** 需要 `Authorization`
-
-**查询参数:** 同 `GET /keys`
-
-**响应:** 同 `GET /keys`
-
-### GET /keys/:keyId
+### GET /keys/:id
 
 获取单个钥匙详情。
 
@@ -712,17 +666,59 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 
 **路径参数:**
 
-| 参数    | 类型     | 说明   |
-| ------- | -------- | ------ |
-| `keyId` | `string` | 钥匙ID |
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
-**响应:** 同钥匙对象
+**响应 (200):**
 
-### POST /keys/:keyId/activate
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "1",
+    "user_id": 1,
+    "vehicle_id": 1,
+    "type": "CCC",
+    "status": "active",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": true
+    },
+    "key_identifier": "key_abc123",
+    "expires_at": "2026-01-15T08:00:00Z",
+    "usage_count": 42,
+    "last_used_at": "2025-05-24T15:30:00Z",
+    "created_at": "2025-01-15T08:00:00Z",
+    "vehicle": {
+      "id": 1,
+      "vin": "LVGBE42KXNG123456",
+      "brand": "Tesla",
+      "model": "Model 3",
+      "year": 2024,
+      "color": "珍珠白",
+      "plate_number": "京A12345"
+    },
+    "is_shared": false
+  }
+}
+```
+
+---
+
+### POST /keys/:id/activate
 
 激活钥匙。
 
 **请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
 **响应 (200):**
 
@@ -730,59 +726,60 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 {
   "code": 200,
   "message": "钥匙已激活",
-  "data": { ... }
+  "data": {
+    "id": "1",
+    "status": "active",
+    "activated_at": "2025-05-25T12:00:00Z"
+  }
 }
 ```
 
-### POST /keys/:keyId/deactivate
+---
+
+### POST /keys/:id/deactivate
 
 停用钥匙。
 
 **请求头:** 需要 `Authorization`
 
-**响应:** 同激活
+**路径参数:**
 
-### DELETE /keys/:keyId
-
-撤销钥匙。
-
-**请求头:** 需要 `Authorization`
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
 **响应 (200):**
 
 ```json
 {
   "code": 200,
-  "message": "钥匙已撤销",
-  "data": null
+  "message": "钥匙已停用",
+  "data": {
+    "id": "1",
+    "status": "inactive",
+    "deactivated_at": "2025-05-25T12:00:00Z"
+  }
 }
 ```
 
-### POST /keys/batch/revoke
+---
 
-批量撤销钥匙。
+### POST /keys/:id/share
+
+分享钥匙给其他用户。
 
 **请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
 **请求体:**
 
 ```json
 {
-  "key_ids": ["1", "2", "3"]
-}
-```
-
-### POST /keys/share
-
-分享钥匙。
-
-**请求头:** 需要 `Authorization`
-
-**请求体:**
-
-```json
-{
-  "key_id": "1",
   "recipient_email": "friend@example.com",
   "recipient_phone": "13800138000",
   "expires_in_days": 7,
@@ -795,6 +792,14 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
+| 字段               | 类型       | 必填 | 说明                     |
+| ------------------ | ---------- | ---- | ------------------------ |
+| `recipient_email`  | `string`   | 否   | 接收者邮箱               |
+| `recipient_phone`  | `string`   | 否   | 接收者手机号             |
+| `expires_in_days`  | `number`   | 否   | 有效期天数               |
+| `permissions`      | `array`    | 否   | 权限列表                 |
+| `message`          | `string`   | 否   | 分享留言                 |
+
 **响应 (200):**
 
 ```json
@@ -804,29 +809,49 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
   "data": {
     "share_id": "share_abc123",
     "qr_code_url": "https://api.yuledkcs.com/qr/share_abc123",
-    "share_link": "https://yuledkcs.com/accept-share?token=xxx",
+    "share_link": "https://yuledkcs.com/accept-share?token=***",
     "expires_at": "2025-06-01T12:00:00Z"
   }
 }
 ```
 
-### GET /keys/:keyId/shares
+---
 
-获取钥匙的分享记录。
+### DELETE /keys/:id
 
-**请求头:** 需要 `Authorization`
-
-### DELETE /keys/shares/:shareId
-
-撤销分享。
+删除/撤销钥匙。
 
 **请求头:** 需要 `Authorization`
 
-### PUT /keys/:keyId/permissions
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "钥匙已撤销",
+  "data": null
+}
+```
+
+---
+
+### PUT /keys/:id/permissions
 
 更新钥匙权限。
 
 **请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
 **请求体:**
 
@@ -834,16 +859,49 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 {
   "permissions": [
     { "type": "unlock", "enabled": true },
-    { "type": "lock", "enabled": true }
+    { "type": "lock", "enabled": true },
+    { "type": "start_engine", "enabled": false },
+    { "type": "trunk", "enabled": true }
   ]
 }
 ```
 
-### GET /keys/:keyId/logs
+| 字段          | 类型    | 必填 | 说明                   |
+| ------------- | ------- | ---- | ---------------------- |
+| `permissions` | `array` | 是   | 权限配置列表           |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "权限更新成功",
+  "data": {
+    "id": "1",
+    "permissions": {
+      "unlock": true,
+      "lock": true,
+      "start_engine": false,
+      "trunk": true
+    },
+    "updated_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+### GET /keys/:id/logs
 
 获取钥匙使用记录。
 
 **请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
 
 **查询参数:**
 
@@ -853,22 +911,6 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 | `end_date`   | `string` | -      | 结束日期     |
 | `page`       | `number` | `1`    | 页码         |
 | `limit`      | `number` | `20`   | 每页条数     |
-
-### GET /keys/logs/all
-
-获取所有钥匙的使用记录。
-
-**请求头:** 需要 `Authorization`
-
-**查询参数:**
-
-| 参数         | 类型     | 默认值 | 说明                                |
-| ------------ | -------- | ------ | ----------------------------------- |
-| `start_date` | `string` | -      | 开始日期                            |
-| `end_date`   | `string` | -      | 结束日期                            |
-| `operation`  | `string` | -      | 操作类型: `unlock`, `lock` 等       |
-| `page`       | `number` | `1`    | 页码                                |
-| `limit`      | `number` | `20`   | 每页条数                            |
 
 **响应 (200):**
 
@@ -896,41 +938,136 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 }
 ```
 
-### POST /keys/:keyId/qrcode
+---
 
-生成钥匙二维码。
+### GET /keys/shared/list
+
+获取分享给我的钥匙列表。
 
 **请求头:** 需要 `Authorization`
 
-**请求体:**
+**查询参数:**
+
+| 参数    | 类型     | 默认值 | 说明             |
+| ------- | -------- | ------ | ---------------- |
+| `page`  | `number` | `1`    | 页码             |
+| `limit` | `number` | `20`   | 每页条数         |
+
+**响应 (200):**
 
 ```json
 {
-  "type": "share"
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": "shared_key_1",
+        "original_key_id": "1",
+        "sharer": {
+          "id": 1,
+          "username": "admin"
+        },
+        "vehicle": {
+          "id": 1,
+          "brand": "Tesla",
+          "model": "Model 3",
+          "plate_number": "京A12345"
+        },
+        "permissions": {
+          "unlock": true,
+          "lock": true,
+          "start_engine": false
+        },
+        "status": "active",
+        "expires_at": "2025-06-01T12:00:00Z",
+        "shared_at": "2025-05-25T12:00:00Z"
+      }
+    ],
+    "total": 3,
+    "page": 1,
+    "limit": 20
+  }
 }
 ```
 
-| 字段   | 类型     | 必填 | 说明                              |
-| ------ | -------- | ---- | --------------------------------- |
-| `type` | `string` | 是   | `share` / `activate` / `temp`     |
+---
 
-### POST /keys/scan
+### GET /keys/:id/shares
 
-扫码激活钥匙。
+获取钥匙的分享记录。
 
 **请求头:** 需要 `Authorization`
 
-**请求体:**
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `string` | 钥匙ID |
+
+**响应 (200):**
 
 ```json
 {
-  "qr_data": "yuledkcs://key/activate?token=xxx"
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "share_id": "share_abc123",
+        "recipient": {
+          "id": 3,
+          "username": "friend1",
+          "email": "friend@example.com"
+        },
+        "status": "active",
+        "permissions": {
+          "unlock": true,
+          "lock": true,
+          "start_engine": false
+        },
+        "expires_at": "2025-06-01T12:00:00Z",
+        "shared_at": "2025-05-25T12:00:00Z"
+      }
+    ],
+    "total": 2
+  }
 }
 ```
 
-### POST /keys/:keyId/extend
+---
 
-延长钥匙有效期。
+### DELETE /keys/shares/:share_id
+
+撤销钥匙分享。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数       | 类型     | 说明     |
+| ---------- | -------- | -------- |
+| `share_id` | `string` | 分享记录ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "分享已撤销",
+  "data": null
+}
+```
+
+---
+
+## OTA / 固件管理 API
+
+### 固件管理
+
+#### POST /firmware
+
+上传新固件。
 
 **请求头:** 需要 `Authorization`
 
@@ -938,7 +1075,606 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 
 ```json
 {
-  "days": 30
+  "name": "ECU v2.1.0",
+  "version": "2.1.0",
+  "file_url": "https://storage.example.com/firmware/ecu-v2.1.0.bin",
+  "md5": "a1b2c3d4e5f6...",
+  "description": "性能优化和安全修复",
+  "target_module": "ECU"
+}
+```
+
+| 字段            | 类型     | 必填 | 说明                           |
+| --------------- | -------- | ---- | ------------------------------ |
+| `name`          | `string` | 是   | 固件名称                       |
+| `version`       | `string` | 是   | 版本号                         |
+| `file_url`      | `string` | 是   | 固件文件下载地址               |
+| `md5`           | `string` | 是   | 文件 MD5 校验值                |
+| `description`   | `string` | 否   | 描述信息                       |
+| `target_module` | `string` | 否   | 目标模块 (ECU / BCM / TBOX 等) |
+
+**响应 (201):**
+
+```json
+{
+  "code": 201,
+  "message": "固件上传成功",
+  "data": {
+    "id": 1,
+    "name": "ECU v2.1.0",
+    "version": "2.1.0",
+    "size": 16777216,
+    "md5": "a1b2c3d4e5f6...",
+    "description": "性能优化和安全修复",
+    "target_module": "ECU",
+    "status": "active",
+    "created_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### GET /firmware
+
+获取固件列表。
+
+**请求头:** 需要 `Authorization`
+
+**查询参数:**
+
+| 参数            | 类型     | 默认值 | 说明                           |
+| --------------- | -------- | ------ | ------------------------------ |
+| `target_module` | `string` | -      | 过滤: `ECU` / `BCM` / `TBOX`  |
+| `status`        | `string` | -      | 过滤: `active` / `inactive`    |
+| `page`          | `number` | `1`    | 页码                           |
+| `limit`         | `number` | `20`   | 每页条数                       |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "name": "ECU v2.1.0",
+        "version": "2.1.0",
+        "size": 16777216,
+        "md5": "a1b2c3d4e5f6...",
+        "description": "性能优化和安全修复",
+        "target_module": "ECU",
+        "status": "active",
+        "created_at": "2025-01-15T08:00:00Z"
+      }
+    ],
+    "total": 5,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+---
+
+#### GET /firmware/:id
+
+获取固件详情。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 固件ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "name": "ECU v2.1.0",
+    "version": "2.1.0",
+    "size": 16777216,
+    "md5": "a1b2c3d4e5f6...",
+    "description": "性能优化和安全修复",
+    "target_module": "ECU",
+    "status": "active",
+    "file_url": "https://storage.example.com/firmware/ecu-v2.1.0.bin",
+    "download_count": 128,
+    "compatible_models": ["Model 3", "Model Y"],
+    "created_at": "2025-01-15T08:00:00Z",
+    "updated_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### PUT /firmware/:id
+
+更新固件信息。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 固件ID |
+
+**请求体:**
+
+```json
+{
+  "name": "ECU v2.1.1",
+  "description": "修复蓝牙连接稳定性问题"
+}
+```
+
+| 字段          | 类型     | 必填 | 说明         |
+| ------------- | -------- | ---- | ------------ |
+| `name`        | `string` | 否   | 固件名称     |
+| `description` | `string` | 否   | 描述信息     |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "固件信息更新成功",
+  "data": {
+    "id": 1,
+    "name": "ECU v2.1.1",
+    "description": "修复蓝牙连接稳定性问题",
+    "updated_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### DELETE /firmware/:id
+
+删除固件。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 固件ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "固件已删除",
+  "data": null
+}
+```
+
+---
+
+#### PUT /firmware/:id/deactivate
+
+停用固件（标记为不可用，不再推送）。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 固件ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "固件已停用",
+  "data": {
+    "id": 1,
+    "status": "inactive",
+    "deactivated_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+### OTA 更新
+
+#### POST /ota/check
+
+全局检查是否有新固件更新（返回所有可用固件列表）。
+
+**请求头:** 需要 `Authorization`
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "检查完成",
+  "data": {
+    "available_firmwares": [
+      {
+        "id": 1,
+        "name": "ECU v2.1.0",
+        "version": "2.1.0",
+        "target_module": "ECU",
+        "size": 16777216,
+        "description": "性能优化和安全修复",
+        "release_notes": "修复了已知问题，提升了系统稳定性",
+        "created_at": "2025-05-25T12:00:00Z"
+      }
+    ],
+    "total": 1
+  }
+}
+```
+
+---
+
+#### GET /ota/updates
+
+获取 OTA 更新记录列表。
+
+**请求头:** 需要 `Authorization`
+
+**查询参数:**
+
+| 参数         | 类型     | 默认值 | 说明                                   |
+| ------------ | -------- | ------ | -------------------------------------- |
+| `status`     | `string` | -      | 过滤: `pending` / `downloading` / `installing` / `completed` / `failed` |
+| `vehicle_id` | `number` | -      | 过滤: 车辆ID                           |
+| `page`       | `number` | `1`    | 页码                                   |
+| `limit`      | `number` | `20`   | 每页条数                               |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "vehicle_id": 1,
+        "firmware_id": 1,
+        "firmware_name": "ECU v2.1.0",
+        "status": "completed",
+        "progress": 100,
+        "started_at": "2025-05-20T10:00:00Z",
+        "completed_at": "2025-05-20T10:15:30Z"
+      }
+    ],
+    "total": 10,
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+---
+
+#### POST /ota/firmwares/:id/download
+
+触发固件下载任务。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 固件ID |
+
+**请求体:**
+
+```json
+{
+  "vehicle_id": 1
+}
+```
+
+| 字段         | 类型     | 必填 | 说明   |
+| ------------ | -------- | ---- | ------ |
+| `vehicle_id` | `number` | 是   | 车辆ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "下载任务已创建",
+  "data": {
+    "task_id": "ota_task_1",
+    "firmware_id": 1,
+    "vehicle_id": 1,
+    "status": "downloading",
+    "progress": 0,
+    "created_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### GET /vehicles/:id/ota/status
+
+获取车辆 OTA 状态。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "vehicle_id": 1,
+    "current_firmware_version": "2.0.0",
+    "latest_firmware_version": "2.1.0",
+    "has_pending_update": true,
+    "update_status": "pending_confirm",
+    "progress": 0,
+    "pending_firmware": {
+      "id": 1,
+      "name": "ECU v2.1.0",
+      "version": "2.1.0",
+      "size": 16777216,
+      "description": "性能优化和安全修复"
+    },
+    "last_check_at": "2025-05-25T12:00:00Z",
+    "last_update_at": "2025-01-15T08:00:00Z"
+  }
+}
+```
+
+| 字段                       | 类型      | 说明                                                    |
+| -------------------------- | --------- | ------------------------------------------------------- |
+| `update_status`            | `string`  | `idle` / `pending_confirm` / `downloading` / `installing` / `completed` / `failed` |
+| `progress`                 | `number`  | 下载/安装进度 0-100                                     |
+| `has_pending_update`       | `boolean` | 是否有待处理的更新                                      |
+
+---
+
+#### PUT /vehicles/:id/ota/status
+
+手动更新车辆 OTA 状态。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**请求体:**
+
+```json
+{
+  "update_status": "downloading",
+  "progress": 45
+}
+```
+
+| 字段            | 类型     | 必填 | 说明                                                    |
+| --------------- | -------- | ---- | ------------------------------------------------------- |
+| `update_status` | `string` | 是   | `idle` / `downloading` / `installing` / `completed` / `failed` |
+| `progress`      | `number` | 否   | 进度百分比 0-100                                        |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "OTA 状态已更新",
+  "data": {
+    "vehicle_id": 1,
+    "update_status": "downloading",
+    "progress": 45,
+    "updated_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### POST /vehicles/:id/ota/start
+
+启动 OTA 更新。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**请求体:**
+
+```json
+{
+  "firmware_id": 1
+}
+```
+
+| 字段          | 类型     | 必填 | 说明   |
+| ------------- | -------- | ---- | ------ |
+| `firmware_id` | `number` | 是   | 固件ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "OTA 更新已启动",
+  "data": {
+    "vehicle_id": 1,
+    "firmware_id": 1,
+    "status": "downloading",
+    "started_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### POST /vehicles/:id/ota/check
+
+检查车辆是否有新固件更新。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "检查完成",
+  "data": {
+    "vehicle_id": 1,
+    "has_update": true,
+    "current_version": "2.0.0",
+    "latest_version": "2.1.0",
+    "firmware": {
+      "id": 1,
+      "name": "ECU v2.1.0",
+      "version": "2.1.0",
+      "size": 16777216,
+      "description": "性能优化和安全修复",
+      "release_notes": "修复了已知问题，提升了系统稳定性"
+    },
+    "checked_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### POST /vehicles/:id/ota/confirm
+
+确认 OTA 更新（将待确认状态转为下载中）。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**请求体:**
+
+```json
+{
+  "firmware_id": 1
+}
+```
+
+| 字段          | 类型     | 必填 | 说明   |
+| ------------- | -------- | ---- | ------ |
+| `firmware_id` | `number` | 是   | 固件ID |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "OTA 更新已确认",
+  "data": {
+    "vehicle_id": 1,
+    "firmware_id": 1,
+    "status": "downloading",
+    "confirmed_at": "2025-05-25T12:00:00Z"
+  }
+}
+```
+
+---
+
+#### GET /vehicles/:id/ota/history
+
+获取车辆的 OTA 更新历史记录。
+
+**请求头:** 需要 `Authorization`
+
+**路径参数:**
+
+| 参数 | 类型     | 说明   |
+| ---- | -------- | ------ |
+| `id` | `number` | 车辆ID |
+
+**查询参数:**
+
+| 参数    | 类型     | 默认值 | 说明             |
+| ------- | -------- | ------ | ---------------- |
+| `page`  | `number` | `1`    | 页码             |
+| `limit` | `number` | `20`   | 每页条数         |
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "firmware_name": "ECU v2.1.0",
+        "firmware_version": "2.1.0",
+        "previous_version": "2.0.0",
+        "status": "completed",
+        "progress": 100,
+        "started_at": "2025-05-20T10:00:00Z",
+        "completed_at": "2025-05-20T10:15:30Z",
+        "duration_seconds": 930
+      },
+      {
+        "id": 2,
+        "firmware_name": "BCM v1.3.0",
+        "firmware_version": "1.3.0",
+        "previous_version": "1.2.0",
+        "status": "completed",
+        "progress": 100,
+        "started_at": "2025-04-10T08:00:00Z",
+        "completed_at": "2025-04-10T08:12:00Z",
+        "duration_seconds": 720
+      }
+    ],
+    "total": 5,
+    "page": 1,
+    "limit": 20
+  }
 }
 ```
 
@@ -957,6 +1693,7 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 ```json
 {
   "code": 200,
+  "message": "success",
   "data": {
     "id": "1",
     "username": "admin",
@@ -964,6 +1701,186 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
     "phone": "13800138000",
     "role": "admin",
     "created_at": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+## 系统 API
+
+> 系统级 API 通常**不需要**认证，用于健康检查和运维监控。
+
+### GET /ping
+
+心跳探测。
+
+**请求头:** 不需认证
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "pong",
+  "data": null
+}
+```
+
+---
+
+### GET /health
+
+综合健康检查。
+
+**请求头:** 不需认证
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "status": "healthy",
+    "version": "1.0.0",
+    "uptime_seconds": 86400,
+    "timestamp": "2025-05-25T12:00:00Z",
+    "components": {
+      "database": { "status": "healthy", "latency_ms": 5 },
+      "redis": { "status": "healthy", "latency_ms": 2 },
+      "mqtt": { "status": "healthy", "connected_brokers": 3 }
+    }
+  }
+}
+```
+
+| 字段        | 类型      | 说明                                    |
+| ----------- | --------- | --------------------------------------- |
+| `status`    | `string`  | `healthy` / `degraded` / `unhealthy`    |
+| `version`   | `string`  | 服务版本号                              |
+| `components`| `object`  | 各组件健康状态                          |
+
+---
+
+### GET /health/live
+
+存活探针 (Liveness Probe)，用于 Kubernetes 等容器编排平台。
+
+**请求头:** 不需认证
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "alive",
+  "data": null
+}
+```
+
+---
+
+### GET /health/ready
+
+就绪探针 (Readiness Probe)，检查服务是否可接收流量。
+
+**请求头:** 不需认证
+
+**响应 (200):**
+
+```json
+{
+  "code": 200,
+  "message": "ready",
+  "data": {
+    "database": "connected",
+    "redis": "connected",
+    "mqtt": "connected"
+  }
+}
+```
+
+**响应 (503) — 服务未就绪:**
+
+```json
+{
+  "code": 503,
+  "message": "service not ready",
+  "data": {
+    "database": "disconnected",
+    "redis": "connected",
+    "mqtt": "connected"
+  }
+}
+```
+
+---
+
+### GET /metrics
+
+Prometheus 指标暴露端点。
+
+**请求头:** 不需认证
+
+**响应 (200):**
+
+```
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",path="/api/v1/vehicles",status="200"} 1024
+# HELP http_request_duration_seconds HTTP request duration in seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.1"} 500
+http_request_duration_seconds_bucket{le="0.5"} 800
+http_request_duration_seconds_bucket{le="+Inf"} 1024
+...
+```
+
+> 返回 Prometheus 文本格式的指标数据。格式: `Content-Type: text/plain; version=0.0.4`
+
+---
+
+### WebSocket: GET /ws
+
+WebSocket 连接端点，用于实时推送车辆状态、钥匙事件、OTA 进度等。
+
+**请求头:** 需要 `Authorization` (通过 URL 查询参数传递 Token)
+
+```
+Authorization: Bearer ***
+Upgrade: websocket
+Connection: Upgrade
+```
+
+**URL 参数:**
+
+| 参数     | 类型     | 必填 | 说明                     |
+| -------- | -------- | ---- | ------------------------ |
+| `token`  | `string` | 是   | JWT Token (备用通过URL)  |
+
+**支持的事件类型:**
+
+| 事件类型             | 说明                       |
+| -------------------- | -------------------------- |
+| `vehicle.status`     | 车辆状态变更               |
+| `vehicle.location`   | 车辆位置更新               |
+| `key.operation`      | 钥匙操作通知               |
+| `key.share`          | 钥匙分享通知               |
+| `ota.progress`       | OTA 更新进度推送           |
+| `ota.status`         | OTA 状态变更               |
+| `alert`              | 系统告警通知               |
+
+**示例消息格式 (服务端推送):**
+
+```json
+{
+  "type": "vehicle.status",
+  "data": {
+    "vehicle_id": 1,
+    "status": "online",
+    "lock_state": "unlocked",
+    "timestamp": "2025-05-25T12:00:00Z"
   }
 }
 ```
@@ -984,6 +1901,7 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 | 422    | Unprocessable  | 请求语义错误                 |
 | 429    | Too Many Req   | 请求频率过高                 |
 | 500    | Server Error   | 服务器内部错误               |
+| 503    | Service Unavailable | 服务暂不可用             |
 
 ---
 
@@ -991,4 +1909,5 @@ Authorization: Bearer <jwt_token>   # 需要认证的接口
 
 | 日期         | 版本  | 说明                          |
 | ------------ | ----- | ----------------------------- |
+| 2025-05-26   | v2.0  | 完整覆盖所有后端 API 路由文档 |
 | 2025-05-25   | v1.0  | 初始版本，覆盖认证/钥匙/车辆  |
