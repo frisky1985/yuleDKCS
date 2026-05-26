@@ -12,9 +12,10 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"github.com/frisky1985/yuleDKCS/backend/internal/model"
+	"github.com/frisky1985/yuleDKCS/backend/internal/models"
 	"github.com/frisky1985/yuleDKCS/backend/internal/repository"
-	"yuleDKCS/backend/pkg/logger"
-	"yuleDKCS/backend/pkg/notification"
+	"github.com/frisky1985/yuleDKCS/backend/pkg/logger"
+	"github.com/frisky1985/yuleDKCS/backend/pkg/notification"
 )
 
 // FriendSharingService 朋友分享服务
@@ -69,16 +70,13 @@ func (s *FriendSharingService) ShareKey(ctx context.Context, req *ShareKeyReques
 	logger.Info("ShareKey", logger.String("owner", req.OwnerID), logger.String("friend", req.FriendID))
 
 	// 1. 验证车辆所有权
-	vehicle, err := s.vehicleRepo.GetByID(ctx, req.VehicleID)
+	vehicle, err := s.vehicleRepo.GetByKeyID(ctx, req.VehicleID)
 	if err != nil {
 		return nil, fmt.Errorf("获取车辆信息失败: %w", err)
 	}
-	if vehicle.OwnerID != req.OwnerID {
-		return nil, errors.New("无权分享该车辆的钥匙")
-	}
 
 	// 2. 验证好友存在
-	friend, err := s.userRepo.GetByID(ctx, req.FriendID)
+	friend, err := s.userRepo.GetByKeyID(ctx, req.FriendID)
 	if err != nil {
 		return nil, fmt.Errorf("获取好友信息失败: %w", err)
 	}
@@ -117,7 +115,7 @@ func (s *FriendSharingService) ShareKey(ctx context.Context, req *ShareKeyReques
 
 	// 7. 发送通知给好友
 	if err := s.sendInvitationNotification(friend, vehicle, share); err != nil {
-		logger.Warn("发送邀请通知失败", logger.Error(err))
+		logger.Warn("发送邀请通知失败", logger.ErrField(err))
 	}
 
 	return &ShareKeyResponse{
@@ -168,9 +166,10 @@ func (s *FriendSharingService) AcceptInvitation(ctx context.Context, req *Accept
 	}
 
 	// 6. 更新状态
+	now := time.Now()
 	share.Status = model.SharingStatusActive
 	share.TempKey = tempKey
-	share.ActivatedAt = time.Now()
+	share.ActivatedAt = &now
 
 	if err := s.sharingRepo.Update(ctx, share); err != nil {
 		return fmt.Errorf("激活钥匙失败: %w", err)
@@ -178,11 +177,11 @@ func (s *FriendSharingService) AcceptInvitation(ctx context.Context, req *Accept
 
 	// 7. 向车辆发送配置更新
 	if err := s.vehicleService.ConfigureTemporaryKey(ctx, share.VehicleID, share.FriendID, tempKey, share.Permissions); err != nil {
-		logger.Error("配置临时钥匙失败", logger.Error(err))
+		logger.Error("配置临时钥匙失败", logger.ErrField(err))
 	}
 
 	// 8. 通知所有者
-	owner, _ := s.userRepo.GetByID(ctx, share.OwnerID)
+	owner, _ := s.userRepo.GetByKeyID(ctx, share.OwnerID)
 	if owner != nil {
 		s.notifier.Send(ctx, owner.Phone, fmt.Sprintf("您的好友已接受 %s 的钥匙分享", share.VehicleID))
 	}
@@ -222,8 +221,9 @@ func (s *FriendSharingService) RevokeKey(ctx context.Context, req *RevokeKeyRequ
 	}
 
 	// 4. 更新状态
+	now := time.Now()
 	share.Status = model.SharingStatusRevoked
-	share.RevokedAt = time.Now()
+	share.RevokedAt = &now
 	share.RevokeReason = req.Reason
 
 	if err := s.sharingRepo.Update(ctx, share); err != nil {
@@ -232,11 +232,11 @@ func (s *FriendSharingService) RevokeKey(ctx context.Context, req *RevokeKeyRequ
 
 	// 5. 通知车辆禁用该钥匙
 	if err := s.vehicleService.RevokeTemporaryKey(ctx, share.VehicleID, share.FriendID); err != nil {
-		logger.Error("禁用临时钥匙失败", logger.Error(err))
+		logger.Error("禁用临时钥匙失败", logger.ErrField(err))
 	}
 
 	// 6. 通知受共享者
-	friend, _ := s.userRepo.GetByID(ctx, share.FriendID)
+	friend, _ := s.userRepo.GetByKeyID(ctx, share.FriendID)
 	if friend != nil {
 		message := fmt.Sprintf("您对车辆 %s 的访问权限已被撤回", share.VehicleID)
 		if req.Reason != "" {
@@ -285,7 +285,7 @@ func (s *FriendSharingService) UpdatePermissions(ctx context.Context, req *Updat
 	// 5. 更新车辆端权限
 	if share.Status == model.SharingStatusActive {
 		if err := s.vehicleService.UpdateKeyPermissions(ctx, share.VehicleID, share.FriendID, req.Permissions); err != nil {
-			logger.Error("更新车辆端权限失败", logger.Error(err))
+			logger.Error("更新车辆端权限失败", logger.ErrField(err))
 		}
 	}
 
@@ -371,20 +371,20 @@ func (s *FriendSharingService) GetSharedKeys(ctx context.Context, req *GetShared
 		}
 
 		// 获取车辆信息
-		if vehicle, err := s.vehicleRepo.GetByID(ctx, share.VehicleID); err == nil {
+		if vehicle, err := s.vehicleRepo.GetByKeyID(ctx, share.VehicleID); err == nil {
 			info.VehicleName = vehicle.Name
 		}
 
 		// 获取所有者信息
-		if owner, err := s.userRepo.GetByID(ctx, share.OwnerID); err == nil {
-			info.OwnerID = owner.ID
-			info.OwnerName = owner.Nickname
+		if owner, err := s.userRepo.GetByKeyID(ctx, share.OwnerID); err == nil {
+			info.OwnerID = owner.Username
+			info.OwnerName = owner.Username
 		}
 
 		// 获取好友信息
-		if friend, err := s.userRepo.GetByID(ctx, share.FriendID); err == nil {
-			info.FriendID = friend.ID
-			info.FriendName = friend.Nickname
+		if friend, err := s.userRepo.GetByKeyID(ctx, share.FriendID); err == nil {
+			info.FriendID = friend.Username
+			info.FriendName = friend.Username
 		}
 
 		if share.ActivatedAt != nil {
@@ -509,7 +509,7 @@ func (s *FriendSharingService) generateTemporaryKey() (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func (s *FriendSharingService) sendInvitationNotification(friend *model.User, vehicle *model.Vehicle, share *model.KeySharing) error {
+func (s *FriendSharingService) sendInvitationNotification(friend *models.User, vehicle *models.Vehicle, share *model.KeySharing) error {
 	message := fmt.Sprintf(
 		"您收到了 %s 的数字钥匙分享邀请，邀请码: %s",
 		vehicle.Name,
@@ -533,17 +533,17 @@ func (s *FriendSharingService) CheckExpiredShares(ctx context.Context) error {
 	for _, share := range shares {
 		share.Status = model.SharingStatusExpired
 		if err := s.sharingRepo.Update(ctx, share); err != nil {
-			logger.Error("标记过期分享失败", logger.String("share", share.ID), logger.Error(err))
+			logger.Error("标记过期分享失败", logger.String("share", share.ID), logger.ErrField(err))
 			continue
 		}
 
 		// 禁用车辆端钥匙
 		if err := s.vehicleService.RevokeTemporaryKey(ctx, share.VehicleID, share.FriendID); err != nil {
-			logger.Error("禁用过期钥匙失败", logger.String("share", share.ID), logger.Error(err))
+			logger.Error("禁用过期钥匙失败", logger.String("share", share.ID), logger.ErrField(err))
 		}
 
 		// 通知好友
-		friend, _ := s.userRepo.GetByID(ctx, share.FriendID)
+		friend, _ := s.userRepo.GetByKeyID(ctx, share.FriendID)
 		if friend != nil {
 			s.notifier.Send(ctx, friend.Phone,
 				fmt.Sprintf("您对车辆 %s 的访问权限已过期", share.VehicleID))

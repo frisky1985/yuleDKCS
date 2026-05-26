@@ -10,7 +10,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/frisky1985/yuleDKCS/backend/internal/service"
-	"yuleDKCS/backend/pkg/logger"
+	"github.com/frisky1985/yuleDKCS/backend/pkg/logger"
 )
 
 // Bridge MQTT 桥接服务

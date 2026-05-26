@@ -316,7 +316,7 @@ func (b *Bridge) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := NewWSClient(conn, b)
+	client := NewWSClient(conn, b.wsHub)
 	b.wsHub.Register(client)
 
 	// 启动客户端处理

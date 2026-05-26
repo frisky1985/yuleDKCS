@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"yuledkcs/internal/mqttbridge"
+	"github.com/frisky1985/yuleDKCS/backend/internal/mqttbridge"
 )
 
 func main() {

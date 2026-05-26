@@ -15,6 +15,9 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
+
+	// 根据钥匙ID获取用户 (string形式的外部ID)
+	GetByKeyID(ctx context.Context, keyID string) (*models.User, error)
 }
 
 // userRepository 用户仓库实现
@@ -74,4 +77,19 @@ func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 // Update 更新用户
 func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
+}
+
+// GetByKeyID 根据钥匙ID获取用户
+func (r *userRepository) GetByKeyID(ctx context.Context, keyID string) (*models.User, error) {
+	var user models.User
+	result := r.db.WithContext(ctx).
+		Where("username = ? OR email = ? OR CAST(id AS TEXT) = ?", keyID, keyID, keyID).
+		First(&user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户不存在")
+		}
+		return nil, result.Error
+	}
+	return &user, nil
 }

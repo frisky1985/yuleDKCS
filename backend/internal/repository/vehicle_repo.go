@@ -41,6 +41,9 @@ type VehicleRepository interface {
 	
 	// 检查所有权
 	IsOwner(ctx context.Context, vehicleID, userID uint) (bool, error)
+
+	// 根据钥匙ID获取车辆 (string形式的外部ID)
+	GetByKeyID(ctx context.Context, keyID string) (*models.Vehicle, error)
 }
 
 // vehicleRepository 车辆仓库实现
@@ -225,4 +228,20 @@ func (r *vehicleRepository) IsOwner(ctx context.Context, vehicleID, userID uint)
 		return false, result.Error
 	}
 	return count > 0, nil
+}
+
+// GetByKeyID 根据钥匙ID获取车辆
+func (r *vehicleRepository) GetByKeyID(ctx context.Context, keyID string) (*models.Vehicle, error) {
+	var vehicle models.Vehicle
+	// 尝试通过VIN、设备ID或自定义标识符查找
+	result := r.db.WithContext(ctx).
+		Where("vin = ? OR CAST(id AS TEXT) = ?", keyID, keyID).
+		First(&vehicle)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, errors.New("车辆不存在")
+		}
+		return nil, result.Error
+	}
+	return &vehicle, nil
 }
