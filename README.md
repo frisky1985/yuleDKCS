@@ -90,7 +90,7 @@ yuleDKCS/
 
 | 协议 | 标准 | 状态 |
 |------|------|------|
-| **ICCE** | T/CA 110-2020（国密 SM2/SM3/SM4） | ✅ 完成 |
+| **ICCE** | T/CA 110-2020（国密 SM2/SM3/SM4） | ⚠️ 部分实现 (国密算法待集成) |
 | **CCC** | Digital Key 3.0 Release 1（ECDSA） | ✅ 完成 |
 | **ICCOA** | DK 3.0 & DK 4.0 | ✅ 完成 |
 

@@ -197,49 +197,88 @@ security_result_t security_establish_session(
     }
     
     session_context_t *ctx = &g_security.sessions[slot];
-    
-    /* 生成ECDH密钥对 */
-    uint8_t my_private_key[32];
-    uint8_t my_public_key[64];
-    
-    if (hsm_generate_ecdh_keypair(my_private_key, my_public_key) != HSM_SUCCESS) {
-        return SEC_ERR_KEY_GENERATION_FAILED;
+
+#ifdef USE_SM_CRYPTO
+    /* SM2 密钥交换 */
+    {
+        uint8_t my_private_key[32];
+        uint8_t shared_secret[32];
+
+        if (hsm_generate_random(my_private_key, 32) != HSM_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        if (crypto_sm2_key_exchange(my_private_key, public_key,
+                                    shared_secret) != CRYPTO_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        uint8_t key_material[48];
+        if (crypto_kdf(shared_secret, 32, NULL, 0, NULL, 0,
+                       key_material, 48) != CRYPTO_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        uint32_t current_time = sys_tick_get_ms();
+
+        ctx->info.session_id = ++g_security.session_counter;
+        ctx->info.conn_handle = conn_handle;
+        memcpy(ctx->info.session_key, key_material, 32);
+        memcpy(ctx->info.session_id_key, &key_material[32], 16);
+        ctx->info.creation_time = current_time;
+        ctx->info.expiry_time = current_time + SESSION_EXPIRY_MS;
+        ctx->info.is_encrypted = 1;
+        ctx->in_use = 1;
+        ctx->last_activity = current_time;
+
+        crypto_secure_zero(my_private_key, sizeof(my_private_key));
+        crypto_secure_zero(shared_secret, sizeof(shared_secret));
+        crypto_secure_zero(key_material, sizeof(key_material));
+
+        memcpy(session, &ctx->info, sizeof(session_info_t));
+        return SEC_SUCCESS;
     }
-    
-    /* 计算共享密钥 */
-    uint8_t shared_secret[32];
-    if (hsm_ecdh_compute_shared(my_private_key, public_key, 
-                                shared_secret) != HSM_SUCCESS) {
-        return SEC_ERR_KEY_GENERATION_FAILED;
+#else
+    {
+        uint8_t my_private_key[32];
+        uint8_t my_public_key[64];
+
+        if (hsm_generate_ecdh_keypair(my_private_key, my_public_key) != HSM_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        uint8_t shared_secret[32];
+        if (hsm_ecdh_compute_shared(my_private_key, public_key,
+                                    shared_secret) != HSM_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        uint8_t key_material[48];
+        if (crypto_kdf(shared_secret, 32, NULL, 0, NULL, 0,
+                       key_material, 48) != CRYPTO_SUCCESS) {
+            return SEC_ERR_KEY_GENERATION_FAILED;
+        }
+
+        uint32_t current_time = sys_tick_get_ms();
+
+        ctx->info.session_id = ++g_security.session_counter;
+        ctx->info.conn_handle = conn_handle;
+        memcpy(ctx->info.session_key, key_material, 32);
+        memcpy(ctx->info.session_id_key, &key_material[32], 16);
+        ctx->info.creation_time = current_time;
+        ctx->info.expiry_time = current_time + SESSION_EXPIRY_MS;
+        ctx->info.is_encrypted = 1;
+        ctx->in_use = 1;
+        ctx->last_activity = current_time;
+
+        memset(my_private_key, 0, sizeof(my_private_key));
+        memset(shared_secret, 0, sizeof(shared_secret));
+        memset(key_material, 0, sizeof(key_material));
+
+        memcpy(session, &ctx->info, sizeof(session_info_t));
+        return SEC_SUCCESS;
     }
-    
-    /* 派生会话密钥 */
-    uint8_t key_material[48];
-    if (crypto_kdf(shared_secret, 32, key_material, 48) != CRYPTO_SUCCESS) {
-        return SEC_ERR_KEY_GENERATION_FAILED;
-    }
-    
-    /* 设置会话 */
-    uint32_t current_time = sys_tick_get_ms();
-    
-    ctx->info.session_id = ++g_security.session_counter;
-    ctx->info.conn_handle = conn_handle;
-    memcpy(ctx->info.session_key, key_material, 32);
-    memcpy(ctx->info.session_id_key, &key_material[32], 16);
-    ctx->info.creation_time = current_time;
-    ctx->info.expiry_time = current_time + SESSION_EXPIRY_MS;
-    ctx->info.is_encrypted = 1;
-    ctx->in_use = 1;
-    ctx->last_activity = current_time;
-    
-    /* 清除敏感数据 */
-    memset(my_private_key, 0, sizeof(my_private_key));
-    memset(shared_secret, 0, sizeof(shared_secret));
-    memset(key_material, 0, sizeof(key_material));
-    
-    memcpy(session, &ctx->info, sizeof(session_info_t));
-    
-    return SEC_SUCCESS;
+#endif
 }
 
 security_result_t security_encrypt(
@@ -249,19 +288,50 @@ security_result_t security_encrypt(
     uint8_t *ciphertext,
     uint16_t *ciphertext_len)
 {
-    if (!g_security.initialized || !session || !plaintext || 
+    if (!g_security.initialized || !session || !plaintext ||
         !ciphertext || !ciphertext_len) {
         return SEC_ERR_INVALID_PARAM;
     }
-    
-    /* AES-256-GCM加密 */
+
+#ifdef USE_SM_CRYPTO
+    /* SM4-GCM 加密 (12B IV, 16B Tag) */
     uint8_t iv[12];
     uint8_t tag[16];
-    
+
     if (hsm_generate_random(iv, sizeof(iv)) != HSM_SUCCESS) {
         return SEC_ERR_ENCRYPTION_FAILED;
     }
-    
+
+    if (crypto_sm4_gcm_encrypt(session->session_key, 16,
+                               iv, sizeof(iv),
+                               NULL, 0,
+                               plaintext, plaintext_len,
+                               ciphertext,
+                               tag) != CRYPTO_SUCCESS) {
+        return SEC_ERR_ENCRYPTION_FAILED;
+    }
+
+    uint16_t total_len = sizeof(iv) + plaintext_len + sizeof(tag);
+    if (*ciphertext_len < total_len) {
+        return SEC_ERR_BUFFER_OVERFLOW;
+    }
+
+    memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
+    memcpy(ciphertext, iv, sizeof(iv));
+    memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
+
+    *ciphertext_len = total_len;
+    return SEC_SUCCESS;
+
+#else
+    /* AES-256-GCM加密 */
+    uint8_t iv[12];
+    uint8_t tag[16];
+
+    if (hsm_generate_random(iv, sizeof(iv)) != HSM_SUCCESS) {
+        return SEC_ERR_ENCRYPTION_FAILED;
+    }
+
     if (crypto_aes_gcm_encrypt(session->session_key, 32,
                                iv, sizeof(iv),
                                plaintext, plaintext_len,
@@ -269,21 +339,22 @@ security_result_t security_encrypt(
                                tag, sizeof(tag)) != CRYPTO_SUCCESS) {
         return SEC_ERR_ENCRYPTION_FAILED;
     }
-    
+
     /* 构建输出: IV + Ciphertext + Tag */
     uint16_t total_len = sizeof(iv) + plaintext_len + sizeof(tag);
-    
+
     if (*ciphertext_len < total_len) {
         return SEC_ERR_BUFFER_OVERFLOW;
     }
-    
+
     memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
     memcpy(ciphertext, iv, sizeof(iv));
     memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
-    
+
     *ciphertext_len = total_len;
-    
+
     return SEC_SUCCESS;
+#endif
 }
 
 security_result_t security_decrypt(
@@ -293,22 +364,32 @@ security_result_t security_decrypt(
     uint8_t *plaintext,
     uint16_t *plaintext_len)
 {
-    if (!g_security.initialized || !session || !ciphertext || 
+    if (!g_security.initialized || !session || !ciphertext ||
         !plaintext || !plaintext_len) {
         return SEC_ERR_INVALID_PARAM;
     }
-    
+
     /* 解析输入: IV + Ciphertext + Tag */
     const uint8_t *iv = ciphertext;
     const uint8_t *enc_data = &ciphertext[12];
     const uint8_t *tag = &ciphertext[ciphertext_len - 16];
-    
+
     uint16_t enc_len = ciphertext_len - 12 - 16;
-    
+
     if (*plaintext_len < enc_len) {
         return SEC_ERR_BUFFER_OVERFLOW;
     }
-    
+
+#ifdef USE_SM_CRYPTO
+    /* SM4-GCM 解密 (密钥 16 字节, SM4) */
+    if (crypto_sm4_gcm_decrypt(session->session_key, 16,
+                                iv, 12,
+                                NULL, 0,
+                                enc_data, enc_len,
+                                tag, plaintext) != CRYPTO_SUCCESS) {
+        return SEC_ERR_DECRYPTION_FAILED;
+    }
+#else
     /* AES-256-GCM解密 */
     if (crypto_aes_gcm_decrypt(session->session_key, 32,
                                iv, 12,
@@ -317,9 +398,10 @@ security_result_t security_decrypt(
                                tag, 16) != CRYPTO_SUCCESS) {
         return SEC_ERR_DECRYPTION_FAILED;
     }
-    
+#endif
+
     *plaintext_len = enc_len;
-    
+
     return SEC_SUCCESS;
 }
 
@@ -330,23 +412,42 @@ security_result_t security_sign(
     uint8_t *signature,
     uint16_t *sig_len)
 {
-    if (!g_security.initialized || !private_key || !data || 
+    if (!g_security.initialized || !private_key || !data ||
         !signature || !sig_len) {
         return SEC_ERR_INVALID_PARAM;
     }
-    
+
+#ifdef USE_SM_CRYPTO
+    /* SM2 签名: 使用 SM3 哈希 + SM2 签名 */
+    if (*sig_len < 64) {
+        return SEC_ERR_BUFFER_OVERFLOW;
+    }
+
+    uint8_t hash[32];
+    if (crypto_sm3(data, data_len, hash) != CRYPTO_SUCCESS) {
+        return SEC_ERR_ENCRYPTION_FAILED;
+    }
+
+    if (crypto_sm2_sign(private_key->data, hash, signature) != CRYPTO_SUCCESS) {
+        return SEC_ERR_ENCRYPTION_FAILED;
+    }
+
+    *sig_len = 64;
+    return SEC_SUCCESS;
+#else
     /* 计算哈希 */
     uint8_t hash[32];
     if (crypto_sha256(data, data_len, hash) != CRYPTO_SUCCESS) {
         return SEC_ERR_ENCRYPTION_FAILED;
     }
-    
+
     /* ECDSA签名 */
     if (hsm_ecdsa_sign(private_key->data, hash, signature, sig_len) != HSM_SUCCESS) {
         return SEC_ERR_ENCRYPTION_FAILED;
     }
-    
+
     return SEC_SUCCESS;
+#endif
 }
 
 security_result_t security_verify_signature(
@@ -359,19 +460,37 @@ security_result_t security_verify_signature(
     if (!g_security.initialized || !public_key || !data || !signature) {
         return SEC_ERR_INVALID_PARAM;
     }
-    
+
+#ifdef USE_SM_CRYPTO
+    /* SM2 验签: SM3 哈希 + SM2 验证 */
+    if (sig_len < 64) {
+        return SEC_ERR_SIGNATURE_INVALID;
+    }
+
+    uint8_t hash[32];
+    if (crypto_sm3(data, data_len, hash) != CRYPTO_SUCCESS) {
+        return SEC_ERR_SIGNATURE_INVALID;
+    }
+
+    if (crypto_sm2_verify(public_key->data, hash, signature) != CRYPTO_SUCCESS) {
+        return SEC_ERR_SIGNATURE_INVALID;
+    }
+
+    return SEC_SUCCESS;
+#else
     /* 计算哈希 */
     uint8_t hash[32];
     if (crypto_sha256(data, data_len, hash) != CRYPTO_SUCCESS) {
         return SEC_ERR_SIGNATURE_INVALID;
     }
-    
+
     /* ECDSA验证 */
     if (hsm_ecdsa_verify(public_key->data, hash, signature, sig_len) != HSM_SUCCESS) {
         return SEC_ERR_SIGNATURE_INVALID;
     }
-    
+
     return SEC_SUCCESS;
+#endif
 }
 
 security_result_t security_store_key(uint32_t key_id, const crypto_key_t *key)

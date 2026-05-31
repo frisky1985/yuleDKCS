@@ -74,9 +74,10 @@ ccc_status_t nfc_oob_exchange(ccc_nfc_oob_data_t *oob_out, ccc_nfc_oob_data_t *o
 /* ========================================================================
  *  BLE Module (NXP KW47A)
  * ======================================================================== */
-#define BLE_MAX_PAYLOAD     244    /* ATT MTU - 3 */
-#define BLE_MAX_CONN        1
-#define BLE_ADV_DATA_MAX    31
+#define CCC_BLE_SERVICE_UUID   0xFFD1  /* CCC Digital Key Service (SIG Assigned) */
+#define BLE_MAX_PAYLOAD        244     /* ATT MTU - 3 */
+#define BLE_MAX_CONN           1
+#define BLE_ADV_DATA_MAX       31
 
 typedef struct {
     uint8_t  addr[6];

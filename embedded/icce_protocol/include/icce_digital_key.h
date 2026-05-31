@@ -37,8 +37,27 @@ extern "C" {
 /* ========================================================================
  *  BLE 5.0 Communication
  * ======================================================================== */
-#define ICCE_BLE_MAX_PAYLOAD   244
-#define ICCE_BLE_SERVICE_UUID  0xFEFA
+#define ICCE_BLE_MAX_PAYLOAD           244
+#define ICCE_BLE_SERVICE_UUID          0xFEFA  /* ICCE BLE Service UUID (T/CA 110-2020) */
+
+/* ICCE GATT Service & Characteristic UUIDs (T/CA 110-2020) */
+#define GATT_UUID_DIGITAL_KEY_SERVICE   0xFEFA  /* ICCE Digital Key Service */
+#define GATT_UUID_KEY_STATUS            0xFEFB  /* Key Status Characteristic */
+#define GATT_UUID_RANGING_DATA          0xFEFC  /* UWB Ranging Data Characteristic */
+#define GATT_UUID_AUTH_CHALLENGE        0xFEFD  /* Authentication Challenge Characteristic */
+#define GATT_UUID_CONTROL_COMMAND       0xFEFE  /* Control Command Characteristic */
+#define GATT_UUID_SESSION_KEY           0xFEFF  /* Session Key Characteristic */
+
+/* GATT Property & Permission flags */
+#define GATT_PROP_READ                  (1 << 0)
+#define GATT_PROP_WRITE                 (1 << 1)
+#define GATT_PROP_NOTIFY                (1 << 2)
+#define GATT_PROP_INDICATE              (1 << 3)
+
+#define GATT_PERM_READ                  (1 << 0)
+#define GATT_PERM_WRITE                 (1 << 1)
+#define GATT_PERM_READ_ENCRYPTED        (1 << 2)
+#define GATT_PERM_WRITE_ENCRYPTED       (1 << 3)
 
 typedef void (*icce_ble_recv_cb_t)(const uint8_t *data, uint16_t len);
 

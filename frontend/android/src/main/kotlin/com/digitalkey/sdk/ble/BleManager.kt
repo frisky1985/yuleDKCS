@@ -15,14 +15,43 @@ import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
-// BLE服务UUID
+// BLE服务UUID — 支持多协议 (CCC / ICCE / ICCOA)
 object BleUuids {
-    val DIGITAL_KEY_SERVICE = UUID.fromString("0000FEFF-0000-1000-8000-00805F9B34FB")
-    val CAR_CONNECTION_CHAR = UUID.fromString("0000FEF1-0000-1000-8000-00805F9B34FB")
-    val VEHICLE_STATUS_CHAR = UUID.fromString("0000FEF2-0000-1000-8000-00805F9B34FB")
-    val AUTH_RESPONSE_CHAR = UUID.fromString("0000FEF3-0000-1000-8000-00805F9B34FB")
-    
+    // CCC Digital Key Service (SIG Assigned: 0xFFD1)
+    val CCC_SERVICE = UUID.fromString("0000FFD1-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_PAIRING = UUID.fromString("0000FFD2-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_KEY_DATA = UUID.fromString("0000FFD3-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_AUTH = UUID.fromString("0000FFD4-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_STATE = UUID.fromString("0000FFD5-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_UWB_CONFIG = UUID.fromString("0000FFD6-0000-1000-8000-00805F9B34FB")
+    val CCC_CHAR_RSSI = UUID.fromString("0000FFD7-0000-1000-8000-00805F9B34FB")
+
+    // ICCE Digital Key Service (T/CA 110-2020: 0xFEFA)
+    val ICCE_SERVICE = UUID.fromString("0000FEFA-0000-1000-8000-00805F9B34FB")
+    val ICCE_CHAR_KEY_STATUS = UUID.fromString("0000FEFB-0000-1000-8000-00805F9B34FB")
+    val ICCE_CHAR_RANGING_DATA = UUID.fromString("0000FEFC-0000-1000-8000-00805F9B34FB")
+    val ICCE_CHAR_AUTH_CHALLENGE = UUID.fromString("0000FEFD-0000-1000-8000-00805F9B34FB")
+    val ICCE_CHAR_CONTROL_CMD = UUID.fromString("0000FEFE-0000-1000-8000-00805F9B34FB")
+    val ICCE_CHAR_SESSION_KEY = UUID.fromString("0000FEFF-0000-1000-8000-00805F9B34FB")
+
+    // ICCOA Digital Key Service (SIG Assigned: 0xFEF5)
+    val ICCOA_SERVICE = UUID.fromString("0000FEF5-0000-1000-8000-00805F9B34FB")
+
     val CLIENT_CHARACTERISTIC_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB")
+
+    /** 获取协议对应的Service UUID */
+    fun serviceForProtocol(protocol: BleProtocolType): UUID = when (protocol) {
+        BleProtocolType.CCC -> CCC_SERVICE
+        BleProtocolType.ICCE -> ICCE_SERVICE
+        BleProtocolType.ICCOA -> ICCOA_SERVICE
+    }
+}
+
+/** BLE协议类型 */
+enum class BleProtocolType {
+    CCC,    // 0xFFD1
+    ICCE,   // 0xFEFA
+    ICCOA   // 0xFEF5
 }
 
 // BLE连接状态
@@ -78,6 +107,9 @@ class BleManager(private val context: Context) {
     
     private var isScanning = false
     
+    /** 当前协议类型，用于选择正确的Service UUID */
+    var protocolType: BleProtocolType = BleProtocolType.CCC
+    
     init {
         initialize()
     }
@@ -124,7 +156,7 @@ class BleManager(private val context: Context) {
         
         val filters = listOf(
             ScanFilter.Builder()
-                .setServiceUuid(ParcelUuid(BleUuids.DIGITAL_KEY_SERVICE))
+                .setServiceUuid(ParcelUuid(BleUuids.serviceForProtocol(protocolType)))
                 .build()
         )
         
@@ -139,7 +171,7 @@ class BleManager(private val context: Context) {
             
             telemetry.track("ble_scan", mapOf(
                 "timeout_ms" to timeoutMs,
-                "filter_service" to BleUuids.DIGITAL_KEY_SERVICE.toString()
+                "filter_service" to BleUuids.serviceForProtocol(protocolType).toString()
             ))
             
             scanJob = scope.launch {
@@ -230,7 +262,8 @@ class BleManager(private val context: Context) {
             return
         }
         
-        val service = gatt.getService(BleUuids.DIGITAL_KEY_SERVICE)
+        val serviceUuid = BleUuids.serviceForProtocol(protocolType)
+        val service = gatt.getService(serviceUuid)
         val characteristic = service?.getCharacteristic(uuid)
         
         if (characteristic == null) {
@@ -261,7 +294,8 @@ class BleManager(private val context: Context) {
             return
         }
         
-        val service = gatt.getService(BleUuids.DIGITAL_KEY_SERVICE)
+        val serviceUuid = BleUuids.serviceForProtocol(protocolType)
+        val service = gatt.getService(serviceUuid)
         val characteristic = service?.getCharacteristic(uuid)
         
         if (characteristic == null) {
@@ -281,7 +315,8 @@ class BleManager(private val context: Context) {
         val gatt = bluetoothGatt
         if (gatt == null) return
         
-        val service = gatt.getService(BleUuids.DIGITAL_KEY_SERVICE)
+        val serviceUuid = BleUuids.serviceForProtocol(protocolType)
+        val service = gatt.getService(serviceUuid)
         val characteristic = service?.getCharacteristic(uuid) ?: return
         
         gatt.setCharacteristicNotification(characteristic, enabled)
@@ -383,8 +418,20 @@ class BleManager(private val context: Context) {
                 logger.info("Services discovered")
                 
                 // Enable notifications for characteristics
-                enableNotification(BleUuids.VEHICLE_STATUS_CHAR, true)
-                enableNotification(BleUuids.AUTH_RESPONSE_CHAR, true)
+                /* 根据协议类型启用不同特征的通知 */
+                when (protocolType) {
+                    BleProtocolType.CCC -> {
+                        enableNotification(BleUuids.CCC_CHAR_STATE, true)
+                        enableNotification(BleUuids.CCC_CHAR_AUTH, true)
+                    }
+                    BleProtocolType.ICCE -> {
+                        enableNotification(BleUuids.ICCE_CHAR_KEY_STATUS, true)
+                        enableNotification(BleUuids.ICCE_CHAR_AUTH_CHALLENGE, true)
+                    }
+                    BleProtocolType.ICCOA -> {
+                        // ICCOA notifications handled separately
+                    }
+                }
             }
         }
         

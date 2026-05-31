@@ -72,27 +72,50 @@ public enum BleConnectionState: String, CustomStringConvertible {
 
 // MARK: - BLE Service UUIDs
 
-/// 数字钥匙相关BLE Service/Characteristic UUID
+/// BLE协议类型
+public enum BleProtocolType {
+    case ccc     // CCC Digital Key (0xFFD1)
+    case icce    // ICCE Digital Key (0xFEFA)
+    case iccoa   // ICCOA Digital Key (0xFEF5)
+}
+
+/// 数字钥匙相关BLE Service/Characteristic UUID — 多协议支持
 public struct BleUUIDs {
-    // 数字钥匙服务
-    public static let digitalKeyService = CBUUID(string: "FDE2")
-    // 车辆信息服务
-    public static let vehicleInfoService = CBUUID(string: "FDE3")
+    // MARK: - CCC (0xFFD1)
+    public static let cccService = CBUUID(string: "FFD1")
+    public static let cccPairingChar = CBUUID(string: "FFD2")
+    public static let cccKeyDataChar = CBUUID(string: "FFD3")
+    public static let cccAuthChar = CBUUID(string: "FFD4")
+    public static let cccStateChar = CBUUID(string: "FFD5")
+    public static let cccUwbConfigChar = CBUUID(string: "FFD6")
+    public static let cccRssiChar = CBUUID(string: "FFD7")
 
-    // 写入特征（手机→车）
-    public static let writeCharacteristic = CBUUID(string: "FDE4")
-    // 通知特征（车→手机）
-    public static let notifyCharacteristic = CBUUID(string: "FDE5")
-    // 配对特征
-    public static let pairingCharacteristic = CBUUID(string: "FDE6")
-    // 车辆状态特征
-    public static let vehicleStatusCharacteristic = CBUUID(string: "FDE7")
+    // MARK: - ICCE (0xFEFA, T/CA 110-2020)
+    public static let icceService = CBUUID(string: "FEFA")
+    public static let icceKeyStatusChar = CBUUID(string: "FEFB")
+    public static let icceRangingDataChar = CBUUID(string: "FEFC")
+    public static let icceAuthChallengeChar = CBUUID(string: "FEFD")
+    public static let icceControlCmdChar = CBUUID(string: "FEFE")
+    public static let icceSessionKeyChar = CBUUID(string: "FEFF")
 
-    // 标准设备信息服务
+    // MARK: - ICCOA (0xFEF5)
+    public static let iccoaService = CBUUID(string: "FEF5")
+
+    // MARK: - Standard
     public static let deviceInfoService = CBUUID(string: "180A")
     public static let manufacturerName = CBUUID(string: "2A00")
     public static let modelNumber = CBUUID(string: "2A24")
     public static let firmwareRevision = CBUUID(string: "2A26")
+
+    // MARK: - Protocol resolution
+    /// 根据协议类型获取对应的Service UUID
+    public static func serviceUUID(for protocolType: BleProtocolType) -> CBUUID {
+        switch protocolType {
+        case .ccc:   return cccService
+        case .icce:  return icceService
+        case .iccoa: return iccoaService
+        }
+    }
 }
 
 // MARK: - BLE Protocol
@@ -165,6 +188,9 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
     private var pendingWrites: [(Data, Bool, CheckedContinuation<Void, Error>)] = []
     private var isWriting = false
 
+    /// 当前协议类型，用于选择正确的Service UUID
+    public var protocolType: BleProtocolType = .ccc
+
     // MARK: - Initialization
 
     public override init() {
@@ -192,8 +218,9 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
 
         return try await withCheckedThrowingContinuation { continuation in
             self.scanContinuation = continuation
+            let defaultServices = [BleUUIDs.serviceUUID(for: protocolType)]
             centralManager.scanForPeripherals(
-                withServices: serviceUUIDs ?? [BleUUIDs.digitalKeyService, BleUUIDs.vehicleInfoService],
+                withServices: serviceUUIDs ?? defaultServices,
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
             )
             // Timeout
@@ -389,7 +416,8 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
 
         // Start service discovery
         updateConnectionState(.discovering)
-        peripheral.discoverServices([BleUUIDs.digitalKeyService, BleUUIDs.vehicleInfoService, BleUUIDs.deviceInfoService])
+        let protocolService = BleUUIDs.serviceUUID(for: protocolType)
+        peripheral.discoverServices([protocolService, BleUUIDs.deviceInfoService])
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
@@ -458,16 +486,31 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
             logger.trace("特征: \(characteristic.uuid.uuidString) properties=\(characteristic.properties)", tag: .ble)
 
             switch characteristic.uuid {
-            case BleUUIDs.writeCharacteristic:
-                writeCharacteristic = characteristic
-            case BleUUIDs.notifyCharacteristic:
-                notifyCharacteristic = characteristic
-                peripheral.setNotifyValue(true, for: characteristic)
-            case BleUUIDs.pairingCharacteristic:
+            case BleUUIDs.cccPairingChar:
                 pairingCharacteristic = characteristic
-            case BleUUIDs.vehicleStatusCharacteristic:
-                peripheral.setNotifyValue(true, for: characteristic)
+            case BleUUIDs.cccKeyDataChar,
+                 BleUUIDs.cccAuthChar,
+                 BleUUIDs.cccStateChar,
+                 BleUUIDs.cccUwbConfigChar,
+                 BleUUIDs.cccRssiChar:
+                // CCC characteristics handled individually
+                break
+            case BleUUIDs.icceKeyStatusChar,
+                 BleUUIDs.icceRangingDataChar,
+                 BleUUIDs.icceAuthChallengeChar,
+                 BleUUIDs.icceControlCmdChar,
+                 BleUUIDs.icceSessionKeyChar:
+                // ICCE characteristics handled individually
+                break
             default:
+                // Store write/notify characteristics by protocol type
+                if characteristic.properties.contains(.write) || characteristic.properties.contains(.writeWithoutResponse) {
+                    writeCharacteristic = characteristic
+                }
+                if characteristic.properties.contains(.notify) {
+                    notifyCharacteristic = characteristic
+                    peripheral.setNotifyValue(true, for: characteristic)
+                }
                 break
             }
         }

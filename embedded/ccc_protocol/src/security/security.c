@@ -123,8 +123,28 @@ verify_result_e sec_verify(const uint8_t *data, uint32_t len, const uint8_t *sig
      * 3. Return verification result
      */
 
-    /* Platform-specific: Se05x_ECDSAVerify() */
+    /* SHA-256 hash of input data (intermediate step before SE050 verify) */
+    uint8_t hash[32];
+    /* TODO: Replace with platform SHA-256, e.g. mbedtls_sha256_ret() or se05x_sha256() */
+    memset(hash, 0, sizeof(hash));
 
+    /* TODO: Implement actual SE050 ECDSA P-256 verification */
+    /*
+     * Platform-specific SE050 ECDSA verify call:
+     *
+     * se05x_result_t res;
+     * res = Se05x_ECDSASetPublicKey(se050_session, SE050_SLOT_DEVICE_KEY, pubkey, 64);
+     * if (res != SE05X_OK) return VERIFY_CERT_INVALID;
+     *
+     * uint8_t verified = 0;
+     * res = Se05x_ECDSAVerify(se050_session, SE050_SLOT_DEVICE_KEY,
+     *                          &hash[0], sizeof(hash),
+     *                          &sig[0], sig_len, &verified);
+     * if (res != SE05X_OK) return VERIFY_SIGN_INVALID;
+     * if (!verified) return VERIFY_SIGN_INVALID;
+     */
+
+    /* TEMPORARY: Always pass until SE050 integration complete */
     return VERIFY_OK;
 }
 

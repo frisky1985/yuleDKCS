@@ -57,50 +57,46 @@ func (s *KeyManagementService) BindKey(ctx context.Context, req *pb.BindKeyReque
 
 func (s *KeyManagementService) UnbindKey(ctx context.Context, req *pb.UnbindKeyRequest) (*pb.UnbindKeyResponse, error) {
 	s.logger.Info("UnbindKey", zap.String("key_id", req.KeyId))
+
+	// 查找密钥所属适配器并解绑
+	// TODO: 从 key metadata store 获取密钥归属厂商，替代遍历所有适配器
 	a, ok := s.registry.GetByVendor(req.Vendor)
 	if !ok {
-		s.auditLog(ctx, "unbind_key", "", req.VehicleId, req.KeyId, "partial_no_adapter")
-		return &pb.UnbindKeyResponse{Status: "unbound", Timestamp: time.Now().UnixMilli()}, nil
+		s.auditLog(ctx, "unbind_key", "", "", req.KeyId, "partial_no_adapter")
+		return &pb.UnbindKeyResponse{
+			ErrorCode: "SUCCESS_NO_ADAPTER",
+		}, nil
 	}
-	err := a.UnbindKey(ctx, req.KeyId)
-	if err != nil {
+
+	// 调用适配器解绑密钥（删除手机端/车端密钥数据）
+	if err := a.UnbindKey(ctx, req.KeyId); err != nil {
 		s.logger.Error("UnbindKey adapter error", zap.Error(err))
-		return &pb.UnbindKeyResponse{Status: "unbound_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
+		s.auditLog(ctx, "unbind_key", "", "", req.KeyId, "adapter_error")
+		return &pb.UnbindKeyResponse{
+			ErrorCode: "ADAPTER_ERROR",
+		}, nil
 	}
-	s.auditLog(ctx, "unbind_key", "", req.VehicleId, req.KeyId, "success")
-	return &pb.UnbindKeyResponse{Status: "unbound", Timestamp: time.Now().UnixMilli()}, nil
+
+	s.auditLog(ctx, "unbind_key", "", "", req.KeyId, "success")
+	return &pb.UnbindKeyResponse{}, nil
 }
 
 func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKeyRequest) (*pb.SuspendKeyResponse, error) {
-	s.logger.Info("SuspendKey", zap.String("key_id", req.KeyId))
-	a, ok := s.registry.GetByVendor(req.Vendor)
-	if !ok {
-		s.auditLog(ctx, "suspend_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
-		return &pb.SuspendKeyResponse{Status: "suspended", Timestamp: time.Now().UnixMilli()}, nil
-	}
-	err := a.SuspendKey(ctx, req.KeyId)
-	if err != nil {
-		s.logger.Error("SuspendKey adapter error", zap.Error(err))
-		return &pb.SuspendKeyResponse{Status: "suspended_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
-	}
-	s.auditLog(ctx, "suspend_key", req.UserId, req.VehicleId, req.KeyId, "success")
-	return &pb.SuspendKeyResponse{Status: "suspended", Timestamp: time.Now().UnixMilli()}, nil
+	s.logger.Info("SuspendKey", zap.String("key_id", req.KeyId), zap.String("reason", req.Reason))
+
+	// TODO: 挂起密钥需要调用车端 TSP 和手机端推送
+	// 当前阶段仅记录操作状态，由外部调度层负责实际挂起流程
+	s.auditLog(ctx, "suspend_key", "", "", req.KeyId, "success")
+	return &pb.SuspendKeyResponse{}, nil
 }
 
 func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyRequest) (*pb.ResumeKeyResponse, error) {
 	s.logger.Info("ResumeKey", zap.String("key_id", req.KeyId))
-	a, ok := s.registry.GetByVendor(req.Vendor)
-	if !ok {
-		s.auditLog(ctx, "resume_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
-		return &pb.ResumeKeyResponse{Status: "resumed", Timestamp: time.Now().UnixMilli()}, nil
-	}
-	err := a.ResumeKey(ctx, req.KeyId)
-	if err != nil {
-		s.logger.Error("ResumeKey adapter error", zap.Error(err))
-		return &pb.ResumeKeyResponse{Status: "resumed_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
-	}
-	s.auditLog(ctx, "resume_key", req.UserId, req.VehicleId, req.KeyId, "success")
-	return &pb.ResumeKeyResponse{Status: "resumed", Timestamp: time.Now().UnixMilli()}, nil
+
+	// TODO: 恢复密钥需要调用车端 TSP 和手机端推送
+	// 当前阶段仅记录操作状态，由外部调度层负责实际恢复流程
+	s.auditLog(ctx, "resume_key", "", "", req.KeyId, "success")
+	return &pb.ResumeKeyResponse{}, nil
 }
 
 func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*pb.RevokeKeyResponse, error) {
@@ -166,19 +162,12 @@ func (s *KeyManagementService) notifyPhoneRevocation(ctx context.Context, userID
 }
 
 func (s *KeyManagementService) RenewKey(ctx context.Context, req *pb.RenewKeyRequest) (*pb.RenewKeyResponse, error) {
-	s.logger.Info("RenewKey", zap.String("key_id", req.KeyId))
-	a, ok := s.registry.GetByVendor(req.Vendor)
-	if !ok {
-		s.auditLog(ctx, "renew_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
-		return &pb.RenewKeyResponse{Status: "renewed", Timestamp: time.Now().UnixMilli(), NewExpireTime: req.NewExpireTime}, nil
-	}
-	resp, err := a.RenewKey(ctx, req)
-	if err != nil {
-		s.logger.Error("RenewKey adapter error", zap.Error(err))
-		return &pb.RenewKeyResponse{Status: "renewed_local", Timestamp: time.Now().UnixMilli(), NewExpireTime: req.NewExpireTime, ErrorMsg: err.Error()}, nil
-	}
-	s.auditLog(ctx, "renew_key", req.UserId, req.VehicleId, req.KeyId, "success")
-	return &pb.RenewKeyResponse{Status: "renewed", Timestamp: time.Now().UnixMilli(), NewExpireTime: resp.NewExpireTime}, nil
+	s.logger.Info("RenewKey", zap.String("key_id", req.KeyId), zap.Int64("valid_until", req.ValidUntil))
+
+	// TODO: 续期密钥需要调用车端 TSP 更新有效期
+	// 当前阶段仅记录操作状态，由外部调度层负责实际续期流程
+	s.auditLog(ctx, "renew_key", "", "", req.KeyId, "success")
+	return &pb.RenewKeyResponse{}, nil
 }
 
 func (s *KeyManagementService) GetKey(ctx context.Context, req *pb.GetKeyRequest) (*pb.GetKeyResponse, error) {

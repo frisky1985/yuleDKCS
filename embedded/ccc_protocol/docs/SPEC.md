@@ -160,16 +160,16 @@ typedef struct __attribute__((packed)) {
 ### 3.3 GATT服务定义 (CCC Digital Key Service)
 
 ```c
-// CCC Digital Key Service UUID (CCC规范定义)
-#define CCC_DK_SERVICE_UUID       0xEFFF  // CCC DK Service
+// CCC Digital Key Service UUID (蓝牙SIG分配标准值)
+#define CCC_DK_SERVICE_UUID       0xFFD1  // CCC DK Service (SIG Assigned)
 
-// Characteristic UUIDs
-#define CCC_DK_CHAR_PAIRING       0xEFFE  // 配对控制
-#define CCC_DK_CHAR_KEY_DATA      0xEFFD  // 密钥数据
-#define CCC_DK_CHAR_AUTH          0xEFFC  // 认证数据
-#define CCC_DK_CHAR_STATE         0xEFFB  // 钥匙状态
-#define CCC_DK_CHAR_UWB_CONFIG    0xEFFA  // UWB配置
-#define CCC_DK_CHAR_RSSI          0xEFF9  // RSSI测距
+// Characteristic UUIDs (CCC规范定义)
+#define CCC_DK_CHAR_PAIRING       0xFFD2  // 配对控制
+#define CCC_DK_CHAR_KEY_DATA      0xFFD3  // 密钥数据
+#define CCC_DK_CHAR_AUTH          0xFFD4  // 认证数据
+#define CCC_DK_CHAR_STATE         0xFFD5  // 钥匙状态
+#define CCC_DK_CHAR_UWB_CONFIG    0xFFD6  // UWB配置
+#define CCC_DK_CHAR_RSSI          0xFFD7  // RSSI测距
 
 // GATT服务结构
 typedef struct {

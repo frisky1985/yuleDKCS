@@ -136,16 +136,21 @@ vehicle_result_t vehicle_execute_command(const vehicle_command_t *cmd,
     
     g_vehicle.pending_command = cmd->command_type;
     
-    /* 等待响应 */
-    uint32_t start_time = 0;  // TODO: 获取实际时间
-    uint32_t timeout = 500;   // 500ms超时
+    /* 等待CAN响应，带超时保护 */
+    uint32_t timeout = 500;   /* 500ms超时 */
+    uint32_t elapsed = 0;
+    uint32_t poll_interval = 10;  /* 每次轮询间隔10ms */
     
-    while ((0 - start_time) < timeout) {  // TODO: 时间比较
+    while (elapsed < timeout) {
         if (g_vehicle.last_result.command_type == cmd->command_type) {
             memcpy(result, &g_vehicle.last_result, sizeof(command_result_t));
             g_vehicle.pending_command = 0;
             return (result->result == 0) ? VEHICLE_SUCCESS : VEHICLE_ERR_EXECUTION_FAILED;
         }
+        /* TODO: 替换为平台实际延时函数, 如 osDelay(poll_interval) */
+        /* 简单自旋等待，生产环境应替换为基于系统tick的时间跟踪 */
+        for (volatile uint32_t i = 0; i < 10000; i++);
+        elapsed += poll_interval;
     }
     
     /* 超时 */

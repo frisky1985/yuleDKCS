@@ -233,13 +233,13 @@ ble_result_t ble_get_connection_info(uint16_t conn_handle,
 #### 3.1.4 数据结构
 
 ```c
-/* GATT服务定义 */
-#define GATT_UUID_DIGITAL_KEY_SERVICE    0x18F0
-#define GATT_UUID_KEY_STATUS            0x2AF1
-#define GATT_UUID_RANGING_DATA          0x2AF2
-#define GATT_UUID_AUTH_CHALLENGE        0x2AF3
-#define GATT_UUID_CONTROL_COMMAND       0x2AF4
-#define GATT_UUID_SESSION_KEY           0x2AF5
+/* GATT服务定义 (T/CA 110-2020) */
+#define GATT_UUID_DIGITAL_KEY_SERVICE    0xFEFA  /* ICCE Digital Key Service */
+#define GATT_UUID_KEY_STATUS            0xFEFB  /* Key Status Characteristic */
+#define GATT_UUID_RANGING_DATA          0xFEFC  /* UWB Ranging Data Characteristic */
+#define GATT_UUID_AUTH_CHALLENGE        0xFEFD  /* Authentication Challenge Characteristic */
+#define GATT_UUID_CONTROL_COMMAND       0xFEFE  /* Control Command Characteristic */
+#define GATT_UUID_SESSION_KEY           0xFEFF  /* Session Key Characteristic */
 
 /* 钥匙状态特征 */
 typedef struct __attribute__((packed)) {
