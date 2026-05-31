@@ -13,12 +13,13 @@ import android.nfc.tech.IsoDep
 import android.nfc.tech.Ndef
 import android.nfc.tech.NfcA
 import android.os.Build
-import com.digitalkey.sdk.error.DkError
 import com.digitalkey.sdk.error.DkErrorCode
 import com.digitalkey.sdk.logger.DkLogger
 import com.digitalkey.sdk.telemetry.DkTelemetry
 
-// NFC事件监听器
+/**
+ * NFC事件监听器
+ */
 interface NfcEventListener {
     fun onTagDiscovered(tag: Tag, techList: List<String>)
     fun onNdefDiscovered(message: NdefMessage)
@@ -26,7 +27,22 @@ interface NfcEventListener {
     fun onError(error: DkError)
 }
 
-// NFC管理器
+/**
+ * NFC管理器
+ *
+ * 支持明文和安全通道两种APDU通信模式。
+ * 安全通道使用 AES-256-GCM 加密数据载荷，基于 ECDH 密钥协商建立的会话密钥。
+ *
+ * 使用安全通道:
+ * ```kotlin
+ * // 1. 建立会话（需先执行 ISO SELECT 选定应用）
+ * nfcManager.establishSecureSession(tag, remotePublicKey)
+ *
+ * // 2. 安全读写
+ * nfcManager.secureReadData(tag, offset, length)   // 自动加密/解密
+ * nfcManager.secureWriteData(tag, offset, data)
+ * ```
+ */
 class NfcManager(private val activity: Activity) {
     
     private val logger = DkLogger.getLogger("NfcManager")
@@ -38,6 +54,9 @@ class NfcManager(private val activity: Activity) {
     private var techLists: Array<Array<String>>? = null
     
     private val listeners = mutableListOf<NfcEventListener>()
+    
+    /** NFC 安全通道实例 */
+    private val secureChannel = NfcSecureChannel.getInstance()
     
     // AID for Digital Key
     companion object {
@@ -59,7 +78,7 @@ class NfcManager(private val activity: Activity) {
         }
         
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
@@ -88,32 +107,33 @@ class NfcManager(private val activity: Activity) {
         logger.info("NFC Manager initialized, available: ${isAvailable()}")
     }
     
-    // 添加监听器
+    // ── 监听器管理 ──────────────────────────────────────────
+    
     fun addListener(listener: NfcEventListener) {
         if (!listeners.contains(listener)) {
             listeners.add(listener)
         }
     }
     
-    // 移除监听器
     fun removeListener(listener: NfcEventListener) {
         listeners.remove(listener)
     }
     
-    // 检查NFC是否可用
+    // ── 状态检查 ────────────────────────────────────────────
+    
     fun isAvailable(): Boolean {
         return nfcAdapter != null && nfcAdapter?.isEnabled == true
     }
     
-    // 检查NFC是否支持
     fun isSupported(): Boolean {
         return nfcAdapter != null
     }
     
-    // 启用前台调度
+    // ── 前台/读卡器 调度 ────────────────────────────────────
+    
     fun enableForegroundDispatch() {
         if (!isAvailable()) {
-            notifyError(DkError(DkErrorCode.nfcDisabled, "NFC is not available"))
+            notifyError(DkError(DkErrorCode.ERR_NFC_DISABLED, "NFC is not available"))
             return
         }
         
@@ -122,11 +142,10 @@ class NfcManager(private val activity: Activity) {
             logger.info("Foreground dispatch enabled")
         } catch (e: Exception) {
             logger.error("Failed to enable foreground dispatch", e)
-            notifyError(DkError(DkErrorCode.nfcDisabled, cause = e))
+            notifyError(DkError(DkErrorCode.ERR_NFC_DISABLED, cause = e))
         }
     }
     
-    // 禁用前台调度
     fun disableForegroundDispatch() {
         try {
             nfcAdapter?.disableForegroundDispatch(activity)
@@ -136,11 +155,10 @@ class NfcManager(private val activity: Activity) {
         }
     }
     
-    // 启用Beam/读卡模式
     @Suppress("DEPRECATION")
     fun enableReaderMode(flags: Int = NfcAdapter.FLAG_READER_NFC_A or NfcAdapter.FLAG_READER_NFC_B or NfcAdapter.FLAG_READER_NFC_F or NfcAdapter.FLAG_READER_NFC_V) {
         if (!isAvailable()) {
-            notifyError(DkError(DkErrorCode.nfcDisabled, "NFC is not available"))
+            notifyError(DkError(DkErrorCode.ERR_NFC_DISABLED, "NFC is not available"))
             return
         }
         
@@ -151,11 +169,10 @@ class NfcManager(private val activity: Activity) {
             logger.info("Reader mode enabled")
         } catch (e: Exception) {
             logger.error("Failed to enable reader mode", e)
-            notifyError(DkError(DkErrorCode.nfcDisabled, cause = e))
+            notifyError(DkError(DkErrorCode.ERR_NFC_DISABLED, cause = e))
         }
     }
     
-    // 禁用读卡模式
     fun disableReaderMode() {
         try {
             nfcAdapter?.disableReaderMode(activity)
@@ -165,7 +182,8 @@ class NfcManager(private val activity: Activity) {
         }
     }
     
-    // 处理Intent
+    // ── Intent 处理 ────────────────────────────────────────
+    
     fun handleIntent(intent: Intent?) {
         if (intent == null) return
         
@@ -176,7 +194,13 @@ class NfcManager(private val activity: Activity) {
         }
     }
     
-    // 发送APDU命令
+    // ── 明文 APDU 通信（原始接口，保持兼容）─────────────────
+    
+    /**
+     * 发送 APDU 命令（明文）
+     *
+     * 这是原始接口，直接发送原始字节。对于新代码推荐使用 [secureReadData] / [secureWriteData]。
+     */
     fun sendApdu(tag: Tag, command: ByteArray): ByteArray? {
         return try {
             IsoDep.get(tag)?.use { isoDep ->
@@ -186,50 +210,239 @@ class NfcManager(private val activity: Activity) {
         } catch (e: Exception) {
             logger.error("APDU command failed", e)
             telemetry.trackError(
-                DkErrorCode.nfcReadFailed.toInt(),
+                DkErrorCode.ERR_NFC_READ_FAILED,
                 "APDU failed: ${e.message}"
             )
             null
         }
     }
     
-    // 选择数字钥匙应用
+    /**
+     * 选择数字钥匙应用（明文 SELECT 命令）
+     *
+     * ISO 7816-4 SELECT 指令保持明文，这是协议标准要求。
+     */
     fun selectDigitalKeyApp(tag: Tag): ByteArray? {
         val selectCommand = buildSelectCommand(DIGITAL_KEY_AID)
         return sendApdu(tag, selectCommand)
     }
     
-    // 读取数据
+    /**
+     * 读取数据（明文）
+     */
     fun readData(tag: Tag, offset: Int, length: Int): ByteArray? {
         val readCommand = buildReadCommand(offset, length)
         return sendApdu(tag, readCommand)
     }
     
-    // 写入数据
+    /**
+     * 写入数据（明文）
+     */
     fun writeData(tag: Tag, offset: Int, data: ByteArray): Boolean {
         val writeCommand = buildWriteCommand(offset, data)
         val response = sendApdu(tag, writeCommand)
         return response?.let { checkResponse(it) } ?: false
     }
     
-    // 获取标签ID
+    // ── 安全通道 APDU 通信（AES-256-GCM 加密）───────────────
+    
+    /**
+     * 建立 NFC 安全会话（ECDH 密钥协商）
+     *
+     * 流程:
+     * 1. 发送本地 ECDH 公钥（通过安全通道握手 APDU）
+     * 2. 车端返回其公钥
+     * 3. 双方通过 ECDH 计算出共享秘密
+     * 4. 派生 AES-256 会话密钥用于后续加密通信
+     *
+     * @param tag 当前 NFC Tag
+     * @return true 表示会话建立成功
+     */
+    fun establishSecureSession(tag: Tag): Boolean {
+        val tagId = getTagId(tag)
+        
+        try {
+            // 1. 获取本地公钥
+            val localPublicKey = secureChannel.getLocalPublicKey()
+            
+            // 2. 构建并发送握手 APDU
+            val handshakeApdu = secureChannel.buildHandshakeApdu(localPublicKey)
+            val response = sendApdu(tag, handshakeApdu) ?: run {
+                logger.error("Secure handshake failed: no response from tag=$tagId")
+                return false
+            }
+            
+            // 3. 提取响应中的远端公钥并建立会话
+            //    响应格式：前 N 字节为远端公钥，后 2 字节为 0x9000 状态字
+            val responseData = if (response.size >= 2) {
+                response.copyOfRange(0, response.size - 2)
+            } else {
+                response
+            }
+            
+            secureChannel.handleHandshakeResponse(tagId, responseData)
+            
+            logger.info("Secure session established for tag=$tagId")
+            telemetry.track("nfc_secure_handshake", mapOf(
+                "tag_id" to tagId,
+                "state" to "established"
+            ))
+            
+            return true
+        } catch (e: Exception) {
+            logger.error("Secure session establishment failed for tag=$tagId", e)
+            telemetry.trackError(
+                DkErrorCode.ERR_CRYPTO_ERROR,
+                "NFC secure handshake failed: ${e.message}"
+            )
+            return false
+        }
+    }
+    
+    /**
+     * 安全读取数据（通过加密通道）
+     *
+     * APDU 指令使用安全 CLA (0x8C)，数据载荷经 AES-256-GCM 加密，
+     * 响应数据自动解密后返回。
+     *
+     * @param tag NFC Tag
+     * @param offset 读取偏移
+     * @param length 读取长度
+     * @return 解密后的明文数据，失败返回 null
+     */
+    fun secureReadData(tag: Tag, offset: Int, length: Int): ByteArray? {
+        val tagId = getTagId(tag)
+        val state = secureChannel.getSessionState(tagId)
+        
+        if (state != SecureChannelState.ESTABLISHED) {
+            notifyError(DkError(DkErrorCode.ERR_SESSION_EXPIRED,
+                "Secure session not established for tag=$tagId"))
+            return null
+        }
+        
+        return try {
+            // 构建加密的 READ 命令
+            val p1 = (offset shr 8).toByte()
+            val p2 = offset.toByte()
+            val encryptedReadCommand = secureChannel.buildSecureWriteApdu(
+                tagId, p1, p2, byteArrayOf(length.toByte())
+            )
+            
+            // 发送
+            val response = sendApdu(tag, encryptedReadCommand) ?: return null
+            
+            // 提取响应数据（去掉最后2字节状态字）
+            val responseData = if (response.size >= 2) {
+                response.copyOfRange(0, response.size - 2)
+            } else {
+                response
+            }
+            
+            // 解密响应
+            val plaintext = secureChannel.decryptSecureReadResponse(tagId, responseData, p1, p2)
+            
+            telemetry.track("nfc_secure_read", mapOf(
+                "tag_id" to tagId,
+                "offset" to offset,
+                "length" to length,
+                "decrypted_len" to plaintext.size
+            ))
+            
+            plaintext
+        } catch (e: Exception) {
+            logger.error("Secure read failed for tag=$tagId", e)
+            telemetry.trackError(
+                DkErrorCode.ERR_NFC_READ_FAILED,
+                "Secure read failed: ${e.message}"
+            )
+            null
+        }
+    }
+    
+    /**
+     * 安全写入数据（通过加密通道）
+     *
+     * @param tag NFC Tag
+     * @param offset 写入偏移
+     * @param data 明文数据（自动加密后发送）
+     * @return true 表示写入成功
+     */
+    fun secureWriteData(tag: Tag, offset: Int, data: ByteArray): Boolean {
+        val tagId = getTagId(tag)
+        val state = secureChannel.getSessionState(tagId)
+        
+        if (state != SecureChannelState.ESTABLISHED) {
+            notifyError(DkError(DkErrorCode.ERR_SESSION_EXPIRED,
+                "Secure session not established for tag=$tagId"))
+            return false
+        }
+        
+        return try {
+            val p1 = (offset shr 8).toByte()
+            val p2 = offset.toByte()
+            
+            // 构建加密的 WRITE 命令
+            val encryptedWriteCommand = secureChannel.buildSecureWriteApdu(tagId, p1, p2, data)
+            
+            // 发送
+            val response = sendApdu(tag, encryptedWriteCommand)
+            
+            val success = response?.let { checkResponse(it) } ?: false
+            
+            if (success) {
+                telemetry.track("nfc_secure_write", mapOf(
+                    "tag_id" to tagId,
+                    "offset" to offset,
+                    "length" to data.size
+                ))
+            }
+            
+            success
+        } catch (e: Exception) {
+            logger.error("Secure write failed for tag=$tagId", e)
+            telemetry.trackError(
+                DkErrorCode.ERR_NFC_WRITE_FAILED,
+                "Secure write failed: ${e.message}"
+            )
+            false
+        }
+    }
+    
+    /**
+     * 关闭安全会话
+     */
+    fun closeSecureSession(tagId: String) {
+        secureChannel.closeSession(tagId)
+        logger.info("Secure session closed for tag=$tagId")
+    }
+    
+    /**
+     * 检查安全通道状态
+     */
+    fun getSecureChannelState(tagId: String): SecureChannelState {
+        return secureChannel.getSessionState(tagId)
+    }
+    
+    // ── Tag 信息 ───────────────────────────────────────────
+    
     fun getTagId(tag: Tag): String {
         return tag.id.toHexString()
     }
     
-    // 获取标签技术
     fun getTagTechList(tag: Tag): List<String> {
         return tag.techList.toList()
     }
     
-    // 释放资源
+    // ── 释放资源 ───────────────────────────────────────────
+    
     fun release() {
         disableForegroundDispatch()
         disableReaderMode()
+        secureChannel.closeAllSessions()
         listeners.clear()
     }
     
-    // 私有方法
+    // ── 私有方法 ───────────────────────────────────────────
     
     private fun handleTagDiscovered(tag: Tag) {
         val tagId = getTagId(tag)
@@ -329,7 +542,7 @@ class NfcManager(private val activity: Activity) {
     
     private fun notifyError(error: DkError) {
         logger.error(error.message, error)
-        telemetry.trackError(error.code.toInt(), error.message)
+        telemetry.trackError(error.code, error.message)
         listeners.forEach { it.onError(error) }
     }
     

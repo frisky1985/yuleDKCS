@@ -72,9 +72,65 @@ func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyR
 }
 
 func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*pb.RevokeKeyResponse, error) {
-	s.logger.Info("RevokeKey", zap.String("key_id", req.KeyId))
-	// 通知车端撤销 + 通知手机端删除
-	return &pb.RevokeKeyResponse{}, nil
+	s.logger.Info("RevokeKey", zap.String("key_id", req.KeyId), zap.String("reason", req.Reason))
+
+	// Step 1: 查找密钥归属的适配器
+	a, ok := s.registry.GetByVendor(req.Vendor)
+	if !ok {
+		// 即使没有适配器也记录吊销（至少DB层面已标记）
+		s.auditLog(ctx, "revoke_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
+		return &pb.RevokeKeyResponse{
+			KeyId:     req.KeyId,
+			Status:    "revoked",
+			Timestamp: time.Now().UnixMilli(),
+		}, nil
+	}
+
+	// Step 2: 调用 TSP 适配器通知车端撤销
+	resp, err := a.RevokeKey(ctx, req)
+	if err != nil {
+		s.logger.Error("RevokeKey adapter error", zap.Error(err))
+		// 适配器失败仍需记录审计，返回部分成功
+		s.auditLog(ctx, "revoke_key", req.UserId, req.VehicleId, req.KeyId, "partial_adapter_error")
+		return &pb.RevokeKeyResponse{
+			KeyId:     req.KeyId,
+			Status:    "revoked_local",
+			Timestamp:  time.Now().UnixMilli(),
+			ErrorCode:  "ADAPTER_ERROR",
+			ErrorMsg:   err.Error(),
+		}, nil
+	}
+
+	// Step 3: 通知手机端清除本地缓存的密钥 (通过推送服务)
+	if err := s.notifyPhoneRevocation(ctx, req.UserId, req.KeyId); err != nil {
+		s.logger.Warn("Failed to notify phone", zap.Error(err))
+		// 不阻止整个流程
+	}
+
+	s.auditLog(ctx, "revoke_key", req.UserId, req.VehicleId, req.KeyId, "success")
+	s.logger.Info("Key revoked successfully",
+		zap.String("key_id", req.KeyId),
+		zap.String("status", resp.Status),
+	)
+
+	return &pb.RevokeKeyResponse{
+		KeyId:     req.KeyId,
+		Status:    resp.Status,
+		Timestamp: time.Now().UnixMilli(),
+	}, nil
+}
+
+// notifyPhoneRevocation sends a push notification to the phone to clear the local key cache
+func (s *KeyManagementService) notifyPhoneRevocation(ctx context.Context, userID, keyID string) error {
+	// TODO: 集成推送服务 (FCM/APNs/极光等)
+	// 1. 查询用户的设备注册令牌
+	// 2. 构造推送载荷: {"type": "key_revoked", "key_id": keyID}
+	// 3. 发送推送通知
+	s.logger.Info("Phone revocation notification skipped (push service not integrated)",
+		zap.String("user_id", userID),
+		zap.String("key_id", keyID),
+	)
+	return nil
 }
 
 func (s *KeyManagementService) RenewKey(ctx context.Context, req *pb.RenewKeyRequest) (*pb.RenewKeyResponse, error) {

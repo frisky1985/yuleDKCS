@@ -4,19 +4,21 @@ package com.digitalkey.sdk.key
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.digitalkey.sdk.error.DkError
 import com.digitalkey.sdk.error.DkErrorCode
 import com.digitalkey.sdk.logger.DkLogger
 import com.digitalkey.sdk.telemetry.DkTelemetry
 import kotlinx.coroutines.*
 import org.json.JSONObject
+import java.security.KeyPair
+import java.security.KeyPairGenerator
 import java.security.KeyStore
+import java.security.PrivateKey
 import java.security.SecureRandom
+import java.security.spec.ECGenParameterSpec
 import java.util.*
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 
 // 密钥类型
 enum class KeyType(val value: Int) {
@@ -85,7 +87,8 @@ class KeyManager(private val context: Context) {
     
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val secureRandom = SecureRandom()
-    
+    private lateinit var encryptedPrefs: SharedPreferences
+
     private val listeners = mutableListOf<KeyEventListener>()
     private val keysCache = mutableMapOf<String, DigitalKey>()
     
@@ -93,15 +96,24 @@ class KeyManager(private val context: Context) {
     companion object {
         private const val KEY_ALIAS_PREFIX = "dk_key_"
         private const val TRANSACTION_ID_ALIAS = "dk_transaction_counter"
-        private const val AES_GCM_TAG_LENGTH = 128
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        
+
         // Transaction counter for replay protection
         @Volatile
         private var transactionCounter: Long = 0
     }
     
     init {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        encryptedPrefs = EncryptedSharedPreferences.create(
+            context,
+            "digital_keys_encrypted",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
         loadKeysFromStorage()
         logger.info("Key Manager initialized, loaded ${keysCache.size} keys")
     }
@@ -462,62 +474,35 @@ class KeyManager(private val context: Context) {
     }
     
     private fun generateKeyPair(alias: String) {
-        val keyGen = KeyGenerator.getInstance(
-            KeyProperties.KEY_ALGORITHM_AES,
+        val keyPairGenerator = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
             ANDROID_KEYSTORE
         )
-        
+
         val spec = KeyGenParameterSpec.Builder(
             alias,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
         )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .setRandomizedEncryptionRequired(true)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+            .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384)
+            .setInvalidatedByBiometricEnrollment(false)
             .build()
-        
-        keyGen.init(spec)
-        keyGen.generateKey()
+
+        keyPairGenerator.initialize(spec)
+        keyPairGenerator.generateKeyPair()
     }
     
-    private fun getSecretKey(alias: String): SecretKey? {
-        return (keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.secretKey
+    private fun getKeyPair(alias: String): KeyStore.PrivateKeyEntry? {
+        return keyStore.getEntry(alias, null) as? KeyStore.PrivateKeyEntry
     }
-    
-    private fun encrypt(data: ByteArray, key: SecretKey): ByteArray? {
-        return try {
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, key)
-            val iv = cipher.iv
-            val encrypted = cipher.doFinal(data)
-            iv + encrypted
-        } catch (e: Exception) {
-            logger.error("Encryption failed", e)
-            null
-        }
-    }
-    
-    private fun decrypt(encryptedData: ByteArray, key: SecretKey): ByteArray? {
-        return try {
-            val iv = encryptedData.copyOfRange(0, 12)
-            val data = encryptedData.copyOfRange(12, encryptedData.size)
-            
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            val spec = GCMParameterSpec(AES_GCM_TAG_LENGTH, iv)
-            cipher.init(Cipher.DECRYPT_MODE, key, spec)
-            cipher.doFinal(data)
-        } catch (e: Exception) {
-            logger.error("Decryption failed", e)
-            null
-        }
+
+    private fun getPrivateKey(alias: String): PrivateKey? {
+        return getKeyPair(alias)?.privateKey
     }
     
     private fun loadKeysFromStorage() {
-        // Load keys from SharedPreferences
-        val prefs = context.getSharedPreferences("digital_keys", Context.MODE_PRIVATE)
-        val keysJson = prefs.getString("keys", null)
-        
+        val keysJson = encryptedPrefs.getString("keys", null)
+
         if (keysJson != null) {
             try {
                 val json = JSONObject(keysJson)
@@ -531,25 +516,23 @@ class KeyManager(private val context: Context) {
             }
         }
     }
-    
+
     private fun saveKeyToStorage(key: DigitalKey) {
-        val prefs = context.getSharedPreferences("digital_keys", Context.MODE_PRIVATE)
-        val keysJson = prefs.getString("keys", null)
+        val keysJson = encryptedPrefs.getString("keys", null)
         val json = if (keysJson != null) JSONObject(keysJson) else JSONObject()
-        
+
         json.put(key.keyId, keyToJson(key))
-        prefs.edit().putString("keys", json.toString()).apply()
+        encryptedPrefs.edit().putString("keys", json.toString()).apply()
     }
-    
+
     private fun removeKeyFromStorage(keyId: String) {
-        val prefs = context.getSharedPreferences("digital_keys", Context.MODE_PRIVATE)
-        val keysJson = prefs.getString("keys", null)
-        
+        val keysJson = encryptedPrefs.getString("keys", null)
+
         if (keysJson != null) {
             try {
                 val json = JSONObject(keysJson)
                 json.remove(keyId)
-                prefs.edit().putString("keys", json.toString()).apply()
+                encryptedPrefs.edit().putString("keys", json.toString()).apply()
             } catch (e: Exception) {
                 logger.error("Failed to remove key", e)
             }

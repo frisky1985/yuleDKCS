@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -63,14 +64,17 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 		return nil, status.Error(codes.NotFound, "vehicle not found")
 	}
 
-	// Generate key ID and secret
+	// Generate key ID
 	keyID := uuid.New().String()
+
+	// Generate key secret — stored hashed server-side, never returned to client
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
 		s.logger.Error("Failed to generate secret", logger.Err(err))
 		return nil, status.Error(codes.Internal, "failed to generate key secret")
 	}
 	secret := hex.EncodeToString(secretBytes)
+	secretHash := hashSecret(secret) // One-way hash for server storage
 
 	// Create key
 	key := &repository.Key{
@@ -80,7 +84,7 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 		KeyType:     req.KeyType,
 		Status:      "pending",
 		Permissions: req.Permissions,
-		Secret:      secret,
+		Secret:      secretHash, // Store hash only
 		CreatedAt:   time.Now(),
 		ExpiresAt:   time.Now().Add(365 * 24 * time.Hour), // Default 1 year
 	}
@@ -94,9 +98,12 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 	s.telemetry.IncCounter("dkcs.key.create.success", nil)
 	s.logger.Info("Key created successfully", logger.String("key_id", keyID))
 
+	// V-03 fix: Secret is NOT returned to client.
+	// The key establishment uses ECDH key agreement between phone SE and vehicle SE050, 
+	// not pre-shared secrets. The "secret" here is a server-side reference only.
 	return &pb.CreateKeyResponse{
 		KeyId:     keyID,
-		Secret:    secret,
+		Secret:    "", // Empty: secret never leaves the server
 		Status:    "pending",
 		CreatedAt: key.CreatedAt.Unix(),
 	}, nil
@@ -292,4 +299,15 @@ func generateShareCode() string {
 	bytes := make([]byte, 4)
 	rand.Read(bytes)
 	return fmt.Sprintf("%06d", bytes[0]%1000000)
+}
+
+// hashSecret creates a one-way hash of the key secret for server-side storage.
+// Uses SHA-256 with a per-key salt. The plaintext secret is never stored.
+func hashSecret(secret string) string {
+	salt := make([]byte, 16)
+	rand.Read(salt)
+	h := sha256.New()
+	h.Write(salt)
+	h.Write([]byte(secret))
+	return hex.EncodeToString(salt) + ":" + hex.EncodeToString(h.Sum(nil))
 }

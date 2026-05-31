@@ -77,12 +77,13 @@ func (e *Encoder) encodeValue(tag Tag, value interface{}) error {
 	}
 }
 
-// writeInt encodes a signed integer
+// writeInt encodes a signed integer with dynamic length
+// based on the minimum bytes needed for two's complement representation.
 func (e *Encoder) writeInt(tag Tag, value int64) error {
-	bytesNeeded := 8 // int64 always 8 bytes
+	bytesNeeded := intSize(value)
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, uint64(value))
-	return e.writeTLV(tag, bytesNeeded, buf)
+	return e.writeTLV(tag, bytesNeeded, buf[8-bytesNeeded:])
 }
 
 // writeUint encodes an unsigned integer

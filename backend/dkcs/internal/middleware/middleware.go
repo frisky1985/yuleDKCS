@@ -15,8 +15,8 @@ import (
 // AuthInterceptor validates authentication tokens
 func AuthInterceptor(jwtSecret string) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		// Skip health check
-		if strings.HasSuffix(info.FullMethod, "Health/Check") {
+		// Skip health check — exact match per gRPC full method convention
+		if info.FullMethod == "/grpc.health.v1.Health/Check" {
 			return handler(ctx, req)
 		}
 
@@ -169,12 +169,17 @@ type MetricsRecorder interface {
 type TokenBucket struct {
 	tokens     chan struct{}
 	refillRate time.Duration
+	stopCh     chan struct{}
 }
 
+// NewTokenBucket creates a token bucket with a background refill goroutine.
+// The caller should call Stop() when the bucket is no longer needed to prevent
+// goroutine leaks.
 func NewTokenBucket(rate int) *TokenBucket {
 	tb := &TokenBucket{
 		tokens:     make(chan struct{}, rate),
 		refillRate: time.Second / time.Duration(rate),
+		stopCh:     make(chan struct{}),
 	}
 
 	// Fill bucket
@@ -182,18 +187,34 @@ func NewTokenBucket(rate int) *TokenBucket {
 		tb.tokens <- struct{}{}
 	}
 
-	// Refill goroutine
+	// Refill goroutine — exits on Stop() or when bucket is garbage collected
 	go func() {
 		ticker := time.NewTicker(tb.refillRate)
-		for range ticker.C {
+		defer ticker.Stop()
+		for {
 			select {
-			case tb.tokens <- struct{}{}:
-			default:
+			case <-ticker.C:
+				select {
+				case tb.tokens <- struct{}{}:
+				default:
+				}
+			case <-tb.stopCh:
+				return
 			}
 		}
 	}()
 
 	return tb
+}
+
+// Stop terminates the refill goroutine. Safe to call multiple times.
+func (tb *TokenBucket) Stop() {
+	select {
+	case <-tb.stopCh:
+		// Already stopped
+	default:
+		close(tb.stopCh)
+	}
 }
 
 func (tb *TokenBucket) Allow() bool {

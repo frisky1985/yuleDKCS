@@ -67,11 +67,8 @@ func (r *Registry) Get(vendor string, protocol string) (Adapter, bool) {
 func (r *Registry) GetByVendor(vendor string) (Adapter, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for k, a := range r.adapters {
+	for _, a := range r.adapters {
 		if a.Vendor() == vendor {
-			r.mu.RUnlock()
-			_ = k
-			r.mu.RLock()
 			return a, true
 		}
 	}

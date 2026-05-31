@@ -14,10 +14,19 @@
 #include "iccoa_digital_key.h"
 #include <string.h>
 
+/* Include logger for audit event recording */
+#include "../../../ccc_protocol/src/logger/dk_logger.h"
+
 /* ========================================================================
  *  Configuration
  * ======================================================================== */
 #define ICCOA_DEFAULT_VERSION   4  /* 默认 DK 4.0 */
+
+/* ========================================================================
+ *  Security: DK4.0→DK3.0 降级保护
+ * ======================================================================== */
+/* 当 no_downgrade 置位时，禁止从 DK4.0 (HMAC) 降级到 DK3.0 (XOR)，
+ * 并记录审计事件。 */
 
 /* ========================================================================
  *  State
@@ -26,6 +35,8 @@ typedef struct {
     uint8_t version;            /**< 当前协议版本 (3 or 4) */
     uint8_t initialized;
     uint8_t running;
+    uint8_t no_downgrade;       /**< [V-16] 禁止从 DK4.0 降级到 DK3.0 */
+    uint8_t downgrade_attempted; /**< [V-16] 是否检测到降级尝试 */
 } iccoa_ctx_t;
 
 static iccoa_ctx_t g_ctx = {0};
@@ -36,6 +47,9 @@ static iccoa_ctx_t g_ctx = {0};
 
 /**
  * @brief BLE 接收回调 - 分发到协议处理器
+ *
+ * @note [V-16] 当 no_downgrade 置位且当前为 DK4.0 时，
+ *       检测到 DK3.0 帧视为降级攻击尝试，记录审计事件并丢弃。
  */
 static void ble_data_handler(const uint8_t *data, uint16_t len)
 {
@@ -49,6 +63,15 @@ static void ble_data_handler(const uint8_t *data, uint16_t len)
         }
     }
     else if (g_ctx.version == 4) {
+        /* [V-16] 检测降级攻击: 在 DK4.0 模式收到 DK3.0 帧 */
+        if (data[0] == DK30_SOP) {
+            if (g_ctx.no_downgrade) {
+                g_ctx.downgrade_attempted = 1;
+                DK_LOG_SEC_WARN("降级攻击检测: DK4.0 模式下收到 DK3.0 帧, 已丢弃");
+                return;
+            }
+        }
+
         /* DK 4.0: Magic = 0xICC0 */
         if (data[0] == 0xC0 && data[1] == 0x0C) {
             iccoa_dk40_process(data, len);
@@ -91,6 +114,9 @@ int32_t iccoa_dk_init(void)
 
     /* 设置默认协议版本 */
     g_ctx.version = ICCOA_DEFAULT_VERSION;
+    /* [V-16] 默认启用 DK4.0→DK3.0 降级保护 */
+    g_ctx.no_downgrade = 1;
+    g_ctx.downgrade_attempted = 0;
     g_ctx.initialized = 1;
     g_ctx.running = 0;
 
@@ -139,12 +165,57 @@ int32_t iccoa_dk_run(void)
 
 /**
  * @brief 设置协议版本
+ *
+ * @note [V-16] 当 no_downgrade 置位时，禁止从 DK4.0 (HMAC)
+ *       降级到 DK3.0 (XOR)。记录审计事件并返回错误。
  */
 int32_t iccoa_set_version(uint8_t version)
 {
     if (version != 3 && version != 4) return ICCOA_ERR_PARAM;
+
+    /* [V-16] 检查降级安全策略 */
+    if (g_ctx.no_downgrade && g_ctx.version == 4 && version == 3) {
+        g_ctx.downgrade_attempted = 1;
+        DK_LOG_SEC_WARN("降级攻击阻止: DK4.0→DK3.0 被 no_downgrade 策略拒绝");
+        return ICCOA_ERR_SECURITY;
+    }
+
     g_ctx.version = version;
     return ICCOA_OK;
+}
+
+/**
+ * @brief 设置/清除 no_downgrade 标志
+ * @param enable 1=启用降级保护, 0=关闭
+ *
+ * @note [V-16] 启用后阻止从 DK4.0 (HMAC) 降级到 DK3.0 (XOR)。
+ *       默认在 DK4.0 模式下启用。
+ */
+void iccoa_set_no_downgrade(uint8_t enable)
+{
+    g_ctx.no_downgrade = enable;
+    if (enable) {
+        DK_LOG_SEC_INFO("降级保护已启用 (DK4.0→DK3.0)");
+    } else {
+        DK_LOG_SEC_WARN("降级保护已禁用");
+    }
+}
+
+/**
+ * @brief 查询是否检测到降级尝试
+ * @return 1=检测到降级攻击, 0=未检测
+ */
+uint8_t iccoa_is_downgrade_attempted(void)
+{
+    return g_ctx.downgrade_attempted;
+}
+
+/**
+ * @brief 清除降级尝试标志
+ */
+void iccoa_clear_downgrade_flag(void)
+{
+    g_ctx.downgrade_attempted = 0;
 }
 
 /**

@@ -10,6 +10,7 @@
 #include "offline_decision.h"
 #include "cache_manager.h"
 #include "security_auth.h"
+#include "sys_time.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -163,7 +164,7 @@ int32_t decision_evaluate(const decision_request_t *request,
     }
     
     /* Step 4: 检查钥匙有效性 */
-    uint32_t current_time = 0;  // TODO: 获取实际时间
+    uint32_t current_time = sys_tick_get_ms();
     if (key_info.status != 1 || current_time > key_info.expiry_time) {
         output->result = DECISION_DENY;
         output->reason = REASON_KEY_EXPIRED;
@@ -389,7 +390,7 @@ static int32_t check_permission(uint32_t user_id, uint8_t command,
     }
     
     /* 检查时间有效性 */
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = sys_tick_get_ms();
     if (current_time < perm->valid_from || current_time > perm->valid_until) {
         return -1;
     }
@@ -425,7 +426,7 @@ static int32_t check_signature(uint32_t key_id, const uint8_t *nonce,
 
 static int32_t check_rate_limit(uint32_t user_id)
 {
-    uint32_t current_time = 0;  // TODO
+    uint32_t current_time = sys_tick_get_ms();
     
     for (int i = 0; i < 32; i++) {
         if (g_decision.rate_limits[i].user_id == user_id) {
@@ -457,7 +458,7 @@ static int32_t check_rate_limit(uint32_t user_id)
         }
     }
     
-    return 0;  // 没有空闲槽,允许通过
+    return -1;  // 没有空闲槽,拒绝请求
 }
 
 static int32_t calculate_risk_score(const decision_request_t *request,
@@ -482,15 +483,19 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     }
     
     /* 离线时间检查 */
-    uint32_t current_time = 0;  // TODO
-    uint32_t offline_duration = current_time - key_info->last_sync_time;
-    if (offline_duration > 24 * 3600) {  // 超过24小时
+    uint32_t current_time = sys_tick_get_ms();
+    uint32_t offline_duration = (current_time > key_info->last_sync_time)
+                                ? (current_time - key_info->last_sync_time)
+                                : 0;
+    if (offline_duration > 24 * 3600 * 1000) {  // 超过24小时
         base_score += 25;
         factors |= RISK_FACTOR_OFFLINE_TOO_LONG;
     }
     
     /* 钥匙即将过期 */
-    uint32_t time_to_expiry = key_info->expiry_time - current_time;
+    uint32_t time_to_expiry = (key_info->expiry_time > current_time)
+                              ? (key_info->expiry_time - current_time)
+                              : 0;
     if (time_to_expiry < 3600) {  // 少于1小时
         base_score += 10;
         factors |= RISK_FACTOR_KEY_EXPIRING;
@@ -519,7 +524,7 @@ static void log_decision(const decision_output_t *decision)
     decision_history_entry_t *entry = &g_decision.history[g_decision.history_index];
     
     memcpy(&entry->decision, decision, sizeof(decision_output_t));
-    entry->timestamp = 0;  // TODO
+    entry->timestamp = sys_tick_get_ms();
     
     g_decision.history_index = (g_decision.history_index + 1) % MAX_DECISION_HISTORY;
 }
