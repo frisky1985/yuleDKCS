@@ -371,6 +371,28 @@ class NfcSecureChannel private constructor() {
     }
 
     /**
+     * 构建安全通道 READ APDU
+     * [CR-2 fix] 独立于 WRITE 的方法，使用正确的 INS 字节
+     *
+     * @param tagId Tag ID
+     * @param p1 P1 参数（如偏移量高字节）
+     * @param p2 P2 参数（如偏移量低字节）
+     * @param length 期望读取的字节数
+     * @return 完整的读命令 APDU
+     */
+    fun buildSecureReadApdu(tagId: String, p1: Byte, p2: Byte, length: Int): ByteArray {
+        val aad = byteArrayOf(SecureApduIns.CLA_SECURE, SecureApduIns.INS_SECURE_READ, p1, p2)
+        val encryptedPayload = encryptForWrite(tagId, byteArrayOf(length.toByte()), aad)
+        return buildApdu(
+            cla = SecureApduIns.CLA_SECURE,
+            ins = SecureApduIns.INS_SECURE_READ,
+            p1 = p1,
+            p2 = p2,
+            data = encryptedPayload
+        )
+    }
+
+    /**
      * 解密安全通道 READ 响应
      *
      * @param tagId Tag ID

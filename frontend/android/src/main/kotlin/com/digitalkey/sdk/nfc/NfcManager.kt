@@ -324,8 +324,8 @@ class NfcManager(private val activity: Activity) {
             // 构建加密的 READ 命令
             val p1 = (offset shr 8).toByte()
             val p2 = offset.toByte()
-            val encryptedReadCommand = secureChannel.buildSecureWriteApdu(
-                tagId, p1, p2, byteArrayOf(length.toByte())
+            val encryptedReadCommand = secureChannel.buildSecureReadApdu(
+                tagId, p1, p2, length
             )
             
             // 发送

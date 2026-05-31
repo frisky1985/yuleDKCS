@@ -125,12 +125,11 @@ int32_t iccoa_dk30_process(const uint8_t *raw, uint16_t len)
     if (wire_eop != DK30_EOP) return ICCOA_ERR_PARAM;
 
     /* [V-20 fix] anti-replay: seq_num must monotonically increase */
-    /* Wrap-around (seq rolls over from 0xFFFF → 0) is allowed at most once */
+    /* Wrap-around (seq rolls over from 0xFFFF → 0) is allowed */
     if (seq_num == 0 && g_last_seq_num == 0) {
         /* First frame ever — accept seq 0 */
-    } else if (seq_num == 0 && g_last_seq_num != 0xFFFF) {
-        /* Non-monotonic wrap: 0 is only valid after 0xFFFF */
-        return ICCOA_ERR_SECURITY;
+    } else if (seq_num == 0 && g_last_seq_num == 0xFFFF) {
+        /* [CR-1 fix] Valid wrap from 0xFFFF to 0 — accept */
     } else if (seq_num <= g_last_seq_num) {
         /* seq not greater than last */
         return ICCOA_ERR_SECURITY;

@@ -267,6 +267,7 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 		return nil, status.Error(codes.Internal, "failed to generate secret")
 	}
 	secret := hex.EncodeToString(secretBytes)
+	secretHash := hashSecret(secret) // [CR-3 fix] hash before storing
 
 	sharedKey := &repository.Key{
 		ID:          sharedKeyID,
@@ -275,7 +276,7 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 		KeyType:     origKey.KeyType,
 		Status:      "pending",
 		Permissions: req.Permissions,
-		Secret:      secret,
+		Secret:      secretHash,
 		ParentKeyID: &origKey.ID,
 		CreatedAt:   time.Now(),
 		ExpiresAt:   time.Now().Add(30 * 24 * time.Hour), // 30 days for shared keys
@@ -298,7 +299,10 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 func generateShareCode() string {
 	bytes := make([]byte, 4)
 	rand.Read(bytes)
-	return fmt.Sprintf("%06d", bytes[0]%1000000)
+	// [CR-4 fix] use all 4 bytes for ~32 bits of entropy
+	code := (uint32(bytes[0]) << 24) | (uint32(bytes[1]) << 16) |
+		(uint32(bytes[2]) << 8) | uint32(bytes[3])
+	return fmt.Sprintf("%08X", code)
 }
 
 // hashSecret creates a one-way hash of the key secret for server-side storage.
