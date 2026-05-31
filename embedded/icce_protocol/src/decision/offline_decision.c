@@ -341,7 +341,10 @@ static int32_t check_key_validity(uint32_t key_id, key_cache_item_t *key_info)
     cache_key[0] = 'K';
     cache_key[1] = 'E';
     cache_key[2] = 'Y';
-    *((uint32_t*)&cache_key[4]) = key_id;
+    cache_key[4] = (uint8_t)(key_id >> 24);
+    cache_key[5] = (uint8_t)(key_id >> 16);
+    cache_key[6] = (uint8_t)(key_id >> 8);
+    cache_key[7] = (uint8_t)(key_id);
     
     if (cache_get(cache_key, 8, key_buf, &buf_len) != CACHE_SUCCESS) {
         return -1;
@@ -365,7 +368,10 @@ static int32_t check_permission(uint32_t user_id, uint8_t command,
     cache_key[0] = 'P';
     cache_key[1] = 'E';
     cache_key[2] = 'R';
-    *((uint32_t*)&cache_key[4]) = user_id;
+    cache_key[4] = (uint8_t)(user_id >> 24);
+    cache_key[5] = (uint8_t)(user_id >> 16);
+    cache_key[6] = (uint8_t)(user_id >> 8);
+    cache_key[7] = (uint8_t)(user_id);
     
     if (cache_get(cache_key, 8, perm_buf, &buf_len) != CACHE_SUCCESS) {
         return -1;

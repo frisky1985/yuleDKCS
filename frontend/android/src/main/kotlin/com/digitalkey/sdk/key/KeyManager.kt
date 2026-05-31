@@ -19,6 +19,7 @@ import java.security.PrivateKey
 import java.security.SecureRandom
 import java.security.spec.ECGenParameterSpec
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 // 密钥类型
 enum class KeyType(val value: Int) {
@@ -90,7 +91,7 @@ class KeyManager(private val context: Context) {
     private lateinit var encryptedPrefs: SharedPreferences
 
     private val listeners = mutableListOf<KeyEventListener>()
-    private val keysCache = mutableMapOf<String, DigitalKey>()
+    private val keysCache = ConcurrentHashMap<String, DigitalKey>()
     
     // KeyStore alias prefix
     companion object {

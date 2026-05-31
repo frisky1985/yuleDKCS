@@ -11,6 +11,7 @@
 
 import Foundation
 import Combine
+import os.log
 
 // MARK: - SDK统一错误类型
 
@@ -103,8 +104,9 @@ public struct SdkConfig {
             // 使用 configId 作为 Keychain key，避免多配置冲突
             try keychain.store(key: configId, value: apiKey)
         } catch {
-            // 存储失败时输出警告——不会阻断初始化
-            print("[DigitalKeySDK] ⚠️ API Key 写入 Keychain 失败: \(error.localizedDescription)")
+            // 存储失败时记录日志——不会阻断初始化
+            os_log("[DigitalKeySDK] ⚠️ API Key 写入 Keychain 失败: %{public}@",
+                   log: OSLog.default, type: .error, error.localizedDescription)
         }
     }
 }
@@ -254,12 +256,12 @@ public class DigitalKeySDK {
     /// 内部日志输出
     static func log(_ message: String) {
         guard let sdk = _shared, sdk.config.enableLog else { return }
-        print("[DigitalKeySDK] \(message)")
+        os_log("[DigitalKeySDK] %{public}@", log: OSLog.default, type: .info, message)
     }
 
     /// 内部错误日志输出
     static func logError(_ message: String) {
         guard let sdk = _shared, sdk.config.enableLog else { return }
-        print("[DigitalKeySDK] ❌ \(message)")
+        os_log("[DigitalKeySDK] ❌ %{public}@", log: OSLog.default, type: .error, message)
     }
 }

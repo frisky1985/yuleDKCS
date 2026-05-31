@@ -57,18 +57,50 @@ func (s *KeyManagementService) BindKey(ctx context.Context, req *pb.BindKeyReque
 
 func (s *KeyManagementService) UnbindKey(ctx context.Context, req *pb.UnbindKeyRequest) (*pb.UnbindKeyResponse, error) {
 	s.logger.Info("UnbindKey", zap.String("key_id", req.KeyId))
-	// 查找密钥所属适配器 → 调用解绑
-	return &pb.UnbindKeyResponse{}, nil
+	a, ok := s.registry.GetByVendor(req.Vendor)
+	if !ok {
+		s.auditLog(ctx, "unbind_key", "", req.VehicleId, req.KeyId, "partial_no_adapter")
+		return &pb.UnbindKeyResponse{Status: "unbound", Timestamp: time.Now().UnixMilli()}, nil
+	}
+	err := a.UnbindKey(ctx, req.KeyId)
+	if err != nil {
+		s.logger.Error("UnbindKey adapter error", zap.Error(err))
+		return &pb.UnbindKeyResponse{Status: "unbound_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
+	}
+	s.auditLog(ctx, "unbind_key", "", req.VehicleId, req.KeyId, "success")
+	return &pb.UnbindKeyResponse{Status: "unbound", Timestamp: time.Now().UnixMilli()}, nil
 }
 
 func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKeyRequest) (*pb.SuspendKeyResponse, error) {
 	s.logger.Info("SuspendKey", zap.String("key_id", req.KeyId))
-	return &pb.SuspendKeyResponse{}, nil
+	a, ok := s.registry.GetByVendor(req.Vendor)
+	if !ok {
+		s.auditLog(ctx, "suspend_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
+		return &pb.SuspendKeyResponse{Status: "suspended", Timestamp: time.Now().UnixMilli()}, nil
+	}
+	err := a.SuspendKey(ctx, req.KeyId)
+	if err != nil {
+		s.logger.Error("SuspendKey adapter error", zap.Error(err))
+		return &pb.SuspendKeyResponse{Status: "suspended_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
+	}
+	s.auditLog(ctx, "suspend_key", req.UserId, req.VehicleId, req.KeyId, "success")
+	return &pb.SuspendKeyResponse{Status: "suspended", Timestamp: time.Now().UnixMilli()}, nil
 }
 
 func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyRequest) (*pb.ResumeKeyResponse, error) {
 	s.logger.Info("ResumeKey", zap.String("key_id", req.KeyId))
-	return &pb.ResumeKeyResponse{}, nil
+	a, ok := s.registry.GetByVendor(req.Vendor)
+	if !ok {
+		s.auditLog(ctx, "resume_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
+		return &pb.ResumeKeyResponse{Status: "resumed", Timestamp: time.Now().UnixMilli()}, nil
+	}
+	err := a.ResumeKey(ctx, req.KeyId)
+	if err != nil {
+		s.logger.Error("ResumeKey adapter error", zap.Error(err))
+		return &pb.ResumeKeyResponse{Status: "resumed_local", Timestamp: time.Now().UnixMilli(), ErrorMsg: err.Error()}, nil
+	}
+	s.auditLog(ctx, "resume_key", req.UserId, req.VehicleId, req.KeyId, "success")
+	return &pb.ResumeKeyResponse{Status: "resumed", Timestamp: time.Now().UnixMilli()}, nil
 }
 
 func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*pb.RevokeKeyResponse, error) {
@@ -135,7 +167,18 @@ func (s *KeyManagementService) notifyPhoneRevocation(ctx context.Context, userID
 
 func (s *KeyManagementService) RenewKey(ctx context.Context, req *pb.RenewKeyRequest) (*pb.RenewKeyResponse, error) {
 	s.logger.Info("RenewKey", zap.String("key_id", req.KeyId))
-	return &pb.RenewKeyResponse{}, nil
+	a, ok := s.registry.GetByVendor(req.Vendor)
+	if !ok {
+		s.auditLog(ctx, "renew_key", req.UserId, req.VehicleId, req.KeyId, "partial_no_adapter")
+		return &pb.RenewKeyResponse{Status: "renewed", Timestamp: time.Now().UnixMilli(), NewExpireTime: req.NewExpireTime}, nil
+	}
+	resp, err := a.RenewKey(ctx, req)
+	if err != nil {
+		s.logger.Error("RenewKey adapter error", zap.Error(err))
+		return &pb.RenewKeyResponse{Status: "renewed_local", Timestamp: time.Now().UnixMilli(), NewExpireTime: req.NewExpireTime, ErrorMsg: err.Error()}, nil
+	}
+	s.auditLog(ctx, "renew_key", req.UserId, req.VehicleId, req.KeyId, "success")
+	return &pb.RenewKeyResponse{Status: "renewed", Timestamp: time.Now().UnixMilli(), NewExpireTime: resp.NewExpireTime}, nil
 }
 
 func (s *KeyManagementService) GetKey(ctx context.Context, req *pb.GetKeyRequest) (*pb.GetKeyResponse, error) {
