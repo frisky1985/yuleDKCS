@@ -1,4 +1,4 @@
-// Stub for github.com/digitalkey/proto/dkcs — generated from dkcs.proto
+// Stub for github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs — generated from dkcs.proto
 // Build with: protoc --go_out=. --go_opt=paths=source_relative dkcs.proto
 //go:build !ignore
 // +build !ignore

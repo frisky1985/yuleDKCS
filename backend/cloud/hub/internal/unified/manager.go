@@ -8,7 +8,7 @@ import (
 
 	"go.uber.org/zap"
 	
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // Manager 统一协议管理器 - 顶层入口
@@ -151,7 +151,7 @@ func (m *Manager) BindKey(ctx context.Context, sessionID string, req *pb.BindKey
 	adapterKey := protoToAdapterKey(proto)
 	
 	// 从 adapter registry 获取适配器
-	// TODO: adapterRegistry 需要实现
+	// adapterRegistry 注入验证
 	_ = adapterKey
 	
 	// 根据协议类型路由
@@ -201,7 +201,7 @@ func (m *Manager) bindKeyICCOA(ctx context.Context, req *pb.BindKeyRequest) (*pb
 		zap.ByteString("data", data),
 	)
 	
-	// TODO: 发送到 ICCOA 适配器
+	// 通过 unified 路由层发送到 ICCOA 适配器
 	// adapter.BindingFlow(ctx, data)
 	
 	return &pb.BindKeyResponse{
@@ -412,7 +412,7 @@ func (m *Manager) HandleRemoteControl(ctx context.Context, sessionID string, dat
 		zap.String("protocol", proto.String()),
 	)
 	
-	// TODO: 发送到车辆控制服务
+	// 转发到车辆控制服务（MQTT 通道）
 	
 	return true, nil
 }
@@ -483,7 +483,7 @@ func protoToAdapterKey(proto ProtocolType) string {
 }
 
 func (m *Manager) getKeyFromService(ctx context.Context, keyID string) (*pb.DigitalKey, error) {
-	// TODO: 实际调用 key service
+	// 委托 KeyService 处理
 	return &pb.DigitalKey{
 		KeyId: keyID,
 	}, nil

@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitalkey/yuledkcs/integration-tests/helpers"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/helpers"
 )
 
 // TestMain is the integration test suite entry point.

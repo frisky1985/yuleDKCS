@@ -1,4 +1,4 @@
-// Stub telemetry package matching github.com/digitalkey/dkcs/pkg/telemetry
+// Stub telemetry package matching github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry
 package telemetry
 
 import "time"

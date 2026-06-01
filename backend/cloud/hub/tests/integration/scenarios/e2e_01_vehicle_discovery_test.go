@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitalkey/yuledkcs/integration-tests/helpers"
-	"github.com/digitalkey/yuledkcs/integration-tests/suite"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/helpers"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/suite"
 	"github.com/stretchr/testify/assert"
 )
 

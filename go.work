@@ -1,0 +1,9 @@
+go 1.25
+
+use (
+	backend/cloud/hub
+	backend/cloud/hub/tests/integration
+	backend/cloud/hub/tests/stress
+	backend/dkcs
+	backend/dkcs/proto
+)

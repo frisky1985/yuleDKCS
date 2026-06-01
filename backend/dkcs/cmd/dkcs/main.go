@@ -17,15 +17,15 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/digitalkey/proto/dkcs"
-	"github.com/digitalkey/dkcs/internal/cache"
-	"github.com/digitalkey/dkcs/internal/config"
-	"github.com/digitalkey/dkcs/internal/middleware"
-	"github.com/digitalkey/dkcs/internal/mq"
-	"github.com/digitalkey/dkcs/internal/repository"
-	"github.com/digitalkey/dkcs/internal/service"
-	"github.com/digitalkey/dkcs/pkg/logger"
-	"github.com/digitalkey/dkcs/pkg/telemetry"
+	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/cache"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/config"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/middleware"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/mq"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/service"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
 )
 
 func main() {

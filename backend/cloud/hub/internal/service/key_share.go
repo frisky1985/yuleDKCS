@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	pb "github.com/digitalkey/hub/api/v1"
-	"github.com/digitalkey/hub/internal/adapter"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 )
 
 type KeyShareService struct {

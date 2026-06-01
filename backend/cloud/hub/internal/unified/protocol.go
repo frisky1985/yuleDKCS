@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // Device 统一设备抽象 - 跨协议的设备模型

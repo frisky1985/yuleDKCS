@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitalkey/dkcs/internal/repository"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
 )
 
 // ─────────────────────────────────────────────────────────────

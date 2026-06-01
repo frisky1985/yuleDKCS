@@ -1,4 +1,4 @@
-// Stub logger package matching github.com/digitalkey/dkcs/pkg/logger
+// Stub logger package matching github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger
 package logger
 
 import "context"

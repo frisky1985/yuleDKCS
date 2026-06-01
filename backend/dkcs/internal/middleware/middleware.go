@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/digitalkey/dkcs/pkg/logger"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

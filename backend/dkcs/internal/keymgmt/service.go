@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // Service DKCS密钥管理服务
@@ -40,7 +40,7 @@ func (s *Service) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.Bind
 		Vendor:    req.Vendor,
 		Protocol:  req.Protocol,
 		Operation: "bind",
-		Payload:   nil, // TODO: 序列化req为厂商私有格式
+		Payload:   req.Data, // 透传厂商私有协议负载
 		TraceId:   req.TraceId,
 	}
 

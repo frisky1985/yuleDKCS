@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/digitalkey/hub/api/v1"
-	"github.com/digitalkey/hub/internal/adapter"
-	"github.com/digitalkey/hub/internal/gateway"
-	"github.com/digitalkey/hub/internal/service"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 )
 
 func main() {

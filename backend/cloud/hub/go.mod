@@ -1,4 +1,4 @@
-module github.com/digitalkey/hub
+module github.com/frisky1985/yuleDKCS/backend/cloud/hub
 
 go 1.25.0
 

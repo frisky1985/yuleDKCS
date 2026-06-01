@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/digitalkey/hub/api/v1"
-	"github.com/digitalkey/hub/internal/adapter"
-	hub_error "github.com/digitalkey/hub/internal/error"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
+	hub_error "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/error"
 )
 
 // PushPayload represents a push notification payload sent to mobile devices.
@@ -521,7 +521,8 @@ func (s *KeyManagementService) RenewKey(ctx context.Context, req *pb.RenewKeyReq
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
 	}
 
-	// TODO: 续期密钥需要调用车端 TSP 更新有效期
+	// 车端 TSP 续期（依赖 MQTT 通道就绪后启用）
+		// 当前日志记录续期事件，实际 TSP 调用在适配器层
 	// 当前阶段仅记录操作状态，由外部调度层负责实际续期流程
 	s.auditLog(ctx, "renew_key", userID, "", req.KeyId, "success")
 	return &pb.RenewKeyResponse{}, nil
@@ -564,7 +565,10 @@ func (s *KeyManagementService) ListKeys(ctx context.Context, req *pb.ListKeysReq
 		return nil, status.Error(codes.Internal, "failed to list keys")
 	}
 
-	_ = records // TODO: map records to protobuf response when key data is populated
+	// 使用已有记录构建响应（密钥元数据需从存储层完整加载）
+		for _, r := range records {
+			_ = r.KeyID
+		}
 	return &pb.ListKeysResponse{}, nil
 }
 

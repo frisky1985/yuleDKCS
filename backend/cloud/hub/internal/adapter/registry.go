@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"go.uber.org/zap"
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // Adapter 统一接口 - 所有手机厂商适配器实现此接口

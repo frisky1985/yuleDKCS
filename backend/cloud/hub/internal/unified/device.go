@@ -3,7 +3,7 @@ package unified
 import (
 	"fmt"
 	
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // DeviceInfo 设备信息 (用于设备发现和能力协商)

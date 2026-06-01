@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	pb "github.com/digitalkey/hub/api/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
 // ICCOAAdapter ICCOA协议适配器 (小米/OPPO/vivo)

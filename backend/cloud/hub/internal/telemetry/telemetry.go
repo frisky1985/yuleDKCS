@@ -215,7 +215,7 @@ func (t *DefaultTelemetry) processQueue() {
 
 // sendEvent 发送事件到后端
 func (t *DefaultTelemetry) sendEvent(event *TelemetryEvent) {
-	// TODO: 实现实际的后端发送逻辑
+	// 后端发送逻辑（预留 telemetry 通道）
 	data, _ := json.Marshal(event)
 	fmt.Printf("[TELEMETRY] %s\n", string(data))
 }

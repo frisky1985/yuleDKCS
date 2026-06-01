@@ -1,4 +1,4 @@
-module github.com/digitalkey/yuledkcs/integration-tests
+module github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration
 
 go 1.25.0
 
