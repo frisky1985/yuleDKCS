@@ -6,7 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token"
 )
+
 
 // ── Token 相关路由 ──
 
@@ -166,22 +170,32 @@ func (g *RESTGateway) exchangeToken(c *gin.Context) {
 		return
 	}
 
-	// 3. 通知 DK Server / 车厂签发钥匙
-	// TODO: 对接实际 DK Server gRPC 接口
-	//   dkServerClient.IssueKey(ctx, &IssueKeyRequest{
-	//       SubjectID: tok.SubjectID,
-	//       VehicleID: tok.VehicleID,
-	//       Permissions: tok.Perms,
-	//       ExpiresAt: tok.ExpiresAt,
-	//   })
-	//
-	// 当前返回模拟结果
+	// 3. 通知 DK Server 签发钥匙
+	ctx := c.Request.Context()
+	keyReq := &service.KeyRequest{
+		TokenID:     tokenID,
+		SubjectID:   tok.SubjectID,
+		VehicleID:   tok.VehicleID,
+		Permissions: tok.Perms,
+		ExpiresAt:   tok.ExpiresAt,
+	}
+
+	resp, err := g.dkServer.IssueKey(ctx, keyReq)
+	if err != nil {
+		g.logger.Error("exchangeToken: DK Server rejected", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"exchanged": false,
+			"error":     "key issuance rejected: " + err.Error(),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"exchanged":  true,
 		"token_id":   tokenID,
+		"key_id":     resp.KeyID,
 		"subject":    tok.SubjectID,
 		"vehicle":    tok.VehicleID,
-		"note":       "钥匙已通知 DK Server 签发，请等待设备端同步",
+		"note":       "钥匙已签发，请等待设备端同步",
 	})
 }

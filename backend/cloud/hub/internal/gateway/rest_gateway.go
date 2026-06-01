@@ -135,6 +135,7 @@ type RESTGateway struct {
 	rateLimiter  *rateLimiter
 	deviceService *service.DeviceService
 	tokenSvc     *token.Service
+	dkServer     service.DKServer
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
@@ -143,6 +144,7 @@ func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
 		logger:  logger,
 		deviceService: service.NewDeviceService(logger),
 		tokenSvc:     token.NewService(""),
+		dkServer:     service.NewLocalDKServer(),
 	}
 }
 
