@@ -6,10 +6,10 @@ services:
     image: mysql:8.0
     container_name: dk-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-dk_root_2026}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
       MYSQL_DATABASE: digital_key
       MYSQL_USER: dk_service
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dk_pass_2026}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
     ports:
       - "3306:3306"
     volumes:
@@ -38,13 +38,13 @@ services:
       redis-server
       --maxmemory 512mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-dk_redis_2026}
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-dk_redis_2026}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -102,10 +102,10 @@ services:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=dk_service
-      - DB_PASSWORD=${MYSQL_PASSWORD:-dk_pass_2026}
+      - DB_PASSWORD=${MYSQL_PASSWORD:?}
       - DB_NAME=digital_key
       - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-dk_redis_2026}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?}
       - KAFKA_BROKERS=kafka:9092
       - LOG_LEVEL=info
     restart: unless-stopped
@@ -128,7 +128,7 @@ services:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=dk_service
-      - DB_PASSWORD=${MYSQL_PASSWORD:-dk_pass_2026}
+      - DB_PASSWORD=${MYSQL_PASSWORD:?}
       - DB_NAME=digital_key
       - MQTT_BROKER=tcp://emqx:1883
     restart: unless-stopped

@@ -1,0 +1,38 @@
+# Build
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.exe
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Android
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/local.properties
+*.apk
+*.aab
+
+# iOS
+frontend/ios/Pods/
+fronting/ios/*.xcworkspace/
+*.xcuserdata
+
+# Go
+vendor/
+
+# Logs
+*.log
+
+# Secrets (never commit)
+config.yaml
+*.key
+*.pem
