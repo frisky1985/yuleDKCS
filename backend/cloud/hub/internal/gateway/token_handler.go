@@ -94,11 +94,94 @@ func (g *RESTGateway) revokeToken(c *gin.Context) {
 // ── 辅助 ──
 
 func parsePermissions(strs []string) []token.Permission {
-	// TODO: map string → Permission
-	return nil
+	m := map[string]token.Permission{
+		"lock":    token.PermLock,
+		"engine":  token.PermEngineStart,
+		"trunk":   token.PermTrunk,
+		"window":  token.PermWindow,
+		"climate": token.PermClimate,
+		"seat":    token.PermSeat,
+		"fuel":    token.PermFuel,
+		"share":   token.PermShare,
+	}
+	var perms []token.Permission
+	for _, s := range strs {
+		if p, ok := m[s]; ok {
+			perms = append(perms, p)
+		}
+	}
+	if len(perms) == 0 {
+		return []token.Permission{token.PermLock} // 默认只有解锁
+	}
+	return perms
 }
 
 func formatPermissions(perms []token.Permission) []string {
-	// TODO: map Permission → string
-	return nil
+	r := make([]string, 0, len(perms))
+	for _, p := range perms {
+		switch p {
+		case token.PermLock:
+			r = append(r, "lock")
+		case token.PermEngineStart:
+			r = append(r, "engine")
+		case token.PermTrunk:
+			r = append(r, "trunk")
+		case token.PermWindow:
+			r = append(r, "window")
+		case token.PermClimate:
+			r = append(r, "climate")
+		case token.PermSeat:
+			r = append(r, "seat")
+		case token.PermFuel:
+			r = append(r, "fuel")
+		case token.PermShare:
+			r = append(r, "share")
+		}
+	}
+	return r
+}
+
+// exchangeToken POST /api/v1/tokens/:tokenId/exchange
+// 用 Token 换一把离线可用的真钥匙
+// Hub 验证 Token → 通知 DK Server → DK Server 签发钥匙 → 返回
+func (g *RESTGateway) exchangeToken(c *gin.Context) {
+	tokenID := c.Param("tokenId")
+
+	// 1. 验证 Token
+	tok, err := g.tokenSvc.Verify(tokenID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"exchanged": false,
+			"error":     err.Error(),
+		})
+		return
+	}
+
+	// 2. 检查是否已换过钥匙
+	if tok.UseCount > 1 {
+		c.JSON(http.StatusConflict, gin.H{
+			"exchanged": false,
+			"error":     "key already issued for this token",
+		})
+		return
+	}
+
+	// 3. 通知 DK Server / 车厂签发钥匙
+	// TODO: 对接实际 DK Server gRPC 接口
+	//   dkServerClient.IssueKey(ctx, &IssueKeyRequest{
+	//       SubjectID: tok.SubjectID,
+	//       VehicleID: tok.VehicleID,
+	//       Permissions: tok.Perms,
+	//       ExpiresAt: tok.ExpiresAt,
+	//   })
+	//
+	// 当前返回模拟结果
+
+	c.JSON(http.StatusOK, gin.H{
+		"exchanged":  true,
+		"token_id":   tokenID,
+		"subject":    tok.SubjectID,
+		"vehicle":    tok.VehicleID,
+		"note":       "钥匙已通知 DK Server 签发，请等待设备端同步",
+	})
 }
