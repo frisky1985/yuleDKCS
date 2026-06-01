@@ -298,8 +298,18 @@ ccc_status_t  sec_encrypt(const uint8_t *in, uint32_t len, uint8_t *out, uint32_
 ccc_status_t  sec_decrypt(const uint8_t *in, uint32_t len, uint8_t *out, uint32_t *out_len);
 ccc_status_t  sec_sign(const uint8_t *data, uint32_t len, uint8_t *sig, uint32_t *sig_len);
 verify_result_e sec_verify(const uint8_t *data, uint32_t len, const uint8_t *sig, uint32_t sig_len);
+ccc_status_t  sec_store_key(const uint8_t *key_id, const uint8_t *key_data, uint16_t key_len);
+ccc_status_t  sec_load_key(const uint8_t *key_id, uint8_t *key_data, uint16_t *key_len);
+ccc_status_t  sec_delete_key(const uint8_t *key_id);
 ccc_status_t  sec_attestation(ccc_attestation_t *att);
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att);
+
+/* GATT Service Registration ([P0-2]) */
+ccc_status_t  ble_register_gatt_service(void);
+ccc_status_t  ble_register_gatt_value_change_cb(void (*cb)(uint16_t char_uuid,
+                                                            const uint8_t *data,
+                                                            uint16_t len));
+ccc_status_t  ble_gatt_notify(uint16_t char_uuid, const uint8_t *data, uint16_t len);
 
 /* ========================================================================
  *  Main State Machine

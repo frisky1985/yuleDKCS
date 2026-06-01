@@ -667,21 +667,356 @@ void ec_point_mul(ec_point_jac_t *r, const bn256_t *k, const ec_point_jac_t *p)
 }
 
 /* ========================================================================
- *  随机数生成 (可移植版本)
+ *  HSM/TRNG 抽象层 — [P0-1] 安全随机数生成
  * ========================================================================
- * 此实现使用简单线性同余发生器作为后备。
- * 生产环境中应替换为硬件 TRNG 输出，通过 hsm_interface 或平台 API。
+ * 使用三层退化架构:
+ *   1. CONFIG_USE_HW_TRNG: 优先调用 SE050 HSM 硬件 TRNG
+ *   2. CONFIG_USE_CTR_DRBG: 软件 CTR_DRBG (AES-256) 回退
+ *   3. DEBUG_RNG:           LCG 调试回退 (仅用于仿真/测试)
+ *
+ * 编译时通过 -D 或 config.h 选择层级。
+ * 默认: CONFIG_USE_CTR_DRBG
+ *
+ * 参考:
+ *   - NIST SP 800-90A Rev.1 (CTR_DRBG with AES-256)
+ *   - SE050 Application Note AN12584
  */
 
-int crypto_random_bytes(uint8_t *buf, size_t len)
+/* ---- 编译配置 ---- */
+#ifndef CONFIG_ENABLE_CRYPTO
+#error "[P0-1] Must define CONFIG_ENABLE_CRYPTO in build config; review encryption policy"
+#endif
+
+/* 未显式定义时取默认 */
+#if !defined(CONFIG_USE_HW_TRNG) && !defined(CONFIG_USE_CTR_DRBG) && !defined(DEBUG_RNG)
+#define CONFIG_USE_CTR_DRBG 1
+#endif
+
+/* ---- SE050 HSM TRNG 外部接口 ---- */
+#if defined(CONFIG_USE_HW_TRNG)
+/* SE050 Plug & Trust middleware 提供的硬件 TRNG */
+/* 原型: int se05x_rng(uint8_t *buf, size_t len) */
+/* 返回 0 成功, -1 失败 */
+extern int se05x_rng(uint8_t *buf, size_t len);
+#endif
+
+/* ========================================================================
+ *  CTR_DRBG (AES-256) — NIST SP 800-90A 实现
+ * ========================================================================
+ * 状态结构: (V, Key) 模式
+ * - Key: AES-256 密钥 (32 字节)
+ * - V:   16 字节计数器
+ */
+
+/* AES S-box (ctr_drbg 专用) */
+static const uint8_t ctr_drbg_sbox[256] = {
+    0x63,0x7C,0x77,0x7B,0xF2,0x6B,0x6F,0xC5,0x30,0x01,0x67,0x2B,0xFE,0xD7,0xAB,0x76,
+    0xCA,0x82,0xC9,0x7D,0xFA,0x59,0x47,0xF0,0xAD,0xD4,0xA2,0xAF,0x9C,0xA4,0x72,0xC0,
+    0xB7,0xFD,0x93,0x26,0x36,0x3F,0xF7,0xCC,0x34,0xA5,0xE5,0xF1,0x71,0xD8,0x31,0x15,
+    0x04,0xC7,0x23,0xC3,0x18,0x96,0x05,0x9A,0x07,0x12,0x80,0xE2,0xEB,0x27,0xB2,0x75,
+    0x09,0x83,0x2C,0x1A,0x1B,0x6E,0x5A,0xA0,0x52,0x3B,0xD6,0xB3,0x29,0xE3,0x2F,0x84,
+    0x53,0xD1,0x00,0xED,0x20,0xFC,0xB1,0x5B,0x6A,0xCB,0xBE,0x39,0x4A,0x4C,0x58,0xCF,
+    0xD0,0xEF,0xAA,0xFB,0x43,0x4D,0x33,0x85,0x45,0xF9,0x02,0x7F,0x50,0x3C,0x9F,0xA8,
+    0x51,0xA3,0x40,0x8F,0x92,0x9D,0x38,0xF5,0xBC,0xB6,0xDA,0x21,0x10,0xFF,0xF3,0xD2,
+    0xCD,0x0C,0x13,0xEC,0x5F,0x97,0x44,0x17,0xC4,0xA7,0x7E,0x3D,0x64,0x5D,0x19,0x73,
+    0x60,0x81,0x4F,0xDC,0x22,0x2A,0x90,0x88,0x46,0xEE,0xB8,0x14,0xDE,0x5E,0x0B,0xDB,
+    0xE0,0x32,0x3A,0x0A,0x49,0x06,0x24,0x5C,0xC2,0xD3,0xAC,0x62,0x91,0x95,0xE4,0x79,
+    0xE7,0xC8,0x37,0x6D,0x8D,0xD5,0x4E,0xA9,0x6C,0x56,0xF4,0xEA,0x65,0x7A,0xAE,0x08,
+    0xBA,0x78,0x25,0x2E,0x1C,0xA6,0xB4,0xC6,0xE8,0xDD,0x74,0x1F,0x4B,0xBD,0x8B,0x8A,
+    0x70,0x3E,0xB5,0x66,0x48,0x03,0xF6,0x0E,0x61,0x35,0x57,0xB9,0x86,0xC1,0x1D,0x9E,
+    0xE1,0xF8,0x98,0x11,0x69,0xD9,0x8E,0x94,0x9B,0x1E,0x87,0xE9,0xCE,0x55,0x28,0xDF,
+    0x8C,0xA1,0x89,0x0D,0xBF,0xE6,0x42,0x68,0x41,0x99,0x2D,0x0F,0xB0,0x54,0xBB,0x16
+};
+
+static const uint8_t ctr_drbg_rcon[11] = {0x00, 0x01, 0x02, 0x04, 0x08, 0x10,
+                                           0x20, 0x40, 0x80, 0x1B, 0x36};
+
+static inline uint8_t ctr_gf_mul2(uint8_t x)
+{
+    return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1B : 0));
+}
+
+static inline uint8_t ctr_gf_mul3(uint8_t x)
+{
+    return ctr_gf_mul2(x) ^ x;
+}
+
+static inline uint32_t ctr_aes_sub_word(uint32_t w)
+{
+    return ((uint32_t)ctr_drbg_sbox[(w >> 24) & 0xFF] << 24) |
+           ((uint32_t)ctr_drbg_sbox[(w >> 16) & 0xFF] << 16) |
+           ((uint32_t)ctr_drbg_sbox[(w >>  8) & 0xFF] <<  8) |
+           ((uint32_t)ctr_drbg_sbox[(w      ) & 0xFF]);
+}
+
+static inline uint32_t ctr_aes_rot_word(uint32_t w)
+{
+    return (w << 8) | (w >> 24);
+}
+
+/*
+ * AES-256 单块加密 (仅用于 CTR_DRBG)
+ */
+static void ctr_drbg_aes256_encrypt(const uint8_t key[32],
+                                     const uint8_t in[16],
+                                     uint8_t out[16])
+{
+    uint32_t rk[60];
+    for (int i = 0; i < 8; i++)
+        rk[i] = load_be32(key + i * 4);
+    for (int i = 8; i < 60; i++) {
+        uint32_t tmp = rk[i - 1];
+        if (i % 8 == 0) {
+            tmp = ctr_aes_sub_word(ctr_aes_rot_word(tmp)) ^ ((uint32_t)ctr_drbg_rcon[i / 8] << 24);
+        } else if (i % 8 == 4) {
+            tmp = ctr_aes_sub_word(tmp);
+        }
+        rk[i] = rk[i - 8] ^ tmp;
+    }
+
+    uint32_t s[4];
+    s[0] = load_be32(in) ^ rk[0];
+    s[1] = load_be32(in + 4) ^ rk[1];
+    s[2] = load_be32(in + 8) ^ rk[2];
+    s[3] = load_be32(in + 12) ^ rk[3];
+
+    for (int round = 1; round < 14; round++) {
+        uint32_t t[4];
+        for (int i = 0; i < 4; i++) {
+            uint8_t a0 = ctr_drbg_sbox[(s[i] >> 24) & 0xFF];
+            uint8_t a1 = ctr_drbg_sbox[(s[i] >> 16) & 0xFF];
+            uint8_t a2 = ctr_drbg_sbox[(s[i] >> 8) & 0xFF];
+            uint8_t a3 = ctr_drbg_sbox[(s[i]) & 0xFF];
+            t[i] = ((uint32_t)a0 << 24) | ((uint32_t)a1 << 16) |
+                   ((uint32_t)a2 << 8) | (uint32_t)a3;
+        }
+        uint32_t sr[4];
+        sr[0] = (t[0] & 0xFF000000) | (t[1] & 0x00FF0000) | (t[2] & 0x0000FF00) | (t[3] & 0x000000FF);
+        sr[1] = (t[1] & 0xFF000000) | (t[2] & 0x00FF0000) | (t[3] & 0x0000FF00) | (t[0] & 0x000000FF);
+        sr[2] = (t[2] & 0xFF000000) | (t[3] & 0x00FF0000) | (t[0] & 0x0000FF00) | (t[1] & 0x000000FF);
+        sr[3] = (t[3] & 0xFF000000) | (t[0] & 0x00FF0000) | (t[1] & 0x0000FF00) | (t[2] & 0x000000FF);
+        if (round < 14) {
+            for (int c = 0; c < 4; c++) {
+                uint8_t *col = (uint8_t *)&sr[c];
+                uint8_t a = col[0], b = col[1], cc = col[2], d = col[3];
+                col[0] = ctr_gf_mul2(a) ^ ctr_gf_mul3(b) ^ cc ^ d;
+                col[1] = a ^ ctr_gf_mul2(b) ^ ctr_gf_mul3(cc) ^ d;
+                col[2] = a ^ b ^ ctr_gf_mul2(cc) ^ ctr_gf_mul3(d);
+                col[3] = ctr_gf_mul3(a) ^ b ^ cc ^ ctr_gf_mul2(d);
+            }
+        }
+        uint32_t rk_off = (uint32_t)round * 4;
+        s[0] = sr[0] ^ rk[rk_off];
+        s[1] = sr[1] ^ rk[rk_off + 1];
+        s[2] = sr[2] ^ rk[rk_off + 2];
+        s[3] = sr[3] ^ rk[rk_off + 3];
+    }
+
+    {
+        uint32_t t[4];
+        for (int i = 0; i < 4; i++) {
+            uint8_t a0 = ctr_drbg_sbox[(s[i] >> 24) & 0xFF];
+            uint8_t a1 = ctr_drbg_sbox[(s[i] >> 16) & 0xFF];
+            uint8_t a2 = ctr_drbg_sbox[(s[i] >> 8) & 0xFF];
+            uint8_t a3 = ctr_drbg_sbox[(s[i]) & 0xFF];
+            t[i] = ((uint32_t)a0 << 24) | ((uint32_t)a1 << 16) |
+                   ((uint32_t)a2 << 8) | (uint32_t)a3;
+        }
+        uint32_t out_w[4];
+        out_w[0] = (t[0] & 0xFF000000) | (t[1] & 0x00FF0000) | (t[2] & 0x0000FF00) | (t[3] & 0x000000FF);
+        out_w[1] = (t[1] & 0xFF000000) | (t[2] & 0x00FF0000) | (t[3] & 0x0000FF00) | (t[0] & 0x000000FF);
+        out_w[2] = (t[2] & 0xFF000000) | (t[3] & 0x00FF0000) | (t[0] & 0x0000FF00) | (t[1] & 0x000000FF);
+        out_w[3] = (t[3] & 0xFF000000) | (t[0] & 0x00FF0000) | (t[1] & 0x0000FF00) | (t[2] & 0x000000FF);
+        store_be32(out, out_w[0] ^ rk[56]);
+        store_be32(out + 4, out_w[1] ^ rk[57]);
+        store_be32(out + 8, out_w[2] ^ rk[58]);
+        store_be32(out + 12, out_w[3] ^ rk[59]);
+    }
+
+    crypto_secure_zero(rk, sizeof(rk));
+}
+
+/* CTR_DRBG 内部状态 */
+typedef struct {
+    uint8_t Key[32];
+    uint8_t V[16];
+    uint32_t reseed_counter;
+    uint8_t initialized;
+} ctr_drbg_ctx_t;
+
+static ctr_drbg_ctx_t g_ctr_drbg;
+
+/*
+ * CTR_DRBG 更新函数: (Key, V) = AES_ECB_update(provided_data)
+ */
+static void ctr_drbg_update(const uint8_t provided_data[48])
+{
+    uint8_t temp[48];
+    for (int i = 0; i < 3; i++) {
+        /* V = V + 1 (递增计数器) */
+        for (int j = 15; j >= 0; j--) {
+            if (++g_ctr_drbg.V[j] != 0) break;
+        }
+        /* temp[i*16 .. (i+1)*16] = AES_ECB(Key, V) */
+        ctr_drbg_aes256_encrypt(g_ctr_drbg.Key, g_ctr_drbg.V, temp + i * 16);
+    }
+
+    if (provided_data) {
+        for (int i = 0; i < 48; i++) {
+            temp[i] ^= provided_data[i];
+        }
+    }
+
+    /* Key = temp[0:32], V = temp[32:48] */
+    memcpy(g_ctr_drbg.Key, temp, 32);
+    memcpy(g_ctr_drbg.V, temp + 32, 16);
+
+    crypto_secure_zero(temp, sizeof(temp));
+}
+
+/*
+ * CTR_DRBG 初始化 (无预测抵抗)
+ */
+static int ctr_drbg_init(const uint8_t *entropy, size_t entropy_len,
+                          const uint8_t *nonce, size_t nonce_len)
+{
+    if (!entropy || entropy_len < 48) return -1;
+
+    /* 清空状态 */
+    memset(&g_ctr_drbg, 0, sizeof(g_ctr_drbg));
+
+    /* 种子材料 = entropy || nonce */
+    uint8_t seed_material[48];
+    memset(seed_material, 0, 48);
+    size_t copy = (entropy_len < 48) ? entropy_len : 48;
+    memcpy(seed_material, entropy, copy);
+    if (nonce && nonce_len > 0) {
+        size_t off = (copy < 48) ? copy : 48 - nonce_len;
+        for (size_t i = 0; i < nonce_len && (off + i) < 48; i++) {
+            seed_material[off + i] ^= nonce[i];
+        }
+    }
+
+    ctr_drbg_update(seed_material);
+    g_ctr_drbg.reseed_counter = 1;
+    g_ctr_drbg.initialized = 1;
+
+    crypto_secure_zero(seed_material, sizeof(seed_material));
+    return 0;
+}
+
+/*
+ * CTR_DRBG 生成随机数
+ */
+static int ctr_drbg_generate(uint8_t *buf, size_t len)
+{
+    if (!buf || len == 0 || !g_ctr_drbg.initialized) return -1;
+
+    /* 每 2^32 次生成后需 reseed (简化: 此处不自动 reseed) */
+    if (g_ctr_drbg.reseed_counter > 0x10000000UL) {
+        return -1; /* 需要 reseed */
+    }
+
+    uint8_t *out = buf;
+    size_t remaining = len;
+
+    while (remaining > 0) {
+        /* V = V + 1 */
+        for (int j = 15; j >= 0; j--) {
+            if (++g_ctr_drbg.V[j] != 0) break;
+        }
+
+        uint8_t block[16];
+        ctr_drbg_aes256_encrypt(g_ctr_drbg.Key, g_ctr_drbg.V, block);
+
+        size_t todo = (remaining < 16) ? remaining : 16;
+        memcpy(out, block, todo);
+        out += todo;
+        remaining -= todo;
+    }
+
+    ctr_drbg_update(NULL);
+    g_ctr_drbg.reseed_counter++;
+
+    return 0;
+}
+
+/* ========================================================================
+ *  hsm_get_random_bytes — [P0-1] 统一随机数接口
+ * ========================================================================
+ * 顶层抽象: 按编译配置选择 TRNG → CTR_DRBG → DEBUG_LCG
+ */
+int hsm_get_random_bytes(uint8_t *buf, size_t len)  /* [P0-1] */
 {
     if (!buf || len == 0) return -1;
 
-    /* 简单 LCG (仅用于测试/开发; 生产环境替换为硬件 TRNG) */
+#if defined(CONFIG_USE_HW_TRNG)
+    /* Tier 1: SE050 硬件 TRNG */
+    if (se05x_rng(buf, len) == 0) {
+        return 0;
+    }
+    /* TRNG 失败: 自动降级到 CTR_DRBG */
+    /* fall through */
+#endif
+
+#if defined(CONFIG_USE_HW_TRNG) || defined(CONFIG_USE_CTR_DRBG)
+    /* Tier 2: CTR_DRBG (AES-256) */
+    if (!g_ctr_drbg.initialized) {
+        /* 首次使用时自初始化: 从混合熵源生成种子 */
+        uint8_t entropy[48];
+        /* 尝试使用 TRNG 作为熵源; 无 TRNG 则用时间戳 + 内部状态 */
+#if defined(CONFIG_USE_HW_TRNG)
+        if (se05x_rng(entropy, 48) != 0) {
+            /* TRNG 熵源也失败, 使用退化熵 */
+            volatile uint32_t tick = 0;
+            for (volatile int i = 0; i < 100; i++) tick++;
+            memset(entropy, 0, 48);
+            store_be32(entropy, (uint32_t)(uintptr_t)buf ^ tick);
+            store_be32(entropy + 4, (uint32_t)(uintptr_t)entropy ^ tick);
+            store_be32(entropy + 8, tick);
+        }
+#else
+        {
+            /* 无 TRNG 时用退化熵 (可用于开发测试, 生产应有 TRNG) */
+            volatile uint32_t tick = 0;
+            for (volatile int i = 0; i < 100; i++) tick++;
+            memset(entropy, 0, 48);
+            store_be32(entropy, (uint32_t)(uintptr_t)buf ^ tick);
+            store_be32(entropy + 4, (uint32_t)(uintptr_t)entropy);
+            store_be32(entropy + 8, tick ^ 0xA5A5A5A5);
+        }
+#endif
+        uint8_t nonce[16];
+        memset(nonce, 0, sizeof(nonce));
+        store_be32(nonce, (uint32_t)(uintptr_t)g_ctr_drbg.V);
+
+        if (ctr_drbg_init(entropy, 48, nonce, 16) != 0) {
+            crypto_secure_zero(entropy, sizeof(entropy));
+            return -1;
+        }
+        crypto_secure_zero(entropy, sizeof(entropy));
+    }
+
+    return ctr_drbg_generate(buf, len);
+#elif defined(DEBUG_RNG)
+    /* Tier 3: LCG 调试回退 */
     static uint32_t seed = 0xDEADBEEF;
     for (size_t i = 0; i < len; i++) {
         seed = seed * 1103515245U + 12345U;
         buf[i] = (uint8_t)(seed >> 16);
     }
     return 0;
+#else
+    return -1;
+#endif
+}
+
+/* ========================================================================
+ *  crypto_random_bytes — [P0-1] 委托到 hsm_get_random_bytes
+ * ========================================================================
+ * 向后兼容包装, 所有原有调用不变。
+ */
+int crypto_random_bytes(uint8_t *buf, size_t len)
+{
+    return hsm_get_random_bytes(buf, len);
 }

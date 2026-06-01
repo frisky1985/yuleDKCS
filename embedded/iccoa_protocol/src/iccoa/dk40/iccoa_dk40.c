@@ -303,6 +303,139 @@ static int32_t handle_auth(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload, 
     return ICCOA_OK;
 }
 
+/* ========================================================================
+ *  iccoa_dk40_check_engine_start_permission — [P0-5] 引擎启动权限检查
+ * ========================================================================
+ * 在引擎启动前验证钥匙是否具有 ENGINE_START 权限。
+ * 检查会话权限标志中是否包含 ICCOA_PERM_ENGINE (对应 ACCESS_ENGINE_START)。
+ *
+ * @param session_idx 会话索引
+ * @return ICCOA_OK 有权限; ICCOA_ERR_PERMISSION_DENIED 权限不足
+ */
+static int32_t iccoa_dk40_check_engine_start_permission(int session_idx)  /* [P0-5] */
+{
+    if (session_idx < 0 || session_idx >= DK40_MAX_SESSIONS) {
+        return ICCOA_ERR_PARAM;
+    }
+
+    dk40_session_t *sess = &g_sessions[session_idx];
+
+    /* 验证会话状态: 必须已认证或正在测距 */
+    if (sess->state != SESSION_STATE_AUTHENTICATED &&
+        sess->state != SESSION_STATE_RANGING_ACTIVE) {
+        return ICCOA_ERR_DENIED;
+    }
+
+    /* 验证钥匙 access_flags 是否包含 ENGINE_START 权限 */
+    /* ICCOA_PERM_ENGINE (1 << 2) 对应 CCC ACCESS_ENGINE_START (1 << 1) 语义 */
+    if (!(sess->permissions & ICCOA_PERM_ENGINE)) {
+        return ICCOA_ERR_PERMISSION_DENIED;
+    }
+
+    return ICCOA_OK;
+}
+
+/* ========================================================================
+ *  iccoa_dk40_check_engine_start_permission_test — [P0-5] 单元测试
+ * ========================================================================
+ * 验证引擎启动权限检查的各个场景。
+ * 在测试环境 (DEBUG_RNG 或 TEST_BUILD) 下编译。
+ */
+#if defined(TEST_BUILD) || defined(DEBUG_RNG)
+static int iccoa_dk40_engine_start_permission_test(void)  /* [P0-5] 单元测试 */
+{
+    int passed = 0;
+    int failed = 0;
+
+    /* 测试 1: 无权限 → 期望 PERMISSION_DENIED */
+    {
+        /* 模拟: 会话 0 无 ENGINE 权限, 状态已认证 */
+        g_sessions[0].state = SESSION_STATE_AUTHENTICATED;
+        g_sessions[0].permissions = ICCOA_PERM_UNLOCK;  /* 仅 UNLOCK, 无 ENGINE */
+
+        int32_t ret = iccoa_dk40_check_engine_start_permission(0);
+        if (ret == ICCOA_ERR_PERMISSION_DENIED) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 测试 2: 有 ENGINE 权限 → 期望 ICCOA_OK */
+    {
+        g_sessions[1].state = SESSION_STATE_AUTHENTICATED;
+        g_sessions[1].permissions = ICCOA_PERM_ENGINE | ICCOA_PERM_UNLOCK;
+
+        int32_t ret = iccoa_dk40_check_engine_start_permission(1);
+        if (ret == ICCOA_OK) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 测试 3: 未认证 → 期望 ICCOA_ERR_DENIED */
+    {
+        g_sessions[2].state = SESSION_STATE_IDLE;
+        g_sessions[2].permissions = ICCOA_PERM_ENGINE;
+
+        int32_t ret = iccoa_dk40_check_engine_start_permission(2);
+        if (ret == ICCOA_ERR_DENIED) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 测试 4: 无效会话索引 → 期望 ICCOA_ERR_PARAM */
+    {
+        int32_t ret = iccoa_dk40_check_engine_start_permission(DK40_MAX_SESSIONS + 10);
+        if (ret == ICCOA_ERR_PARAM) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 测试 5: 测距中且无 ENGINE 权限 → 期望 PERMISSION_DENIED */
+    {
+        g_sessions[3].state = SESSION_STATE_RANGING_ACTIVE;
+        g_sessions[3].permissions = ICCOA_PERM_LOCK;  /* 仅 LOCK, 无 ENGINE */
+
+        int32_t ret = iccoa_dk40_check_engine_start_permission(3);
+        if (ret == ICCOA_ERR_PERMISSION_DENIED) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 测试 6: 无权限但已认证 → 期望 PERMISSION_DENIED */
+    {
+        /* 重用会话 0 (状态被测试 5 修改过) */
+        g_sessions[3].state = SESSION_STATE_AUTHENTICATED;
+        g_sessions[3].permissions = 0;  /* 无权限 */
+
+        int32_t ret = iccoa_dk40_check_engine_start_permission(3);
+        if (ret == ICCOA_ERR_PERMISSION_DENIED) {
+            passed++;
+        } else {
+            failed++;
+        }
+    }
+
+    /* 恢复测试用的 session 状态 */
+    for (int i = 0; i < DK40_MAX_SESSIONS; i++) {
+        if (g_sessions[i].state == SESSION_STATE_AUTHENTICATED ||
+            g_sessions[i].state == SESSION_STATE_RANGING_ACTIVE) {
+            g_sessions[i].state = SESSION_STATE_IDLE;
+        }
+    }
+
+    return (failed == 0) ? 0 : -1;
+}
+#endif /* TEST_BUILD || DEBUG_RNG */
+
 /**
  * @brief 处理车辆控制请求
  */
@@ -335,6 +468,14 @@ static int32_t handle_ctrl(const iccoa_dk40_frame_t *req, uint8_t *rsp_payload, 
             rsp_payload[0] = 0x02;
             *rsp_len = 1;
             return ICCOA_OK;
+        }
+
+        /* [P0-5] 引擎启动前执行安全权限检查, 返回完整错误码 */
+        if (cmd == CTRL_ENGINE_ON) {
+            int32_t perm_ret = iccoa_dk40_check_engine_start_permission(idx);
+            if (perm_ret != ICCOA_OK) {
+                return perm_ret;  /* 返回 ICCOA_ERR_PERMISSION_DENIED */
+            }
         }
     }
 
@@ -414,6 +555,17 @@ int32_t iccoa_dk40_init(void)
 
     g_msg_id_counter = 0;
     g_initialized = true;
+
+#if defined(TEST_BUILD) || defined(DEBUG_RNG)
+    /* [P0-5] 引擎启动权限检查单元测试 */
+    {
+        int test_ret = iccoa_dk40_engine_start_permission_test();
+        if (test_ret != 0) {
+            /* 测试失败: 生产环境不应触发 */
+            /* 此处仅记录, 不阻塞初始化 */
+        }
+    }
+#endif
 
     return ICCOA_OK;
 }

@@ -419,3 +419,204 @@ void kw47a_irq_handler(void)
         break;
     }
 }
+
+/* ========================================================================
+ *  CCC GATT Service Registration — [P0-2]
+ * ========================================================================
+ * 注册 CCC Digital Key Service (UUID 0xFFD1) 及其 6 个 Characteristic。
+ * 参考: CCC Digital Key 技术规范 R3.0 §4.3.1
+ */
+
+/* CCC Characteristic UUIDs (16-bit 自定义) */
+#define CCC_CHAR_BOND_MGMT_UUID     0xFFD2   /**< 配对管理: 读/写/Notify */
+#define CCC_CHAR_KEY_DELIVERY_UUID  0xFFD3   /**< 密钥下发: 写/Indicate */
+#define CCC_CHAR_AUTH_CONTROL_UUID  0xFFD4   /**< 认证控制: 写/Notify */
+#define CCC_CHAR_VEHICLE_STATUS_UUID 0xFFD5  /**< 车辆状态: 读/Notify */
+#define CCC_CHAR_UWB_PARAMS_UUID    0xFFD6   /**< UWB 参数: 写/Indicate */
+#define CCC_CHAR_RSSI_UUID          0xFFD7   /**< RSSI 数据: 读/Notify */
+
+/* Characteristic 属性定义 (兼容 BLE 4.2 GATT) */
+#define CHAR_PROP_READ       0x02
+#define CHAR_PROP_WRITE      0x08
+#define CHAR_PROP_WRITE_NO_RSP 0x04
+#define CHAR_PROP_NOTIFY     0x10
+#define CHAR_PROP_INDICATE   0x20
+
+/* Characteristic 安全权限 */
+#define CHAR_PERM_NONE       0x00
+#define CHAR_PERM_READ_AUTH  0x01   /* 认证后读 */
+#define CHAR_PERM_WRITE_AUTH 0x02   /* 认证后写 */
+#define CHAR_PERM_READ_ENC   0x04   /* 加密读 */
+#define CHAR_PERM_WRITE_ENC  0x08   /* 加密写 */
+
+/**
+ * @brief GATT Characteristic 描述符 (平台无关抽象)
+ */
+typedef struct {
+    uint16_t uuid;              /**< 16-bit UUID */
+    uint8_t  properties;        /**< BLE 属性 (read/write/notify/indicate) */
+    uint8_t  perm_read;         /**< 读权限 */
+    uint8_t  perm_write;        /**< 写权限 */
+    uint16_t max_len;           /**< 最大值长度 */
+    uint8_t  is_variable_len;   /**< 是否变长 */
+} ccc_gatt_char_t;
+
+/**
+ * @brief GATT Service 描述符
+ */
+typedef struct {
+    uint16_t          uuid;              /**< Service UUID */
+    uint8_t           char_count;        /**< Characteristic 数量 */
+    const ccc_gatt_char_t *chars;        /**< Characteristic 数组 */
+} ccc_gatt_service_t;
+
+/* CCC Digital Key Service 的 6 个 Characteristic 定义 */
+static const ccc_gatt_char_t g_ccc_chars[] = {
+    /* [0] CCC_CHAR_BOND_MGMT */
+    {
+        .uuid        = CCC_CHAR_BOND_MGMT_UUID,
+        .properties  = CHAR_PROP_READ | CHAR_PROP_WRITE | CHAR_PROP_NOTIFY,
+        .perm_read   = CHAR_PERM_READ_AUTH,
+        .perm_write  = CHAR_PERM_WRITE_AUTH,
+        .max_len     = 64,
+        .is_variable_len = 1
+    },
+    /* [1] CCC_CHAR_KEY_DELIVERY */
+    {
+        .uuid        = CCC_CHAR_KEY_DELIVERY_UUID,
+        .properties  = CHAR_PROP_WRITE | CHAR_PROP_INDICATE,
+        .perm_read   = CHAR_PERM_NONE,
+        .perm_write  = CHAR_PERM_WRITE_AUTH | CHAR_PERM_WRITE_ENC,
+        .max_len     = 512,
+        .is_variable_len = 1
+    },
+    /* [2] CCC_CHAR_AUTH_CONTROL */
+    {
+        .uuid        = CCC_CHAR_AUTH_CONTROL_UUID,
+        .properties  = CHAR_PROP_WRITE | CHAR_PROP_NOTIFY,
+        .perm_read   = CHAR_PERM_NONE,
+        .perm_write  = CHAR_PERM_WRITE_AUTH,
+        .max_len     = 64,
+        .is_variable_len = 1
+    },
+    /* [3] CCC_CHAR_VEHICLE_STATUS */
+    {
+        .uuid        = CCC_CHAR_VEHICLE_STATUS_UUID,
+        .properties  = CHAR_PROP_READ | CHAR_PROP_NOTIFY,
+        .perm_read   = CHAR_PERM_READ_AUTH,
+        .perm_write  = CHAR_PERM_NONE,
+        .max_len     = 32,
+        .is_variable_len = 0
+    },
+    /* [4] CCC_CHAR_UWB_PARAMS */
+    {
+        .uuid        = CCC_CHAR_UWB_PARAMS_UUID,
+        .properties  = CHAR_PROP_WRITE | CHAR_PROP_INDICATE,
+        .perm_read   = CHAR_PERM_NONE,
+        .perm_write  = CHAR_PERM_WRITE_AUTH | CHAR_PERM_WRITE_ENC,
+        .max_len     = 128,
+        .is_variable_len = 1
+    },
+    /* [5] CCC_CHAR_RSSI */
+    {
+        .uuid        = CCC_CHAR_RSSI_UUID,
+        .properties  = CHAR_PROP_READ | CHAR_PROP_NOTIFY,
+        .perm_read   = CHAR_PERM_READ_AUTH,
+        .perm_write  = CHAR_PERM_NONE,
+        .max_len     = 4,
+        .is_variable_len = 0
+    }
+};
+
+/**
+ * @brief 平台层回调: 通知 GATT Characteristic 值变化
+ */
+static void (*g_gatt_value_change_cb)(uint16_t char_uuid, const uint8_t *data, uint16_t len) = NULL;
+
+/**
+ * @brief 注册 CCC GATT Service 到 BLE 协议栈  — [P0-2]
+ *
+ * 实现步骤:
+ *   1. 创建 CCC Digital Key Service (0xFFD1)
+ *   2. 依次注册 6 个 Characteristic
+ *   3. 配置每个 Characteristic 的读写回调
+ *   4. 使能 Service (可见可连接)
+ *
+ * @return CCC_OK 成功, 否则错误码
+ */
+ccc_status_t ble_register_gatt_service(void)  /* [P0-2] */
+{
+    ccc_status_t ret;
+
+    /* Step 1: 创建 Primary Service */
+    /* 通过 SPI 命令通知 KW47A 创建 GATT Primary Service */
+    uint8_t svc_decl[2];
+    svc_decl[0] = (uint8_t)(CCC_SERVICE_UUID >> 8);
+    svc_decl[1] = (uint8_t)(CCC_SERVICE_UUID & 0xFF);
+    ret = kw47a_send_cmd(/* KW47A_CMD_ADD_SERVICE */ 0x50, svc_decl, 2);
+    if (ret != CCC_OK) {
+        return CCC_ERR_HARDWARE;
+    }
+
+    /* Step 2: 注册所有 Characteristic */
+    for (uint8_t i = 0; i < sizeof(g_ccc_chars) / sizeof(g_ccc_chars[0]); i++) {
+        uint8_t gatt_data[16];
+        uint8_t idx = 0;
+
+        /* Characteristic 声明: [properties(1)][uuid(2)] */
+        gatt_data[idx++] = g_ccc_chars[i].properties;
+        gatt_data[idx++] = (uint8_t)(g_ccc_chars[i].uuid >> 8);
+        gatt_data[idx++] = (uint8_t)(g_ccc_chars[i].uuid & 0xFF);
+
+        /* Characteristic 值配置: [max_len(2)][perms(2)] */
+        gatt_data[idx++] = (uint8_t)(g_ccc_chars[i].max_len >> 8);
+        gatt_data[idx++] = (uint8_t)(g_ccc_chars[i].max_len & 0xFF);
+        gatt_data[idx++] = g_ccc_chars[i].perm_read;
+        gatt_data[idx++] = g_ccc_chars[i].perm_write;
+
+        ret = kw47a_send_cmd(/* KW47A_CMD_ADD_CHAR */ 0x51, gatt_data, idx);
+        if (ret != CCC_OK) {
+            return CCC_ERR_HARDWARE;
+        }
+    }
+
+    /* Step 3: 启动 Service (使能特征) */
+    uint8_t start_cmd[2];
+    start_cmd[0] = (uint8_t)(CCC_SERVICE_UUID >> 8);
+    start_cmd[1] = (uint8_t)(CCC_SERVICE_UUID & 0xFF);
+    ret = kw47a_send_cmd(/* KW47A_CMD_START_SERVICE */ 0x52, start_cmd, 2);
+    if (ret != CCC_OK) {
+        return CCC_ERR_HARDWARE;
+    }
+
+    return CCC_OK;
+}
+
+/**
+ * @brief 注册 GATT Characteristic 值变化回调 — [P0-2]
+ */
+ccc_status_t ble_register_gatt_value_change_cb(void (*cb)(uint16_t char_uuid,
+                                                           const uint8_t *data,
+                                                           uint16_t len))
+{
+    if (!cb) return CCC_ERR_INVALID_PARAM;
+    g_gatt_value_change_cb = cb;
+    return CCC_OK;
+}
+
+/**
+ * @brief 通过 GATT Notify 上报 Characteristic 值变化 — [P0-2]
+ */
+ccc_status_t ble_gatt_notify(uint16_t char_uuid, const uint8_t *data, uint16_t len)
+{
+    if (!data || len == 0) return CCC_ERR_INVALID_PARAM;
+
+    uint8_t buf[8 + len];
+    buf[0] = (uint8_t)(char_uuid >> 8);
+    buf[1] = (uint8_t)(char_uuid & 0xFF);
+    buf[2] = (uint8_t)(len >> 8);
+    buf[3] = (uint8_t)(len & 0xFF);
+    memcpy(buf + 4, data, len);
+
+    return kw47a_send_cmd(/* KW47A_CMD_GATT_NOTIFY */ 0x53, buf, 4 + len);
+}

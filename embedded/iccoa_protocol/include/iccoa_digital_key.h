@@ -30,6 +30,7 @@ extern "C" {
 #define ICCOA_ERR_NOT_FOUND     (-8)
 #define ICCOA_ERR_EXISTS        (-9)
 #define ICCOA_ERR_DENIED        (-10)
+#define ICCOA_ERR_PERMISSION_DENIED (-11)  /* [P0-5] 权限不足 */
 
 /* ========================================================================
  *  BLE Communication
@@ -85,7 +86,7 @@ uint8_t iccoa_dk30_checksum(const uint8_t *data, uint16_t len);
 /* ========================================================================
  *  ICCOA DK 4.0 Protocol
  * ======================================================================== */
-#define DK40_MAGIC  0xICC0
+#define DK40_MAGIC  0x1CC0  /* [P0-5] 修正: 原 0xICC0 含非法十六进制字符 I */
 
 typedef enum {
     ICCOA_V4_SESSION_OPEN  = 0x01,
