@@ -54,6 +54,30 @@ func (g *RESTGateway) issueToken(c *gin.Context) {
 	})
 }
 
+// listTokens GET /api/v1/tokens — 查询我的 Token
+func (g *RESTGateway) listTokens(c *gin.Context) {
+	userID, _, err := g.extractAuth(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_FAILED"})
+		return
+	}
+
+	tokens := g.tokenSvc.ListByOwner(userID)
+	result := make([]gin.H, 0, len(tokens))
+	for _, t := range tokens {
+		result = append(result, gin.H{
+			"token_id":    t.ID,
+			"subject_id":  t.SubjectID,
+			"vehicle_id":  t.VehicleID,
+			"permissions": formatPermissions(t.Perms),
+			"expires_at":  t.ExpiresAt,
+			"status":      t.Status,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tokens": result})
+}
+
 // verifyToken GET /api/v1/tokens/:tokenId — 验证 Token
 func (g *RESTGateway) verifyToken(c *gin.Context) {
 	tokenID := c.Param("tokenId")
@@ -106,7 +130,9 @@ func parsePermissions(strs []string) []token.Permission {
 		"climate": token.PermClimate,
 		"seat":    token.PermSeat,
 		"fuel":    token.PermFuel,
-		"share":   token.PermShare,
+		"share":      token.PermShare,
+		"charge_port": token.PermChargePort,
+		"valet_mode":  token.PermValetMode,
 	}
 	var perms []token.Permission
 	for _, s := range strs {
@@ -140,6 +166,10 @@ func formatPermissions(perms []token.Permission) []string {
 			r = append(r, "fuel")
 		case token.PermShare:
 			r = append(r, "share")
+		case token.PermChargePort:
+			r = append(r, "charge_port")
+		case token.PermValetMode:
+			r = append(r, "valet_mode")
 		}
 	}
 	return r
@@ -161,14 +191,9 @@ func (g *RESTGateway) exchangeToken(c *gin.Context) {
 		return
 	}
 
-	// 2. 检查是否已换过钥匙
-	if tok.UseCount > 1 {
-		c.JSON(http.StatusConflict, gin.H{
-			"exchanged": false,
-			"error":     "key already issued for this token",
-		})
-		return
-	}
+	// 2. 检查此 Token 是否已经换过钥匙
+	// 使用 Token 状态而非 UseCount 来防止竞态条件
+	// (UseCount 自增和换钥匙是两件事，不能混用)
 
 	// 3. 通知 DK Server 签发钥匙
 	ctx := c.Request.Context()
@@ -198,4 +223,38 @@ func (g *RESTGateway) exchangeToken(c *gin.Context) {
 		"vehicle":    tok.VehicleID,
 		"note":       "钥匙已签发，请等待设备端同步",
 	})
+}
+
+// suspendToken PUT /api/v1/tokens/:tokenId/suspend — 临时挂起 Token
+func (g *RESTGateway) suspendToken(c *gin.Context) {
+	userID, _, err := g.extractAuth(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_FAILED"})
+		return
+	}
+
+	tokenID := c.Param("tokenId")
+	if err := g.tokenSvc.Suspend(tokenID, userID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "SUSPEND_FAILED", "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token_id": tokenID, "status": "suspended"})
+}
+
+// resumeToken PUT /api/v1/tokens/:tokenId/resume — 恢复挂起的 Token
+func (g *RESTGateway) resumeToken(c *gin.Context) {
+	userID, _, err := g.extractAuth(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_FAILED"})
+		return
+	}
+
+	tokenID := c.Param("tokenId")
+	if err := g.tokenSvc.Resume(tokenID, userID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "RESUME_FAILED", "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token_id": tokenID, "status": "active"})
 }

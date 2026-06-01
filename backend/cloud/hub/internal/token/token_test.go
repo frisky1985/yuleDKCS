@@ -122,3 +122,57 @@ func TestMultiplePermissions(t *testing.T) {
 		t.Fatalf("expected 4 permissions, got %d", len(verified.Perms))
 	}
 }
+
+func TestTamperedPermissions(t *testing.T) {
+	svc := NewService("test-secret")
+
+	tok, _ := svc.Issue("车主A", "某人", "VIN123", []Permission{PermLock}, 1*time.Hour, 0)
+
+	// 篡改权限：把 lock 改成 full access
+	tok.Perms = []Permission{PermLock, PermEngineStart, PermTrunk, PermClimate, PermSeat}
+
+	// Verify 应该拒绝
+	_, err := svc.Verify(tok.ID)
+	if err == nil {
+		t.Fatal("expected error for tampered permissions")
+	}
+}
+
+func TestSuspendResume(t *testing.T) {
+	svc := NewService("test-secret")
+
+	tok, _ := svc.Issue("车主A", "某人", "VIN123", []Permission{PermLock}, 1*time.Hour, 0)
+
+	// 挂起
+	if err := svc.Suspend(tok.ID, "车主A"); err != nil {
+		t.Fatalf("Suspend failed: %v", err)
+	}
+
+	// 挂起后验证应失败
+	if _, err := svc.Verify(tok.ID); err == nil {
+		t.Fatal("expected error for suspended token")
+	}
+
+	// 恢复
+	if err := svc.Resume(tok.ID, "车主A"); err != nil {
+		t.Fatalf("Resume failed: %v", err)
+	}
+
+	// 恢复后应能验证
+	if _, err := svc.Verify(tok.ID); err != nil {
+		t.Fatalf("Verify after resume failed: %v", err)
+	}
+}
+
+func TestListByOwner(t *testing.T) {
+	svc := NewService("test-secret")
+
+	svc.Issue("车主A", "某人1", "VIN001", []Permission{PermLock}, 1*time.Hour, 0)
+	svc.Issue("车主A", "某人2", "VIN002", []Permission{PermLock}, 1*time.Hour, 0)
+	svc.Issue("车主B", "某人3", "VIN003", []Permission{PermLock}, 1*time.Hour, 0)
+
+	tokens := svc.ListByOwner("车主A")
+	if len(tokens) != 2 {
+		t.Fatalf("expected 2 tokens for 车主A, got %d", len(tokens))
+	}
+}

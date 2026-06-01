@@ -13,17 +13,19 @@ import (
 // ─── 核心模型 ────────────────────────────────────────────────────────────
 
 // Permission 权限位定义
-type Permission uint8
+type Permission uint16
 
 const (
-	PermLock       Permission = 1 << iota // 解锁/上锁
-	PermEngineStart                        // 启动引擎
-	PermTrunk                              // 后备箱
-	PermWindow                             // 车窗
-	PermClimate                            // 空调
-	PermSeat                               // 座椅
-	PermFuel                               // 油箱盖
-	PermShare                              // 可再分享
+	PermLock         Permission = 1 << iota // 解锁/上锁
+	PermEngineStart                          // 启动引擎
+	PermTrunk                                // 后备箱
+	PermWindow                               // 车窗
+	PermClimate                              // 空调
+	PermSeat                                 // 座椅
+	PermFuel                                 // 油箱盖
+	PermShare                                // 可再分享
+	PermChargePort                           // 充电口
+	PermValetMode                            // 代客模式(限速+锁手套箱)
 )
 
 // Token 是 DK Hub 签发的授权凭据
@@ -36,7 +38,7 @@ type Token struct {
 	ExpiresAt  int64        `json:"expires_at"`
 	MaxUses    int32        `json:"max_uses"`    // 0=不限
 	UseCount   int32        `json:"use_count"`
-	Status     string       `json:"status"`      // active | revoked | expired
+	Status     string       `json:"status"`      // active | revoked | expired | pending | suspended
 	Signature  string       `json:"signature"`   // HMAC 签名，防篡改
 	CreatedAt  int64        `json:"created_at"`
 }
@@ -138,12 +140,76 @@ func (s *Service) Revoke(id, ownerID string) error {
 
 func (s *Service) sign(t *Token) string {
 	mac := hmac.New(sha256.New, s.secret)
-	fmt.Fprintf(mac, "%s|%s|%s|%s|%d|%d", t.ID, t.OwnerID, t.SubjectID, t.VehicleID, t.ExpiresAt, t.MaxUses)
+	// 对全部关键字段签名，防止篡改
+	permBits := uint16(0)
+	for _, p := range t.Perms {
+		permBits |= uint16(p)
+	}
+	fmt.Fprintf(mac, "%s|%s|%s|%s|%d|%d|%d", t.ID, t.OwnerID, t.SubjectID, t.VehicleID, t.ExpiresAt, t.MaxUses, permBits)
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func (s *Service) verify(t *Token) bool {
 	return hmac.Equal([]byte(t.Signature), []byte(s.sign(t)))
+}
+
+// ListByOwner 查询车主所有 Token
+func (s *Service) ListByOwner(ownerID string) []*Token {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Token
+	for _, t := range s.tokens {
+		if t.OwnerID == ownerID {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// ListBySubject 查询接收方的所有 Token
+func (s *Service) ListBySubject(subjectID string) []*Token {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Token
+	for _, t := range s.tokens {
+		if t.SubjectID == subjectID {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// Suspend 临时挂起 Token
+func (s *Service) Suspend(id, ownerID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	t, ok := s.tokens[id]
+	if !ok {
+		return fmt.Errorf("token not found")
+	}
+	if t.OwnerID != ownerID {
+		return fmt.Errorf("not the token owner")
+	}
+	t.Status = "suspended"
+	return nil
+}
+
+// Resume 恢复被挂起的 Token
+func (s *Service) Resume(id, ownerID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	t, ok := s.tokens[id]
+	if !ok {
+		return fmt.Errorf("token not found")
+	}
+	if t.OwnerID != ownerID {
+		return fmt.Errorf("not the token owner")
+	}
+	if t.Status != "suspended" {
+		return fmt.Errorf("token is not suspended")
+	}
+	t.Status = "active"
+	return nil
 }
 
 func generateID() string {
