@@ -327,31 +327,119 @@ func (s *UnifiedKeyService) ListKeys(ctx context.Context, req *pb.ListKeysReques
 func (s *UnifiedKeyService) CreateShare(ctx context.Context, req *pb.CreateShareRequest) (*pb.CreateShareResponse, error) {
 	s.logger.Info("CreateShare",
 		zap.String("key_id", req.KeyId),
-		zap.String("recipient_id", req.RecipientId),
+		zap.String("to_user_id", req.ToUserId),
+		zap.Int64("valid_from", req.ValidFrom),
+		zap.Int64("valid_until", req.ValidUntil),
+		zap.Int32("max_uses", req.MaxUses),
 	)
 
+	// 校验有效期
+	now := time.Now().UnixMilli()
+	expiry := req.ValidUntil
+	if expiry == 0 {
+		// 默认 24 小时有效期
+		expiry = now + 24*60*60*1000
+	}
+	if req.ValidFrom > 0 && req.ValidFrom > expiry {
+		return nil, fmt.Errorf("valid_from must be before valid_until")
+	}
+	if expiry <= now {
+		return nil, fmt.Errorf("valid_until must be in the future")
+	}
+
+	// 生成分享记录
+	shareID := fmt.Sprintf("share-%s-%d", req.KeyId, now)
+	shareCode := fmt.Sprintf("%06d", now%1000000) // 6位分享码
+
+	// 存储分享元数据（有效期+使用次数）
+	shareMeta := map[string]interface{}{
+		"share_id":    shareID,
+		"share_code":  shareCode,
+		"key_id":      req.KeyId,
+		"from_user":   req.FromUserId,
+		"to_user":     req.ToUserId,
+		"valid_from":  req.ValidFrom,
+		"valid_until": expiry,
+		"max_uses":    req.MaxUses,
+		"use_count":   0,
+		"created_at":  now,
+		"status":      "active",
+	}
+	_ = shareMeta // 持久化到存储层（后续迭代）
+
 	// 通过 unified 层生成分享协议帧
-	sessionID := fmt.Sprintf("sess-share-%d", time.Now().UnixMilli())
-	shareResp, err := s.unifiedMgr.ShareKey(ctx, sessionID, req)
-	if err != nil {
+	sessionID := fmt.Sprintf("sess-share-%s", shareCode)
+	if _, err := s.unifiedMgr.ShareKey(ctx, sessionID, req); err != nil {
 		return nil, fmt.Errorf("share failed: %w", err)
 	}
 
+	s.auditLog(ctx, "create_share", req.FromUserId, req.KeyId, shareID, "success")
 	return &pb.CreateShareResponse{
-		ShareId:   shareResp.ShareId,
-		ShareCode: shareResp.ShareCode,
+		ShareId:   shareID,
+		ShareCode: shareCode,
 	}, nil
 }
 
 // AcceptShare 接收分享
 func (s *UnifiedKeyService) AcceptShare(ctx context.Context, req *pb.AcceptShareRequest) (*pb.AcceptShareResponse, error) {
-	s.logger.Info("AcceptShare", zap.String("share_code", req.ShareCode))
+	s.logger.Info("AcceptShare",
+		zap.String("share_code", req.ShareCode),
+		zap.String("user_id", req.UserId),
+	)
 
-	// 分享码格式: share-<device_id>-<timestamp>
+	// 1. 查找分享记录（share_code → 分享元数据）
 	shareCode := req.ShareCode
-	sessionID := fmt.Sprintf("sess-accept-%s-%d", shareCode, time.Now().UnixMilli())
+	sessionID := fmt.Sprintf("sess-accept-%s", shareCode)
 
-	// 通过 unified 层处理分享请求
+	// 2. 验证分享有效期
+	now := time.Now().UnixMilli()
+	shareResp, ok := s.unifiedMgr.GetShare(sessionID)
+	if !ok {
+		// 分享码无效或已过期
+		s.logger.Warn("AcceptShare: invalid or expired share code",
+			zap.String("share_code", shareCode),
+		)
+		return &pb.AcceptShareResponse{
+			Success:   false,
+			KeyId:     "",
+			ErrorCode: "SHARE_EXPIRED",
+		}, nil
+	}
+
+	// 3. 校验有效期
+	if shareResp.ExpiresAt > 0 && now > shareResp.ExpiresAt {
+		s.logger.Warn("AcceptShare: share expired",
+			zap.String("share_code", shareCode),
+			zap.Int64("expired_at", shareResp.ExpiresAt),
+		)
+		return &pb.AcceptShareResponse{
+			Success:   false,
+			KeyId:     "",
+			ErrorCode: "SHARE_EXPIRED",
+		}, nil
+	}
+
+	// 4. 校验使用次数
+	if shareResp.MaxUses > 0 && shareResp.UseCount >= shareResp.MaxUses {
+		s.logger.Warn("AcceptShare: max uses reached",
+			zap.String("share_code", shareCode),
+			zap.Int32("max_uses", shareResp.MaxUses),
+		)
+		return &pb.AcceptShareResponse{
+			Success:   false,
+			KeyId:     "",
+			ErrorCode: "SHARE_MAX_USES",
+		}, nil
+	}
+
+	// 5. 创建分享密钥
+	keyID := fmt.Sprintf("shared-%s-%s", req.UserId, shareCode)
+	s.logger.Info("Share accepted, creating key",
+		zap.String("key_id", keyID),
+		zap.String("share_code", shareCode),
+	)
+
+	// 6. 通过 unified 层下发分享密钥
 	if session, ok := s.unifiedMgr.GetSession(sessionID); ok {
 		codec := unified.GetCodecForProtocol(session.Protocol)
 		if codec != nil {
@@ -363,22 +451,66 @@ func (s *UnifiedKeyService) AcceptShare(ctx context.Context, req *pb.AcceptShare
 		}
 	}
 
+	// 7. 增加使用计数
+	_ = s.unifiedMgr.IncrementShareUseCount(sessionID)
+
+	s.auditLog(ctx, "accept_share", req.UserId, keyID, shareCode, "success")
 	return &pb.AcceptShareResponse{
 		Success: true,
-		KeyId:   shareCode,
+		KeyId:   keyID,
 	}, nil
 }
 
 // CancelShare 取消分享
 func (s *UnifiedKeyService) CancelShare(ctx context.Context, req *pb.CancelShareRequest) (*pb.CancelShareResponse, error) {
-	s.logger.Info("CancelShare", zap.String("share_id", req.ShareId))
-	return &pb.CancelShareResponse{}, nil
+	s.logger.Info("CancelShare",
+		zap.String("share_id", req.ShareId),
+		zap.String("reason", req.Reason),
+	)
+
+	// 通知 unified 层取消分享（清理相关会话和密钥）
+	sessionID := fmt.Sprintf("sess-share-%s", req.ShareId)
+	if session, ok := s.unifiedMgr.GetSession(sessionID); ok {
+		codec := unified.GetCodecForProtocol(session.Protocol)
+		if codec != nil {
+			msg := &unified.UnifiedMessage{
+				Type: unified.MsgTypeRevoke,
+				RevokeData: &unified.RevokeData{
+					KeyID:  req.ShareId,
+					Reason: req.Reason,
+				},
+			}
+			data, _ := codec.Encode(msg)
+			s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
+		}
+		s.unifiedMgr.RemoveSession(session.SessionID)
+	}
+
+	s.auditLog(ctx, "cancel_share", "", req.ShareId, req.ShareId, "cancelled")
+	return &pb.CancelShareResponse{Success: true}, nil
 }
 
 // GetShare 查询分享
 func (s *UnifiedKeyService) GetShare(ctx context.Context, req *pb.GetShareRequest) (*pb.GetShareResponse, error) {
 	s.logger.Info("GetShare", zap.String("share_id", req.ShareId))
-	return &pb.GetShareResponse{}, nil
+
+	// 从 unified 层查询分享状态
+	sessionID := fmt.Sprintf("sess-share-%s", req.ShareId)
+	if shareResp, ok := s.unifiedMgr.GetShare(sessionID); ok {
+		return &pb.GetShareResponse{
+			ShareId:   req.ShareId,
+			ShareCode: shareResp.ShareCode,
+			Status:    shareResp.Status,
+			ExpiresAt: shareResp.ExpiresAt,
+			UseCount:  shareResp.UseCount,
+			MaxUses:   shareResp.MaxUses,
+		}, nil
+	}
+
+	return &pb.GetShareResponse{
+		ShareId: req.ShareId,
+		Status:  "not_found",
+	}, nil
 }
 
 // ============================================================
