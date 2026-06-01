@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token"
 )
 
 var errAuthFailed = fmt.Errorf("authentication required")
@@ -133,6 +134,7 @@ type RESTGateway struct {
 	grpcConn     *grpc.ClientConn
 	rateLimiter  *rateLimiter
 	deviceService *service.DeviceService
+	tokenSvc     *token.Service
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
@@ -140,6 +142,7 @@ func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
 		grpcSrv: grpcSrv,
 		logger:  logger,
 		deviceService: service.NewDeviceService(logger),
+		tokenSvc:     token.NewService(""),
 	}
 }
 
@@ -242,6 +245,15 @@ func (g *RESTGateway) Serve(addr string) error {
 			hub.GET("/adapters", g.listAdapters)
 			hub.GET("/health", g.hubHealthCheck)
 		}
+
+
+tt// Token 管理（统一授权）
+tttokens := v1.Group("/tokens")
+tt{
+ttttokens.POST("", g.issueToken)
+ttttokens.GET("/:tokenId", g.verifyToken)
+ttttokens.DELETE("/:tokenId", g.revokeToken)
+tt}
 
 		// 多设备管理
 		devices := v1.Group("/devices")
