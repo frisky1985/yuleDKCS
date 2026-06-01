@@ -69,6 +69,8 @@ func (a *ICCOAAdapter) UnbindKey(ctx context.Context, keyID string) error {
 	// 小米: DELETE /api/v1/carkey/{key_id}
 	// OPPO: DELETE /ocar/v2/key/{key_id}
 	// vivo: DELETE /vivotsp/v1/digitalkey/{key_id}
+	// [M-02] 实际厂商API调用应使用 zap.Error 记录失败堆栈
+	// 示例: a.logger.Error("vendor unbind failed", zap.Error(err), zap.Stack("stack"))
 	return nil
 }
 

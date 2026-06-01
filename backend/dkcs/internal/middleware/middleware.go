@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/digitalkey/dkcs/pkg/logger"
@@ -171,6 +172,8 @@ type TokenBucket struct {
 	tokens     chan struct{}
 	refillRate time.Duration
 	stopCh     chan struct{}
+	mu         sync.Mutex   // [M-01] 保护 stopCh 的并发关闭
+	stopped    bool         // [M-01] 标记是否已停止
 }
 
 // NewTokenBucket creates a token bucket with a background refill goroutine.
@@ -209,12 +212,13 @@ func NewTokenBucket(rate int) *TokenBucket {
 }
 
 // Stop terminates the refill goroutine. Safe to call multiple times.
+// [M-01] 使用 sync.Mutex 保护 stopCh 并发关闭
 func (tb *TokenBucket) Stop() {
-	select {
-	case <-tb.stopCh:
-		// Already stopped
-	default:
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	if !tb.stopped {
 		close(tb.stopCh)
+		tb.stopped = true
 	}
 }
 

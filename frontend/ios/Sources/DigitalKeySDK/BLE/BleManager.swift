@@ -191,6 +191,58 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
     /// 当前协议类型，用于选择正确的Service UUID
     public var protocolType: BleProtocolType = .ccc
 
+    // MARK: - Reconnection (Exponential Backoff) [M-04]
+
+    /// 自动重连配置
+    private var reconnectAttempts = 0
+    private let maxReconnectAttempts = 5
+    private let reconnectBaseDelay: TimeInterval = 1.0  // 初始 1 秒
+    private let reconnectMaxDelay: TimeInterval = 32.0  // 最大 32 秒
+    private var reconnectWorkItem: DispatchWorkItem?
+    private var lastConnectedPeripheralId: String?
+
+    /// [M-04] 计算退避延迟: 2^attempts, capped at maxDelay
+    private func reconnectDelay() -> TimeInterval {
+        let delay = reconnectBaseDelay * pow(2.0, Double(reconnectAttempts))
+        return min(delay, reconnectMaxDelay)
+    }
+
+    /// [M-04] 启动指数退避重连
+    private func scheduleReconnect() {
+        guard reconnectAttempts < maxReconnectAttempts else {
+            logger.ble("已达到最大重连次数 (\(maxReconnectAttempts))，停止重连")
+            reconnectAttempts = 0
+            lastConnectedPeripheralId = nil
+            return
+        }
+
+        let delay = reconnectDelay()
+        reconnectAttempts += 1
+        logger.ble("计划第\(reconnectAttempts)/\(maxReconnectAttempts)次重连，延迟 \(String(format: "%.1f", delay)) 秒")
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self, let peripheralId = self.lastConnectedPeripheralId else { return }
+            guard let uuid = UUID(uuidString: peripheralId) else { return }
+
+            guard let targetPeripheral = self.centralManager
+                .retrievePeripherals(withIdentifiers: [uuid]).first else {
+                logger.ble("重连失败：找不到外围设备 \(peripheralId)")
+                scheduleReconnect()
+                return
+            }
+
+            logger.ble("正在重连: \(targetPeripheral.name ?? peripheralId)")
+            updateConnectionState(.connecting)
+            self.peripheral = targetPeripheral
+            centralManager.connect(targetPeripheral, options: [
+                CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+            ])
+        }
+
+        reconnectWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
     // MARK: - Initialization
 
     public override init() {
@@ -274,6 +326,12 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
     }
 
     public func disconnect() {
+        // [M-04] 用户主动断开，取消重连
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+        reconnectAttempts = 0
+        lastConnectedPeripheralId = nil
+
         if let peripheral = peripheral {
             updateConnectionState(.disconnecting)
             centralManager.cancelPeripheralConnection(peripheral)
@@ -414,6 +472,12 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
         peripheral.delegate = self
         updateConnectionState(.connected)
 
+        // [M-04] 连接成功，重置重连状态并取消待定重连任务
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+        reconnectAttempts = 0
+        lastConnectedPeripheralId = peripheral.identifier.uuidString
+
         // Start service discovery
         updateConnectionState(.discovering)
         let protocolService = BleUUIDs.serviceUUID(for: protocolType)
@@ -450,6 +514,9 @@ public final class BleManager: NSObject, BleManaging, CBCentralManagerDelegate, 
             continuation.resume(throwing: DigitalKeyError(code: DkErrorCode.bleConnectFailed, message: "BLE已断开"))
         }
         pendingWrites.removeAll()
+
+        // [M-04] 触发指数退避重连
+        scheduleReconnect()
     }
 
     // MARK: - CBPeripheralDelegate

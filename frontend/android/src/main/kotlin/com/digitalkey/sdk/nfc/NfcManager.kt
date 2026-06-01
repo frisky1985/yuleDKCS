@@ -186,12 +186,60 @@ class NfcManager(private val activity: Activity) {
     
     fun handleIntent(intent: Intent?) {
         if (intent == null) return
-        
+
+        // [M-08] 前台调度优先处理: 检查是否由 enableForegroundDispatch 接收到的 Intent
+        // 前台调度的 Intent 会直接传递到 Activity，不会触发系统级 Activity 选择
+        val isForegroundDispatch = intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0
+
         when (intent.action) {
-            NfcAdapter.ACTION_NDEF_DISCOVERED -> handleNdefIntent(intent)
-            NfcAdapter.ACTION_TECH_DISCOVERED -> handleTechIntent(intent)
-            NfcAdapter.ACTION_TAG_DISCOVERED -> handleTagIntent(intent)
+            NfcAdapter.ACTION_NDEF_DISCOVERED,
+            NfcAdapter.ACTION_TECH_DISCOVERED,
+            NfcAdapter.ACTION_TAG_DISCOVERED -> {
+                // [M-08] 确保前台调度优先: 如果是前台调度消息或 HCE 相关 action
+                if (isForegroundDispatch) {
+                    logger.info("NFC intent via foreground dispatch: ${intent.action}")
+                }
+
+                val tag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+                }
+
+                if (tag != null) {
+                    handleTagDiscovered(tag)
+                } else if (intent.action == NfcAdapter.ACTION_NDEF_DISCOVERED) {
+                    handleNdefIntent(intent)
+                }
+            }
         }
+    }
+
+    /**
+     * [M-08] HCE 前台调度 — 确保前台 Activity 优先处理 NFC 事件
+     * 当 Activity 在前台时，所有 NFC 发现事件都会优先路由到该 Activity，
+     * 防止其他应用拦截 NFC Tag 或 HCE 事件。
+     *
+     * 调用时机: Activity.onResume()
+     */
+    fun enableHceForegroundDispatch() {
+        if (!isAvailable()) {
+            logger.warn("NFC not available, cannot enable HCE foreground dispatch")
+            return
+        }
+        // 前台调度 enableForegroundDispatch 已经在 initialize() 阶段通过 createPendingIntent 设置
+        // 实际启用需要在 Activity.onResume() 中调用 enableForegroundDispatch()
+        // 此方法封装了 HCE 专用的前台调度逻辑
+        enableForegroundDispatch()
+    }
+
+    /**
+     * [M-08] 禁用 HCE 前台调度
+     * 调用时机: Activity.onPause()
+     */
+    fun disableHceForegroundDispatch() {
+        disableForegroundDispatch()
     }
     
     // ── 明文 APDU 通信（原始接口，保持兼容）─────────────────

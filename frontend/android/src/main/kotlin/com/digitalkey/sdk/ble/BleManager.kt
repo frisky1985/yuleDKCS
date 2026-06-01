@@ -1,12 +1,15 @@
 // BleManager.kt - BLE管理模块
 package com.digitalkey.sdk.ble
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
+import androidx.core.content.ContextCompat
 import com.digitalkey.sdk.error.DkError
 import com.digitalkey.sdk.error.DkErrorCode
 import com.digitalkey.sdk.logger.DkLogger
@@ -138,6 +141,22 @@ class BleManager(private val context: Context) {
         return bluetoothAdapter != null && bluetoothAdapter?.isEnabled == true
     }
     
+    /**
+     * 检查BLE扫描权限
+     * Android 12+ 需要 BLUETOOTH_SCAN 权限
+     * Android 11- 需要 ACCESS_FINE_LOCATION 权限
+     * @return true 如果权限已授予
+     */
+    private fun hasBleScanPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+
     // 开始扫描
     @SuppressLint("MissingPermission")
     fun startScan(timeoutMs: Long = 10000) {
@@ -145,7 +164,13 @@ class BleManager(private val context: Context) {
             notifyError(DkError(DkErrorCode.bleDisabled, "BLE is not available"))
             return
         }
-        
+
+        // [M-03] BLE扫描前检查权限
+        if (!hasBleScanPermission()) {
+            notifyError(DkError(DkErrorCode.bleScanFailed, "BLUETOOTH_SCAN or ACCESS_FINE_LOCATION permission not granted"))
+            return
+        }
+
         if (isScanning) {
             logger.warn("Already scanning")
             return

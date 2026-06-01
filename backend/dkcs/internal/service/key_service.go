@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 
 	pb "github.com/digitalkey/proto/dkcs"
@@ -24,6 +25,39 @@ type KeyService struct {
 	vehicleRepo *repository.VehicleRepository
 	logger      *logger.Logger
 	telemetry   *telemetry.Telemetry
+
+	// [M-07] 幂等性保证
+	idempotencyMu     sync.RWMutex
+	idempotencyKeys   map[string]bool  // processed idempotency keys
+	idempotencyMaxAge time.Duration    // 键保留时长
+}
+
+// IdempotencyKeyOption 配置幂等性参数
+func (s *KeyService) WithIdempotency(maxAge time.Duration) *KeyService {
+	s.idempotencyMu.Lock()
+	defer s.idempotencyMu.Unlock()
+	s.idempotencyKeys = make(map[string]bool)
+	s.idempotencyMaxAge = maxAge
+	return s
+}
+
+// [M-07] 检查并标记幂等性键
+// 返回 true 表示已处理过（重复请求），false 表示首次处理
+func (s *KeyService) checkAndMarkIdempotency(key string) bool {
+	s.idempotencyMu.Lock()
+	defer s.idempotencyMu.Unlock()
+
+	if s.idempotencyKeys == nil {
+		s.idempotencyKeys = make(map[string]bool)
+	}
+
+	if s.idempotencyKeys[key] {
+		s.logger.Warn("Idempotency key already processed", logger.String("idempotency_key", key))
+		return true
+	}
+
+	s.idempotencyKeys[key] = true
+	return false
 }
 
 // NewKeyService creates a new KeyService
@@ -49,6 +83,13 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 	}()
 
 	s.logger.Info("CreateKey request", logger.String("vehicle_id", req.VehicleId), logger.String("user_id", req.UserId))
+
+	// [M-07] 幂等性键检查
+	if req.IdempotencyKey != "" {
+		if s.checkAndMarkIdempotency("create:" + req.IdempotencyKey) {
+			return nil, status.Error(codes.AlreadyExists, "request already processed")
+		}
+	}
 
 	// Validate request
 	if req.VehicleId == "" || req.UserId == "" {
@@ -118,6 +159,13 @@ func (s *KeyService) ActivateKey(ctx context.Context, req *pb.ActivateKeyRequest
 
 	s.logger.Info("ActivateKey request", logger.String("key_id", req.KeyId))
 
+	// [M-07] 幂等性键检查
+	if req.IdempotencyKey != "" {
+		if s.checkAndMarkIdempotency("activate:" + req.IdempotencyKey) {
+			return nil, status.Error(codes.AlreadyExists, "request already processed")
+		}
+	}
+
 	key, err := s.keyRepo.GetByID(ctx, req.KeyId)
 	if err != nil {
 		s.logger.Error("Failed to get key", logger.Err(err))
@@ -155,6 +203,13 @@ func (s *KeyService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*
 	}()
 
 	s.logger.Info("RevokeKey request", logger.String("key_id", req.KeyId), logger.String("reason", req.Reason))
+
+	// [M-07] 幂等性键检查
+	if req.IdempotencyKey != "" {
+		if s.checkAndMarkIdempotency("revoke:" + req.IdempotencyKey) {
+			return nil, status.Error(codes.AlreadyExists, "request already processed")
+		}
+	}
 
 	key, err := s.keyRepo.GetByID(ctx, req.KeyId)
 	if err != nil {
@@ -248,6 +303,13 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 	}()
 
 	s.logger.Info("ShareKey request", logger.String("key_id", req.KeyId), logger.String("to_user", req.ToUserId))
+
+	// [M-07] 幂等性键检查
+	if req.IdempotencyKey != "" {
+		if s.checkAndMarkIdempotency("share:" + req.IdempotencyKey) {
+			return nil, status.Error(codes.AlreadyExists, "request already processed")
+		}
+	}
 
 	// Get original key
 	origKey, err := s.keyRepo.GetByID(ctx, req.KeyId)

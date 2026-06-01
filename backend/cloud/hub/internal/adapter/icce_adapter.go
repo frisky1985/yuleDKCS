@@ -56,6 +56,12 @@ func (a *ICCEAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.
 }
 
 func (a *ICCEAdapter) UnbindKey(ctx context.Context, keyID string) error {
+	// [M-02] 实际厂商API调用应记录错误堆栈
+	// 示例: a.logger.Error("icce unbind failed",
+	// 	zap.String("key_id", keyID),
+	// 	zap.Error(err),
+	// 	zap.Stack("stack"),
+	// )
 	return nil
 }
 

@@ -20,6 +20,7 @@
 #define MAX_RISK_FACTORS        8
 #define RATE_LIMIT_WINDOW_MS    60000
 #define MAX_REQUESTS_PER_MINUTE 10
+#define TIME_DRIFT_TOLERANCE_MS 500   /* [M-05] 时间漂移容忍度 ±500ms */
 
 /* 风险因素位定义 */
 #define RISK_FACTOR_UNKNOWN_DEVICE      (1 << 0)
@@ -138,7 +139,10 @@ int32_t decision_evaluate(const decision_request_t *request,
     output->command_type = request->command_type;
     
     /* Step 1: 检查请求格式 */
-    if (request->timestamp == 0) {
+    /* [M-05] 使用时间漂移容忍度: 允许 ±500ms 的偏差 */
+    uint32_t now = sys_tick_get_ms();
+    if (request->timestamp == 0 ||
+        (request->timestamp > now + TIME_DRIFT_TOLERANCE_MS)) {
         output->result = DECISION_DENY;
         output->reason = REASON_TIME_INVALID;
         log_decision(output);
@@ -164,8 +168,10 @@ int32_t decision_evaluate(const decision_request_t *request,
     }
     
     /* Step 4: 检查钥匙有效性 */
+    /* [M-05] 钥匙到期检查增加时间漂移容忍度: 在容忍范围内仍视为有效 */
     uint32_t current_time = sys_tick_get_ms();
-    if (key_info.status != 1 || current_time > key_info.expiry_time) {
+    if (key_info.status != 1 ||
+        (current_time > key_info.expiry_time + TIME_DRIFT_TOLERANCE_MS)) {
         output->result = DECISION_DENY;
         output->reason = REASON_KEY_EXPIRED;
         log_decision(output);
@@ -396,8 +402,10 @@ static int32_t check_permission(uint32_t user_id, uint8_t command,
     }
     
     /* 检查时间有效性 */
+    /* [M-05] 权限时间窗口增加 ±500ms 漂移容忍 */
     uint32_t current_time = sys_tick_get_ms();
-    if (current_time < perm->valid_from || current_time > perm->valid_until) {
+    if ((current_time + TIME_DRIFT_TOLERANCE_MS) < perm->valid_from ||
+        (current_time > (perm->valid_until + TIME_DRIFT_TOLERANCE_MS))) {
         return -1;
     }
     
@@ -437,8 +445,10 @@ static int32_t check_rate_limit(uint32_t user_id)
     for (int i = 0; i < 32; i++) {
         if (g_decision.rate_limits[i].user_id == user_id) {
             /* 检查是否在时间窗口内 */
-            if ((current_time - g_decision.rate_limits[i].window_start) < 
-                RATE_LIMIT_WINDOW_MS) {
+            /* [M-05] 速率限制窗口也考虑时间漂移 */
+            int32_t elapsed = (int32_t)(current_time - g_decision.rate_limits[i].window_start);
+            if (elapsed < 0) elapsed = 0;  // 处理时间回跳
+            if ((uint32_t)elapsed < RATE_LIMIT_WINDOW_MS) {
                 g_decision.rate_limits[i].request_count++;
                 
                 if (g_decision.rate_limits[i].request_count > 
@@ -474,9 +484,12 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     uint32_t base_score = 0;
     uint8_t factors = 0;
     
+    /* [M-05] 确保 base_score 使用有符号计算防止下溢 */
+    int32_t score_accumulator = 0;
+
     /* 信号强度风险 */
     if (request->rssi < -80) {
-        base_score += 20;
+        score_accumulator += 20;
         factors |= RISK_FACTOR_RSSI_WEAK;
     }
     
@@ -484,30 +497,37 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     /* 简化实现: 检查设备指纹是否在历史记录中 */
     bool known_device = false;  // TODO: 实际检查
     if (!known_device) {
-        base_score += 15;
+        score_accumulator += 15;
         factors |= RISK_FACTOR_UNKNOWN_DEVICE;
     }
     
     /* 离线时间检查 */
+    /* [M-05] 离线时长计算考虑时间漂移容忍度 */
     uint32_t current_time = sys_tick_get_ms();
-    uint32_t offline_duration = (current_time > key_info->last_sync_time)
-                                ? (current_time - key_info->last_sync_time)
-                                : 0;
+    int32_t raw_duration = (int32_t)(current_time - key_info->last_sync_time);
+    /* 如果差值在容忍范围内且为负，视为无离线时间 */
+    uint32_t offline_duration = (raw_duration > -(int32_t)TIME_DRIFT_TOLERANCE_MS)
+                                ? (uint32_t)(raw_duration > 0 ? raw_duration : 0)
+                                : (uint32_t)(-raw_duration);
     if (offline_duration > 24 * 3600 * 1000) {  // 超过24小时
-        base_score += 25;
+        score_accumulator += 25;
         factors |= RISK_FACTOR_OFFLINE_TOO_LONG;
     }
     
     /* 钥匙即将过期 */
-    uint32_t time_to_expiry = (key_info->expiry_time > current_time)
-                              ? (key_info->expiry_time - current_time)
-                              : 0;
-    if (time_to_expiry < 3600) {  // 少于1小时
-        base_score += 10;
+    /* [M-05] 到期时间计算增加漂移容忍: 如已在容忍范围内视为即将过期 */
+    int32_t raw_ttl = (int32_t)(key_info->expiry_time - current_time);
+    uint32_t time_to_expiry = (raw_ttl > 0) ? (uint32_t)raw_ttl : 0;
+    if (time_to_expiry < 3600 || (raw_ttl <= 0 && raw_ttl > -(int32_t)TIME_DRIFT_TOLERANCE_MS)) {
+        // 少于1小时或已在漂移容忍范围内视为即将过期
+        score_accumulator += 10;
         factors |= RISK_FACTOR_KEY_EXPIRING;
     }
     
     /* 计算风险等级 */
+    /* [M-05] 使用有符号 accumulator 确保不下溢 */
+    if (score_accumulator < 0) score_accumulator = 0;
+    uint32_t base_score = (uint32_t)score_accumulator;
     score->score = base_score;
     score->factors[0] = factors;
     score->confidence = 0.8f;  // 简化

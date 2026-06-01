@@ -82,6 +82,13 @@ func (r *Registry) ListStatus(ctx context.Context) []*pb.AdapterStatus {
 	for _, a := range r.adapters {
 		status, err := a.HealthCheck(ctx)
 		if err != nil {
+			// [M-02] 使用 zap.Error + zap.Stack 记录错误堆栈
+			r.logger.Error("adapter health check failed",
+				zap.String("vendor", a.Vendor()),
+				zap.String("protocol", a.Protocol()),
+				zap.Error(err),
+				zap.Stack("stack"),
+			)
 			status = &pb.AdapterStatus{
 				Vendor:  a.Vendor(),
 				Protocol: a.Protocol(),

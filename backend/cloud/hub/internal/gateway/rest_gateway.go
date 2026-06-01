@@ -54,6 +54,18 @@ func (g *RESTGateway) WithGRPCConn(conn *grpc.ClientConn) *RESTGateway {
 }
 
 func (g *RESTGateway) Serve(addr string) error {
+	// [S-01] JWT空密钥防御 — 启动时检查
+	if g.jwtSecret == "" {
+		g.logger.Fatal("JWT_SECRET must be set — refusing to start")
+	}
+	// 检查是否为默认/弱密钥
+	defaultKeys := []string{"default", "secret", "changeme", "your-secret-key"}
+	for _, dk := range defaultKeys {
+		if g.jwtSecret == dk {
+			g.logger.Fatal("JWT_SECRET must not be a default/weak value — refusing to start")
+		}
+	}
+
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(g.loggerMiddleware())
@@ -142,20 +154,23 @@ func (g *RESTGateway) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
+			// [M-06] 统一错误格式
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_MISSING_HEADER", "message": "missing authorization header", "detail": ""})
 			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == "" || token == authHeader {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token format"})
+			// [M-06] 统一错误格式
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_INVALID_FORMAT", "message": "invalid token format", "detail": ""})
 			return
 		}
 
 		userID, role, err := g.validateToken(token)
 		if err != nil {
 			g.logger.Warn("Auth failed", zap.String("token_prefix", token[:min(8, len(token))]), zap.Error(err))
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			// [M-06] 统一错误格式
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "AUTH_INVALID_TOKEN", "message": "invalid or expired token", "detail": err.Error()})
 			return
 		}
 
@@ -223,12 +238,14 @@ func (g *RESTGateway) login(c *gin.Context) {
 		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request", "detail": err.Error()})
 		return
 	}
 
 	if req.UserID == "" || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id and password are required"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "user_id and password are required", "detail": ""})
 		return
 	}
 
@@ -245,7 +262,8 @@ func (g *RESTGateway) login(c *gin.Context) {
 
 	if req.UserID != adminUser || req.Password != adminPass {
 		g.logger.Warn("Login failed", zap.String("user_id", req.UserID))
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "AUTH_INVALID_CREDENTIALS", "message": "invalid credentials", "detail": ""})
 		return
 	}
 
@@ -262,7 +280,8 @@ func (g *RESTGateway) login(c *gin.Context) {
 	tokenString, err := token.SignedString([]byte(g.jwtSecret))
 	if err != nil {
 		g.logger.Error("Failed to sign JWT", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL_ERROR", "message": "failed to generate token", "detail": "token signing failure"})
 		return
 	}
 
@@ -299,8 +318,11 @@ func (g *RESTGateway) hubTransportClient() pb.HubTransportServiceClient {
 func (g *RESTGateway) checkGRPCConn(c *gin.Context, conn *grpc.ClientConn) bool {
 	if conn == nil {
 		g.logger.Warn("gRPC connection not available")
+		// [M-06] 统一错误格式
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
-			"error": "hub service temporarily unavailable",
+			"error":   "GRPC_UNAVAILABLE",
+			"message": "hub service temporarily unavailable",
+			"detail":  "",
 		})
 		return false
 	}
@@ -312,26 +334,36 @@ func (g *RESTGateway) checkGRPCConn(c *gin.Context, conn *grpc.ClientConn) bool 
 func (g *RESTGateway) handleGRPCError(c *gin.Context, err error) {
 	st, _ := status.FromError(err)
 	httpStatus := http.StatusBadGateway
+	errorCode := "GRPC_ERROR"
 
 	switch st.Code() {
 	case codes.NotFound:
 		httpStatus = http.StatusNotFound
+		errorCode = "GRPC_NOT_FOUND"
 	case codes.PermissionDenied:
 		httpStatus = http.StatusForbidden
+		errorCode = "GRPC_PERMISSION_DENIED"
 	case codes.Unauthenticated:
 		httpStatus = http.StatusUnauthorized
+		errorCode = "GRPC_UNAUTHENTICATED"
 	case codes.Internal:
 		httpStatus = http.StatusInternalServerError
+		errorCode = "GRPC_INTERNAL"
 	case codes.InvalidArgument:
 		httpStatus = http.StatusBadRequest
+		errorCode = "GRPC_INVALID_ARGUMENT"
 	case codes.Unavailable:
 		httpStatus = http.StatusServiceUnavailable
+		errorCode = "GRPC_UNAVAILABLE"
 	case codes.DeadlineExceeded:
 		httpStatus = http.StatusGatewayTimeout
+		errorCode = "GRPC_DEADLINE_EXCEEDED"
 	case codes.ResourceExhausted:
 		httpStatus = http.StatusTooManyRequests
+		errorCode = "GRPC_RESOURCE_EXHAUSTED"
 	default:
 		httpStatus = http.StatusBadGateway
+		errorCode = "GRPC_UNKNOWN"
 	}
 
 	g.logger.Warn("gRPC forwarding error",
@@ -340,10 +372,11 @@ func (g *RESTGateway) handleGRPCError(c *gin.Context, err error) {
 		zap.String("grpc_message", st.Message()),
 	)
 
+	// [M-06] 统一错误格式: {error: code, message: "", detail: ""}
 	c.AbortWithStatusJSON(httpStatus, gin.H{
-		"error":   st.Message(),
-		"code":    st.Code().String(),
-		"details": st.Proto().GetDetails(),
+		"error":   errorCode,
+		"message": st.Message(),
+		"detail":  st.Proto().GetDetails(),
 	})
 }
 
@@ -352,7 +385,8 @@ func (g *RESTGateway) replyProto(c *gin.Context, resp proto.Message) {
 	raw, err := protojson.Marshal(resp)
 	if err != nil {
 		g.logger.Error("failed to marshal proto response", zap.Error(err))
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal serialization error"})
+		// [M-06] 统一错误格式
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL_ERROR", "message": "internal serialization error", "detail": err.Error()})
 		return
 	}
 	c.Data(http.StatusOK, "application/json", raw)
@@ -383,7 +417,8 @@ func (g *RESTGateway) bindKey(c *gin.Context) {
 
 	var req pb.BindKeyRequest
 	if err := g.parseBody(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request body", "detail": err.Error()})
 		return
 	}
 	// Set user_id from auth context if not provided in body
@@ -536,7 +571,8 @@ func (g *RESTGateway) renewKey(c *gin.Context) {
 		ValidUntil int64 `json:"valid_until"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request body", "detail": err.Error()})
 		return
 	}
 
@@ -633,7 +669,8 @@ func (g *RESTGateway) createShare(c *gin.Context) {
 
 	var req pb.CreateShareRequest
 	if err := g.parseBody(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request body", "detail": err.Error()})
 		return
 	}
 	if req.FromUserId == "" {
@@ -665,7 +702,8 @@ func (g *RESTGateway) acceptShare(c *gin.Context) {
 
 	var req pb.AcceptShareRequest
 	if err := g.parseBody(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request body", "detail": err.Error()})
 		return
 	}
 	if req.UserId == "" {
@@ -750,7 +788,8 @@ func (g *RESTGateway) sendCommand(c *gin.Context) {
 		TraceID string          `json:"trace_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusBadRequest, gin.H{"error": "BAD_REQUEST", "message": "invalid request body", "detail": err.Error()})
 		return
 	}
 
