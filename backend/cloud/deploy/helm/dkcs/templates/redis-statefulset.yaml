@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: redis
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-redis-access
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: redis
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    app.kubernetes.io/name: redis
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-redis
+  replicas: {{ .Values.replicas.redis }}
+  selector:
+    matchLabels:
+      app: redis
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: redis
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: redis
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: redis
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.redis.repository }}:{{ .Values.image.redis.tag }}"
+          imagePullPolicy: {{ .Values.image.redis.pullPolicy }}
+          ports:
+            - containerPort: 6379
+              name: redis
+          command:
+            - redis-server
+          args:
+            - "--maxmemory"
+            - "512mb"
+            - "--maxmemory-policy"
+            - "allkeys-lru"
+            - "--requirepass"
+            - "$(REDIS_PASSWORD)"
+            - "--appendonly"
+            - "yes"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: redis-password
+          resources:
+            requests:
+              cpu: {{ .Values.resources.redis.requests.cpu }}
+              memory: {{ .Values.resources.redis.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.redis.limits.cpu }}
+              memory: {{ .Values.resources.redis.limits.memory }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" ping
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.redis.size }}
+        storageClassName: {{ .Values.storage.redis.storageClass }}

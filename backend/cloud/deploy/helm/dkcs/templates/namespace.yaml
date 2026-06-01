@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: digital-key
+    environment: {{ .Values.global.environment }}

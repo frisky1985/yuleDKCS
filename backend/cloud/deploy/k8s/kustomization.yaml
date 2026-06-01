@@ -1,0 +1,118 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ── Target namespace ──
+namespace: dkcs-prod
+
+# ── Common labels ──
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: digital-key
+
+# ── Name prefix for all resources ──
+namePrefix: ""
+
+# ── Resources ──
+resources:
+  - namespace.yaml
+  - secrets.yaml
+  - pdb.yaml
+  - ingress.yaml
+
+  # Hub service
+  - hub/configmap.yaml
+  - hub/service.yaml
+  - hub/deployment.yaml
+  - hub/hpa.yaml
+
+  # DKCS service
+  - dkcs/configmap.yaml
+  - dkcs/service.yaml
+  - dkcs/deployment.yaml
+  - dkcs/hpa.yaml
+
+  # Infrastructure
+  - mysql/statefulset.yaml
+  - redis/statefulset.yaml
+  - kafka/kafka.yaml
+  - emqx.yaml
+
+  # Monitoring
+  - monitoring/prometheus-config.yaml
+
+# ── ConfigMap generator ──
+configMapGenerator:
+  - name: grafana-dashboards
+    namespace: dkcs-prod
+    files:
+      - monitoring/grafana-dashboard.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+
+# ── Images ──
+images:
+  - name: hub
+    newName: docker.io/yuledkcs/hub
+    newTag: latest
+  - name: dkcs
+    newName: docker.io/yuledkcs/dkcs
+    newTag: latest
+
+# ── Patches for staging overlay ──
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: hub|dkcs
+
+# ── Staging overlay ──
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: dkcs-staging
+namespace: dkcs-staging
+bases:
+  - .
+patches:
+  - target:
+      kind: Deployment
+      name: hub|dkcs
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: hub|dkcs
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+  - target:
+      kind: StatefulSet
+      name: mysql|redis|kafka|zookeeper
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

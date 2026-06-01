@@ -1,0 +1,211 @@
+# ═══════════════════════════════════════════════════════════════
+# yuleDKCS Helm Chart Values
+# ═══════════════════════════════════════════════════════════════
+
+# ── Global Settings ──
+global:
+  environment: production
+  imageRegistry: docker.io
+  imagePullSecrets: []
+
+# ── Image Defaults ──
+image:
+  hub:
+    repository: yuledkcs/hub
+    tag: latest
+    pullPolicy: IfNotPresent
+  dkcs:
+    repository: yuledkcs/dkcs
+    tag: latest
+    pullPolicy: IfNotPresent
+  mysql:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  redis:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  zookeeper:
+    repository: confluentinc/cp-zookeeper
+    tag: "7.5.0"
+    pullPolicy: IfNotPresent
+  kafka:
+    repository: confluentinc/cp-kafka
+    tag: "7.5.0"
+    pullPolicy: IfNotPresent
+  emqx:
+    repository: emqx/emqx
+    tag: "5.5"
+    pullPolicy: IfNotPresent
+
+# ── Replica Count ──
+replicas:
+  hub: 3
+  dkcs: 3
+  mysql: 2
+  redis: 3
+  kafka: 3
+  zookeeper: 3
+  emqx: 2
+
+# ── Resource Limits & Requests ──
+resources:
+  hub:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  dkcs:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+  mysql:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  redis:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  kafka:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+  zookeeper:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  emqx:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+# ── Storage ──
+storage:
+  mysql:
+    size: 50Gi
+    storageClass: standard
+  redis:
+    size: 10Gi
+    storageClass: standard
+  kafka:
+    size: 50Gi
+    storageClass: standard
+  zookeeper:
+    data:
+      size: 10Gi
+      storageClass: standard
+    log:
+      size: 5Gi
+      storageClass: standard
+
+# ── HPA ──
+autoscaling:
+  hub:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+  dkcs:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+
+# ── Ingress ──
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: api.digitalkey.example.com
+      paths:
+        - path: /api/v1
+          pathType: Prefix
+          service: hub
+          port: 8080
+        - path: /grpc
+          pathType: Prefix
+          service: hub
+          port: 9090
+  tls:
+    - secretName: dkcs-tls
+      hosts:
+        - api.digitalkey.example.com
+
+# ── Secrets ──
+secrets:
+  mysql:
+    rootPassword: "change-me-root-password"
+    dkPassword: "change-me-dk-password"
+  redis:
+    password: "change-me-redis-password"
+  jwt:
+    secret: "change-me-jwt-secret-at-least-32-chars-long"
+
+# ── Hub Config ──
+hub:
+  db:
+    host: mysql
+    port: 3306
+    user: dk_service
+    name: digital_key
+  redis:
+    addr: redis-access:6379
+  kafka:
+    brokers: kafka-access:9092
+  logLevel: info
+  logFormat: json
+  metricsEnabled: true
+  metricsPort: 9093
+
+# ── DKCS Config ──
+dkcs:
+  grpcPort: 9091
+  db:
+    host: mysql
+    port: 3306
+    user: dk_service
+    name: digital_key
+    sslMode: disable
+    maxOpenConns: 100
+  redis:
+    addr: redis-access:6379
+    db: 0
+  kafka:
+    brokers: kafka-access:9092
+  hubAddr: hub:9090
+  mqttBroker: tcp://emqx:1883
+  logLevel: info
+  logFormat: json
+  metricsEnabled: true
+  metricsPort: 9091
+  jwtExpireHours: 24

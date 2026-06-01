@@ -1,0 +1,243 @@
+---
+# ── Headless Service for MySQL StatefulSet ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: dkcs-prod
+  labels:
+    app: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+  clusterIP: None
+---
+# ── Read-write Service (primary) ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-primary
+  namespace: dkcs-prod
+  labels:
+    app: mysql
+    role: primary
+spec:
+  selector:
+    app: mysql
+    role: primary
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+  type: ClusterIP
+---
+# ── Read-only Service (replicas) ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-replicas
+  namespace: dkcs-prod
+  labels:
+    app: mysql
+    role: replica
+spec:
+  selector:
+    app: mysql
+    role: replica
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: dkcs-prod
+  labels:
+    app: mysql
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: digital-key
+spec:
+  serviceName: mysql
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mysql
+          image: "mysql:8.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: mysql-root-password
+            - name: MYSQL_DATABASE
+              value: "digital_key"
+            - name: MYSQL_USER
+              value: "dk_service"
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: mysql-password
+          args:
+            - "--character-set-server=utf8mb4"
+            - "--collation-server=utf8mb4_unicode_ci"
+            - "--innodb-buffer-pool-size=1G"
+            - "--innodb-log-file-size=256M"
+            - "--max-connections=500"
+            - "--wait-timeout=28800"
+            - "--binlog-format=ROW"
+            - "--server-id=1"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          livenessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - localhost
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - mysql
+                - -h
+                - localhost
+                - -e
+                - SELECT 1
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+            - name: mysql-initdb
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mysql-initdb
+          configMap:
+            name: mysql-init-schema
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+        labels:
+          app: mysql
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+        storageClassName: standard
+---
+# ── Init Schema ConfigMap ──
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-init-schema
+  namespace: dkcs-prod
+data:
+  01-schema.sql: |
+    -- Digital Key Cloud Service Schema (MySQL 8.0+)
+    SET NAMES utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS `dk_user` (
+        `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `user_id`         VARCHAR(64)  NOT NULL COMMENT '用户唯一ID',
+        `phone_vendor`    VARCHAR(32)  NOT NULL COMMENT '手机厂商',
+        `phone_model`     VARCHAR(64)  DEFAULT NULL,
+        `os_version`      VARCHAR(32)  DEFAULT NULL,
+        `app_version`     VARCHAR(32)  DEFAULT NULL,
+        `status`          TINYINT      NOT NULL DEFAULT 1,
+        `created_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `updated_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        `deleted_at`      DATETIME(3)  DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_user_vendor` (`user_id`, `phone_vendor`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS `dk_vehicle` (
+        `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `vin`             VARCHAR(32)  NOT NULL COMMENT '车架号',
+        `brand`           VARCHAR(32)  NOT NULL,
+        `model`           VARCHAR(64)  NOT NULL,
+        `year`            SMALLINT     DEFAULT NULL,
+        `tcu_sn`          VARCHAR(64)  DEFAULT NULL COMMENT 'TCU序列号',
+        `status`          TINYINT      NOT NULL DEFAULT 1,
+        `created_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `updated_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_vin` (`vin`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS `dk_digital_key` (
+        `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `key_id`          VARCHAR(64)  NOT NULL,
+        `user_id`         BIGINT UNSIGNED NOT NULL,
+        `vehicle_id`      BIGINT UNSIGNED NOT NULL,
+        `key_type`        TINYINT      NOT NULL DEFAULT 1 COMMENT '1=车主 2=分享',
+        `key_data`        TEXT         NOT NULL COMMENT '加密密钥数据',
+        `status`          TINYINT      NOT NULL DEFAULT 1,
+        `expires_at`      DATETIME(3)  DEFAULT NULL,
+        `created_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        `updated_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_key_id` (`key_id`),
+        KEY `idx_user_vehicle` (`user_id`, `vehicle_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS `dk_key_share` (
+        `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `share_id`        VARCHAR(64)  NOT NULL,
+        `key_id`          BIGINT UNSIGNED NOT NULL,
+        `sender_id`       BIGINT UNSIGNED NOT NULL,
+        `recipient_id`    BIGINT UNSIGNED DEFAULT NULL,
+        `share_code`      VARCHAR(64)  NOT NULL,
+        `status`          TINYINT      NOT NULL DEFAULT 1,
+        `expires_at`      DATETIME(3)  NOT NULL,
+        `created_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `uk_share_id` (`share_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    CREATE TABLE IF NOT EXISTS `dk_event_log` (
+        `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `trace_id`        VARCHAR(64)  NOT NULL,
+        `event_type`      VARCHAR(64)  NOT NULL,
+        `user_id`         BIGINT UNSIGNED DEFAULT NULL,
+        `vehicle_id`      BIGINT UNSIGNED DEFAULT NULL,
+        `payload`         JSON         DEFAULT NULL,
+        `created_at`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        PRIMARY KEY (`id`),
+        KEY `idx_trace_id` (`trace_id`),
+        KEY `idx_event_type` (`event_type`, `created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

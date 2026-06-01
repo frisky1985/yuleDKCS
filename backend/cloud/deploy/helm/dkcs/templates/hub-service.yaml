@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-hub
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hub
+    app.kubernetes.io/name: hub
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: hub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: rest
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: grpc
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+    - name: metrics
+      port: {{ .Values.hub.metricsPort }}
+      targetPort: {{ .Values.hub.metricsPort }}
+      protocol: TCP
+  type: ClusterIP

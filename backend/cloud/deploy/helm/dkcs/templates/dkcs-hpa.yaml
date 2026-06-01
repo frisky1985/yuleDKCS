@@ -1,0 +1,44 @@
+{{- if .Values.autoscaling.dkcs.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}-dkcs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dkcs
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Release.Name }}-dkcs
+  minReplicas: {{ .Values.autoscaling.dkcs.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.dkcs.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.dkcs.targetCPUUtilization }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.dkcs.targetMemoryUtilization }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+{{- end }}

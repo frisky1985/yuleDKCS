@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-dkcs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dkcs
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: dkcs
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: grpc
+      port: {{ .Values.dkcs.grpcPort }}
+      targetPort: {{ .Values.dkcs.grpcPort }}
+      protocol: TCP
+  type: ClusterIP

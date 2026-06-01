@@ -1,0 +1,88 @@
+version: '3.8'
+
+# yuleDKCS Monitoring Stack
+# Usage: docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+
+services:
+  # ── Prometheus ──
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: dk-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - dk-net
+    restart: unless-stopped
+
+  # ── Grafana ──
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: dk-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana-dashboard.json:/var/lib/grafana/dashboards/dkcs-dashboard.json:ro
+      - ./monitoring/grafana-provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - dk-net
+    restart: unless-stopped
+
+  # ── MySQL Exporter ──
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.15.1
+    container_name: dk-mysql-exporter
+    environment:
+      - DATA_SOURCE_NAME=dk_service:${MYSQL_PASSWORD:?}@(mysql:3306)/digital_key
+    ports:
+      - "9104:9104"
+    networks:
+      - dk-net
+    restart: unless-stopped
+
+  # ── Redis Exporter ──
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: dk-redis-exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:?}
+    ports:
+      - "9121:9121"
+    networks:
+      - dk-net
+    restart: unless-stopped
+
+  # ── Kafka Exporter ──
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: dk-kafka-exporter
+    command:
+      - '--kafka.server=kafka:9092'
+    ports:
+      - "9308:9308"
+    networks:
+      - dk-net
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  dk-net:
+    external: true

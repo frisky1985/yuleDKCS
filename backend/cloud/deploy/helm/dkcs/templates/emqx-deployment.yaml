@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-emqx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: emqx
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: emqx
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: mqtt-tcp
+      port: 1883
+      targetPort: 1883
+      protocol: TCP
+    - name: mqtt-ws
+      port: 8083
+      targetPort: 8083
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-emqx
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: emqx
+    app.kubernetes.io/name: emqx
+    app.kubernetes.io/component: mqtt
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicas.emqx }}
+  selector:
+    matchLabels:
+      app: emqx
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: emqx
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: emqx
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.emqx.repository }}:{{ .Values.image.emqx.tag }}"
+          imagePullPolicy: {{ .Values.image.emqx.pullPolicy }}
+          ports:
+            - containerPort: 1883
+              name: mqtt-tcp
+            - containerPort: 8083
+              name: mqtt-ws
+            - containerPort: 18083
+              name: dashboard
+          env:
+            - name: EMQX_NAME
+              value: "dk_emqx"
+          resources:
+            requests:
+              cpu: {{ .Values.resources.emqx.requests.cpu }}
+              memory: {{ .Values.resources.emqx.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.emqx.limits.cpu }}
+              memory: {{ .Values.resources.emqx.limits.memory }}
+          livenessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2

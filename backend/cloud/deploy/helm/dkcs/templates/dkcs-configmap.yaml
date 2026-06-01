@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-dkcs-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dkcs
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  DB_HOST: {{ .Values.dkcs.db.host | quote }}
+  DB_PORT: {{ .Values.dkcs.db.port | quote }}
+  DB_USER: {{ .Values.dkcs.db.user | quote }}
+  DB_NAME: {{ .Values.dkcs.db.name | quote }}
+  DB_SSL_MODE: {{ .Values.dkcs.db.sslMode | quote }}
+  DB_MAX_OPEN_CONNS: {{ .Values.dkcs.db.maxOpenConns | quote }}
+  REDIS_ADDR: {{ .Values.dkcs.redis.addr | quote }}
+  REDIS_DB: {{ .Values.dkcs.redis.db | quote }}
+  KAFKA_BROKERS: {{ .Values.dkcs.kafka.brokers | quote }}
+  KAFKA_TOPIC_KEY_EVENTS: "dkcs.key.events"
+  KAFKA_TOPIC_COMMANDS: "dkcs.commands"
+  KAFKA_TOPIC_EVENTS: "dkcs.events"
+  KAFKA_TOPIC_DLQ: "dkcs.dlq"
+  LOG_LEVEL: {{ .Values.dkcs.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.dkcs.logFormat | quote }}
+  METRICS_ENABLED: {{ .Values.dkcs.metricsEnabled | quote }}
+  METRICS_PORT: {{ .Values.dkcs.metricsPort | quote }}
+  METRICS_PATH: "/metrics"
+  GRPC_PORT: {{ .Values.dkcs.grpcPort | quote }}
+  HUB_ADDR: {{ .Values.dkcs.hubAddr | quote }}
+  MQTT_BROKER: {{ .Values.dkcs.mqttBroker | quote }}
+  JWT_ISSUER: "dkcs"
+  JWT_EXPIRE_HOURS: {{ .Values.dkcs.jwtExpireHours | quote }}

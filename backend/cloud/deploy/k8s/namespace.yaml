@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dkcs-prod
+  labels:
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/part-of: digital-key
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dkcs-staging
+  labels:
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/part-of: digital-key
+    environment: staging

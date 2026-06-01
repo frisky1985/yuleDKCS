@@ -1,0 +1,42 @@
+groups:
+  - name: dkcs-service-alerts
+    interval: 30s
+    rules:
+      - alert: ServiceHighErrorRate
+        expr: |
+          rate(grpc_server_handled_total{grpc_code=~"Internal|Unavailable|Unknown"}[5m])
+          /
+          rate(grpc_server_handled_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} high error rate ({{ $value | humanizePercentage }})"
+          description: "Error rate for {{ $labels.job }} exceeds 5% over 5m"
+
+      - alert: ServiceHighLatency
+        expr: histogram_quantile(0.95, rate(grpc_server_handling_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} p95 latency > 2s"
+          description: "p95 latency is {{ $value }}s over 5m"
+
+      - alert: ServiceDown
+        expr: up{job=~"hub|dkcs"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} instance down"
+          description: "{{ $labels.instance }} is unreachable"
+
+      - alert: HighGoroutineCount
+        expr: go_goroutines > 500
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High goroutine count on {{ $labels.instance }}"
+          description: "{{ $labels.instance }} has {{ $value }} goroutines"

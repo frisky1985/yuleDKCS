@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hub
+  namespace: dkcs-prod
+  labels:
+    app: hub
+    app.kubernetes.io/name: hub
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: digital-key
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hub
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: hub
+        app.kubernetes.io/name: hub
+        app.kubernetes.io/component: gateway
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: hub
+          image: "${IMAGE_REGISTRY:-docker.io}/yuledkcs/hub:${IMAGE_TAG:-latest}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: rest
+              protocol: TCP
+            - containerPort: 9090
+              name: grpc
+              protocol: TCP
+            - containerPort: 9093
+              name: metrics
+              protocol: TCP
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: mysql-password
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: redis-password
+          envFrom:
+            - configMapRef:
+                name: hub-config
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            grpc:
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            grpc:
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          startupProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 30

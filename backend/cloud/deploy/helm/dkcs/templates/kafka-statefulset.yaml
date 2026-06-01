@@ -1,0 +1,230 @@
+# ── Zookeeper ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-zookeeper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zookeeper
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: zookeeper
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: client
+      port: 2181
+      targetPort: 2181
+    - name: follower
+      port: 2888
+      targetPort: 2888
+    - name: election
+      port: 3888
+      targetPort: 3888
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-zookeeper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zookeeper
+    app.kubernetes.io/name: zookeeper
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-zookeeper
+  replicas: {{ .Values.replicas.zookeeper }}
+  selector:
+    matchLabels:
+      app: zookeeper
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: zookeeper
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.zookeeper.repository }}:{{ .Values.image.zookeeper.tag }}"
+          imagePullPolicy: {{ .Values.image.zookeeper.pullPolicy }}
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: follower
+            - containerPort: 3888
+              name: election
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+            - name: ZOOKEEPER_SERVER_ID
+              value: "1"
+            - name: ZOOKEEPER_SERVERS
+              value: "{{ .Release.Name }}-zookeeper-0.{{ .Release.Name }}-zookeeper:2888:3888;{{ .Release.Name }}-zookeeper-1.{{ .Release.Name }}-zookeeper:2888:3888;{{ .Release.Name }}-zookeeper-2.{{ .Release.Name }}-zookeeper:2888:3888"
+          resources:
+            requests:
+              cpu: {{ .Values.resources.zookeeper.requests.cpu }}
+              memory: {{ .Values.resources.zookeeper.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.zookeeper.limits.cpu }}
+              memory: {{ .Values.resources.zookeeper.limits.memory }}
+          livenessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 2181
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: zookeeper-data
+              mountPath: /var/lib/zookeeper/data
+            - name: zookeeper-log
+              mountPath: /var/lib/zookeeper/log
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.zookeeper.data.size }}
+        storageClassName: {{ .Values.storage.zookeeper.data.storageClass }}
+    - metadata:
+        name: zookeeper-log
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.zookeeper.log.size }}
+        storageClassName: {{ .Values.storage.zookeeper.log.storageClass }}
+---
+# ── Kafka ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-kafka
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kafka
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: kafka
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: broker
+      port: 9092
+      targetPort: 9092
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-kafka-access
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kafka
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: kafka
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: broker
+      port: 9092
+      targetPort: 9092
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-kafka
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kafka
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-kafka
+  replicas: {{ .Values.replicas.kafka }}
+  selector:
+    matchLabels:
+      app: kafka
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: kafka
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: kafka
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.kafka.repository }}:{{ .Values.image.kafka.tag }}"
+          imagePullPolicy: {{ .Values.image.kafka.pullPolicy }}
+          ports:
+            - containerPort: 9092
+              name: broker
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "1"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "{{ .Release.Name }}-zookeeper:2181"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://{{ .Release.Name }}-kafka:9092"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "{{ .Values.replicas.kafka }}"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "false"
+            - name: KAFKA_LOG_RETENTION_HOURS
+              value: "168"
+            - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+              value: "{{ .Values.replicas.kafka }}"
+            - name: KAFKA_MIN_INSYNC_REPLICAS
+              value: "2"
+          resources:
+            requests:
+              cpu: {{ .Values.resources.kafka.requests.cpu }}
+              memory: {{ .Values.resources.kafka.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.kafka.limits.cpu }}
+              memory: {{ .Values.resources.kafka.limits.memory }}
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.kafka.size }}
+        storageClassName: {{ .Values.storage.kafka.storageClass }}

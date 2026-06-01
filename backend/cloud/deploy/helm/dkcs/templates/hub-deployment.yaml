@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-hub
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hub
+    app.kubernetes.io/name: hub
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicas.hub }}
+  selector:
+    matchLabels:
+      app: hub
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: hub
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: hub
+        app.kubernetes.io/component: gateway
+    spec:
+      terminationGracePeriodSeconds: 60
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: hub
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.hub.repository }}:{{ .Values.image.hub.tag }}"
+          imagePullPolicy: {{ .Values.image.hub.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: rest
+              protocol: TCP
+            - containerPort: 9090
+              name: grpc
+              protocol: TCP
+            - containerPort: {{ .Values.hub.metricsPort }}
+              name: metrics
+              protocol: TCP
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: mysql-password
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: redis-password
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-hub-config
+          resources:
+            requests:
+              cpu: {{ .Values.resources.hub.requests.cpu }}
+              memory: {{ .Values.resources.hub.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.hub.limits.cpu }}
+              memory: {{ .Values.resources.hub.limits.memory }}
+          livenessProbe:
+            grpc:
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            grpc:
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          startupProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 30

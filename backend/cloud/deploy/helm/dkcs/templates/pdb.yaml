@@ -1,0 +1,65 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-hub-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  minAvailable: {{ sub .Values.replicas.hub 1 }}
+  selector:
+    matchLabels:
+      app: hub
+      app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-dkcs-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  minAvailable: {{ sub .Values.replicas.dkcs 1 }}
+  selector:
+    matchLabels:
+      app: dkcs
+      app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-kafka-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ sub .Values.replicas.kafka 1 }}
+  selector:
+    matchLabels:
+      app: kafka
+      app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-zookeeper-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ sub .Values.replicas.zookeeper 1 }}
+  selector:
+    matchLabels:
+      app: zookeeper
+      app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-mysql-pdb
+  namespace: {{ .Release.Namespace }}
+spec:
+  minAvailable: {{ sub .Values.replicas.mysql 1 }}
+  selector:
+    matchLabels:
+      app: mysql
+      app.kubernetes.io/instance: {{ .Release.Name }}

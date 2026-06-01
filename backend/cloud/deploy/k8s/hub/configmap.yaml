@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hub-config
+  namespace: dkcs-prod
+  labels:
+    app: hub
+data:
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_USER: "dk_service"
+  DB_NAME: "digital_key"
+  REDIS_ADDR: "redis:6379"
+  KAFKA_BROKERS: "kafka:9092"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "9093"
+  METRICS_PATH: "/metrics"
+  GRPC_MAX_MSG_SIZE: "4194304"
+  REST_PORT: "8080"
+  GRPC_PORT: "9090"

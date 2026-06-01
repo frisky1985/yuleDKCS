@@ -1,0 +1,61 @@
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hub-pdb
+  namespace: dkcs-prod
+  labels:
+    app: hub
+    app.kubernetes.io/name: hub
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: hub
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dkcs-pdb
+  namespace: dkcs-prod
+  labels:
+    app: dkcs
+    app.kubernetes.io/name: dkcs
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: dkcs
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mysql-pdb
+  namespace: dkcs-prod
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mysql
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kafka-pdb
+  namespace: dkcs-prod
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: kafka
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: zookeeper-pdb
+  namespace: dkcs-prod
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: zookeeper

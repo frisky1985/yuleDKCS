@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dkcs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dkcs
+    app.kubernetes.io/name: dkcs
+    app.kubernetes.io/component: control-plane
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicas.dkcs }}
+  selector:
+    matchLabels:
+      app: dkcs
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: dkcs
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: dkcs
+        app.kubernetes.io/component: control-plane
+    spec:
+      terminationGracePeriodSeconds: 60
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: dkcs
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.dkcs.repository }}:{{ .Values.image.dkcs.tag }}"
+          imagePullPolicy: {{ .Values.image.dkcs.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.dkcs.grpcPort }}
+              name: grpc
+              protocol: TCP
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: mysql-password
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: redis-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: jwt-secret
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-dkcs-config
+          resources:
+            requests:
+              cpu: {{ .Values.resources.dkcs.requests.cpu }}
+              memory: {{ .Values.resources.dkcs.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.dkcs.limits.cpu }}
+              memory: {{ .Values.resources.dkcs.limits.memory }}
+          livenessProbe:
+            grpc:
+              port: {{ .Values.dkcs.grpcPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            grpc:
+              port: {{ .Values.dkcs.grpcPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.dkcs.grpcPort }}
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 30

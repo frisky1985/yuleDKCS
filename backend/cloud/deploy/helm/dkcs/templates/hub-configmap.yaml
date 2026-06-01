@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-hub-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: hub
+    app.kubernetes.io/name: hub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  DB_HOST: {{ .Values.hub.db.host | quote }}
+  DB_PORT: {{ .Values.hub.db.port | quote }}
+  DB_USER: {{ .Values.hub.db.user | quote }}
+  DB_NAME: {{ .Values.hub.db.name | quote }}
+  REDIS_ADDR: {{ .Values.hub.redis.addr | quote }}
+  KAFKA_BROKERS: {{ .Values.hub.kafka.brokers | quote }}
+  LOG_LEVEL: {{ .Values.hub.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.hub.logFormat | quote }}
+  METRICS_ENABLED: {{ .Values.hub.metricsEnabled | quote }}
+  METRICS_PORT: {{ .Values.hub.metricsPort | quote }}
+  METRICS_PATH: "/metrics"
+  REST_PORT: "8080"
+  GRPC_PORT: "9090"
