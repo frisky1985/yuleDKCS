@@ -25,6 +25,8 @@ import (
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
+var errAuthFailed = fmt.Errorf("authentication required")
+
 // ── Configuration Defaults ──
 
 const (
@@ -130,12 +132,14 @@ type RESTGateway struct {
 	jwtSecret    string
 	grpcConn     *grpc.ClientConn
 	rateLimiter  *rateLimiter
+	deviceService *service.DeviceService
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
 	return &RESTGateway{
 		grpcSrv: grpcSrv,
 		logger:  logger,
+		deviceService: service.NewDeviceService(logger),
 	}
 }
 
@@ -237,6 +241,17 @@ func (g *RESTGateway) Serve(addr string) error {
 		{
 			hub.GET("/adapters", g.listAdapters)
 			hub.GET("/health", g.hubHealthCheck)
+		}
+
+		// 多设备管理
+		devices := v1.Group("/devices")
+		{
+			devices.POST("", g.registerDevice)         // 注册设备+上报能力
+			devices.GET("", g.listDevices)              // 列出我的设备
+			devices.GET("/:deviceId", g.getDevice)      // 查看设备详情
+			devices.POST("/:deviceId/provision", g.provisionDevice) // 给设备配钥
+			devices.POST("/:deviceId/revoke", g.revokeDevice)      // 吊销设备钥匙
+			devices.DELETE("/:deviceId", g.deleteDevice) // 删除设备
 		}
 	}
 
