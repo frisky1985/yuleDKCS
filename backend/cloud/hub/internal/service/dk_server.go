@@ -64,3 +64,25 @@ func (s *LocalDKServer) IssueKey(ctx context.Context, req *KeyRequest) (*KeyResp
 func (s *LocalDKServer) RevokeKeyByToken(ctx context.Context, tokenID string) error {
 	return nil // 同进程直接吊销
 }
+
+
+// ─── gRPC Server 实现（server-only 模式） ──────────────────────────────────
+
+// GRPCDKServer 是 DK Server 的 gRPC 服务端
+// 用于 server-only 模式：接受 Hub 的远程调用
+type GRPCDKServer struct {
+	// Unimplemented 将在 proto 编译后替换
+	// pb.UnimplementedDKServerServer
+	local *LocalDKServer
+}
+
+func NewGRPCDKServer() *GRPCDKServer {
+	return &GRPCDKServer{local: NewLocalDKServer()}
+}
+
+// RegisterGRPCServer 将 DK Server 注册到 gRPC 服务器
+func (s *GRPCDKServer) RegisterGRPCServer(srv interface{ RegisterService(desc, impl) }) {
+	// TODO: proto 编译后取消注释
+	// pb.RegisterDKServerServer(srv, s)
+	_ = srv
+}

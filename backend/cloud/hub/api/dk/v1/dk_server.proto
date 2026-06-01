@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package dkcs;
+
+option go_package = "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/dk/v1";
+
+// ─── DK Hub ↔ DK Server 通信接口 ──────────────────────────────────────────
+// DK Hub 通过此接口通知 DK Server 执行钥匙操作。
+// all-in-one 模式: 同进程 Go 函数调用
+// hub-only + server-only 模式: 走 gRPC
+
+service DKServer {
+  // IssueKey 签发钥匙 — Hub 验证 Token 后通知 Server 生成离线钥匙
+  rpc IssueKey(IssueKeyRequest) returns (IssueKeyResponse);
+  
+  // RevokeKey 吊销钥匙 — Hub 收到吊销请求后通知 Server 作废车端钥匙
+  rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+  
+  // SyncKeyStatus 同步钥匙状态 — 查询指定钥匙的当前状态
+  rpc SyncKeyStatus(SyncKeyStatusRequest) returns (SyncKeyStatusResponse);
+}
+
+message IssueKeyRequest {
+  string token_id      = 1;  // Hub 签发的 Token
+  string subject_id    = 2;  // 钥匙持有者
+  string vehicle_id    = 3;  // 目标车辆
+  uint32 permissions   = 4;  // 权限位图
+  int64  expires_at    = 5;  // 过期时间戳(ms)
+  string trace_id      = 6;  // 链路追踪
+}
+
+message IssueKeyResponse {
+  string key_id    = 1;
+  string status    = 2;  // "issued" | "pending" | "rejected"
+  string message   = 3;
+}
+
+message RevokeKeyRequest {
+  string token_id   = 1;
+  string vehicle_id = 2;
+  string reason     = 3;
+}
+
+message RevokeKeyResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message SyncKeyStatusRequest {
+  string key_id     = 1;
+  string vehicle_id = 2;
+}
+
+message SyncKeyStatusResponse {
+  string key_id  = 1;
+  string status  = 2;  // "active" | "revoked" | "expired"
+  int64  expires_at = 3;
+}

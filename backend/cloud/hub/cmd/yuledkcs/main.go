@@ -4,11 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
@@ -63,14 +65,14 @@ func main() {
 func startHubOnly(logger *zap.Logger, httpAddr, grpcAddr, secret string, deviceSvc *service.DeviceService) {
 	logger.Info("mode: hub-only — 编排层独立运行")
 
-	// 初始化 Hub 网关
+	// TODO: 通过 gRPC 连接车厂的 DK Server
+	// conn, err := grpc.Dial(dkServerAddr, grpc.WithInsecure())
+	// dkClient := pb.NewDKServerClient(conn)
+
 	hub := gateway.NewRESTGateway(nil, logger)
 	hub.WithJWTSecret(secret)
 
-	// TODO: 通过 gRPC 连接车厂的 DK Server
-	// hub.WithDKServerConn(dkServerConn)
-
-	logger.Info("Hub ready, waiting for connections...")
+	logger.Info("Hub ready", zap.String("http", httpAddr))
 	if err := hub.Serve(httpAddr); err != nil {
 		logger.Fatal("hub serve failed", zap.Error(err))
 	}
@@ -81,11 +83,21 @@ func startServerOnly(logger *zap.Logger, grpcAddr, dbDSN string, deviceSvc *serv
 	logger.Info("mode: server-only — 密钥材料层独立运行")
 
 	_ = dbDSN
-	// TODO: 启动 gRPC 服务，实现 KeyStore / KMS 相关接口
-	// 接受 Hub 的编排指令，执行实际的密钥操作
+	_ = deviceSvc
 
-	logger.Info("DK Server ready, waiting for Hub connections...")
-	select {} // 阻塞等待
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		logger.Fatal("grpc listen failed", zap.String("addr", grpcAddr), zap.Error(err))
+	}
+
+	srv := grpc.NewServer()
+	dkSrv := service.NewGRPCDKServer()
+	dkSrv.RegisterGRPCServer(srv)
+
+	logger.Info("DK Server gRPC listening", zap.String("addr", grpcAddr))
+	if err := srv.Serve(lis); err != nil {
+		logger.Fatal("grpc serve failed", zap.Error(err))
+	}
 }
 
 // startAllInOne Hub + DK Server 同进程部署（当前默认模式）
