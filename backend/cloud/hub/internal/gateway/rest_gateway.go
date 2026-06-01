@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,14 +25,111 @@ import (
 	pb "github.com/digitalkey/hub/api/v1"
 )
 
+// ── Configuration Defaults ──
+
+const (
+	DefaultRateLimit      = 100    // max requests per second per IP
+	DefaultRateLimitBurst = 200    // max burst size
+	RateLimitCleanupSec   = 300    // clean up stale entries every 5 min
+	RateLimitEntryTTL     = 10     // evict IP entries idle for >10 min
+)
+
+// ── Rate Limiter ──
+
+// rateLimiter implements a per-IP token bucket rate limiter.
+// Thread-safe: all public methods acquire the mutex.
+type rateLimiter struct {
+	mu       sync.Mutex
+	visitors map[string]*tokenBucket
+	rate     float64 // tokens replenished per second
+	burst    int     // max accumulated tokens
+}
+
+// tokenBucket tracks one IP's token balance and last refill time.
+type tokenBucket struct {
+	tokens     float64
+	lastUpdate time.Time
+}
+
+// newRateLimiter creates a token-bucket rate limiter.
+//   rate:  tokens replenished per second
+//   burst: maximum accumulated tokens (prevents abuse via burst)
+func newRateLimiter(rate float64, burst int) *rateLimiter {
+	rl := &rateLimiter{
+		visitors: make(map[string]*tokenBucket),
+		rate:     rate,
+		burst:    burst,
+	}
+	// Start periodic cleanup of stale entries
+	go rl.cleanupLoop(RateLimitCleanupSec * time.Second)
+	return rl
+}
+
+// allow checks whether the given IP may consume one token.
+// Returns (allowed bool, retryAfter time.Duration).
+func (rl *rateLimiter) allow(ip string) (bool, time.Duration) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	bucket, exists := rl.visitors[ip]
+	now := time.Now()
+
+	if !exists {
+		// First request — start with burst-1 tokens remaining
+		rl.visitors[ip] = &tokenBucket{
+			tokens:     float64(rl.burst - 1),
+			lastUpdate: now,
+		}
+		return true, 0
+	}
+
+	// Refill based on elapsed time
+	elapsedSec := now.Sub(bucket.lastUpdate).Seconds()
+	bucket.tokens += elapsedSec * rl.rate
+	if bucket.tokens > float64(rl.burst) {
+		bucket.tokens = float64(rl.burst)
+	}
+	bucket.lastUpdate = now
+
+	// Attempt to consume one token
+	if bucket.tokens >= 1.0 {
+		bucket.tokens--
+		return true, 0
+	}
+
+	// Rate limited — calculate when the next token will be available
+	waitSec := (1.0 - bucket.tokens) / rl.rate
+	retryAfter := time.Duration(waitSec * float64(time.Second))
+	return false, retryAfter
+}
+
+// cleanupLoop periodically removes visitors that haven't been seen recently.
+func (rl *rateLimiter) cleanupLoop(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		rl.mu.Lock()
+		cutoff := time.Now().Add(-RateLimitEntryTTL * time.Minute)
+		for ip, bucket := range rl.visitors {
+			if bucket.lastUpdate.Before(cutoff) {
+				delete(rl.visitors, ip)
+			}
+		}
+		rl.mu.Unlock()
+	}
+}
+
+// ── RESTGateway ──
+
 // RESTGateway REST API → gRPC 转换网关
 // 手机App通过HTTPS访问，网关转为gRPC调用HUB内部服务
 type RESTGateway struct {
-	grpcSrv   *grpc.Server
-	logger    *zap.Logger
-	httpSrv   *http.Server
-	jwtSecret string
-	grpcConn  *grpc.ClientConn
+	grpcSrv      *grpc.Server
+	logger       *zap.Logger
+	httpSrv      *http.Server
+	jwtSecret    string
+	grpcConn     *grpc.ClientConn
+	rateLimiter  *rateLimiter
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
@@ -53,6 +151,25 @@ func (g *RESTGateway) WithGRPCConn(conn *grpc.ClientConn) *RESTGateway {
 	return g
 }
 
+// WithRateLimit configures the per-IP rate limiter.
+// Set limit <= 0 to disable rate limiting entirely.
+func (g *RESTGateway) WithRateLimit(requestsPerSec, burst int) *RESTGateway {
+	if requestsPerSec > 0 {
+		burstVal := burst
+		if burstVal <= 0 {
+			burstVal = requestsPerSec * 2
+		}
+		g.rateLimiter = newRateLimiter(float64(requestsPerSec), burstVal)
+		g.logger.Info("Rate limiter enabled",
+			zap.Int("requests_per_sec", requestsPerSec),
+			zap.Int("burst", burstVal),
+		)
+	} else {
+		g.logger.Info("Rate limiter disabled explicitly")
+	}
+	return g
+}
+
 func (g *RESTGateway) Serve(addr string) error {
 	// [S-01] JWT空密钥防御 — 启动时检查
 	if g.jwtSecret == "" {
@@ -69,6 +186,11 @@ func (g *RESTGateway) Serve(addr string) error {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(g.loggerMiddleware())
+
+	// [CRIT-2] 注册速率限制中间件（全局应用）
+	if g.rateLimiter != nil {
+		r.Use(g.rateLimitMiddleware())
+	}
 
 	// ── 健康检查 (公开) ──
 	r.GET("/health", func(c *gin.Context) {
@@ -135,6 +257,8 @@ func (g *RESTGateway) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// ── Middleware ──
+
 func (g *RESTGateway) loggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -146,6 +270,32 @@ func (g *RESTGateway) loggerMiddleware() gin.HandlerFunc {
 			zap.Duration("latency", time.Since(start)),
 			zap.String("client_ip", c.ClientIP()),
 		)
+	}
+}
+
+// rateLimitMiddleware rejects requests that exceed the per-IP rate limit.
+// Returns 429 Too Many Requests with a Retry-After header when throttled.
+func (g *RESTGateway) rateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientIP := c.ClientIP()
+		allowed, retryAfter := g.rateLimiter.allow(clientIP)
+		if !allowed {
+			retrySec := int(retryAfter.Seconds()) + 1 // round up
+			g.logger.Warn("Rate limit exceeded",
+				zap.String("client_ip", clientIP),
+				zap.String("method", c.Request.Method),
+				zap.String("path", c.Request.URL.Path),
+				zap.Int("retry_after_sec", retrySec),
+			)
+			c.Header("Retry-After", strconv.Itoa(retrySec))
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error":   "ERR_RATE_LIMIT",
+				"message": "too many requests — slow down",
+				"detail":  fmt.Sprintf("retry after %d seconds", retrySec),
+			})
+			return
+		}
+		c.Next()
 	}
 }
 
