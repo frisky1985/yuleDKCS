@@ -1,0 +1,117 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"go.uber.org/zap"
+
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
+)
+
+func main() {
+	// ── 启动参数 ──
+	mode := flag.String("mode", "all-in-one", "启动模式: all-in-one | hub-only | server-only")
+	httpAddr := flag.String("http-addr", ":8080", "REST API 监听地址")
+	grpcAddr := flag.String("grpc-addr", ":9090", "gRPC 监听地址")
+	jwtSecret := flag.String("jwt-secret", "", "JWT 签名密钥 (建议从环境变量读取)")
+	dbDSN := flag.String("db-dsn", "", "数据库连接串 (可选)")
+	flag.Parse()
+
+	// ── 日志 ──
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("init logger failed: %v", err)
+	}
+	defer logger.Sync()
+
+	logger.Info("yuleDKCS starting",
+		zap.String("mode", *mode),
+		zap.String("http_addr", *httpAddr),
+		zap.String("grpc_addr", *grpcAddr),
+	)
+
+	// ── 密钥 ──
+	secret := *jwtSecret
+	if secret == "" {
+		secret = os.Getenv("JWT_SECRET")
+	}
+
+	// ── 组件初始化 ──
+	deviceSvc := service.NewDeviceService(logger)
+
+	switch *mode {
+	case "hub-only":
+		startHubOnly(logger, *httpAddr, *grpcAddr, secret, deviceSvc)
+
+	case "server-only":
+		startServerOnly(logger, *grpcAddr, *dbDSN, deviceSvc)
+
+	case "all-in-one":
+		fallthrough
+	default:
+		startAllInOne(logger, *httpAddr, *grpcAddr, secret, *dbDSN, deviceSvc)
+	}
+}
+
+// startHubOnly 只启动编排层（Hub），密钥材料层通过 gRPC 外连车厂 DK Server
+func startHubOnly(logger *zap.Logger, httpAddr, grpcAddr, secret string, deviceSvc *service.DeviceService) {
+	logger.Info("mode: hub-only — 编排层独立运行")
+
+	// 初始化 Hub 网关
+	hub := gateway.NewRESTGateway(nil, logger)
+	hub.WithJWTSecret(secret)
+
+	// TODO: 通过 gRPC 连接车厂的 DK Server
+	// hub.WithDKServerConn(dkServerConn)
+
+	logger.Info("Hub ready, waiting for connections...")
+	if err := hub.Serve(httpAddr); err != nil {
+		logger.Fatal("hub serve failed", zap.Error(err))
+	}
+}
+
+// startServerOnly 只启动密钥材料层（DK Server），接受 Hub 的 gRPC 请求
+func startServerOnly(logger *zap.Logger, grpcAddr, dbDSN string, deviceSvc *service.DeviceService) {
+	logger.Info("mode: server-only — 密钥材料层独立运行")
+
+	_ = dbDSN
+	// TODO: 启动 gRPC 服务，实现 KeyStore / KMS 相关接口
+	// 接受 Hub 的编排指令，执行实际的密钥操作
+
+	logger.Info("DK Server ready, waiting for Hub connections...")
+	select {} // 阻塞等待
+}
+
+// startAllInOne Hub + DK Server 同进程部署（当前默认模式）
+func startAllInOne(logger *zap.Logger, httpAddr, grpcAddr, secret, dbDSN string, deviceSvc *service.DeviceService) {
+	logger.Info("mode: all-in-one — Hub + DK Server 同进程")
+
+	_ = dbDSN
+
+	// 初始化 Hub 网关（编排层）
+	hub := gateway.NewRESTGateway(nil, logger)
+	hub.WithJWTSecret(secret)
+
+	// Hub + Server 同进程：内部通过 Go 函数调用，零网络开销
+	// 当前 backend/cloud/hub/ 和 backend/dkcs/ 都直接可用
+
+	// ── 等待退出信号 ──
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		logger.Info(fmt.Sprintf("yuleDKCS listening on %s", httpAddr))
+		if err := hub.Serve(httpAddr); err != nil {
+			logger.Fatal("hub serve failed", zap.Error(err))
+		}
+	}()
+
+	sig := <-quit
+	logger.Info("shutting down", zap.String("signal", sig.String()))
+}

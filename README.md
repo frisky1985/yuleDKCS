@@ -128,15 +128,20 @@ cd frontend/android && ./gradlew build
 # iOS SDK 构建
 cd frontend/ios && xcodegen generate && xcodebuild -scheme DigitalKeySDK
 
-# Hub 服务启动
-cd backend/cloud/hub && go run cmd/hub/main.go
+# yuleDKCS 统一入口（Hub + DK Server 同进程，默认模式）
+go run ./backend/cloud/hub/cmd/yuledkcs --mode=all-in-one --http-addr=:8080 --jwt-secret=xxx
 
-# DKCS 服务启动
-cd backend/dkcs && go run cmd/dkcs/main.go
+# 仅启动编排层（Hub），密钥材料层通过 gRPC 连车厂 DK Server
+go run ./backend/cloud/hub/cmd/yuledkcs --mode=hub-only --http-addr=:8080 --jwt-secret=xxx
 
-# Adapters 启动
+# 仅启动密钥材料层（DK Server），接受 Hub 的 gRPC 请求
+go run ./backend/cloud/hub/cmd/yuledkcs --mode=server-only --grpc-addr=:9090
+
+# Java Adapters 启动（不变）
 cd backend/adapters && mvn spring-boot:run
 ```
+
+> **部署模式说明**: 参见 [DK Hub 架构设计](docs/design/DK-HUB-ARCHITECTURE.md)
 
 ## 📄 License
 

@@ -1,0 +1,13 @@
+#!/bin/sh
+cd "$(dirname "$0")/.."
+echo "=== yuleDKCS 统一入口 ==="
+echo ""
+echo "编译模式:"
+echo "  go run ./cmd/yuledkcs --mode=all-in-one --http-addr=:8080"
+echo "  go run ./cmd/yuledkcs --mode=hub-only --jwt-secret=xxx"
+echo "  go run ./cmd/yuledkcs --mode=server-only"
+echo ""
+echo "模式说明:"
+echo "  all-in-one   Hub + DK Server 同进程 (默认)"
+echo "  hub-only     只启编排层，通过gRPC连车厂DK Server"
+echo "  server-only  只启密钥材料层，接受Hub的gRPC"
