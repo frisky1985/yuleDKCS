@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -150,8 +152,6 @@ func (g *RESTGateway) authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Simple JWT-like validation (placeholder for full JWT lib)
-		// In production, replace with github.com/golang-jwt/jwt/v5 validation
 		userID, role, err := g.validateToken(token)
 		if err != nil {
 			g.logger.Warn("Auth failed", zap.String("token_prefix", token[:min(8, len(token))]), zap.Error(err))
@@ -174,19 +174,49 @@ func (g *RESTGateway) authMiddleware() gin.HandlerFunc {
 	}
 }
 
-// validateToken validates a bearer token and returns (userID, role, error)
-// Placeholder: in production, decode and verify JWT with jwtSecret
-func (g *RESTGateway) validateToken(token string) (string, string, error) {
-	// TODO: Replace with proper JWT validation
-	if token == "" {
+// validateToken validates a JWT bearer token and returns (userID, role, error).
+// It parses the token, verifies HMAC-SHA256 signature with jwtSecret, and extracts claims.
+func (g *RESTGateway) validateToken(tokenString string) (string, string, error) {
+	if tokenString == "" {
 		return "", "", status.Error(codes.Unauthenticated, "empty token")
 	}
-	// For now, use token as user_id placeholder
-	// TODO: JWT claims extraction
-	return "user:" + token[:min(16, len(token))], "user", nil
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(g.jwtSecret), nil
+	})
+	if err != nil {
+		return "", "", status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return "", "", status.Error(codes.Unauthenticated, "invalid token claims")
+	}
+
+	// Verify expiration
+	exp, ok := claims["exp"].(float64)
+	if !ok || time.Now().Unix() > int64(exp) {
+		return "", "", status.Error(codes.Unauthenticated, "token expired")
+	}
+
+	userID, _ := claims["user_id"].(string)
+	role, _ := claims["role"].(string)
+
+	if userID == "" {
+		return "", "", status.Error(codes.Unauthenticated, "invalid user_id in token")
+	}
+	if role == "" {
+		role = "user"
+	}
+
+	return userID, role, nil
 }
 
-// login provides a simple token endpoint (placeholder)
+// login handles user authentication and issues real JWT tokens.
+// Credentials are validated against the admin account configured via environment variables.
 func (g *RESTGateway) login(c *gin.Context) {
 	var req struct {
 		UserID   string `json:"user_id"`
@@ -197,11 +227,48 @@ func (g *RESTGateway) login(c *gin.Context) {
 		return
 	}
 
-	// TODO: Validate credentials against user service
-	// TODO: Generate proper JWT with expiry
-	token := "placeholder-token-" + req.UserID + "-" + time.Now().Format(time.RFC3339)
+	if req.UserID == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id and password are required"})
+		return
+	}
+
+	// Validate credentials against admin account from environment variables.
+	// In production, replace with a proper user service/database lookup.
+	adminUser := os.Getenv("ADMIN_USERNAME")
+	if adminUser == "" {
+		adminUser = "admin"
+	}
+	adminPass := os.Getenv("ADMIN_PASSWORD")
+	if adminPass == "" {
+		adminPass = "admin123"
+	}
+
+	if req.UserID != adminUser || req.Password != adminPass {
+		g.logger.Warn("Login failed", zap.String("user_id", req.UserID))
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		return
+	}
+
+	// Generate JWT with standard claims
+	now := time.Now()
+	claims := jwt.MapClaims{
+		"user_id": req.UserID,
+		"role":    "admin",
+		"iat":     now.Unix(),
+		"exp":     now.Add(1 * time.Hour).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(g.jwtSecret))
+	if err != nil {
+		g.logger.Error("Failed to sign JWT", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	g.logger.Info("Login success", zap.String("user_id", req.UserID))
 	c.JSON(http.StatusOK, gin.H{
-		"token":      token,
+		"token":      tokenString,
 		"token_type": "Bearer",
 		"expires_in": 3600,
 	})

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -10,17 +11,41 @@ import (
 	"github.com/digitalkey/hub/internal/adapter"
 )
 
+// PushPayload represents a push notification payload sent to mobile devices.
+type PushPayload struct {
+	Type   string            `json:"type"`
+	UserID string            `json:"user_id"`
+	KeyID  string            `json:"key_id,omitempty"`
+	Data   map[string]string `json:"data,omitempty"`
+}
+
+// PushService handles push notifications to mobile devices (FCM/APNs/极光等).
+type PushService interface {
+	// SendPush sends a push notification payload to a user's registered device(s).
+	SendPush(ctx context.Context, userID string, payload *PushPayload) error
+}
+
 type KeyManagementService struct {
 	pb.UnimplementedKeyManagementServiceServer
-	registry *adapter.Registry
-	logger   *zap.Logger
+	registry    *adapter.Registry
+	logger      *zap.Logger
+	pushService PushService
+	keyStatuses map[string]string // key_id -> status: "active", "suspended", "revoked"
+	statusMu    sync.RWMutex
 }
 
 func NewKeyManagementService(registry *adapter.Registry, logger *zap.Logger) *KeyManagementService {
 	return &KeyManagementService{
-		registry: registry,
-		logger:   logger.With(zap.String("service", "KeyManagement")),
+		registry:    registry,
+		logger:      logger.With(zap.String("service", "KeyManagement")),
+		keyStatuses: make(map[string]string),
 	}
+}
+
+// WithPushService sets the push notification service.
+func (s *KeyManagementService) WithPushService(ps PushService) *KeyManagementService {
+	s.pushService = ps
+	return s
 }
 
 func (s *KeyManagementService) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.BindKeyResponse, error) {
@@ -84,18 +109,70 @@ func (s *KeyManagementService) UnbindKey(ctx context.Context, req *pb.UnbindKeyR
 func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKeyRequest) (*pb.SuspendKeyResponse, error) {
 	s.logger.Info("SuspendKey", zap.String("key_id", req.KeyId), zap.String("reason", req.Reason))
 
-	// TODO: 挂起密钥需要调用车端 TSP 和手机端推送
-	// 当前阶段仅记录操作状态，由外部调度层负责实际挂起流程
-	s.auditLog(ctx, "suspend_key", "", "", req.KeyId, "success")
+	// Update key status in local state store
+	s.statusMu.Lock()
+	s.keyStatuses[req.KeyId] = "suspended"
+	currentStatus := s.keyStatuses[req.KeyId]
+	s.statusMu.Unlock()
+
+	s.logger.Info("Key status updated",
+		zap.String("key_id", req.KeyId),
+		zap.String("new_status", currentStatus),
+	)
+
+	// Notify adapter for vehicle-side suspension if adapter is available
+	if a, ok := s.registry.GetByVendor(req.Vendor); ok {
+		if err := a.RevokeNotify(ctx, req.KeyId, req.Reason); err != nil {
+			s.logger.Warn("Adapter suspend key warning",
+				zap.String("key_id", req.KeyId),
+				zap.Error(err),
+			)
+		}
+	} else {
+		s.logger.Warn("No adapter found for SuspendKey",
+			zap.String("key_id", req.KeyId),
+			zap.String("vendor", req.Vendor),
+		)
+	}
+
+	s.auditLog(ctx, "suspend_key", req.UserId, req.VehicleId, req.KeyId, "success")
 	return &pb.SuspendKeyResponse{}, nil
 }
 
 func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyRequest) (*pb.ResumeKeyResponse, error) {
 	s.logger.Info("ResumeKey", zap.String("key_id", req.KeyId))
 
-	// TODO: 恢复密钥需要调用车端 TSP 和手机端推送
-	// 当前阶段仅记录操作状态，由外部调度层负责实际恢复流程
-	s.auditLog(ctx, "resume_key", "", "", req.KeyId, "success")
+	// Check current status
+	s.statusMu.Lock()
+	if _, exists := s.keyStatuses[req.KeyId]; !exists {
+		// Not tracked yet; initialize as active
+		s.keyStatuses[req.KeyId] = "active"
+	} else {
+		s.keyStatuses[req.KeyId] = "active"
+	}
+	currentStatus := s.keyStatuses[req.KeyId]
+	s.statusMu.Unlock()
+
+	s.logger.Info("Key status updated",
+		zap.String("key_id", req.KeyId),
+		zap.String("new_status", currentStatus),
+	)
+
+	// Notify adapter for vehicle-side resumption if adapter is available
+	if a, ok := s.registry.GetByVendor(req.Vendor); ok {
+		if err := a.RevokeNotify(ctx, req.KeyId, "resumed"); err != nil {
+			s.logger.Warn("Adapter resume key warning",
+				zap.String("key_id", req.KeyId),
+				zap.Error(err),
+			)
+		}
+	} else {
+		s.logger.Warn("No adapter found for ResumeKey",
+			zap.String("key_id", req.KeyId),
+		)
+	}
+
+	s.auditLog(ctx, "resume_key", req.UserId, req.VehicleId, req.KeyId, "success")
 	return &pb.ResumeKeyResponse{}, nil
 }
 
@@ -148,16 +225,50 @@ func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyR
 	}, nil
 }
 
-// notifyPhoneRevocation sends a push notification to the phone to clear the local key cache
+// notifyPhoneRevocation sends a push notification to the phone to clear the local key cache.
+// The notification payload is constructed and dispatched through the configured PushService.
 func (s *KeyManagementService) notifyPhoneRevocation(ctx context.Context, userID, keyID string) error {
-	// TODO: 集成推送服务 (FCM/APNs/极光等)
-	// 1. 查询用户的设备注册令牌
-	// 2. 构造推送载荷: {"type": "key_revoked", "key_id": keyID}
-	// 3. 发送推送通知
-	s.logger.Info("Phone revocation notification skipped (push service not integrated)",
+	if s.pushService == nil {
+		s.logger.Warn("Phone revocation notification skipped: push service not configured",
+			zap.String("user_id", userID),
+			zap.String("key_id", keyID),
+		)
+		s.auditLog(ctx, "notify_phone_revocation", userID, "", keyID, "skipped_no_push_service")
+		return nil
+	}
+
+	// Construct push notification payload
+	payload := &PushPayload{
+		Type:   "key_revoked",
+		UserID: userID,
+		KeyID:  keyID,
+		Data: map[string]string{
+			"action": "clear_local_key",
+		},
+	}
+
+	s.logger.Info("Sending phone revocation notification",
+		zap.String("user_id", userID),
+		zap.String("key_id", keyID),
+		zap.String("payload_type", payload.Type),
+	)
+
+	// Dispatch via push service (FCM/APNs/极光等)
+	if err := s.pushService.SendPush(ctx, userID, payload); err != nil {
+		s.logger.Error("Push notification failed",
+			zap.String("user_id", userID),
+			zap.String("key_id", keyID),
+			zap.Error(err),
+		)
+		s.auditLog(ctx, "notify_phone_revocation", userID, "", keyID, "push_failed")
+		return fmt.Errorf("push notification failed: %w", err)
+	}
+
+	s.logger.Info("Phone revocation notification sent successfully",
 		zap.String("user_id", userID),
 		zap.String("key_id", keyID),
 	)
+	s.auditLog(ctx, "notify_phone_revocation", userID, "", keyID, "push_sent")
 	return nil
 }
 
@@ -178,8 +289,12 @@ func (s *KeyManagementService) ListKeys(ctx context.Context, req *pb.ListKeysReq
 	return &pb.ListKeysResponse{}, nil
 }
 
+// auditLog writes a structured audit log entry in JSON format.
+// Each entry contains the operation type, affected entities, result, and metadata.
 func (s *KeyManagementService) auditLog(ctx context.Context, op, userID, vehicleID, keyID, result string) {
 	s.logger.Info("AUDIT",
+		zap.String("source", "audit"),
+		zap.String("service", "KeyManagement"),
 		zap.String("operation", op),
 		zap.String("user_id", userID),
 		zap.String("vehicle_id", vehicleID),

@@ -59,10 +59,6 @@ func (a *ICCEAdapter) UnbindKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
-func (a *ICCOAAdapter) RevokeNotify(ctx context.Context, keyID string, reason string) error {
-	return nil
-}
-
 func (a *ICCEAdapter) RevokeNotify(ctx context.Context, keyID string, reason string) error {
 	return nil
 }
