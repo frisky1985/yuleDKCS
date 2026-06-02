@@ -1,0 +1,35 @@
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - misspell
+    - gofmt
+    - gocyclo
+    - goconst
+    - goimports
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  gofmt:
+    auto-fix: true
+  goimports:
+    local-prefixes: github.com/frisky1985/yuleDKCS
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocyclo
+    - path: \.pb\.go
+      linters:
+        - all

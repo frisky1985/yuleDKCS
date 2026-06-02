@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 )
 
 // 解码错误定义
@@ -72,9 +73,14 @@ func (d *Decoder) Decode() (*TLV, error) {
 	}
 	
 	// 读取Value
-	value := make([]byte, length)
-	if _, err := d.reader.Read(value); err != nil {
-		return nil, &DecodeError{Offset: int(offset), Err: ErrUnexpectedEnd}
+	var value []byte
+	if length > 0 {
+		value = make([]byte, length)
+		if _, err := io.ReadFull(d.reader, value); err != nil {
+			return nil, &DecodeError{Offset: int(offset), Err: ErrUnexpectedEnd}
+		}
+	} else {
+		value = make([]byte, 0)
 	}
 	
 	// 计算Raw长度

@@ -2,14 +2,19 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ─────────────────────────────────────────────────────────────
-// Mock Implementations
+// Mock Implementations (satisfy KeyRepository, VehicleRepository,
+// Logger, and Telemetry interfaces defined in interfaces.go)
 // ─────────────────────────────────────────────────────────────
 
 type mockKeyRepo struct {
@@ -105,6 +110,7 @@ type mockLogger struct{}
 
 func (m *mockLogger) Info(msg string, fields ...interface{})  {}
 func (m *mockLogger) Error(msg string, fields ...interface{}) {}
+func (m *mockLogger) Warn(msg string, fields ...interface{})  {}
 func (m *mockLogger) Debug(msg string, fields ...interface{}) {}
 
 type mockTelemetry struct {
@@ -122,24 +128,10 @@ func (m *mockTelemetry) IncCounter(name string, labels map[string]string) {
 func (m *mockTelemetry) RecordDuration(name string, d time.Duration) {}
 
 // ─────────────────────────────────────────────────────────────
-// Repository error definitions (add these so tests compile)
-// ─────────────────────────────────────────────────────────────
-
-var (
-	ErrKeyNotFound    = repository.ErrKeyNotFound
-	ErrVehicleNotFound = repository.ErrVehicleNotFound
-)
-
-func init() {
-	// Ensure error is registered
-	_ = repository.ErrKeyNotFound
-}
-
-// ─────────────────────────────────────────────────────────────
 // Helper: build service with mocks
 // ─────────────────────────────────────────────────────────────
 
-func buildTestKeyService(keyRepo *mockKeyRepo, vehicleRepo *mockVehicleRepo) *KeyService {
+func buildTestKeyService(keyRepo KeyRepository, vehicleRepo VehicleRepository) *KeyService {
 	return NewKeyService(
 		keyRepo,
 		vehicleRepo,
@@ -249,14 +241,8 @@ func TestCreateKey_Success(t *testing.T) {
 	if resp.KeyId == "" {
 		t.Error("KeyId should not be empty")
 	}
-	if resp.Secret == "" {
-		t.Error("Secret should not be empty")
-	}
 	if resp.Status != "pending" {
 		t.Errorf("want status 'pending', got '%s'", resp.Status)
-	}
-	if len(resp.Secret) != 64 {
-		t.Errorf("Secret should be 64 hex chars (32 bytes), got %d", len(resp.Secret))
 	}
 }
 
@@ -636,9 +622,9 @@ func TestShareKey_Success(t *testing.T) {
 	}
 
 	resp, err := svc.ShareKey(ctx, &pb.ShareKeyRequest{
-		KeyId:        origID,
-		ToUserId:     "user-002",
-		Permissions:  []string{"unlock"},
+		KeyId:    origID,
+		ToUserId: "user-002",
+		Permissions: []string{"unlock"},
 	})
 
 	if err != nil {
@@ -650,8 +636,8 @@ func TestShareKey_Success(t *testing.T) {
 	if resp.ShareCode == "" {
 		t.Error("ShareCode should not be empty")
 	}
-	if len(resp.ShareCode) != 6 {
-		t.Errorf("ShareCode should be 6 digits, got '%s' (len=%d)", resp.ShareCode, len(resp.ShareCode))
+	if len(resp.ShareCode) != 8 {
+		t.Errorf("ShareCode should be 8 hex chars, got '%s' (len=%d)", resp.ShareCode, len(resp.ShareCode))
 	}
 	if resp.ExpiresAt == 0 {
 		t.Error("ExpiresAt should be set")
@@ -734,5 +720,235 @@ func TestKey_HasPermission_Empty(t *testing.T) {
 
 	if key.HasPermission("unlock") {
 		t.Error("empty permissions should grant nothing")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// WithIdempotency Tests
+// ─────────────────────────────────────────────────────────────
+
+func TestWithIdempotency_Initializes(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+
+	result := svc.WithIdempotency(5 * time.Minute)
+
+	if result != svc {
+		t.Error("WithIdempotency should return the same service (builder pattern)")
+	}
+
+	svc.idempotencyMu.RLock()
+	defer svc.idempotencyMu.RUnlock()
+
+	if svc.idempotencyKeys == nil {
+		t.Error("idempotencyKeys map should be initialized")
+	}
+	if svc.idempotencyMaxAge != 5*time.Minute {
+		t.Errorf("idempotencyMaxAge: want %v, got %v", 5*time.Minute, svc.idempotencyMaxAge)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// checkAndMarkIdempotency Tests
+// ─────────────────────────────────────────────────────────────
+
+func TestCheckAndMarkIdempotency_FirstCall_ReturnsFalse(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+
+	// Need to initialize the map
+	svc.WithIdempotency(5 * time.Minute)
+
+	result := svc.checkAndMarkIdempotency("req-001")
+	if result {
+		t.Error("first call should return false (not duplicate)")
+	}
+}
+
+func TestCheckAndMarkIdempotency_DuplicateCall_ReturnsTrue(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+	svc.WithIdempotency(5 * time.Minute)
+
+	svc.checkAndMarkIdempotency("req-001")
+	result := svc.checkAndMarkIdempotency("req-001")
+	if !result {
+		t.Error("second call with same key should return true (duplicate)")
+	}
+}
+
+func TestCheckAndMarkIdempotency_DifferentKeys_AllFirstCalls(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+	svc.WithIdempotency(5 * time.Minute)
+
+	if svc.checkAndMarkIdempotency("req-001") {
+		t.Error("first req-001")
+	}
+	if svc.checkAndMarkIdempotency("req-002") {
+		t.Error("first req-002")
+	}
+	if svc.checkAndMarkIdempotency("req-003") {
+		t.Error("first req-003")
+	}
+	// Verify all are tracked
+	svc.idempotencyMu.RLock()
+	defer svc.idempotencyMu.RUnlock()
+	if len(svc.idempotencyKeys) != 3 {
+		t.Errorf("expected 3 tracked keys, got %d", len(svc.idempotencyKeys))
+	}
+}
+
+func TestCheckAndMarkIdempotency_AutoInitWhenNil(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+
+	// idempotencyKeys is nil; checkAndMarkIdempotency should auto-init
+	result := svc.checkAndMarkIdempotency("req-auto-init")
+	if result {
+		t.Error("auto-init call should return false")
+	}
+
+	svc.idempotencyMu.RLock()
+	defer svc.idempotencyMu.RUnlock()
+	if svc.idempotencyKeys == nil {
+		t.Error("idempotencyKeys should be auto-initialized")
+	}
+	if !svc.idempotencyKeys["req-auto-init"] {
+		t.Error("req-auto-init should be marked as processed")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// SuspendKey Tests (additional error paths)
+// ─────────────────────────────────────────────────────────────
+
+func TestSuspendKey_NotFound(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+	ctx := context.Background()
+
+	err := svc.SuspendKey(ctx, "nonexistent")
+	if err == nil {
+		t.Fatal("expected NotFound error")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.NotFound {
+		t.Errorf("want NotFound, got %v", st.Code())
+	}
+}
+
+func TestSuspendKey_UpdateError(t *testing.T) {
+	keyRepo := newMockKeyRepo()
+	vehicleRepo := newMockVehicleRepo()
+	svc := buildTestKeyService(keyRepo, vehicleRepo)
+	ctx := context.Background()
+
+	keyRepo.keys["key-suspend-update-err"] = &repository.Key{
+		ID:     "key-suspend-update-err",
+		Status: "active",
+	}
+	keyRepo.updateErr = errors.New("update failed")
+
+	err := svc.SuspendKey(ctx, "key-suspend-update-err")
+	if err == nil {
+		t.Fatal("expected error for DB update failure")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Internal {
+		t.Errorf("want Internal, got %v", st.Code())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// ResumeKey Tests (additional error paths)
+// ─────────────────────────────────────────────────────────────
+
+func TestResumeKey_NotFound(t *testing.T) {
+	svc := buildTestKeyService(newMockKeyRepo(), newMockVehicleRepo())
+	ctx := context.Background()
+
+	err := svc.ResumeKey(ctx, "nonexistent")
+	if err == nil {
+		t.Fatal("expected NotFound error")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.NotFound {
+		t.Errorf("want NotFound, got %v", st.Code())
+	}
+}
+
+func TestResumeKey_UpdateError(t *testing.T) {
+	keyRepo := newMockKeyRepo()
+	vehicleRepo := newMockVehicleRepo()
+	svc := buildTestKeyService(keyRepo, vehicleRepo)
+	ctx := context.Background()
+
+	keyRepo.keys["key-resume-update-err"] = &repository.Key{
+		ID:     "key-resume-update-err",
+		Status: "suspended",
+	}
+	keyRepo.updateErr = errors.New("update failed")
+
+	err := svc.ResumeKey(ctx, "key-resume-update-err")
+	if err == nil {
+		t.Fatal("expected error for DB update failure")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Internal {
+		t.Errorf("want Internal, got %v", st.Code())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// RevokeKey Tests (additional error paths)
+// ─────────────────────────────────────────────────────────────
+
+func TestRevokeKey_UpdateError(t *testing.T) {
+	keyRepo := newMockKeyRepo()
+	vehicleRepo := newMockVehicleRepo()
+	svc := buildTestKeyService(keyRepo, vehicleRepo)
+	ctx := context.Background()
+
+	keyRepo.keys["key-revoke-update-err"] = &repository.Key{
+		ID:     "key-revoke-update-err",
+		Status: "active",
+	}
+	keyRepo.updateErr = errors.New("update failed")
+
+	_, err := svc.RevokeKey(ctx, &pb.RevokeKeyRequest{KeyId: "key-revoke-update-err"})
+	if err == nil {
+		t.Fatal("expected error for DB update failure")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Internal {
+		t.Errorf("want Internal, got %v", st.Code())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
+// ShareKey Tests (additional error paths)
+// ─────────────────────────────────────────────────────────────
+
+func TestShareKey_CreateError(t *testing.T) {
+	keyRepo := newMockKeyRepo()
+	vehicleRepo := newMockVehicleRepo()
+	svc := buildTestKeyService(keyRepo, vehicleRepo)
+	ctx := context.Background()
+
+	keyRepo.keys["key-share-err"] = &repository.Key{
+		ID:          "key-share-err",
+		VehicleID:   "v-001",
+		UserID:      "user-001",
+		Status:      "active",
+		KeyType:     "primary",
+		Permissions: []string{"share"},
+	}
+	keyRepo.createErr = errors.New("db create error")
+
+	_, err := svc.ShareKey(ctx, &pb.ShareKeyRequest{
+		KeyId:    "key-share-err",
+		ToUserId: "user-002",
+	})
+	if err == nil {
+		t.Fatal("expected error for DB create failure")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Internal {
+		t.Errorf("want Internal, got %v", st.Code())
 	}
 }

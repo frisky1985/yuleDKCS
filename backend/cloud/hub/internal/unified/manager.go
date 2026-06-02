@@ -297,7 +297,7 @@ func (m *Manager) bindKeyCCC(ctx context.Context, req *pb.BindKeyRequest) (*pb.B
 
 // ShareKey 统一密钥分享入口
 func (m *Manager) ShareKey(ctx context.Context, sessionID string, req *pb.CreateShareRequest) (*pb.CreateShareResponse, error) {
-	session, ok := m.sessionManager.GetSession(sessionID)
+	_, ok := m.sessionManager.GetSession(sessionID)
 	if !ok {
 		return nil, fmt.Errorf("session not found")
 	}
@@ -319,7 +319,7 @@ func (m *Manager) ShareKey(ctx context.Context, sessionID string, req *pb.Create
 		Type: MsgTypeKeyShare,
 		KeyShare: &KeyShareMessage{
 			KeyID:       req.KeyId,
-			RecipientID: req.RecipientId,
+			RecipientID: req.ToUserId,
 			AccessLevel: req.AccessLevel,
 			ValidUntil:  req.ValidUntil,
 		},
@@ -332,7 +332,7 @@ func (m *Manager) ShareKey(ctx context.Context, sessionID string, req *pb.Create
 	
 	m.logger.Info("ShareKey encoded",
 		zap.String("key_id", req.KeyId),
-		zap.String("recipient", req.RecipientId),
+		zap.String("recipient", req.ToUserId),
 		zap.String("protocol", proto.String()),
 		zap.ByteString("data", data),
 	)
@@ -374,12 +374,19 @@ func (m *Manager) HandleVehicleStatus(ctx context.Context, sessionID string, dat
 		zap.String("protocol", proto.String()),
 	)
 	
+	lockStatus := int32(0)
+	if vs.DoorsLocked {
+		lockStatus = 1
+	}
+	engineStatus := int32(0)
+	if vs.EngineOn {
+		engineStatus = 1
+	}
 	return &pb.VehicleStatusUpdate{
-		VehicleId:   vs.VehicleID,
-		KeyId:       vs.KeyID,
-		DoorsLocked: vs.DoorsLocked,
-		EngineOn:    vs.EngineOn,
-		Battery:     int32(vs.BatteryLevel),
+		VehicleId:    vs.VehicleID,
+		LockStatus:   lockStatus,
+		EngineStatus: engineStatus,
+		BatteryPct:   int32(vs.BatteryLevel),
 	}, nil
 }
 

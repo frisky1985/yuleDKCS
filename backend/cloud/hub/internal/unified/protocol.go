@@ -1,7 +1,6 @@
 package unified
 
 import (
-	"context"
 	"fmt"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
@@ -291,28 +290,7 @@ func (a RemoteAction) String() string {
 	}[a]
 }
 
-// ToProtoAction 转换为 protobuf 动作
-func (a RemoteAction) ToProtoAction() pb.RemoteAction {
-	switch a {
-	case ActionLock:
-		return pb.RemoteAction_LOCK
-	case ActionUnlock:
-		return pb.RemoteAction_UNLOCK
-	case ActionEngineStart:
-		return pb.RemoteAction_ENGINE_START
-	case ActionEngineStop:
-		return pb.RemoteAction_ENGINE_STOP
-	case ActionTrunkOpen:
-		return pb.RemoteAction_TRUNK_OPEN
-	case ActionTrunkClose:
-		return pb.RemoteAction_TRUNK_CLOSE
-	case ActionFindCar:
-		return pb.RemoteAction_FIND_CAR
-	case ActionClimateOn:
-		return pb.RemoteAction_CLIMATE_ON
-	case ActionClimateOff:
-		return pb.RemoteAction_CLIMATE_OFF
-	default:
-		return pb.RemoteAction_ACTION_UNSPECIFIED
-	}
+// ToProtoAction 转换为 protobuf 动作 (返回 int32 兼容值)
+func (a RemoteAction) ToProtoAction() int32 {
+	return int32(a)
 }

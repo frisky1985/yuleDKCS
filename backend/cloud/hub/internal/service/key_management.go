@@ -290,10 +290,17 @@ func (s *KeyManagementService) UnbindKey(ctx context.Context, req *pb.UnbindKeyR
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
 	}
 
+	// 查询密钥记录以获取适配器信息
+	keyRecord, keyErr := s.keyStore.GetKeyRecord(ctx, req.KeyId)
+	if keyErr != nil {
+		s.logger.Warn("UnbindKey: key record lookup failed", zap.Error(keyErr))
+		return nil, status.Error(codes.Internal, "failed to look up key record")
+	}
+
 	// 查找密钥所属适配器并解绑
-	a, ok := s.registry.GetByVendor(req.Vendor)
+	a, ok := s.registry.GetByVendor(keyRecord.Vendor)
 	if !ok {
-		s.auditLog(ctx, "unbind_key", userID, "", req.KeyId, "partial_no_adapter")
+		s.auditLog(ctx, "unbind_key", userID, keyRecord.VehicleID, req.KeyId, "partial_no_adapter")
 		return &pb.UnbindKeyResponse{
 			ErrorCode: "SUCCESS_NO_ADAPTER",
 		}, nil
@@ -302,13 +309,13 @@ func (s *KeyManagementService) UnbindKey(ctx context.Context, req *pb.UnbindKeyR
 	// 调用适配器解绑密钥（删除手机端/车端密钥数据）
 	if err := a.UnbindKey(ctx, req.KeyId); err != nil {
 		s.logger.Error("UnbindKey adapter error", zap.Error(err))
-		s.auditLog(ctx, "unbind_key", userID, "", req.KeyId, "adapter_error")
+		s.auditLog(ctx, "unbind_key", userID, keyRecord.VehicleID, req.KeyId, "adapter_error")
 		return &pb.UnbindKeyResponse{
 			ErrorCode: "ADAPTER_ERROR",
 		}, nil
 	}
 
-	s.auditLog(ctx, "unbind_key", userID, "", req.KeyId, "success")
+	s.auditLog(ctx, "unbind_key", userID, keyRecord.VehicleID, req.KeyId, "success")
 	return &pb.UnbindKeyResponse{}, nil
 }
 
@@ -322,9 +329,16 @@ func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKe
 		return nil, status.Error(codes.Unauthenticated, "missing authentication context")
 	}
 	if !s.verifyKeyOwnership(ctx, userID, req.KeyId) {
-		s.auditLog(ctx, "suspend_key", userID, req.VehicleId, req.KeyId, "denied_not_owner")
+		s.auditLog(ctx, "suspend_key", userID, "", req.KeyId, "denied_not_owner")
 		return nil, status.Error(codes.PermissionDenied,
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
+	}
+
+	// 查询密钥记录以获取适配器信息
+	keyRecord, keyErr := s.keyStore.GetKeyRecord(ctx, req.KeyId)
+	if keyErr != nil {
+		s.logger.Warn("SuspendKey: key record lookup failed", zap.Error(keyErr))
+		return nil, status.Error(codes.Internal, "failed to look up key record")
 	}
 
 	// Update key status in store
@@ -337,7 +351,7 @@ func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKe
 	}
 
 	// Notify adapter for vehicle-side suspension if adapter is available
-	if a, ok := s.registry.GetByVendor(req.Vendor); ok {
+	if a, ok := s.registry.GetByVendor(keyRecord.Vendor); ok {
 		if err := a.RevokeNotify(ctx, req.KeyId, req.Reason); err != nil {
 			s.logger.Warn("Adapter suspend key warning",
 				zap.String("key_id", req.KeyId),
@@ -347,11 +361,11 @@ func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKe
 	} else {
 		s.logger.Warn("No adapter found for SuspendKey",
 			zap.String("key_id", req.KeyId),
-			zap.String("vendor", req.Vendor),
+			zap.String("vendor", keyRecord.Vendor),
 		)
 	}
 
-	s.auditLog(ctx, "suspend_key", userID, req.VehicleId, req.KeyId, "success")
+	s.auditLog(ctx, "suspend_key", userID, keyRecord.VehicleID, req.KeyId, "success")
 	return &pb.SuspendKeyResponse{}, nil
 }
 
@@ -370,6 +384,13 @@ func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyR
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
 	}
 
+	// 查询密钥记录以获取适配器信息
+	keyRecord, keyErr := s.keyStore.GetKeyRecord(ctx, req.KeyId)
+	if keyErr != nil {
+		s.logger.Warn("ResumeKey: key record lookup failed", zap.Error(keyErr))
+		return nil, status.Error(codes.Internal, "failed to look up key record")
+	}
+
 	// Update key status in store
 	if err := s.keyStore.SetKeyStatus(ctx, req.KeyId, "active"); err != nil {
 		s.logger.Warn("ResumeKey: store update failed",
@@ -379,7 +400,7 @@ func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyR
 	}
 
 	// Notify adapter for vehicle-side resumption if adapter is available
-	if a, ok := s.registry.GetByVendor(req.Vendor); ok {
+	if a, ok := s.registry.GetByVendor(keyRecord.Vendor); ok {
 		if err := a.RevokeNotify(ctx, req.KeyId, "resumed"); err != nil {
 			s.logger.Warn("Adapter resume key warning",
 				zap.String("key_id", req.KeyId),
@@ -392,7 +413,7 @@ func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyR
 		)
 	}
 
-	s.auditLog(ctx, "resume_key", userID, req.VehicleId, req.KeyId, "success")
+	s.auditLog(ctx, "resume_key", userID, keyRecord.VehicleID, req.KeyId, "success")
 	return &pb.ResumeKeyResponse{}, nil
 }
 
@@ -406,60 +427,44 @@ func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyR
 		return nil, status.Error(codes.Unauthenticated, "missing authentication context")
 	}
 	if !s.verifyKeyOwnership(ctx, userID, req.KeyId) {
-		s.auditLog(ctx, "revoke_key", userID, req.VehicleId, req.KeyId, "denied_not_owner")
+		s.auditLog(ctx, "revoke_key", userID, "", req.KeyId, "denied_not_owner")
 		return nil, status.Error(codes.PermissionDenied,
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
 	}
 
-	// Step 1: 查找密钥归属的适配器
-	a, ok := s.registry.GetByVendor(req.Vendor)
-	if !ok {
-		// 即使没有适配器也记录吊销（至少DB层面已标记）
-		s.auditLog(ctx, "revoke_key", userID, req.VehicleId, req.KeyId, "partial_no_adapter")
-		_ = s.keyStore.SetKeyStatus(ctx, req.KeyId, "revoked")
-		return &pb.RevokeKeyResponse{
-			KeyId:     req.KeyId,
-			Status:    "revoked",
-			Timestamp: time.Now().UnixMilli(),
-		}, nil
+	// 查询密钥记录以获取适配器信息
+	keyRecord, keyErr := s.keyStore.GetKeyRecord(ctx, req.KeyId)
+	if keyErr != nil {
+		s.logger.Warn("RevokeKey: key record lookup failed", zap.Error(keyErr))
+		return nil, status.Error(codes.Internal, "failed to look up key record")
 	}
 
-	// Step 2: 调用 TSP 适配器通知车端撤销
-	resp, err := a.RevokeKey(ctx, req)
-	if err != nil {
-		s.logger.Error("RevokeKey adapter error", zap.Error(err))
-		// 适配器失败仍需记录审计，返回部分成功
-		_ = s.keyStore.SetKeyStatus(ctx, req.KeyId, "revoked")
-		s.auditLog(ctx, "revoke_key", userID, req.VehicleId, req.KeyId, "partial_adapter_error")
-		return &pb.RevokeKeyResponse{
-			KeyId:     req.KeyId,
-			Status:    "revoked_local",
-			Timestamp: time.Now().UnixMilli(),
-			ErrorCode: "ADAPTER_ERROR",
-			ErrorMsg:  err.Error(),
-		}, nil
+	// Step 1: 查找密钥归属的适配器并通知车端撤销
+	a, ok := s.registry.GetByVendor(keyRecord.Vendor)
+	if ok {
+		if err := a.RevokeNotify(ctx, req.KeyId, req.Reason); err != nil {
+			s.logger.Error("RevokeKey adapter error", zap.Error(err))
+			s.auditLog(ctx, "revoke_key", userID, keyRecord.VehicleID, req.KeyId, "partial_adapter_error")
+		}
+	} else {
+		s.auditLog(ctx, "revoke_key", userID, keyRecord.VehicleID, req.KeyId, "partial_no_adapter")
 	}
 
 	// Update local store
 	_ = s.keyStore.SetKeyStatus(ctx, req.KeyId, "revoked")
 
-	// Step 3: 通知手机端清除本地缓存的密钥 (通过推送服务)
+	// Step 2: 通知手机端清除本地缓存的密钥 (通过推送服务)
 	if err := s.notifyPhoneRevocation(ctx, userID, req.KeyId); err != nil {
 		s.logger.Warn("Failed to notify phone", zap.Error(err))
 		// 不阻止整个流程
 	}
 
-	s.auditLog(ctx, "revoke_key", userID, req.VehicleId, req.KeyId, "success")
+	s.auditLog(ctx, "revoke_key", userID, keyRecord.VehicleID, req.KeyId, "success")
 	s.logger.Info("Key revoked successfully",
 		zap.String("key_id", req.KeyId),
-		zap.String("status", resp.Status),
 	)
 
-	return &pb.RevokeKeyResponse{
-		KeyId:     req.KeyId,
-		Status:    resp.Status,
-		Timestamp: time.Now().UnixMilli(),
-	}, nil
+	return &pb.RevokeKeyResponse{}, nil
 }
 
 // notifyPhoneRevocation sends a push notification to the phone to clear the local key cache.

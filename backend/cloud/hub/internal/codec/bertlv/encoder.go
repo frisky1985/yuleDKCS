@@ -45,15 +45,15 @@ func EncodeTLV(tag Tag, length int, value []byte) ([]byte, error) {
 func (e *Encoder) encodeValue(tag Tag, value interface{}) error {
 	switch v := value.(type) {
 	case int:
-		return e.writeInt(tag, int64(v))
+		return e.writeInt(tag, int64(v), 8)
 	case int8:
-		return e.writeInt(tag, int64(v))
+		return e.writeInt(tag, int64(v), 1)
 	case int16:
-		return e.writeInt(tag, int64(v))
+		return e.writeInt(tag, int64(v), 2)
 	case int32:
-		return e.writeInt(tag, int64(v))
+		return e.writeInt(tag, int64(v), 4)
 	case int64:
-		return e.writeInt(tag, v)
+		return e.writeInt(tag, v, 8)
 	case uint:
 		return e.writeUint(tag, uint64(v))
 	case uint8:
@@ -79,8 +79,12 @@ func (e *Encoder) encodeValue(tag Tag, value interface{}) error {
 
 // writeInt encodes a signed integer with dynamic length
 // based on the minimum bytes needed for two's complement representation.
-func (e *Encoder) writeInt(tag Tag, value int64) error {
+// prefSize specifies the minimum byte count (e.g. 8 for int64, 4 for int32).
+func (e *Encoder) writeInt(tag Tag, value int64, prefSize int) error {
 	bytesNeeded := intSize(value)
+	if bytesNeeded < prefSize {
+		bytesNeeded = prefSize
+	}
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, uint64(value))
 	return e.writeTLV(tag, bytesNeeded, buf[8-bytesNeeded:])
@@ -112,35 +116,23 @@ func (e *Encoder) writeTLV(tag Tag, length int, value []byte) error {
 func (e *Encoder) writeTag(tag Tag) error {
 	t := uint32(tag)
 
-	// Single-byte: 0x00-0x1F, 0x80-0x9E, or 0xC0-0xFF (first byte)
-	if t <= 0x1F || (t >= 0x80 && t <= 0x9E) || byte(t) >= 0xC0 {
+	// Single-byte tag: write the raw byte
+	if t < 0x100 {
 		return e.buf.WriteByte(byte(t))
 	}
 
-	// Multi-byte: count bytes needed (preserve original t for encoding)
-	bytesNeeded := 0
-	for tmp := t; ; {
-		tmp >>= 7
-		bytesNeeded++
-		if tmp == 0 {
-			break
-		}
+	// Multi-byte tag: write raw bytes big-endian
+	var b []byte
+	switch {
+	case t < 0x10000:
+		b = []byte{byte(t >> 8), byte(t)}
+	case t < 0x1000000:
+		b = []byte{byte(t >> 16), byte(t >> 8), byte(t)}
+	default:
+		b = []byte{byte(t >> 24), byte(t >> 16), byte(t >> 8), byte(t)}
 	}
-
-	// Build bytes right-to-left, extracting 7 bits at a time from orig
-	b := make([]byte, bytesNeeded)
-	for i := bytesNeeded - 1; i >= 0; i-- {
-		b[i] = byte(t>>uint(7*i)) & 0x7F
-	}
-	// Set continuation bit (b7=1) on all but the last byte
-	for i := 0; i < bytesNeeded-1; i++ {
-		b[i] |= 0x80
-	}
-
-	if _, err := e.buf.Write(b); err != nil {
-		return err
-	}
-	return nil
+	_, err := e.buf.Write(b)
+	return err
 }
 
 // writeLength encodes length per BER rules

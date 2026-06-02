@@ -186,19 +186,19 @@ func (e ErrorCode) String() string {
 	if name, ok := errorNames[e]; ok {
 		return name
 	}
-	return fmt.Sprintf("ERR_UNKNOWN_0x%04X", e)
+	return fmt.Sprintf("ERR_UNKNOWN_0x%04X", uint16(e))
 }
 
 // Error 错误接口实现
 func (e ErrorCode) Error() string {
-	return fmt.Sprintf("[0x%04X] %s", e, e.String())
+	return fmt.Sprintf("[0x%04X] %s", uint16(e), e.String())
 }
 
 // ToMap 转换为Map格式
 func (e ErrorCode) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"code":    e,
-		"code_hex": fmt.Sprintf("0x%04X", e),
+		"code_hex": fmt.Sprintf("0x%04X", uint16(e)),
 		"name":    e.String(),
 		"category": e.GetCategory().String(),
 	}
@@ -274,9 +274,9 @@ func NewErrorWithCause(code ErrorCode, message string, cause error) *DigitalKeyE
 // Error 实现error接口
 func (e *DigitalKeyError) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("[0x%04X] %s: %v", e.Code, e.Message, e.Cause)
+		return fmt.Sprintf("[0x%04X] %s: %v", uint16(e.Code), e.Message, e.Cause)
 	}
-	return fmt.Sprintf("[0x%04X] %s", e.Code, e.Message)
+	return fmt.Sprintf("[0x%04X] %s", uint16(e.Code), e.Message)
 }
 
 // ToMap 转换为Map

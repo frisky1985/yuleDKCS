@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token"
 )
 
@@ -81,7 +83,7 @@ func NewGRPCDKServer() *GRPCDKServer {
 }
 
 // RegisterGRPCServer 将 DK Server 注册到 gRPC 服务器
-func (s *GRPCDKServer) RegisterGRPCServer(srv interface{ RegisterService(desc, impl) }) {
+func (s *GRPCDKServer) RegisterGRPCServer(srv grpc.ServiceRegistrar) {
 	// TODO: proto 编译后取消注释
 	// pb.RegisterDKServerServer(srv, s)
 	_ = srv

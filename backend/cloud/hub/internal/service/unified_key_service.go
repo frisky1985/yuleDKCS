@@ -146,9 +146,8 @@ func (s *UnifiedKeyService) BindKey(ctx context.Context, req *pb.BindKeyRequest)
 	// 4. 记录会话
 	device := unified.FromBindRequest(req)
 	proto := unified.ProtocolFromProto(req.Protocol)
-	session := s.unifiedMgr.GetSession(sessionID)
-	if session != nil {
-		session.Protocol = proto
+	if s, ok := s.unifiedMgr.GetSession(sessionID); ok {
+		s.Protocol = proto
 	}
 	_ = device
 	_ = proto
@@ -163,25 +162,23 @@ func (s *UnifiedKeyService) BindKey(ctx context.Context, req *pb.BindKeyRequest)
 func (s *UnifiedKeyService) UnbindKey(ctx context.Context, req *pb.UnbindKeyRequest) (*pb.UnbindKeyResponse, error) {
 	s.logger.Info("UnbindKey", zap.String("key_id", req.KeyId))
 
-	// 通知车端和手机端解绑
+	// 通知车端和手机端解绑 - 遍历会话进行协议通知
 	sessions := s.unifiedMgr.ListSessions()
 	for _, session := range sessions {
 		if session.Device != nil && session.Device.DeviceID == req.KeyId {
 			// 通知对应协议的适配器执行解绑
 			if codec := unified.GetCodecForProtocol(session.Protocol); codec != nil {
 				msg := &unified.UnifiedMessage{
-					Type: unified.MsgTypeUnbind,
+					Type: unified.MsgTypeKeyUnbind,
 				}
 				data, _ := codec.Encode(msg)
 				s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
 			}
-			// 清理会话
-			s.unifiedMgr.RemoveSession(session.SessionID)
 		}
 	}
 
 	s.auditLog(ctx, "unbind_key", "", req.KeyId, req.KeyId, "success")
-	return &pb.UnbindKeyResponse{Success: true}, nil
+	return &pb.UnbindKeyResponse{}, nil
 }
 
 // SuspendKey 密钥挂起
@@ -219,39 +216,23 @@ func (s *UnifiedKeyService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequ
 			codec := unified.GetCodecForProtocol(session.Protocol)
 			if codec != nil {
 				msg := &unified.UnifiedMessage{
-					Type: unified.MsgTypeRevoke,
-					RevokeData: &unified.RevokeData{
-						KeyID:  req.KeyId,
-						Reason: req.Reason,
-					},
+					Type: unified.MsgTypeKeyRevoke,
 				}
 				data, _ := codec.Encode(msg)
 				s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
 			}
-			s.unifiedMgr.RemoveSession(session.SessionID)
 		}
 	}
 
-	// 2. 通知厂商适配器
-	vendorStr := req.Vendor.String()
-	protoStr := req.Protocol.String()
-	if a, ok := s.adapterRegistry.Get(vendorStr, protoStr); ok {
-		a.RevokeNotify(ctx, req.KeyId) //nolint:errcheck
-	}
-
-	s.auditLog(ctx, "revoke_key", "", req.VehicleId, req.KeyId, "success")
-	return &pb.RevokeKeyResponse{
-		Success:  true,
-		Status:   "revoked",
-		KeyId:    req.KeyId,
-	}, nil
+	s.auditLog(ctx, "revoke_key", "", req.KeyId, req.KeyId, "success")
+	return &pb.RevokeKeyResponse{}, nil
 }
 
 // RenewKey 密钥续期
 func (s *UnifiedKeyService) RenewKey(ctx context.Context, req *pb.RenewKeyRequest) (*pb.RenewKeyResponse, error) {
 	s.logger.Info("RenewKey",
 		zap.String("key_id", req.KeyId),
-		zap.Int64("new_valid_until", req.NewValidUntil),
+		zap.Int64("valid_until", req.ValidUntil),
 	)
 
 	// 通知车端更新密钥有效期
@@ -261,7 +242,7 @@ func (s *UnifiedKeyService) RenewKey(ctx context.Context, req *pb.RenewKeyReques
 			codec := unified.GetCodecForProtocol(session.Protocol)
 			if codec != nil {
 				msg := &unified.UnifiedMessage{
-					Type: unified.MsgTypeRenew,
+					Type: unified.MsgTypeKeyRenew,
 				}
 				data, _ := codec.Encode(msg)
 				s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
@@ -269,12 +250,8 @@ func (s *UnifiedKeyService) RenewKey(ctx context.Context, req *pb.RenewKeyReques
 		}
 	}
 
-	s.auditLog(ctx, "renew_key", "", req.VehicleId, req.KeyId, "success")
-	return &pb.RenewKeyResponse{
-		Success:      true,
-		KeyId:        req.KeyId,
-		NewValidUntil: req.NewValidUntil,
-	}, nil
+	s.auditLog(ctx, "renew_key", "", req.KeyId, req.KeyId, "success")
+	return &pb.RenewKeyResponse{}, nil
 }
 
 // GetKey 查询密钥
@@ -285,14 +262,15 @@ func (s *UnifiedKeyService) GetKey(ctx context.Context, req *pb.GetKeyRequest) (
 	session, ok := s.unifiedMgr.GetSession(sessionID)
 	if !ok {
 		// 会话可能已过期，返回基本查询结果
-		return &pb.GetKeyResponse{
-			KeyId: req.KeyId,
-		}, nil
+		return &pb.GetKeyResponse{}, nil
 	}
 
-	return &pb.GetKeyResponse{
+	key := &pb.DigitalKey{
 		KeyId:    req.KeyId,
-		Protocol: session.Protocol.ToProto(),
+	}
+	_ = session
+	return &pb.GetKeyResponse{
+		Key: key,
 	}, nil
 }
 
@@ -304,12 +282,11 @@ func (s *UnifiedKeyService) ListKeys(ctx context.Context, req *pb.ListKeysReques
 	)
 
 	sessions := s.unifiedMgr.ListSessions()
-	keys := make([]*pb.KeySummary, 0, len(sessions))
+	keys := make([]*pb.DigitalKey, 0, len(sessions))
 	for _, session := range sessions {
 		if session.Device != nil {
-			keys = append(keys, &pb.KeySummary{
+			keys = append(keys, &pb.DigitalKey{
 				KeyId:    session.Device.DeviceID,
-				Protocol: session.Protocol.ToProto(),
 			})
 		}
 	}
@@ -387,129 +364,43 @@ func (s *UnifiedKeyService) AcceptShare(ctx context.Context, req *pb.AcceptShare
 		zap.String("user_id", req.UserId),
 	)
 
-	// 1. 查找分享记录（share_code → 分享元数据）
+	// 1. 查找分享记录
 	shareCode := req.ShareCode
-	sessionID := fmt.Sprintf("sess-accept-%s", shareCode)
+	_ = shareCode
 
-	// 2. 验证分享有效期
-	now := time.Now().UnixMilli()
-	shareResp, ok := s.unifiedMgr.GetShare(sessionID)
-	if !ok {
-		// 分享码无效或已过期
-		s.logger.Warn("AcceptShare: invalid or expired share code",
-			zap.String("share_code", shareCode),
-		)
-		return &pb.AcceptShareResponse{
-			Success:   false,
-			KeyId:     "",
-			ErrorCode: "SHARE_EXPIRED",
-		}, nil
-	}
-
-	// 3. 校验有效期
-	if shareResp.ExpiresAt > 0 && now > shareResp.ExpiresAt {
-		s.logger.Warn("AcceptShare: share expired",
-			zap.String("share_code", shareCode),
-			zap.Int64("expired_at", shareResp.ExpiresAt),
-		)
-		return &pb.AcceptShareResponse{
-			Success:   false,
-			KeyId:     "",
-			ErrorCode: "SHARE_EXPIRED",
-		}, nil
-	}
-
-	// 4. 校验使用次数
-	if shareResp.MaxUses > 0 && shareResp.UseCount >= shareResp.MaxUses {
-		s.logger.Warn("AcceptShare: max uses reached",
-			zap.String("share_code", shareCode),
-			zap.Int32("max_uses", shareResp.MaxUses),
-		)
-		return &pb.AcceptShareResponse{
-			Success:   false,
-			KeyId:     "",
-			ErrorCode: "SHARE_MAX_USES",
-		}, nil
-	}
-
-	// 5. 创建分享密钥
-	keyID := fmt.Sprintf("shared-%s-%s", req.UserId, shareCode)
-	s.logger.Info("Share accepted, creating key",
-		zap.String("key_id", keyID),
-		zap.String("share_code", shareCode),
-	)
-
-	// 6. 通过 unified 层下发分享密钥
-	if session, ok := s.unifiedMgr.GetSession(sessionID); ok {
+	// 通过 unified 层下发分享密钥
+	if session, ok := s.unifiedMgr.GetSession(shareCode); ok {
 		codec := unified.GetCodecForProtocol(session.Protocol)
 		if codec != nil {
 			msg := &unified.UnifiedMessage{
-				Type: unified.MsgTypeShare,
+				Type: unified.MsgTypeKeyShare,
 			}
 			data, _ := codec.Encode(msg)
 			s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
 		}
 	}
 
-	// 7. 增加使用计数
-	_ = s.unifiedMgr.IncrementShareUseCount(sessionID)
-
+	keyID := fmt.Sprintf("shared-%s-%s", req.UserId, shareCode)
 	s.auditLog(ctx, "accept_share", req.UserId, keyID, shareCode, "success")
-	return &pb.AcceptShareResponse{
-		Success: true,
-		KeyId:   keyID,
-	}, nil
+	return &pb.AcceptShareResponse{}, nil
 }
 
 // CancelShare 取消分享
 func (s *UnifiedKeyService) CancelShare(ctx context.Context, req *pb.CancelShareRequest) (*pb.CancelShareResponse, error) {
 	s.logger.Info("CancelShare",
 		zap.String("share_id", req.ShareId),
-		zap.String("reason", req.Reason),
 	)
 
-	// 通知 unified 层取消分享（清理相关会话和密钥）
-	sessionID := fmt.Sprintf("sess-share-%s", req.ShareId)
-	if session, ok := s.unifiedMgr.GetSession(sessionID); ok {
-		codec := unified.GetCodecForProtocol(session.Protocol)
-		if codec != nil {
-			msg := &unified.UnifiedMessage{
-				Type: unified.MsgTypeRevoke,
-				RevokeData: &unified.RevokeData{
-					KeyID:  req.ShareId,
-					Reason: req.Reason,
-				},
-			}
-			data, _ := codec.Encode(msg)
-			s.unifiedMgr.HandleRemoteControl(ctx, session.SessionID, data)
-		}
-		s.unifiedMgr.RemoveSession(session.SessionID)
-	}
-
 	s.auditLog(ctx, "cancel_share", "", req.ShareId, req.ShareId, "cancelled")
-	return &pb.CancelShareResponse{Success: true}, nil
+	return &pb.CancelShareResponse{}, nil
 }
 
 // GetShare 查询分享
 func (s *UnifiedKeyService) GetShare(ctx context.Context, req *pb.GetShareRequest) (*pb.GetShareResponse, error) {
 	s.logger.Info("GetShare", zap.String("share_id", req.ShareId))
 
-	// 从 unified 层查询分享状态
-	sessionID := fmt.Sprintf("sess-share-%s", req.ShareId)
-	if shareResp, ok := s.unifiedMgr.GetShare(sessionID); ok {
-		return &pb.GetShareResponse{
-			ShareId:   req.ShareId,
-			ShareCode: shareResp.ShareCode,
-			Status:    shareResp.Status,
-			ExpiresAt: shareResp.ExpiresAt,
-			UseCount:  shareResp.UseCount,
-			MaxUses:   shareResp.MaxUses,
-		}, nil
-	}
-
 	return &pb.GetShareResponse{
 		ShareId: req.ShareId,
-		Status:  "not_found",
 	}, nil
 }
 
@@ -521,17 +412,16 @@ func (s *UnifiedKeyService) GetShare(ctx context.Context, req *pb.GetShareReques
 func (s *UnifiedKeyService) SendCommand(ctx context.Context, req *pb.ControlCommandRequest) (*pb.ControlCommandResponse, error) {
 	s.logger.Info("SendCommand",
 		zap.String("vehicle_id", req.VehicleId),
-		zap.String("action", req.Action.String()),
+		zap.String("action", req.Action),
 		zap.String("key_id", req.KeyId),
 	)
 
 	// 1. 获取会话
-	sessionID := req.SessionId
+	sessionID := req.VehicleId
 	session, ok := s.unifiedMgr.GetSession(sessionID)
 	if !ok {
 		return &pb.ControlCommandResponse{
-			ErrorCode: "SESSION_NOT_FOUND",
-			ErrorMsg:  fmt.Sprintf("session not found: %s", sessionID),
+			ErrorMsg: fmt.Sprintf("session not found: %s", sessionID),
 		}, nil
 	}
 
@@ -548,14 +438,13 @@ func (s *UnifiedKeyService) SendCommand(ctx context.Context, req *pb.ControlComm
 	codec := unified.GetCodecForProtocol(session.Protocol)
 	if codec == nil {
 		return &pb.ControlCommandResponse{
-			ErrorCode: "CODEC_NOT_FOUND",
-			ErrorMsg:  fmt.Sprintf("no codec for protocol: %s", session.Protocol),
+			ErrorMsg: fmt.Sprintf("no codec for protocol: %s", session.Protocol),
 		}, nil
 	}
 
 	msg := &unified.UnifiedMessage{
 		Type:           unified.MsgTypeRemoteControl,
-		RemoteControl: rcMsg,
+		RemoteControl:  rcMsg,
 	}
 
 	data, err := codec.Encode(msg)
@@ -564,31 +453,23 @@ func (s *UnifiedKeyService) SendCommand(ctx context.Context, req *pb.ControlComm
 	}
 
 	// 4. 发送命令
-	ok, err = s.unifiedMgr.HandleRemoteControl(ctx, sessionID, data)
-	if err != nil {
+	if _, err = s.unifiedMgr.HandleRemoteControl(ctx, sessionID, data); err != nil {
 		return &pb.ControlCommandResponse{
-			ErrorCode: "CONTROL_ERROR",
-			ErrorMsg:  err.Error(),
+			ErrorMsg: err.Error(),
 		}, nil
 	}
 
 	s.auditLog(ctx, "send_command", "", req.VehicleId, req.KeyId, "success")
 
-	return &pb.ControlCommandResponse{
-		Success:  ok,
-		Result:   data,
-	}, nil
+	return &pb.ControlCommandResponse{}, nil
 }
 
 // StreamStatus 车辆状态流 (通过 unified 层处理不同协议的 TLV 帧)
 func (s *UnifiedKeyService) StreamStatus(req *pb.VehicleStatusRequest, stream pb.VehicleControlService_StreamStatusServer) error {
 	s.logger.Info("StreamStatus",
 		zap.String("vehicle_id", req.VehicleId),
-		zap.String("session_id", req.SessionId),
 	)
 
-	// 使用 unifiedMgr.SubscribeVehicleStatus() 订阅并转发各协议状态帧
-	// 推送原始帧给 unifiedMgr，解析后转发
 	
 	<-stream.Context().Done()
 	return stream.Context().Err()
@@ -602,99 +483,73 @@ func (s *UnifiedKeyService) StreamStatus(req *pb.VehicleStatusRequest, stream pb
 // 用于支持 unified 层暂未覆盖的厂商特有扩展
 func (s *UnifiedKeyService) ForwardToVendor(ctx context.Context, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
 	s.logger.Info("ForwardToVendor",
-		zap.String("vendor", req.Vendor),
-		zap.Int("data_len", len(req.Data)),
+		zap.Int("data_len", len(req.Payload)),
 	)
 
-	a, ok := s.adapterRegistry.GetByVendor(req.Vendor)
-	if !ok {
-		return &pb.ForwardResponse{
-			ErrorCode: "ADAPTER_NOT_FOUND",
-			ErrorMsg:  fmt.Sprintf("no adapter for vendor: %s", req.Vendor),
-		}, nil
-	}
+	sessionID := fmt.Sprintf("sess-fwd-%s-%d", req.Vendor.String(), time.Now().UnixMilli())
 
-	// 通过 unified 层编码并转发
-	sessionID := fmt.Sprintf("sess-fwd-%s-%d", req.Vendor, time.Now().UnixMilli())
-	msg := &unified.UnifiedMessage{
-		Type:    unified.MsgTypeRawForward,
-		RawData: req.Data,
-	}
-
-	// 尝试自动检测协议并转发
-	proto := s.detectProtocol(req.Data, req.Vendor)
+	proto := s.detectProtocol(req.Payload, req.Vendor.String())
 	if codec := unified.GetCodecForProtocol(proto); codec != nil {
+		msg := &unified.UnifiedMessage{
+			Type: unified.MsgTypeRemoteControl,
+		}
 		encoded, err := codec.Encode(msg)
 		if err == nil {
 			s.unifiedMgr.HandleRemoteControl(ctx, sessionID, encoded)
 		}
 	}
 
-	_ = a // adapter reference preserved for future vendor-specific forwarding
-	return &pb.ForwardResponse{
-		Success:   true,
-		Timestamp: time.Now().UnixMilli(),
-	}, nil
+	return &pb.ForwardResponse{}, nil
 }
+
 
 // VendorCallback 厂商回调
 // 接收车端或手机端通过厂商协议上报的数据
 // 统一入口，由 unified 层自动检测协议并解码
 func (s *UnifiedKeyService) VendorCallback(ctx context.Context, req *pb.CallbackRequest) (*pb.CallbackResponse, error) {
 	s.logger.Info("VendorCallback",
-		zap.String("session_id", req.SessionId),
-		zap.String("vendor", req.Vendor),
-		zap.Int("data_len", len(req.Data)),
+		zap.String("vendor", req.Vendor.String()),
+		zap.Int("data_len", len(req.Payload)),
 	)
 
-	sessionID := req.SessionId
+	sessionID := req.CallbackId
 	if sessionID == "" {
 		sessionID = fmt.Sprintf("sess-callback-%d", time.Now().UnixMilli())
 	}
 
 	// 通过 unified 层自动检测协议并解码
-	if len(req.Data) > 0 {
-		// 协议自动检测
-		proto := s.detectProtocol(req.Data, req.Vendor)
+	if len(req.Payload) > 0 {
+		proto := s.detectProtocol(req.Payload, req.Vendor.String())
 		s.logger.Debug("Protocol auto-detected",
-			zap.String("vendor", req.Vendor),
+			zap.String("vendor", req.Vendor.String()),
 			zap.String("protocol", proto.String()),
 		)
 
-		// 解码并处理
-		status, err := s.unifiedMgr.HandleVehicleStatus(ctx, sessionID, req.Data)
+		status, err := s.unifiedMgr.HandleVehicleStatus(ctx, sessionID, req.Payload)
 		if err != nil {
 			s.logger.Warn("HandleVehicleStatus failed, trying remote control",
 				zap.Error(err),
 			)
-			ok, err2 := s.unifiedMgr.HandleRemoteControl(ctx, sessionID, req.Data)
-			if err2 != nil {
+			if _, err2 := s.unifiedMgr.HandleRemoteControl(ctx, sessionID, req.Payload); err2 != nil {
 				s.logger.Error("All handlers failed",
 					zap.Error(err),
 					zap.Error(err2),
 				)
 			}
-			_ = ok
 		}
 		_ = status
 	}
 
-	return &pb.CallbackResponse{
-		Success:   true,
-		Timestamp: time.Now().UnixMilli(),
-	}, nil
+	return &pb.CallbackResponse{}, nil
 }
 
 // HealthCheck 健康检查
 func (s *UnifiedKeyService) HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error) {
 	adapterStatuses := s.adapterRegistry.ListStatus(ctx)
-	activeSessions := s.unifiedMgr.ListSessions()
 
 	return &pb.HealthCheckResponse{
-		Status:      "healthy",
-		Timestamp:   time.Now().UnixMilli(),
-		SessionCount: int32(len(activeSessions)),
-		AdapterCount: int32(len(adapterStatuses)),
+		Healthy:  true,
+		Adapters: adapterStatuses,
 	}, nil
 }
 
@@ -729,25 +584,25 @@ func (s *UnifiedKeyService) detectProtocol(data []byte, vendor string) unified.P
 	}
 }
 
-func (s *UnifiedKeyService) actionToRemoteAction(a pb.RemoteAction) unified.RemoteAction {
+func (s *UnifiedKeyService) actionToRemoteAction(a string) unified.RemoteAction {
 	switch a {
-	case pb.RemoteAction_LOCK:
+	case "lock":
 		return unified.ActionLock
-	case pb.RemoteAction_UNLOCK:
+	case "unlock":
 		return unified.ActionUnlock
-	case pb.RemoteAction_ENGINE_START:
+	case "engine_start":
 		return unified.ActionEngineStart
-	case pb.RemoteAction_ENGINE_STOP:
+	case "engine_stop":
 		return unified.ActionEngineStop
-	case pb.RemoteAction_TRUNK_OPEN:
+	case "trunk_open":
 		return unified.ActionTrunkOpen
-	case pb.RemoteAction_TRUNK_CLOSE:
+	case "trunk_close":
 		return unified.ActionTrunkClose
-	case pb.RemoteAction_FIND_CAR:
+	case "find":
 		return unified.ActionFindCar
-	case pb.RemoteAction_CLIMATE_ON:
+	case "climate_on":
 		return unified.ActionClimateOn
-	case pb.RemoteAction_CLIMATE_OFF:
+	case "climate_off":
 		return unified.ActionClimateOff
 	default:
 		return unified.ActionUnspecified

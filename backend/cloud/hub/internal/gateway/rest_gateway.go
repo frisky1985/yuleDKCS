@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token"
 )
 
@@ -249,13 +250,13 @@ func (g *RESTGateway) Serve(addr string) error {
 		}
 
 
-tt// Token 管理（统一授权）
-tttokens := v1.Group("/tokens")
-tt{
-ttttokens.POST("", g.issueToken)
-ttttokens.GET("/:tokenId", g.verifyToken)
-ttttokens.DELETE("/:tokenId", g.revokeToken)
-tt}
+		// Token 管理（统一授权）
+		tokens := v1.Group("/tokens")
+		{
+			tokens.POST("", g.issueToken)
+			tokens.GET("/:tokenId", g.verifyToken)
+			tokens.DELETE("/:tokenId", g.revokeToken)
+		}
 
 		// 多设备管理
 		devices := v1.Group("/devices")

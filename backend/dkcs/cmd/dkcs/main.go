@@ -65,7 +65,7 @@ func main() {
 	log.Info("Redis connection established")
 
 	// Initialize cache
-	redisCache := cache.NewRedisCacheFromClient(redisClient)
+	_ = cache.NewRedisCacheFromClient(redisClient)
 
 	// Initialize Kafka producer
 	kafkaProducer, err := mq.NewKafkaProducer(mq.KafkaConfig{

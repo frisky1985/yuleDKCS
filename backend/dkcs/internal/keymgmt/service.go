@@ -40,7 +40,7 @@ func (s *Service) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.Bind
 		Vendor:    req.Vendor,
 		Protocol:  req.Protocol,
 		Operation: "bind",
-		Payload:   req.Data, // 透传厂商私有协议负载
+		Payload:   nil, // 厂商私有协议负载由 HUB 根据具体字段构造
 		TraceId:   req.TraceId,
 	}
 

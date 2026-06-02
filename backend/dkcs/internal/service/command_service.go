@@ -3,11 +3,10 @@ package service
 import (
 	"context"
 	"time"
+	"github.com/google/uuid"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -15,19 +14,19 @@ import (
 // CommandService implements pb.CommandServiceServer
 type CommandService struct {
 	pb.UnimplementedCommandServiceServer
-	keyRepo     *repository.KeyRepository
-	vehicleRepo *repository.VehicleRepository
-	logger      *logger.Logger
-	telemetry   *telemetry.Telemetry
+	keyRepo     KeyRepository
+	vehicleRepo VehicleRepository
+	logger      Logger
+	telemetry   Telemetry
 	eventSvc    *EventService
 }
 
 // NewCommandService creates a new CommandService
 func NewCommandService(
-	keyRepo *repository.KeyRepository,
-	vehicleRepo *repository.VehicleRepository,
-	logger *logger.Logger,
-	telemetry *telemetry.Telemetry,
+	keyRepo KeyRepository,
+	vehicleRepo VehicleRepository,
+	logger Logger,
+	telemetry Telemetry,
 	eventSvc *EventService,
 ) *CommandService {
 	return &CommandService{
@@ -78,13 +77,13 @@ func (s *CommandService) FindVehicle(ctx context.Context, req *pb.FindVehicleReq
 func (s *CommandService) sendCommand(ctx context.Context, keyID, cmdType, vehicleID string) (*pb.CommandResponse, error) {
 	start := time.Now()
 	defer func() {
-		s.telemetry.RecordDuration("dkcs.command.duration", time.Since(start), map[string]string{"type": cmdType})
+		s.telemetry.RecordDuration("dkcs.command.duration", time.Since(start))
 	}()
 
 	s.logger.Info("Send command",
-		logger.String("key_id", keyID),
-		logger.String("command", cmdType),
-		logger.String("vehicle_id", vehicleID),
+		"key_id", keyID,
+		"command", cmdType,
+		"vehicle_id", vehicleID,
 	)
 
 	// Validate key
@@ -127,7 +126,7 @@ func (s *CommandService) sendCommand(ctx context.Context, keyID, cmdType, vehicl
 	// In real implementation, this would send to message queue or direct gRPC to TCU
 	err = s.publishCommand(ctx, vehicleID, commandID, cmdType, keyID)
 	if err != nil {
-		s.logger.Error("Failed to publish command", logger.Err(err))
+		s.logger.Error("Failed to publish command", "error", err)
 		s.telemetry.IncCounter("dkcs.command.error", map[string]string{"reason": "publish_failed"})
 		return nil, status.Error(codes.Internal, "failed to send command")
 	}
@@ -166,6 +165,11 @@ func (s *CommandService) GetCommandStatus(ctx context.Context, req *pb.GetComman
 func generateCommandID() string {
 	// Simple implementation - in production use UUID or snowflake
 	return time.Now().Format("20060102150405") + randomString(6)
+}
+
+func (s *CommandService) publishCommand(ctx context.Context, vehicleID, commandID, cmdType, keyID string) error {
+	// TODO: publish command to message queue
+	return nil
 }
 
 func randomString(n int) string {

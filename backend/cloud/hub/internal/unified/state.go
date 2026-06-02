@@ -131,6 +131,30 @@ const (
 	EventTimeout
 )
 
+var eventNames = map[Event]string{
+	EventNegotiateStart: "NegotiateStart",
+	EventNegotiateDone:  "NegotiateDone",
+	EventDeviceVerifyPass:  "DeviceVerifyPass",
+	EventDeviceVerifyFail:  "DeviceVerifyFail",
+	EventBindStart:     "BindStart",
+	EventBindSuccess:   "BindSuccess",
+	EventBindFail:      "BindFail",
+	EventShareStart:    "ShareStart",
+	EventShareDone:     "ShareDone",
+	EventSuspend:       "Suspend",
+	EventResume:        "Resume",
+	EventRevoke:        "Revoke",
+	EventExpire:        "Expire",
+	EventTimeout:       "Timeout",
+}
+
+func (e Event) String() string {
+	if name, ok := eventNames[e]; ok {
+		return name
+	}
+	return fmt.Sprintf("Event(%d)", e)
+}
+
 // NewStateMachine 创建状态机
 func NewStateMachine() *StateMachine {
 	sm := &StateMachine{

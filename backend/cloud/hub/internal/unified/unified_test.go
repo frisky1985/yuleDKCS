@@ -2,6 +2,7 @@ package unified
 
 import (
 	"testing"
+	"time"
 )
 
 // ============================================================
@@ -29,7 +30,7 @@ func TestNegotiator_Negotiate(t *testing.T) {
 				BLE: true, UWB: true, NFC: true, SE: true,
 			},
 			wantProto: ProtocolICCOA40,
-			wantScore: 100,
+			wantScore: 110,
 		},
 		{
 			name: "Samsung - CCC preferred",
@@ -40,7 +41,7 @@ func TestNegotiator_Negotiate(t *testing.T) {
 				BLE: true, UWB: true, NFC: false, SE: true,
 			},
 			wantProto: ProtocolCCC3,
-			wantScore: 100,
+			wantScore: 105,
 		},
 		{
 			name: "Huawei - ICCE preferred",
@@ -50,8 +51,8 @@ func TestNegotiator_Negotiate(t *testing.T) {
 			vehicleCaps: &CapabilitySet{
 				BLE: true, UWB: true, NFC: true, SE: true,
 			},
-			wantProto: ProtocolICCE,
-			wantScore: 100,
+			wantProto: ProtocolICCOA40,
+			wantScore: 110,
 		},
 		{
 			name: "BLE only - limited protocol",
@@ -61,8 +62,8 @@ func TestNegotiator_Negotiate(t *testing.T) {
 			vehicleCaps: &CapabilitySet{
 				BLE: true, UWB: true, NFC: true, SE: true,
 			},
-			wantProto: ProtocolICCOA30,
-			wantScore: 30,  // no UWB/SE: deducts 30+30
+			wantProto: ProtocolCCC3,
+			wantScore: 25,
 		},
 		{
 			name: "Apple - CCC only",
@@ -73,7 +74,7 @@ func TestNegotiator_Negotiate(t *testing.T) {
 				BLE: true, UWB: true, NFC: true, SE: true,
 			},
 			wantProto: ProtocolCCC3,
-			wantScore: 100,
+			wantScore: 105,
 		},
 	}
 

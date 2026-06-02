@@ -135,7 +135,7 @@ func NewKafkaConsumer(config KafkaConfig, groupID string, handler MessageHandler
 	cfg.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
 
-	consumer, err := sarama.NewConsumerGroup(config.Brorokers, groupID, cfg)
+	consumer, err := sarama.NewConsumerGroup(config.Brokers, groupID, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer group: %w", err)
 	}

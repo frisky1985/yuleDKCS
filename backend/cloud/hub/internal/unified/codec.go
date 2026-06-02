@@ -189,19 +189,22 @@ func (c *ICCOACodec) Decode(data []byte) (*UnifiedMessage, error) {
 }
 
 func (c *ICCOACodec) detectMessageType(data []byte) MessageType {
-	if len(data) < 1 {
+	if len(data) < 2 {
 		return MsgTypeUnspecified
 	}
-	first := data[0]
+	// ICCOA frame format: [0xA0 frame_header][msg_type_byte][...]
+	msgByte := data[1]
 	switch {
-	case first >= 0x01 && first <= 0x10:
+	case msgByte >= 0x01 && msgByte <= 0x10:
 		return MsgTypeDeviceInfo
-	case first >= 0x11 && first <= 0x20:
+	case msgByte >= 0x11 && msgByte <= 0x20:
 		return MsgTypeKeyBind
-	case first >= 0x21 && first <= 0x30:
+	case msgByte >= 0x21 && msgByte <= 0x30:
 		return MsgTypeKeyShare
-	case first >= 0x31 && first <= 0x40:
+	case msgByte >= 0x31 && msgByte <= 0x40:
 		return MsgTypeRemoteControl
+	case msgByte >= 0x41 && msgByte <= 0x50:
+		return MsgTypeVehicleStatus
 	default:
 		return MsgTypeUnspecified
 	}
@@ -449,12 +452,19 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 	switch msg.Type {
 	case MsgTypeKeyBind:
 		msg.KeyBind = &KeyBindMessage{}
-		offset := 0
+		// Skip message type tag (2 bytes, e.g. 0x9F01)
+		offset := 2
 		for offset < len(data) {
 			tag, tagLen := c.decodeTag(data[offset:])
 			offset += tagLen
+			if offset >= len(data) {
+				break
+			}
 			length, lenLen := c.decodeLength(data[offset:])
 			offset += lenLen
+			if offset+length > len(data) {
+				break
+			}
 			value := data[offset : offset+length]
 			offset += length
 			
@@ -467,9 +477,42 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 		}
 	case MsgTypeRemoteControl:
 		msg.RemoteControl = &RemoteControlMessage{}
-		// Simple single-byte decode
-		if len(data) >= 3 {
-			msg.RemoteControl.Action = c.tagToAction(data[2])
+		// ICCE remote control: [0x9F10 msg_tag][0x9F11 action_tag len action]
+		if len(data) >= 6 {
+			// action_tag (0x9F11) starts at data[2], len at data[4], action value at data[5]
+			offset := 2
+			for offset+1 < len(data) {
+				_, tagLen := c.decodeTag(data[offset:])
+				offset += tagLen
+				if offset >= len(data) {
+					break
+				}
+				length, lenLen := c.decodeLength(data[offset:])
+				offset += lenLen
+				if offset+length <= len(data) && length >= 1 {
+					msg.RemoteControl.Action = c.tagToAction(data[offset])
+				}
+				offset += length
+			}
+		}
+	case MsgTypeVehicleStatus:
+		msg.VehicleStatus = &VehicleStatusMessage{}
+		// ICCE vehicle status: [0x9F20 msg_tag][0x9F21 locked_tag len locked]
+		if len(data) >= 6 {
+			offset := 2
+			for offset+1 < len(data) {
+				_, tagLen := c.decodeTag(data[offset:])
+				offset += tagLen
+				if offset >= len(data) {
+					break
+				}
+				length, lenLen := c.decodeLength(data[offset:])
+				offset += lenLen
+				if offset+length <= len(data) && length >= 1 {
+					msg.VehicleStatus.DoorsLocked = data[offset] == 0x01
+				}
+				offset += length
+			}
 		}
 	}
 	
@@ -477,19 +520,23 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 }
 
 func (c *ICCECodec) detectICCEType(data []byte) MessageType {
-	if len(data) < 1 {
+	if len(data) < 2 {
+		// 处理单字节标签
+		if len(data) == 1 && data[0] >= 0x80 && data[0] <= 0x9F {
+			return MsgTypeDeviceInfo
+		}
 		return MsgTypeUnspecified
 	}
-	first := data[0]
+	tag := binary.BigEndian.Uint16(data[:2])
 	switch {
-	case first == 0x9F || (first >= 0x80 && first <= 0x9F):
-		return MsgTypeDeviceInfo
-	case first == 0x9F01 || first == 0x9F02:
+	case tag == 0x9F01 || tag == 0x9F02:
 		return MsgTypeKeyBind
-	case first == 0x9F10:
+	case tag == 0x9F10:
 		return MsgTypeRemoteControl
-	case first == 0x9F20:
+	case tag == 0x9F20:
 		return MsgTypeVehicleStatus
+	case data[0] >= 0x80 && data[0] <= 0x9F:
+		return MsgTypeDeviceInfo
 	default:
 		return MsgTypeUnspecified
 	}
@@ -519,12 +566,26 @@ func (c *ICCECodec) decodeTag(data []byte) (uint16, int) {
 func (c *ICCECodec) encodeTLV(tag uint16, value []byte) []byte {
 	length := len(value)
 	var header []byte
-	if length <= 127 {
+	// BER-TLV multi-byte tag: 0x9F + low byte
+	if tag > 0x1F && tag < 0x100 {
 		header = []byte{byte(tag), byte(length)}
-	} else if length <= 255 {
-		header = []byte{byte(tag), 0x81, byte(length)}
+	} else if tag >= 0x9F00 && tag <= 0x9FFF {
+		tagBytes := []byte{byte(tag >> 8), byte(tag)}
+		if length <= 127 {
+			header = append(tagBytes, byte(length))
+		} else if length <= 255 {
+			header = append(tagBytes, 0x81, byte(length))
+		} else {
+			header = append(tagBytes, 0x82, byte(length>>8), byte(length))
+		}
 	} else {
-		header = []byte{byte(tag), 0x82, byte(length >> 8), byte(length)}
+		if length <= 127 {
+			header = []byte{byte(tag), byte(length)}
+		} else if length <= 255 {
+			header = []byte{byte(tag), 0x81, byte(length)}
+		} else {
+			header = []byte{byte(tag), 0x82, byte(length>>8), byte(length)}
+		}
 	}
 	return append(header, value...)
 }

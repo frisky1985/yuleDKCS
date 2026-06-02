@@ -54,6 +54,12 @@ android {
         viewBinding = true
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -114,9 +120,34 @@ dependencies {
     implementation(project(":sdk"))
 
     // ==================== 测试 ====================
+    // ---- 单元测试 (JVM) ----
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // JUnit 5 (Jupiter)
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.10.2")
+    // MockK - Kotlin Mock 框架
     testImplementation("io.mockk:mockk:1.13.9")
+    // Coroutines 测试
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // Robolectric - 无需真机的 Android 测试
+    testImplementation("org.robolectric:robolectric:4.12")
+    // OkHttp MockWebServer - HTTP 接口 Mock
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // Google Truth - 可读性更强的断言
+    testImplementation("com.google.truth:truth:1.4.2")
+
+    // Hilt 测试支持
+    testImplementation("com.google.dagger:hilt-android-testing:2.50")
+    kaptTest("com.google.dagger:hilt-android-compiler:2.50")
+    testAnnotationProcessor("com.google.dagger:hilt-android-compiler:2.50")
+
+    // ---- 插桩测试 (Android设备/模拟器) ----
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test.espresso:espresso-contrib:3.5.1")
+    androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")
+    // Fragment 测试
+    androidTestImplementation("androidx.fragment:fragment-testing:1.6.2")
+    // Navigation 测试
+    androidTestImplementation("androidx.navigation:navigation-testing:2.7.7")
 }

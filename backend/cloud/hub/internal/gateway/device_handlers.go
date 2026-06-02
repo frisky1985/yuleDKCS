@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -230,6 +231,11 @@ func (g *RESTGateway) extractAuth(c *gin.Context) (string, string, error) {
 	if !exists {
 		return "", "", fmt.Errorf("unauthenticated")
 	}
-	role, _ := c.Get("role")
-	return userID.(string), role.(string), nil
+	userIDStr, ok := userID.(string)
+	if !ok {
+		return "", "", fmt.Errorf("invalid user_id type")
+	}
+	role, _ := c.Get("user_role")
+	roleStr, _ := role.(string)
+	return userIDStr, roleStr, nil
 }

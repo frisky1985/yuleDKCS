@@ -3097,7 +3097,7 @@ const file_api_v1_hub_proto_rawDesc = "" +
 	"\x13HubTransportService\x12X\n" +
 	"\x0fForwardToVendor\x12!.digitalkey.hub.v1.ForwardRequest\x1a\".digitalkey.hub.v1.ForwardResponse\x12Y\n" +
 	"\x0eVendorCallback\x12\".digitalkey.hub.v1.CallbackRequest\x1a#.digitalkey.hub.v1.CallbackResponse\x12\\\n" +
-	"\vHealthCheck\x12%.digitalkey.hub.v1.HealthCheckRequest\x1a&.digitalkey.hub.v1.HealthCheckResponseB\"Z github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1b\x06proto3"
+	"\vHealthCheck\x12%.digitalkey.hub.v1.HealthCheckRequest\x1a&.digitalkey.hub.v1.HealthCheckResponseB\"Z github.com/digitalkey/hub/api/v1b\x06proto3"
 
 var (
 	file_api_v1_hub_proto_rawDescOnce sync.Once

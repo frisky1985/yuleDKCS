@@ -14,6 +14,11 @@ type RedisCache struct {
 	client *redis.Client
 }
 
+// NewRedisCacheFromClient creates a RedisCache from an existing client
+func NewRedisCacheFromClient(client *redis.Client) *RedisCache {
+	return &RedisCache{client: client}
+}
+
 // NewRedisCache creates a new RedisCache
 func NewRedisCache(addr, password string, db int) *RedisCache {
 	client := redis.NewClient(&redis.Options{

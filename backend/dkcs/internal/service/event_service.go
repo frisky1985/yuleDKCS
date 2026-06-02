@@ -2,12 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -16,15 +15,15 @@ import (
 type EventService struct {
 	pb.UnimplementedEventServiceServer
 	eventRepo *repository.EventRepository
-	logger    *logger.Logger
-	telemetry *telemetry.Telemetry
+	logger    Logger
+	telemetry Telemetry
 }
 
 // NewEventService creates a new EventService
 func NewEventService(
 	eventRepo *repository.EventRepository,
-	logger *logger.Logger,
-	telemetry *telemetry.Telemetry,
+	logger Logger,
+	telemetry Telemetry,
 ) *EventService {
 	return &EventService{
 		eventRepo: eventRepo,
@@ -36,7 +35,7 @@ func NewEventService(
 // RecordEvent records an event
 func (s *EventService) RecordEvent(ctx context.Context, event *repository.Event) error {
 	if err := s.eventRepo.Create(ctx, event); err != nil {
-		s.logger.Error("Failed to record event", logger.Err(err))
+		s.logger.Error("Failed to record event", "error", err)
 		return err
 	}
 
@@ -48,7 +47,7 @@ func (s *EventService) RecordEvent(ctx context.Context, event *repository.Event)
 func (s *EventService) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.ListEventsResponse, error) {
 	events, err := s.eventRepo.ListByVehicle(ctx, req.VehicleId, int(req.Limit), int(req.Offset))
 	if err != nil {
-		s.logger.Error("Failed to list events", logger.Err(err))
+		s.logger.Error("Failed to list events", "error", err)
 		return nil, status.Error(codes.Internal, "failed to list events")
 	}
 
@@ -70,7 +69,7 @@ func (s *EventService) ListEvents(ctx context.Context, req *pb.ListEventsRequest
 
 // StreamEvents streams events in real-time
 func (s *EventService) StreamEvents(req *pb.StreamEventsRequest, stream pb.EventService_StreamEventsServer) error {
-	s.logger.Info("StreamEvents started", logger.String("vehicle_id", req.VehicleId))
+	s.logger.Info("StreamEvents started", "vehicle_id", req.VehicleId)
 
 	// In real implementation, subscribe to event stream from message queue
 	// For now, simulate with periodic queries
@@ -86,7 +85,7 @@ func (s *EventService) StreamEvents(req *pb.StreamEventsRequest, stream pb.Event
 			// Query recent events
 			events, err := s.eventRepo.ListByVehicle(stream.Context(), req.VehicleId, 10, 0)
 			if err != nil {
-				s.logger.Error("Failed to query events", logger.Err(err))
+				s.logger.Error("Failed to query events", "error", err)
 				continue
 			}
 
@@ -100,7 +99,7 @@ func (s *EventService) StreamEvents(req *pb.StreamEventsRequest, stream pb.Event
 					Data:      convertDataToMap(event.Data),
 					Timestamp: event.CreatedAt.Unix(),
 				}); err != nil {
-					s.logger.Error("Failed to send event", logger.Err(err))
+					s.logger.Error("Failed to send event", "error", err)
 					return err
 				}
 			}
@@ -112,7 +111,7 @@ func (s *EventService) StreamEvents(req *pb.StreamEventsRequest, stream pb.Event
 func (s *EventService) GetEventStats(ctx context.Context, req *pb.GetEventStatsRequest) (*pb.GetEventStatsResponse, error) {
 	stats, err := s.eventRepo.GetStats(ctx, req.VehicleId, req.StartTime, req.EndTime)
 	if err != nil {
-		s.logger.Error("Failed to get event stats", logger.Err(err))
+		s.logger.Error("Failed to get event stats", "error", err)
 		return nil, status.Error(codes.Internal, "failed to get stats")
 	}
 

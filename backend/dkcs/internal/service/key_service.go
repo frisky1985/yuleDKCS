@@ -11,8 +11,6 @@ import (
 
 	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
-	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,10 +19,10 @@ import (
 // KeyService implements pb.KeyServiceServer
 type KeyService struct {
 	pb.UnimplementedKeyServiceServer
-	keyRepo    *repository.KeyRepository
-	vehicleRepo *repository.VehicleRepository
-	logger      *logger.Logger
-	telemetry   *telemetry.Telemetry
+	keyRepo    KeyRepository
+	vehicleRepo VehicleRepository
+	logger      Logger
+	telemetry   Telemetry
 
 	// [M-07] 幂等性保证
 	idempotencyMu     sync.RWMutex
@@ -52,7 +50,7 @@ func (s *KeyService) checkAndMarkIdempotency(key string) bool {
 	}
 
 	if s.idempotencyKeys[key] {
-		s.logger.Warn("Idempotency key already processed", logger.String("idempotency_key", key))
+		s.logger.Warn("Idempotency key already processed", "idempotency_key", key)
 		return true
 	}
 
@@ -62,10 +60,10 @@ func (s *KeyService) checkAndMarkIdempotency(key string) bool {
 
 // NewKeyService creates a new KeyService
 func NewKeyService(
-	keyRepo *repository.KeyRepository,
-	vehicleRepo *repository.VehicleRepository,
-	logger *logger.Logger,
-	telemetry *telemetry.Telemetry,
+	keyRepo KeyRepository,
+	vehicleRepo VehicleRepository,
+	logger Logger,
+	telemetry Telemetry,
 ) *KeyService {
 	return &KeyService{
 		keyRepo:    keyRepo,
@@ -82,14 +80,7 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 		s.telemetry.RecordDuration("dkcs.key.create.duration", time.Since(start))
 	}()
 
-	s.logger.Info("CreateKey request", logger.String("vehicle_id", req.VehicleId), logger.String("user_id", req.UserId))
-
-	// [M-07] 幂等性键检查
-	if req.IdempotencyKey != "" {
-		if s.checkAndMarkIdempotency("create:" + req.IdempotencyKey) {
-			return nil, status.Error(codes.AlreadyExists, "request already processed")
-		}
-	}
+	s.logger.Info("CreateKey request", "vehicle_id", req.VehicleId, "user_id", req.UserId)
 
 	// Validate request
 	if req.VehicleId == "" || req.UserId == "" {
@@ -98,9 +89,9 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 	}
 
 	// Check if vehicle exists
-	vehicle, err := s.vehicleRepo.GetByID(ctx, req.VehicleId)
+	_ , err := s.vehicleRepo.GetByID(ctx, req.VehicleId)   // vehicle validated elsewhere
 	if err != nil {
-		s.logger.Error("Failed to get vehicle", logger.Err(err))
+		s.logger.Error("Failed to get vehicle", "error", err)
 		s.telemetry.IncCounter("dkcs.key.create.error", map[string]string{"reason": "vehicle_not_found"})
 		return nil, status.Error(codes.NotFound, "vehicle not found")
 	}
@@ -111,7 +102,7 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 	// Generate key secret — stored hashed server-side, never returned to client
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
-		s.logger.Error("Failed to generate secret", logger.Err(err))
+		s.logger.Error("Failed to generate secret", "error", err)
 		return nil, status.Error(codes.Internal, "failed to generate key secret")
 	}
 	secret := hex.EncodeToString(secretBytes)
@@ -131,13 +122,13 @@ func (s *KeyService) CreateKey(ctx context.Context, req *pb.CreateKeyRequest) (*
 	}
 
 	if err := s.keyRepo.Create(ctx, key); err != nil {
-		s.logger.Error("Failed to create key", logger.Err(err))
+		s.logger.Error("Failed to create key", "error", err)
 		s.telemetry.IncCounter("dkcs.key.create.error", map[string]string{"reason": "db_error"})
 		return nil, status.Error(codes.Internal, "failed to create key")
 	}
 
 	s.telemetry.IncCounter("dkcs.key.create.success", nil)
-	s.logger.Info("Key created successfully", logger.String("key_id", keyID))
+	s.logger.Info("Key created successfully", "key_id", keyID)
 
 	// V-03 fix: Secret is NOT returned to client.
 	// The key establishment uses ECDH key agreement between phone SE and vehicle SE050, 
@@ -157,18 +148,11 @@ func (s *KeyService) ActivateKey(ctx context.Context, req *pb.ActivateKeyRequest
 		s.telemetry.RecordDuration("dkcs.key.activate.duration", time.Since(start))
 	}()
 
-	s.logger.Info("ActivateKey request", logger.String("key_id", req.KeyId))
-
-	// [M-07] 幂等性键检查
-	if req.IdempotencyKey != "" {
-		if s.checkAndMarkIdempotency("activate:" + req.IdempotencyKey) {
-			return nil, status.Error(codes.AlreadyExists, "request already processed")
-		}
-	}
+	s.logger.Info("ActivateKey request", "key_id", req.KeyId)
 
 	key, err := s.keyRepo.GetByID(ctx, req.KeyId)
 	if err != nil {
-		s.logger.Error("Failed to get key", logger.Err(err))
+		s.logger.Error("Failed to get key", "error", err)
 		return nil, status.Error(codes.NotFound, "key not found")
 	}
 
@@ -178,15 +162,15 @@ func (s *KeyService) ActivateKey(ctx context.Context, req *pb.ActivateKeyRequest
 
 	// Update key status
 	key.Status = "active"
-	key.ActivatedAt = time.Now()
+	now := time.Now(); key.ActivatedAt = &now
 
 	if err := s.keyRepo.Update(ctx, key); err != nil {
-		s.logger.Error("Failed to update key", logger.Err(err))
+		s.logger.Error("Failed to update key", "error", err)
 		return nil, status.Error(codes.Internal, "failed to activate key")
 	}
 
 	s.telemetry.IncCounter("dkcs.key.activate.success", nil)
-	s.logger.Info("Key activated successfully", logger.String("key_id", req.KeyId))
+	s.logger.Info("Key activated successfully", "key_id", req.KeyId)
 
 	return &pb.ActivateKeyResponse{
 		KeyId:      req.KeyId,
@@ -195,43 +179,82 @@ func (s *KeyService) ActivateKey(ctx context.Context, req *pb.ActivateKeyRequest
 	}, nil
 }
 
-// RevokeKey revokes a digital key
+// validateStateTransition checks whether a key status transition is valid under
+// the CCC/ICCE digital key lifecycle state machine.
+//
+// Valid transitions (per CCC/ICCE protocol):
+//   Issued (pending) → Active
+//   Active           → Suspended
+//   Active           → Revoked
+//   Suspended        → Active
+//   Suspended        → Revoked
+//
+// Terminal states: Expired, Revoked — no outgoing transitions allowed.
+func validateStateTransition(currentStatus, desiredStatus string) error {
+	if currentStatus == desiredStatus {
+		return fmt.Errorf("key is already in %s status", currentStatus)
+	}
+
+	// Terminal states check
+	if currentStatus == "expired" {
+		return fmt.Errorf("cannot transition from expired status")
+	}
+	if currentStatus == "revoked" {
+		return fmt.Errorf("cannot transition from revoked status")
+	}
+
+	switch currentStatus {
+	case "pending":
+		if desiredStatus != "active" {
+			return fmt.Errorf("cannot transition from %s to %s: pending keys can only be activated", currentStatus, desiredStatus)
+		}
+	case "active":
+		if desiredStatus != "suspended" && desiredStatus != "revoked" {
+			return fmt.Errorf("cannot transition from %s to %s: active keys can only be suspended or revoked", currentStatus, desiredStatus)
+		}
+	case "suspended":
+		if desiredStatus != "active" && desiredStatus != "revoked" {
+			return fmt.Errorf("cannot transition from %s to %s: suspended keys can only be resumed or revoked", currentStatus, desiredStatus)
+		}
+	default:
+		return fmt.Errorf("unknown key status: %s", currentStatus)
+	}
+
+	return nil
+}
+
+// RevokeKey revokes a digital key.
+// Valid transitions: active → revoked, suspended → revoked.
 func (s *KeyService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*pb.RevokeKeyResponse, error) {
 	start := time.Now()
 	defer func() {
 		s.telemetry.RecordDuration("dkcs.key.revoke.duration", time.Since(start))
 	}()
 
-	s.logger.Info("RevokeKey request", logger.String("key_id", req.KeyId), logger.String("reason", req.Reason))
-
-	// [M-07] 幂等性键检查
-	if req.IdempotencyKey != "" {
-		if s.checkAndMarkIdempotency("revoke:" + req.IdempotencyKey) {
-			return nil, status.Error(codes.AlreadyExists, "request already processed")
-		}
-	}
+	s.logger.Info("RevokeKey request", "key_id", req.KeyId, "reason", req.Reason)
 
 	key, err := s.keyRepo.GetByID(ctx, req.KeyId)
 	if err != nil {
-		s.logger.Error("Failed to get key", logger.Err(err))
+		s.logger.Error("Failed to get key", "error", err)
 		return nil, status.Error(codes.NotFound, "key not found")
 	}
 
-	if key.Status == "revoked" {
-		return nil, status.Error(codes.FailedPrecondition, "key is already revoked")
+	if err := validateStateTransition(key.Status, "revoked"); err != nil {
+		s.logger.Warn("Invalid state transition for revoke", "key_id", req.KeyId, "current_status", key.Status, "error", err)
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
 	key.Status = "revoked"
-	key.RevokedAt = time.Now()
+	now := time.Now(); key.RevokedAt = &now
 	key.RevokeReason = req.Reason
 
 	if err := s.keyRepo.Update(ctx, key); err != nil {
-		s.logger.Error("Failed to update key", logger.Err(err))
+		s.logger.Error("Failed to update key", "error", err)
 		return nil, status.Error(codes.Internal, "failed to revoke key")
 	}
 
 	s.telemetry.IncCounter("dkcs.key.revoke.success", nil)
-	s.logger.Info("Key revoked successfully", logger.String("key_id", req.KeyId))
+	s.logger.Info("Key revoked successfully", "key_id", req.KeyId)
 
 	return &pb.RevokeKeyResponse{
 		KeyId:     req.KeyId,
@@ -240,11 +263,69 @@ func (s *KeyService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*
 	}, nil
 }
 
+// SuspendKey suspends a digital key.
+// Valid transition: active → suspended.
+func (s *KeyService) SuspendKey(ctx context.Context, keyID string) error {
+	s.logger.Info("SuspendKey", "key_id", keyID)
+
+	key, err := s.keyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		s.logger.Error("Failed to get key for suspend", "error", err)
+		return status.Error(codes.NotFound, "key not found")
+	}
+
+	if err := validateStateTransition(key.Status, "suspended"); err != nil {
+		s.logger.Warn("Invalid state transition for suspend", "key_id", keyID, "current_status", key.Status)
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
+
+	key.Status = "suspended"
+
+	if err := s.keyRepo.Update(ctx, key); err != nil {
+		s.logger.Error("Failed to suspend key", "error", err)
+		return status.Error(codes.Internal, "failed to suspend key")
+	}
+
+	s.telemetry.IncCounter("dkcs.key.suspend.success", nil)
+	s.logger.Info("Key suspended successfully", "key_id", keyID)
+
+	return nil
+}
+
+// ResumeKey resumes a suspended digital key.
+// Valid transition: suspended → active.
+func (s *KeyService) ResumeKey(ctx context.Context, keyID string) error {
+	s.logger.Info("ResumeKey", "key_id", keyID)
+
+	key, err := s.keyRepo.GetByID(ctx, keyID)
+	if err != nil {
+		s.logger.Error("Failed to get key for resume", "error", err)
+		return status.Error(codes.NotFound, "key not found")
+	}
+
+	if err := validateStateTransition(key.Status, "active"); err != nil {
+		s.logger.Warn("Invalid state transition for resume", "key_id", keyID, "current_status", key.Status)
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
+
+	key.Status = "active"
+
+	if err := s.keyRepo.Update(ctx, key); err != nil {
+		s.logger.Error("Failed to resume key", "error", err)
+		return status.Error(codes.Internal, "failed to resume key")
+	}
+
+	s.telemetry.IncCounter("dkcs.key.resume.success", nil)
+	s.logger.Info("Key resumed successfully", "key_id", keyID)
+
+	return nil
+}
+
 // GetKey retrieves key details
 func (s *KeyService) GetKey(ctx context.Context, req *pb.GetKeyRequest) (*pb.GetKeyResponse, error) {
 	key, err := s.keyRepo.GetByID(ctx, req.KeyId)
 	if err != nil {
-		s.logger.Error("Failed to get key", logger.Err(err))
+		s.logger.Error("Failed to get key", "error", err)
 		return nil, status.Error(codes.NotFound, "key not found")
 	}
 
@@ -274,7 +355,7 @@ func (s *KeyService) ListKeys(ctx context.Context, req *pb.ListKeysRequest) (*pb
 	}
 
 	if err != nil {
-		s.logger.Error("Failed to list keys", logger.Err(err))
+		s.logger.Error("Failed to list keys", "error", err)
 		return nil, status.Error(codes.Internal, "failed to list keys")
 	}
 
@@ -302,14 +383,7 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 		s.telemetry.RecordDuration("dkcs.key.share.duration", time.Since(start))
 	}()
 
-	s.logger.Info("ShareKey request", logger.String("key_id", req.KeyId), logger.String("to_user", req.ToUserId))
-
-	// [M-07] 幂等性键检查
-	if req.IdempotencyKey != "" {
-		if s.checkAndMarkIdempotency("share:" + req.IdempotencyKey) {
-			return nil, status.Error(codes.AlreadyExists, "request already processed")
-		}
-	}
+	s.logger.Info("ShareKey request", "key_id", req.KeyId, "to_user", req.ToUserId)
 
 	// Get original key
 	origKey, err := s.keyRepo.GetByID(ctx, req.KeyId)
@@ -345,7 +419,7 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 	}
 
 	if err := s.keyRepo.Create(ctx, sharedKey); err != nil {
-		s.logger.Error("Failed to create shared key", logger.Err(err))
+		s.logger.Error("Failed to create shared key", "error", err)
 		return nil, status.Error(codes.Internal, "failed to share key")
 	}
 

@@ -1,4 +1,4 @@
-module github.com/digitalkey/proto/dkcs
+module github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs
 
 go 1.22
 

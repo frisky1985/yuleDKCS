@@ -70,8 +70,8 @@ func LoggingInterceptor(logger *logger.Logger) grpc.UnaryServerInterceptor {
 
 		// Log request
 		logger.Info("gRPC request started",
-			logger.String("method", info.FullMethod),
-			logger.String("request", fmt.Sprintf("%+v", req)),
+			"method", info.FullMethod,
+			"request", fmt.Sprintf("%+v", req),
 		)
 
 		// Call handler
@@ -81,14 +81,14 @@ func LoggingInterceptor(logger *logger.Logger) grpc.UnaryServerInterceptor {
 		duration := time.Since(start)
 		if err != nil {
 			logger.Error("gRPC request failed",
-				logger.String("method", info.FullMethod),
-				logger.Duration("duration", duration),
-				logger.Err(err),
+				"method", info.FullMethod,
+				"duration", duration,
+				"error", err,
 			)
 		} else {
 			logger.Info("gRPC request completed",
-				logger.String("method", info.FullMethod),
-				logger.Duration("duration", duration),
+				"method", info.FullMethod,
+				"duration", duration,
 			)
 		}
 
@@ -102,8 +102,8 @@ func RecoveryInterceptor(logger *logger.Logger) grpc.UnaryServerInterceptor {
 		defer func() {
 			if r := recover(); r != nil {
 				logger.Error("Panic recovered",
-					logger.String("method", info.FullMethod),
-					logger.Any("panic", r),
+					"method", info.FullMethod,
+					"panic", r,
 				)
 				err = status.Error(codes.Internal, "internal error")
 			}
@@ -228,5 +228,20 @@ func (tb *TokenBucket) Allow() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// ChainInterceptors chains multiple UnaryServerInterceptors into one
+func ChainInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		chain := handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			interceptor := interceptors[i]
+			next := chain
+			chain = func(ctx context.Context, req interface{}) (interface{}, error) {
+				return interceptor(ctx, req, info, next)
+			}
+		}
+		return chain(ctx, req)
 	}
 }

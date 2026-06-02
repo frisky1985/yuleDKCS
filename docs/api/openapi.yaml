@@ -1,0 +1,1777 @@
+openapi: "3.0.3"
+info:
+  title: yuleDKCS REST API
+  description: |
+    yuleDKCS HUB REST API — 手机 App 通过 HTTPS 访问 HUB 网关，网关将 REST 请求转为 gRPC 调用转至后端 DKCS 服务。
+
+    系统支持跨协议的数字车钥匙管理：
+    - CCC Digital Key 3.0 (Apple)
+    - ICCOA DK 3.0 / 4.0 (Xiaomi, OPPO, vivo)
+    - ICCE (Huawei)
+
+    涵盖密钥绑定、解绑、挂起/恢复、吊销、分享以及多设备管理等功能。
+  version: "1.0.0"
+  contact:
+    name: yuleDKCS Team
+
+servers:
+  - url: https://api.yuledkcs.com/v1
+    description: 生产环境
+  - url: https://staging.api.yuledkcs.com/v1
+    description: 预发布环境
+  - url: http://localhost:8080/api/v1
+    description: 本地开发环境
+
+paths:
+  # ── 认证 ──
+  /auth/login:
+    post:
+      summary: 登录获取 JWT Token
+      description: 使用管理员凭据登录，返回 Bearer JWT Token
+      operationId: login
+      tags:
+        - 认证 (Auth)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+                - password
+              properties:
+                user_id:
+                  type: string
+                  description: 用户名
+                  example: admin
+                password:
+                  type: string
+                  description: 密码
+                  example: admin123
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT Token
+                    example: eyJhbGciOiJIUzI1NiIs...
+                  token_type:
+                    type: string
+                    description: Token 类型
+                    example: Bearer
+                  expires_in:
+                    type: integer
+                    description: Token 过期时间（秒）
+                    example: 3600
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── 密钥管理 (Keys) ──
+  /keys:
+    post:
+      summary: 绑定密钥
+      description: 为指定车辆绑定数字钥匙。网关将请求转发到 gRPC KeyManagementService.BindKey。
+      operationId: bindKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vehicle_id
+              properties:
+                vehicle_id:
+                  type: string
+                  description: 车辆 VIN 或车辆 ID
+                  example: VH-BIND-001
+                device_id:
+                  type: string
+                  description: 手机设备 ID
+                  example: dev-iphone-15-pro-001
+                user_id:
+                  type: string
+                  description: 用户 ID（从 Token 自动注入，可选覆盖）
+                vendor:
+                  $ref: "#/components/schemas/PhoneVendor"
+                protocol:
+                  $ref: "#/components/schemas/Protocol"
+                key_type:
+                  $ref: "#/components/schemas/KeyType"
+                access_level:
+                  $ref: "#/components/schemas/AccessLevel"
+                device_pubkey:
+                  type: string
+                  format: byte
+                  description: 设备 SE 公钥 (DER 格式, base64 编码)
+                valid_from:
+                  type: integer
+                  format: int64
+                  description: 有效起始时间 (Unix 时间戳)
+                  example: 1715000000
+                valid_until:
+                  type: integer
+                  format: int64
+                  description: 有效截止时间 (Unix 时间戳)
+                  example: 1815000000
+                trace_id:
+                  type: string
+                  description: 追踪 ID
+                  example: trace-abc-123
+      responses:
+        "200":
+          description: 绑定成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: "#/components/schemas/DigitalKey"
+                  vehicle_pubkey:
+                    type: string
+                    format: byte
+                    description: 车端公钥 (base64)
+                  shared_secret:
+                    type: string
+                    format: byte
+                    description: ECDH 共享密钥 (加密)
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+                  error_msg:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+    get:
+      summary: 获取密钥列表
+      description: 查询当前用户绑定的所有数字钥匙，支持分页
+      operationId: listKeys
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+          description: 按用户 ID 过滤
+        - name: vehicle_id
+          in: query
+          schema:
+            type: string
+          description: 按车辆 ID 过滤
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: 每页数量
+        - name: offset
+          in: query
+          schema:
+            type: string
+          description: 分页偏移 Token
+      responses:
+        "200":
+          description: 返回密钥列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DigitalKey"
+                  next_token:
+                    type: string
+                    description: 下一页 Token
+                  total:
+                    type: integer
+                    description: 总数
+                    example: 42
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /keys/{keyId}:
+    get:
+      summary: 查询单个密钥
+      description: 根据密钥 ID 查询密钥详细信息
+      operationId: getKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      responses:
+        "200":
+          description: 密钥详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: "#/components/schemas/DigitalKey"
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: 解绑密钥
+      description: 根据密钥 ID 解绑数字钥匙
+      operationId: unbindKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      responses:
+        "200":
+          description: 解绑成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /keys/{keyId}/suspend:
+    put:
+      summary: 暂停密钥
+      description: 临时挂起指定密钥，挂起后不可用于车辆操作
+      operationId: suspendKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: 挂起原因
+                  example: 设备丢失
+      responses:
+        "200":
+          description: 挂起成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /keys/{keyId}/resume:
+    put:
+      summary: 恢复密钥
+      description: 恢复已挂起的密钥，使其重新可用
+      operationId: resumeKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      responses:
+        "200":
+          description: 恢复成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /keys/{keyId}/revoke:
+    put:
+      summary: 吊销密钥
+      description: 永久吊销指定密钥，吊销后不可恢复
+      operationId: revokeKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: 吊销原因
+                  example: 车辆已售出
+      responses:
+        "200":
+          description: 吊销成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /keys/{keyId}/renew:
+    put:
+      summary: 续期密钥
+      description: 延长数字钥匙的有效期
+      operationId: renewKey
+      tags:
+        - 密钥管理 (Keys)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: key-ccc-apple-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - valid_until
+              properties:
+                valid_until:
+                  type: integer
+                  format: int64
+                  description: 新的截止时间 (Unix 时间戳)
+                  example: 1815000000
+      responses:
+        "200":
+          description: 续期成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: "#/components/schemas/DigitalKey"
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── 密钥分享 (Shares) ──
+  /shares:
+    post:
+      summary: 创建密钥分享
+      description: 将指定密钥分享给其他用户（支持按分享码或指定用户）
+      operationId: createShare
+      tags:
+        - 密钥分享 (Shares)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - key_id
+              properties:
+                key_id:
+                  type: string
+                  description: 要分享的密钥 ID
+                  example: key-ccc-apple-001
+                from_user_id:
+                  type: string
+                  description: 分享发起人（从 Token 自动注入）
+                to_vendor:
+                  $ref: "#/components/schemas/PhoneVendor"
+                to_user_id:
+                  type: string
+                  description: 目标用户 ID（可选，为空则生成分享码）
+                  example: user-friend-01
+                access_level:
+                  $ref: "#/components/schemas/AccessLevel"
+                valid_from:
+                  type: integer
+                  format: int64
+                  description: 分享有效起始 (Unix 时间戳)
+                valid_until:
+                  type: integer
+                  format: int64
+                  description: 分享有效截止 (Unix 时间戳)
+                max_uses:
+                  type: integer
+                  description: 最大使用次数
+                  example: 100
+                trace_id:
+                  type: string
+                  description: 追踪 ID
+      responses:
+        "200":
+          description: 分享创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_id:
+                    type: string
+                    description: 分享 ID
+                    example: share-abc-123
+                  share_code:
+                    type: string
+                    description: 6 位数字分享码（未指定 to_user_id 时生成）
+                    example: 382914
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /shares/accept:
+    post:
+      summary: 接受密钥分享
+      description: 使用分享码接受他人分享的密钥
+      operationId: acceptShare
+      tags:
+        - 密钥分享 (Shares)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - share_code
+              properties:
+                share_code:
+                  type: string
+                  description: 6 位数字分享码
+                  example: "382914"
+                device_id:
+                  type: string
+                  description: 接收方设备 ID
+                user_id:
+                  type: string
+                  description: 接收方用户 ID（从 Token 自动注入）
+                vendor:
+                  $ref: "#/components/schemas/PhoneVendor"
+                device_pubkey:
+                  type: string
+                  format: byte
+                  description: 接收方设备公钥 (DER)
+                trace_id:
+                  type: string
+      responses:
+        "200":
+          description: 接受成功，返回绑定的钥匙信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    $ref: "#/components/schemas/DigitalKey"
+                  shared_secret:
+                    type: string
+                    format: byte
+                    description: ECDH 共享密钥
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /shares/{shareId}:
+    get:
+      summary: 查询分享信息
+      description: 查看密钥分享的详细信息
+      operationId: getShare
+      tags:
+        - 密钥分享 (Shares)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: share-abc-123
+      responses:
+        "200":
+          description: 分享详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_id:
+                    type: string
+                  key_id:
+                    type: string
+                  from_user_id:
+                    type: string
+                  access_level:
+                    $ref: "#/components/schemas/AccessLevel"
+                  valid_from:
+                    type: integer
+                    format: int64
+                  valid_until:
+                    type: integer
+                    format: int64
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: 取消密钥分享
+      description: 取消已创建的密钥分享
+      operationId: cancelShare
+      tags:
+        - 密钥分享 (Shares)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: shareId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: share-abc-123
+      responses:
+        "200":
+          description: 取消成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code:
+                    $ref: "#/components/schemas/ErrorCode"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  # ── 车辆控制 (Vehicles) ──
+  /vehicles/{vehicleId}/command:
+    post:
+      summary: 发送车辆控制指令
+      description: 向车辆发送远程控制指令（如解锁、闭锁、启动引擎等）
+      operationId: sendCommand
+      tags:
+        - 车辆控制 (Vehicles)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: VH-REMOTE-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+                - key_id
+              properties:
+                action:
+                  type: string
+                  description: 控制指令
+                  enum:
+                    - unlock
+                    - lock
+                    - engine_on
+                    - engine_off
+                    - trunk
+                    - climate
+                    - find
+                  example: unlock
+                key_id:
+                  type: string
+                  description: 用于操作的密钥 ID
+                  example: key-ccc-apple-001
+                params:
+                  type: object
+                  description: 指令参数（JSON 对象）
+                source:
+                  type: integer
+                  description: 指令来源：1=NFC, 2=BLE, 3=UWB, 4=Remote, 5=Edge
+                  example: 4
+                trace_id:
+                  type: string
+                  description: 追踪 ID
+      responses:
+        "200":
+          description: 指令发送成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cmd_id:
+                    type: string
+                    description: 指令 ID
+                  result_code:
+                    type: integer
+                    description: 结果码
+                    example: 0
+                  error_msg:
+                    type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  /vehicles/{vehicleId}/status:
+    get:
+      summary: 流式接收车辆状态（SSE）
+      description: 通过 Server-Sent Events (SSE) 实时接收车辆状态更新
+      operationId: streamStatus
+      tags:
+        - 车辆控制 (Vehicles)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: VH-REMOTE-001
+      responses:
+        "200":
+          description: SSE 事件流
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  格式: `data: <json>\n\n`
+                  JSON 字段:
+                  - vehicle_id: string
+                  - lock_status: int32
+                  - engine_status: int32
+                  - door_status: int32
+                  - window_status: int32
+                  - battery_pct: int32
+                  - interior_temp: int32
+                  - alarm_status: int32
+                  - latitude: double
+                  - longitude: double
+                  - timestamp: int64
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  # ── HUB 管理 (Hub) ──
+  /hub/adapters:
+    get:
+      summary: 列出所有适配器状态
+      description: 获取所有已注册的手机厂商适配器运行状态
+      operationId: listAdapters
+      tags:
+        - HUB 管理 (Hub)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: 适配器列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthy:
+                    type: boolean
+                  adapters:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdapterStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /hub/health:
+    get:
+      summary: HUB 健康检查
+      description: 检测 HUB 服务运行状态
+      operationId: hubHealthCheck
+      tags:
+        - HUB 管理 (Hub)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: 健康状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  healthy:
+                    type: boolean
+                  adapters:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AdapterStatus"
+        "502":
+          $ref: "#/components/responses/GatewayError"
+
+  # ── Token 管理 (Tokens) ──
+  /tokens:
+    post:
+      summary: 签发 Token
+      description: 车主签发授权 Token，可指定权限和有效期
+      operationId: issueToken
+      tags:
+        - Token 管理 (Tokens)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject_id
+                - vehicle_id
+              properties:
+                subject_id:
+                  type: string
+                  description: 被授权用户的 ID
+                  example: user-friend-01
+                vehicle_id:
+                  type: string
+                  description: 车辆 ID
+                  example: VH-001
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - lock
+                      - engine
+                      - trunk
+                      - window
+                      - climate
+                      - seat
+                      - fuel
+                      - share
+                      - charge_port
+                      - valet_mode
+                  description: 权限列表（默认仅 lock）
+                  example:
+                    - lock
+                    - engine
+                    - trunk
+                duration:
+                  type: string
+                  description: 有效期（默认 24h）
+                  example: 2h
+                max_uses:
+                  type: integer
+                  description: 最大使用次数
+                  example: 50
+      responses:
+        "200":
+          description: Token 签发成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_id:
+                    type: string
+                    description: Token ID
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: 过期时间 (Unix 时间戳)
+                  signature:
+                    type: string
+                    description: Token 签名
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /tokens/{tokenId}:
+    get:
+      summary: 验证 Token
+      description: 验证指定 Token 是否有效并返回其权限信息
+      operationId: verifyToken
+      tags:
+        - Token 管理 (Tokens)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Token 信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  owner_id:
+                    type: string
+                  subject_id:
+                    type: string
+                  vehicle_id:
+                    type: string
+                  permissions:
+                    type: array
+                    items:
+                      type: string
+                  expires_at:
+                    type: integer
+                    format: int64
+                  use_count:
+                    type: integer
+        "401":
+          description: Token 无效或已过期
+
+    delete:
+      summary: 吊销 Token
+      description: 吊销指定的授权 Token
+      operationId: revokeToken
+      tags:
+        - Token 管理 (Tokens)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 吊销成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_id:
+                    type: string
+                  status:
+                    type: string
+                    example: revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /tokens/{tokenId}/exchange:
+    post:
+      summary: Token 换发数字钥匙
+      description: 使用有效的授权 Token 换发一把离线可用的数字钥匙。HUB 验证 Token 后通知 DK Server 签发钥匙。
+      operationId: exchangeToken
+      tags:
+        - Token 管理 (Tokens)
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 钥匙签发成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exchanged:
+                    type: boolean
+                    example: true
+                  token_id:
+                    type: string
+                  key_id:
+                    type: string
+                  subject:
+                    type: string
+                  vehicle:
+                    type: string
+                  note:
+                    type: string
+                    example: 钥匙已签发，请等待设备端同步
+        "401":
+          description: Token 无效
+
+  /tokens/{tokenId}/suspend:
+    put:
+      summary: 挂起 Token
+      description: 临时挂起指定的授权 Token
+      operationId: suspendToken
+      tags:
+        - Token 管理 (Tokens)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 挂起成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_id:
+                    type: string
+                  status:
+                    type: string
+                    example: suspended
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /tokens/{tokenId}/resume:
+    put:
+      summary: 恢复 Token
+      description: 恢复已挂起的授权 Token
+      operationId: resumeToken
+      tags:
+        - Token 管理 (Tokens)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 恢复成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token_id:
+                    type: string
+                  status:
+                    type: string
+                    example: active
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── 设备管理 (Devices) ──
+  /devices:
+    post:
+      summary: 注册设备
+      description: 注册手机设备并上报其能力（蓝牙、UWB、NFC 等）
+      operationId: registerDevice
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - platform
+                - model
+              properties:
+                platform:
+                  type: string
+                  description: 平台
+                  example: ios
+                model:
+                  type: string
+                  description: 设备型号
+                  example: iPhone 15 Pro
+                os_version:
+                  type: string
+                  description: OS 版本
+                  example: "18.0"
+                app_version:
+                  type: string
+                  description: App 版本
+                  example: 1.2.3
+                ble:
+                  type: boolean
+                  description: 支持 BLE
+                uwb:
+                  type: boolean
+                  description: 支持 UWB
+                nfc:
+                  type: boolean
+                  description: 支持 NFC
+                secure_element:
+                  type: boolean
+                  description: 拥有安全芯片 (SE)
+      responses:
+        "200":
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                    description: 设备唯一 ID
+                  platform:
+                    type: string
+                  model:
+                    type: string
+                  ble:
+                    type: boolean
+                  uwb:
+                    type: boolean
+                  nfc:
+                    type: boolean
+                  max_devices:
+                    type: integer
+                    description: 最大设备数限制
+                    example: 5
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: 注册冲突
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: REGISTER_FAILED
+                  message:
+                    type: string
+
+    get:
+      summary: 列出用户设备
+      description: 获取当前用户所有已注册的设备列表
+      operationId: listDevices
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: 设备列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        device_id:
+                          type: string
+                        platform:
+                          type: string
+                        model:
+                          type: string
+                        os_version:
+                          type: string
+                        ble:
+                          type: boolean
+                        uwb:
+                          type: boolean
+                        nfc:
+                          type: boolean
+                        secure_element:
+                          type: boolean
+                        last_seen:
+                          type: integer
+                          format: int64
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /devices/{deviceId}:
+    get:
+      summary: 查看设备详情
+      description: 获取指定设备的详细信息
+      operationId: getDevice
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 设备详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                  platform:
+                    type: string
+                  model:
+                    type: string
+                  os_version:
+                    type: string
+                  app_version:
+                    type: string
+                  ble:
+                    type: boolean
+                  uwb:
+                    type: boolean
+                  nfc:
+                    type: boolean
+                  secure_element:
+                    type: boolean
+                  last_seen:
+                    type: integer
+                    format: int64
+                  registered_at:
+                    type: integer
+                    format: int64
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: 删除设备
+      description: 删除已注册的设备
+      operationId: deleteDevice
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                  status:
+                    type: string
+                    example: deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: 删除失败
+
+  /devices/{deviceId}/provision:
+    post:
+      summary: 配钥到设备
+      description: 为指定设备配发数字钥匙（基于设备能力自动协商协议）
+      operationId: provisionDevice
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - vehicle_id
+              properties:
+                vehicle_id:
+                  type: string
+                  description: 车辆 VIN
+                  example: VH-PROV-001
+      responses:
+        "200":
+          description: 配钥成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key_id:
+                    type: string
+                  device_id:
+                    type: string
+                  vehicle_id:
+                    type: string
+                  status:
+                    type: string
+                    example: ACTIVE
+                  bound_at:
+                    type: integer
+                    format: int64
+                  note:
+                    type: string
+                    example: 密钥已下发至设备，请打开App确认
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: 配钥失败
+
+  /devices/{deviceId}/revoke:
+    post:
+      summary: 吊销设备所有钥匙
+      description: 吊销指定设备关联的所有数字钥匙
+      operationId: revokeDevice
+      tags:
+        - 设备管理 (Devices)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 吊销成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  device_id:
+                    type: string
+                  keys_revoked:
+                    type: integer
+                    description: 被吊销的钥匙数量
+                    example: 1
+                  status:
+                    type: string
+                    example: revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: 吊销失败
+
+  # ── 健康检查 ──
+  /health:
+    get:
+      summary: 健康检查（公开）
+      description: 公开的健康检查端点，无需认证
+      operationId: healthCheck
+      tags:
+        - 系统
+      responses:
+        "200":
+          description: 健康
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 通过 `/auth/login` 获取 JWT Token，在请求头中携带 `Authorization: Bearer <token>`
+
+  schemas:
+    # ── 枚举 ──
+    Protocol:
+      type: string
+      enum:
+        - PROTOCOL_UNSPECIFIED
+        - CCC_DK3
+        - ICCOA_DK30
+        - ICCOA_DK40
+        - ICCE
+      description: 协议类型
+      x-enum-varnames:
+        - CCC Digital Key 3.0 (Apple)
+        - ICCOA DK 3.0
+        - ICCOA DK 4.0
+        - ICCE
+
+    PhoneVendor:
+      type: string
+      enum:
+        - VENDOR_UNSPECIFIED
+        - APPLE
+        - SAMSUNG
+        - XIAOMI
+        - OPPO
+        - VIVO
+        - HUAWEI
+      description: 手机厂商
+
+    KeyType:
+      type: string
+      enum:
+        - KEY_TYPE_UNSPECIFIED
+        - OWNER
+        - FRIEND
+        - SERVICE
+        - TEMPORARY
+      description: 密钥类型
+
+    KeyStatus:
+      type: string
+      enum:
+        - KEY_STATUS_UNSPECIFIED
+        - ACTIVE
+        - SUSPENDED
+        - REVOKED
+        - EXPIRED
+      description: 密钥状态
+
+    # ── 核心模型 ──
+    AccessLevel:
+      type: object
+      description: 权限位掩码（8 位权限控制）
+      properties:
+        lock:
+          type: boolean
+          description: 解锁/上锁车门
+          example: true
+        unlock:
+          type: boolean
+          description: 解锁车门
+          example: true
+        engine:
+          type: boolean
+          description: 启动/停止引擎
+          example: true
+        trunk:
+          type: boolean
+          description: 开启后备箱
+          example: false
+        window:
+          type: boolean
+          description: 控制车窗
+          example: false
+        climate:
+          type: boolean
+          description: 控制空调
+          example: false
+        find:
+          type: boolean
+          description: 找车
+          example: false
+        seat:
+          type: boolean
+          description: 调整座椅
+          example: false
+
+    TimeRestriction:
+      type: object
+      description: 时间限制
+      properties:
+        weekdays:
+          type: array
+          items:
+            type: integer
+          description: 可用日期，1=周一…7=周日
+          example: [1, 2, 3, 4, 5]
+        start_time:
+          type: string
+          description: 可用起始时间
+          example: "08:00"
+        end_time:
+          type: string
+          description: 可用结束时间
+          example: "18:00"
+
+    DigitalKey:
+      type: object
+      description: 统一数字钥匙模型
+      properties:
+        key_id:
+          type: string
+          description: 密钥 ID
+          example: key-ccc-apple-001
+        vehicle_id:
+          type: string
+          description: 车辆 ID
+          example: VH-001
+        device_id:
+          type: string
+          description: 设备 ID
+        user_id:
+          type: string
+          description: 用户 ID
+        key_type:
+          $ref: "#/components/schemas/KeyType"
+        protocol:
+          $ref: "#/components/schemas/Protocol"
+        access_level:
+          $ref: "#/components/schemas/AccessLevel"
+        distance_limit:
+          type: integer
+          description: PKE 距离限制 (mm)，0=无限制
+        time_restriction:
+          $ref: "#/components/schemas/TimeRestriction"
+        max_uses:
+          type: integer
+          description: 最大使用次数
+        used_count:
+          type: integer
+          description: 已使用次数
+        key_version:
+          type: integer
+          description: 密钥版本
+        status:
+          $ref: "#/components/schemas/KeyStatus"
+        valid_from:
+          type: integer
+          format: int64
+          description: 有效起始 (Unix 时间戳)
+        valid_until:
+          type: integer
+          format: int64
+          description: 有效截止 (Unix 时间戳)
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间 (Unix 时间戳)
+
+    AdapterStatus:
+      type: object
+      description: 厂商适配器状态
+      properties:
+        vendor:
+          type: string
+          description: 厂商名称
+        protocol:
+          type: string
+          description: 协议名称
+        healthy:
+          type: boolean
+          description: 是否健康
+        last_check_ms:
+          type: integer
+          format: int64
+          description: 最后检查时间 (ms)
+        error_msg:
+          type: string
+          description: 错误信息
+
+    ErrorCode:
+      type: string
+      description: 错误码（空字符串表示成功）
+      example: ""
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: BAD_REQUEST
+              message:
+                type: string
+              detail:
+                type: string
+    Unauthorized:
+      description: 认证失败或 Token 无效
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: AUTH_INVALID_TOKEN
+              message:
+                type: string
+                example: invalid or expired token
+              detail:
+                type: string
+    Forbidden:
+      description: 无权限访问
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: FORBIDDEN
+              message:
+                type: string
+              detail:
+                type: string
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: GRPC_NOT_FOUND
+              message:
+                type: string
+              detail:
+                type: string
+    GatewayError:
+      description: 网关错误（gRPC 转发失败）
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: GRPC_UNAVAILABLE
+              message:
+                type: string
+                example: hub service temporarily unavailable
+              detail:
+                type: string
+
+  # ── 统一错误码表 (供文档参考) ──
+  x-error-codes:
+    - code: BAD_REQUEST
+      http_status: 400
+      description: 请求参数错误
+    - code: AUTH_MISSING_HEADER
+      http_status: 401
+      description: 缺少 Authorization 请求头
+    - code: AUTH_INVALID_FORMAT
+      http_status: 401
+      description: Token 格式错误
+    - code: AUTH_INVALID_TOKEN
+      http_status: 401
+      description: Token 无效或已过期
+    - code: AUTH_INVALID_CREDENTIALS
+      http_status: 401
+      description: 用户名或密码错误
+    - code: FORBIDDEN
+      http_status: 403
+      description: 无操作权限
+    - code: GRPC_NOT_FOUND
+      http_status: 404
+      description: gRPC 资源未找到
+    - code: GRPC_PERMISSION_DENIED
+      http_status: 403
+      description: gRPC 权限拒绝
+    - code: GRPC_INVALID_ARGUMENT
+      http_status: 400
+      description: gRPC 请求参数无效
+    - code: GRPC_UNAVAILABLE
+      http_status: 503
+      description: HUB 服务暂时不可用
+    - code: GRPC_INTERNAL
+      http_status: 500
+      description: gRPC 内部错误
+    - code: GRPC_DEADLINE_EXCEEDED
+      http_status: 504
+      description: gRPC 请求超时
+    - code: GRPC_RESOURCE_EXHAUSTED
+      http_status: 429
+      description: 请求频率超限
+    - code: ERR_RATE_LIMIT
+      http_status: 429
+      description: IP 频率限制
+    - code: INTERNAL_ERROR
+      http_status: 500
+      description: 服务器内部错误
+    - code: REGISTER_FAILED
+      http_status: 409
+      description: 设备注册冲突
+    - code: LIST_FAILED
+      http_status: 500
+      description: 设备列表查询失败
+    - code: AUTH_FAILED
+      http_status: 401
+      description: 认证信息提取失败
+    - code: ISSUE_FAILED
+      http_status: 500
+      description: Token 签发失败
+    - code: PROVISION_FAILED
+      http_status: 500
+      description: 配钥失败
+    - code: REVOKE_FAILED
+      http_status: 403
+      description: 吊销失败
+    - code: DELETE_FAILED
+      http_status: 500
+      description: 删除失败
+
+tags:
+  - name: 认证 (Auth)
+    description: 用户认证和 JWT Token 获取
+  - name: 密钥管理 (Keys)
+    description: 数字钥匙的绑定、解绑、暂停/恢复、吊销、续期和查询
+  - name: 密钥分享 (Shares)
+    description: 数字钥匙的分享、接受、取消和查询
+  - name: 车辆控制 (Vehicles)
+    description: 车辆远程控制指令发送和状态流式推送
+  - name: HUB 管理 (Hub)
+    description: HUB 网关管理和健康检查
+  - name: Token 管理 (Tokens)
+    description: 授权 Token 的签发、验证、吊销和换发
+  - name: 设备管理 (Devices)
+    description: 手机设备的注册、查询、配钥和删除
+  - name: 系统
+    description: 系统级端点

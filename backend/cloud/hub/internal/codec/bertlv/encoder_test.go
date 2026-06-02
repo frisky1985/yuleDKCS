@@ -251,11 +251,13 @@ func TestEncode_MultiByteTag_ISO7816_4(t *testing.T) {
 }
 
 func TestRoundtrip_RandomTags(t *testing.T) {
-	// Single-byte tags only (0x00-0x1F, 0x80-0xBF, 0xC0-0xFF)
+	// Single-byte tags only (tag number < 31, i.e. low5 != 0x1F)
+	// Tags 0x1F, 0x7F, 0x9F, 0xFF have low5=0x1F (BER-TLV multi-byte indicator)
+	// and must be excluded — decoder treats them as multi-byte.
 	tags := []Tag{
-		0x01, 0x1F, 0x20, 0x7F,   // Universal class
-		0x80, 0x9E, 0x9F, 0xC0,   // Context/Private class
-		0xE0, 0xFF, 0xE1, 0xE2,   // Private class
+		0x01, 0x20,               // Universal class
+		0x80, 0x9E, 0xC0,         // Context/Private class (valid single-byte)
+		0xE0, 0xE1, 0xE2,         // Private class
 	}
 	for _, tag := range tags {
 		raw, err := Encode(tag, []byte{0xAB, 0xCD})

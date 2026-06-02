@@ -8,6 +8,8 @@ package dkcs
 import (
 	"context"
 	"fmt"
+
+	"google.golang.org/grpc"
 )
 
 // ─── Key Messages ─────────────────────────────────────────────
@@ -123,6 +125,105 @@ type SendCommandResponse struct {
 	Timestamp int64
 }
 
+// Command service types
+type UnimplementedCommandServiceServer struct{}
+
+func (UnimplementedCommandServiceServer) Server() {}
+
+type UnlockRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type LockRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type EngineStartRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type EngineStopRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type TrunkOpenRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type PanicRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type FindVehicleRequest struct {
+	KeyId     string
+	VehicleId string
+}
+
+type CommandResponse struct {
+	CommandId string
+	Status    string
+	Timestamp int64
+}
+
+type GetCommandStatusRequest struct {
+	CommandId string
+}
+
+// Event service types
+type UnimplementedEventServiceServer struct{}
+
+func (UnimplementedEventServiceServer) Server() {}
+
+type ListEventsRequest struct {
+	VehicleId string
+	Limit     int32
+	Offset    int32
+}
+
+type ListEventsResponse struct {
+	Events []*Event
+}
+
+type StreamEventsRequest struct {
+	VehicleId string
+}
+
+type EventService_StreamEventsServer interface {
+	Send(*Event) error
+	Context() context.Context
+}
+
+type GetEventStatsRequest struct {
+	VehicleId string
+	StartTime int64
+	EndTime   int64
+}
+
+type GetEventStatsResponse struct {
+	Stats []*StatItem
+}
+
+type Event struct {
+	EventId   string
+	Type      string
+	VehicleId string
+	UserId    string
+	KeyId     *string
+	Data      map[string]string
+	Timestamp int64
+}
+
+type StatItem struct {
+	Key   string
+	Value int64
+}
+
 // ─── Event Messages ──────────────────────────────────────────
 
 type LogEventRequest struct {
@@ -160,3 +261,8 @@ type KeyServiceClient interface {
 func Errorf(code int, format string, args ...interface{}) error {
 	return fmt.Errorf(format, args...)
 }
+
+// gRPC service registration stubs
+func RegisterKeyServiceServer(s *grpc.Server, srv KeyServiceServer) {}
+func RegisterCommandServiceServer(s *grpc.Server, srv interface{}) {}
+func RegisterEventServiceServer(s *grpc.Server, srv interface{}) {}
