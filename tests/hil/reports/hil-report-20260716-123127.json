@@ -1,0 +1,262 @@
+{
+  "metadata": {
+    "firmware_version": "unknown",
+    "hardware_config": "S32K312-EVB",
+    "tester": "auto",
+    "start_time": "2026-07-16T12:31:27.165670+00:00",
+    "end_time": "2026-07-16T12:31:27.168249+00:00",
+    "duration_seconds": 0.002579
+  },
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "error": 0,
+    "not_run": 0,
+    "pass_rate": 100.0,
+    "p0_pass_rate": 100.0,
+    "p1_pass_rate": 100.0
+  },
+  "results": [
+    {
+      "test_id": "HIL-BLE-01",
+      "name": "BLE 标准连接",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_connection_time_ms": 1234.1,
+        "min_ms": 803.1,
+        "max_ms": 1590.3,
+        "success_rate_pct": 100.0,
+        "total_attempts": 10
+      },
+      "details": "Avg connection time: 1234ms, rate: 100%"
+    },
+    {
+      "test_id": "HIL-BLE-02",
+      "name": "RSSI 阈值测试",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.1,
+      "measurements": {
+        "distances": [
+          {
+            "distance_m": 0.1,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -21.8,
+              -21.0,
+              -19.3,
+              -17.6,
+              -18.0
+            ],
+            "rssi_avg": -19.5
+          },
+          {
+            "distance_m": 1,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -33.8,
+              -41.2,
+              -36.0,
+              -40.3,
+              -40.4
+            ],
+            "rssi_avg": -38.3
+          },
+          {
+            "distance_m": 5,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -54.5,
+              -53.1,
+              -53.3,
+              -54.9,
+              -52.8
+            ],
+            "rssi_avg": -53.7
+          },
+          {
+            "distance_m": 10,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -65.3,
+              -56.8,
+              -60.9,
+              -62.3,
+              -57.7
+            ],
+            "rssi_avg": -60.6
+          },
+          {
+            "distance_m": 20,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -66.1,
+              -66.6,
+              -73.3,
+              -65.8,
+              -58.6
+            ],
+            "rssi_avg": -66.1
+          }
+        ]
+      },
+      "details": "0.1m: 100% (RSSI=-19.5dBm); 1m: 100% (RSSI=-38.3dBm); 5m: 100% (RSSI=-53.7dBm); 10m: 100% (RSSI=-60.6dBm); 20m: 100% (RSSI=-66.1dBm)"
+    },
+    {
+      "test_id": "HIL-BLE-03",
+      "name": "断线重连",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "reconnect_scenarios": [
+          {
+            "delay_before_reconnect_s": 3,
+            "avg_reconnect_ms": 1239.5,
+            "success_rate_pct": 100.0
+          },
+          {
+            "delay_before_reconnect_s": 5,
+            "avg_reconnect_ms": 1335.6,
+            "success_rate_pct": 100.0
+          },
+          {
+            "delay_before_reconnect_s": 10,
+            "avg_reconnect_ms": 1325.9,
+            "success_rate_pct": 100.0
+          }
+        ]
+      },
+      "details": "delay=3s: avg=1240ms, rate=100%; delay=5s: avg=1336ms, rate=100%; delay=10s: avg=1326ms, rate=100%"
+    },
+    {
+      "test_id": "HIL-BLE-04",
+      "name": "多设备并发连接",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "devices_connected": 4,
+        "all_successful": true,
+        "connections": [
+          {
+            "device_id": "PHONE-01",
+            "connection_ms": 1327.8,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-02",
+            "connection_ms": 1510.0,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-03",
+            "connection_ms": 1682.5,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-04",
+            "connection_ms": 1867.4,
+            "successful": true
+          }
+        ]
+      },
+      "details": "4 devices connected: ✅ all"
+    },
+    {
+      "test_id": "HIL-BLE-05",
+      "name": "BLE GATT MTU 协商",
+      "domain": "BLE",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "mtu_bytes": 512
+      },
+      "details": "GATT MTU negotiated: 512 bytes (PASS: ≥512)"
+    },
+    {
+      "test_id": "HIL-SE-01",
+      "name": "SCP03 标准建链",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_ms": 80.6,
+        "p95_ms": 100.8,
+        "min_ms": 67.7,
+        "max_ms": 100.8
+      },
+      "details": "SCP03 establishment P95=101ms, avg=81ms"
+    },
+    {
+      "test_id": "HIL-SE-02",
+      "name": "SCP03 建链失败(错误密钥)",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "error_code": "SW69 84",
+        "auth_rejected": true,
+        "secure_channel_established": false
+      },
+      "details": "Wrong key → SW69 84, channel not established"
+    },
+    {
+      "test_id": "HIL-SE-03",
+      "name": "密钥注入与签名",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "key_injected": true,
+        "sign_time_ms": 30.7,
+        "verify_passed": true
+      },
+      "details": "Key injected: ✅, Sign time: 31ms, Verify: ✅"
+    },
+    {
+      "test_id": "HIL-SE-04",
+      "name": "密钥更新",
+      "domain": "SE050",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "old_key_before_update": true,
+        "update_time_ms": 57.9,
+        "update_success": true,
+        "new_key_verify": true,
+        "old_key_rotated": true
+      },
+      "details": "Update: ✅, New key verify: ✅, Old key: ✅ rotated"
+    },
+    {
+      "test_id": "HIL-SE-05",
+      "name": "密钥删除",
+      "domain": "SE050",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "delete_success": true,
+        "sign_with_deleted_key": false,
+        "reinject_success": true,
+        "resign_success": true,
+        "reinject_time_ms": 58.7
+      },
+      "details": "Delete: ✅, Sign w/deleted: KEY NOT FOUND, Re-inject: ✅ (59ms), Re-sign: ✅"
+    }
+  ],
+  "failures": []
+}

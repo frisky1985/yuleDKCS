@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_app_tasks.a CMakeFiles/bsw_app_tasks.dir/src/dk_os_tasks.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_app_tasks.a

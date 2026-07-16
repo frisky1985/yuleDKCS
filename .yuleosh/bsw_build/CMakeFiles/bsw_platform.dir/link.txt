@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_platform.a CMakeFiles/bsw_platform.dir/src/startup_s32k312.c.obj CMakeFiles/bsw_platform.dir/src/syscalls.c.obj CMakeFiles/bsw_platform.dir/src/freertos_stubs.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_platform.a

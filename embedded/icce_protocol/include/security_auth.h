@@ -1,8 +1,10 @@
 /**
  * @file security_auth.h
+ * @module EMB-BSW-SEC (ASPICE SWE.4)
  * @brief 安全认证模块接口
  * @version 1.0
  * @date 2026-05-28
+ * Layer: BSW (Basic Software Layer)
  *
  * 提供数字钥匙的安全认证功能:
  * - 密钥管理与存储

@@ -1,0 +1,57 @@
+{
+  "manifest_version": "1.0",
+  "generated_at": "2026-07-04T00:01:56",
+  "project_dir": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH",
+  "total_files": 7,
+  "files": [
+    {
+      "path": "acceptance-matrix.md",
+      "sha256": "d2430985a5c7e51725913d1307254b3c2fb76276e46fabfcbff9e03d49c590a0",
+      "size_bytes": 370,
+      "mtime": 1783094516.8807023,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "code-coverage-report.md",
+      "sha256": "1f6ab48cfb89a70164a158aef111c9e0b61d62af6216baeecb3ff3dce4047ace",
+      "size_bytes": 117,
+      "mtime": 1783094516.8805587,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "requirement-coverage.md",
+      "sha256": "5d723cc02c69e8445d51a157b9d5ecae17a1fb2a9c388202d940b1a32356d06c",
+      "size_bytes": 226,
+      "mtime": 1783094516.8804266,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "review-log-summary.md",
+      "sha256": "c4b0e7d2dc23b0f3355224924e6249074e94cd7ee55d86c27d00913686a19da0",
+      "size_bytes": 520,
+      "mtime": 1783094516.88085,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "review-log.json",
+      "sha256": "5e17c55229c91ec5fa381f089ae350695cc3d5c28bd1fab61a3d74bc67a6c952",
+      "size_bytes": 1013,
+      "mtime": 1783094516.8810308,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "traceability-matrix.json",
+      "sha256": "bb466d16a57b574183d012b1becdb4f838017855d4ee778a893c33acc6580575",
+      "size_bytes": 354,
+      "mtime": 1783094516.880282,
+      "mtime_iso": "2026-07-04T00:01:56"
+    },
+    {
+      "path": "traceability-matrix.md",
+      "sha256": "0afd9a3d307f58643cf81c6f69185bea34a7a9a662d04cabbe7c6a6394930bba",
+      "size_bytes": 310,
+      "mtime": 1783094516.8800552,
+      "mtime_iso": "2026-07-04T00:01:56"
+    }
+  ]
+}

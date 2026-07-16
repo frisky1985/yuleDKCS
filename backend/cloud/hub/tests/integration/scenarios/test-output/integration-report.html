@@ -41,19 +41,19 @@ tr:hover td { background: #fafafa; }
 	<div class="header">
 		<h1>🔑 yuleDKCS 集成测试报告</h1>
 		<div class="subtitle">
-			测试套件: E2E-10 密钥过期/吊销 |
-			运行时间: 2026-08-01 11:03:28 |
-			总耗时: 810µs
+			测试套件: E2E-06 OTA升级 |
+			运行时间: 2026-07-08 13:07:45 |
+			总耗时: 1ms
 		</div>
 	</div>
 
 	<div class="summary-grid">
 		<div class="summary-card card-total">
-			<div class="num">5</div>
+			<div class="num">6</div>
 			<div class="label">总用例数</div>
 		</div>
 		<div class="summary-card card-pass">
-			<div class="num">5</div>
+			<div class="num">6</div>
 			<div class="label">通过</div>
 		</div>
 		<div class="summary-card card-fail">
@@ -80,38 +80,45 @@ tr:hover td { background: #fafafa; }
 	</thead>
 	<tbody>
 	<tr>
-				<td rowspan="5" style="background:#f1f8e9;font-weight:bold;text-align:center">E2E-10</td>
-				<td>E2E-10-01: 密钥过期拒绝访问</td>
-				<td>CCC/ICCOA/ICCE</td>
-				<td>112µs</td>
+				<td rowspan="6" style="background:#ffffff;font-weight:bold;text-align:center">E2E-06</td>
+				<td>E2E-06-01: OTA正常升级</td>
+				<td>OTA</td>
+				<td>251µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-10-02: 云管端吊销密钥</td>
-				<td>CCC/ICCOA/ICCE</td>
-				<td>91µs</td>
+				<td>E2E-06-02: OTA签名校验失败拒绝</td>
+				<td>OTA</td>
+				<td>74µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-10-03: 密钥续期</td>
-				<td>ICCOA</td>
-				<td>96µs</td>
+				<td>E2E-06-03: OTA无签名包拒绝</td>
+				<td>OTA</td>
+				<td>6µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-10-04: 使用次数超限密钥失效</td>
-				<td>ICCE</td>
-				<td>43µs</td>
+				<td>E2E-06-04: OTA状态查询</td>
+				<td>OTA</td>
+				<td>1µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-10-05: 部分吊销不影响其他密钥</td>
-				<td>CCC/ICCOA/ICCE</td>
-				<td>214µs</td>
+				<td>E2E-06-05: ECDSA签名验证(crypto)</td>
+				<td>OTA/CRYPTO</td>
+				<td>323µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-06-06: OTA数据篡改检测</td>
+				<td>OTA</td>
+				<td>54µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr>
@@ -119,7 +126,7 @@ tr:hover td { background: #fafafa; }
 	</table>
 
 	<div class="footer">
-		<p>yuleDKCS Integration Test Framework | Generated: 2026-08-01 11:03:28 CST</p>
+		<p>yuleDKCS Integration Test Framework | Generated: 2026-07-08 13:07:45 CST</p>
 		<p>三端集成测试：嵌入式 C / Android+ iOS SDK / 云端 Go+Java</p>
 	</div>
 </div>

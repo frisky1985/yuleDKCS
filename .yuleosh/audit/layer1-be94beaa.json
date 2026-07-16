@@ -1,0 +1,82 @@
+{
+  "layer": 1,
+  "commit": "be94beaa",
+  "status": "failed",
+  "started_at": "2026-06-19T15:19:28.700829",
+  "completed_at": "2026-06-19T15:21:34.703071",
+  "stages": [
+    {
+      "name": "yaml-validation",
+      "status": "failed",
+      "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
+      "timestamp": "2026-06-19T15:19:28.931285"
+    },
+    {
+      "name": "spec-validation",
+      "status": "passed",
+      "detail": "0 missing, 3 req keywords found",
+      "timestamp": "2026-06-19T15:19:28.931574"
+    },
+    {
+      "name": "architecture-review",
+      "status": "passed",
+      "detail": "21 modules: adapter, alm, api, ci, cli, compliance",
+      "timestamp": "2026-06-19T15:19:28.932212"
+    },
+    {
+      "name": "requirements-trace",
+      "status": "passed",
+      "detail": "793 reqs, 155 modules, 127 tests (ratio 81.9%)",
+      "timestamp": "2026-06-19T15:19:28.947665"
+    },
+    {
+      "name": "plan-lint",
+      "status": "skipped",
+      "detail": "No task/plan files found",
+      "timestamp": "2026-06-19T15:19:29.197212"
+    },
+    {
+      "name": "docsync-gate",
+      "status": "warning",
+      "detail": "Sync gate: failed | 4 total, 1 error(s), 0 warning(s)",
+      "timestamp": "2026-06-19T15:19:29.234554"
+    },
+    {
+      "name": "clang-tidy",
+      "status": "skipped",
+      "detail": "clang-tidy not installed",
+      "timestamp": "2026-06-19T15:19:29.241388"
+    },
+    {
+      "name": "misra-check",
+      "status": "skipped",
+      "detail": "No C/C++ source files found",
+      "timestamp": "2026-06-19T15:19:29.268544"
+    },
+    {
+      "name": "unit-tests",
+      "status": "failed",
+      "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=80\n                                                                         [100%]\n================================ tests coverage =====",
+      "timestamp": "2026-06-19T15:19:34.684765"
+    },
+    {
+      "name": "coverage",
+      "status": "skipped",
+      "detail": "Coverage run timed out",
+      "timestamp": "2026-06-19T15:21:34.697544"
+    },
+    {
+      "name": "c-coverage",
+      "status": "warning",
+      "detail": "lcov/gcov may not be installed",
+      "timestamp": "2026-06-19T15:21:34.702999"
+    }
+  ],
+  "coverage": null,
+  "errors": [
+    "yaml-validation failed",
+    "clang-tidy failed",
+    "unit-tests failed",
+    "coverage failed"
+  ]
+}

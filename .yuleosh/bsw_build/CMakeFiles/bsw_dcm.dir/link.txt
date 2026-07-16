@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_dcm.a CMakeFiles/bsw_dcm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/dcm/src/Dcm.c.obj CMakeFiles/bsw_dcm.dir/src/dk_dcm_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_dcm.a

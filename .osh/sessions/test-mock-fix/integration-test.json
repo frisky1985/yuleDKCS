@@ -1,0 +1,14 @@
+{
+  "step": "integration-test",
+  "agent": "小克",
+  "session": "test-mock-fix",
+  "timestamp": "2026-07-07T20:56:57.138107",
+  "spec_scenarios_total": 0,
+  "spec_scenarios": [],
+  "test_runner": "none",
+  "returncode": null,
+  "output": "Integration test framework not available. No pytest -m integration or go test -tags=integration found.",
+  "passed": 0,
+  "failed": 0,
+  "status": "unknown"
+}

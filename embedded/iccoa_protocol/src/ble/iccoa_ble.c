@@ -27,7 +27,7 @@
 #define BLE_MIN_CONN_INTERVAL_MS    30
 #define BLE_MAX_CONN_INTERVAL_MS    100
 #define BLE_SLAVE_LATENCY           4
-#define BLE supervision_timeout_ms  400
+#define BLE_SUPERVISION_TIMEOUT_MS  400  /* [P0-05 FIX] 修正 define 名称一致 */
 
 #define BLE_ADV_INTERVAL_MIN_MS     100
 #define BLE_ADV_INTERVAL_MAX_MS     200

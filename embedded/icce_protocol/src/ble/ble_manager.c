@@ -249,14 +249,14 @@ ble_result_t ble_connect(const ble_device_t *device,
         return BLE_ERR_CONNECTION_FAILED;
     }
     
-    ble_adapter_conn_params_t adapter_params = {
-        .addr_type = device->address.type,
-        .address = device->address.addr,
-        .conn_interval_min = params->conn_interval_min,
-        .conn_interval_max = params->conn_interval_max,
-        .slave_latency = params->slave_latency,
-        .supervision_timeout = params->supervision_timeout
-    };
+    ble_adapter_conn_params_t adapter_params;
+    memset(&adapter_params, 0, sizeof(adapter_params));
+    adapter_params.addr_type = device->address.type;
+    memcpy(adapter_params.address, device->address.addr, 6);
+    adapter_params.conn_interval_min = params->conn_interval_min;
+    adapter_params.conn_interval_max = params->conn_interval_max;
+    adapter_params.slave_latency = params->slave_latency;
+    adapter_params.supervision_timeout = params->supervision_timeout;
     
     uint16_t handle;
     if (ble_adapter_connect(&adapter_params, &handle) != ADAPTER_SUCCESS) {

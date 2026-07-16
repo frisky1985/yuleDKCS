@@ -1,0 +1,3 @@
+/Users/stefan/yuleDKCS/embedded/iccoa_protocol/build-fix/CMakeFiles/iccoa_dk.dir
+/Users/stefan/yuleDKCS/embedded/iccoa_protocol/build-fix/CMakeFiles/edit_cache.dir
+/Users/stefan/yuleDKCS/embedded/iccoa_protocol/build-fix/CMakeFiles/rebuild_cache.dir

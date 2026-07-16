@@ -1,0 +1,14 @@
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/dk_unified.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/edit_cache.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/rebuild_cache.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/list_install_components.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/install.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/install/local.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/CMakeFiles/install/strip.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/dk_example.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/edit_cache.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/rebuild_cache.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/list_install_components.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/install.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/install/local.dir
+/Users/stefan/yuleDKCS/embedded/unified_protocol/build-scan/examples/CMakeFiles/install/strip.dir

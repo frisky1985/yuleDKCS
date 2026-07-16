@@ -1,0 +1,174 @@
+# ============================================================================
+# yuleDKCS ARM Cross-Compile CI (P1-3)
+# ============================================================================
+# Verifies that all embedded C sources compile correctly with the ARM
+# GNU Toolchain (arm-none-eabi-gcc) targeting Cortex-M4. This catches
+# architecture-specific syntax errors, type mismatches, and endianness
+# issues that the native (Ubuntu gcc) build cannot detect.
+#
+# The build compiles each .c file to a .o object file with -c mode
+# (no linking), using the embedded protocol include paths. MCU-specific
+# peripherals (BSP, MCAL, FreeRTOS port) are compiled as-is — any missing
+# hardware headers will fail the build, enforcing that new code is
+# cross-compilation aware.
+# ============================================================================
+
+name: ARM Cross-Compile
+on:
+  push:
+    branches: [main, develop, feat/**]
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/cross-compile-ci.yml'
+  pull_request:
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/cross-compile-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-compile:
+    name: arm-none-eabi-gcc Cortex-M4
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/armswdev/arm-none-eabi-gcc:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify toolchain
+        run: |
+          arm-none-eabi-gcc --version
+          echo "Toolchain OK: $(arm-none-eabi-gcc --version 2>&1 | head -1)"
+
+      - name: Cross-compile all embedded sources
+        run: |
+          set -e
+          ROOT="${GITHUB_WORKSPACE}/embedded"
+          BUILD="${GITHUB_WORKSPACE}/build-cross"
+          mkdir -p "$BUILD"
+
+          # ── Compiler & flags ──────────────────────────────────────────
+          CC="arm-none-eabi-gcc"
+          CFLAGS="-mcpu=cortex-m4 -mthumb -std=c99 -Wall -Wextra -Werror"
+          CFLAGS="$CFLAGS -g -O0 -ffreestanding -nostdlib -c"
+
+          # ── Include paths ─────────────────────────────────────────────
+          INCS=""
+          INCS="$INCS -I $ROOT/freestanding_includes"
+          INCS="$INCS -I $ROOT/system_architecture"
+          INCS="$INCS -I $ROOT/iccoa_protocol/include"
+          INCS="$INCS -I $ROOT/ccc_protocol/include"
+          INCS="$INCS -I $ROOT/icce_protocol/include"
+          INCS="$INCS -I $ROOT/unified_protocol/include"
+          INCS="$INCS -I $ROOT/ccc_protocol/src/logger"
+          INCS="$INCS -I $ROOT/icce_protocol/src/crypto"
+          INCS="$INCS -I $ROOT/icce_protocol/src/security"
+          INCS="$INCS -I $ROOT/mcal_stubs/include"
+          INCS="$INCS -I $ROOT/bsw_integration/include"
+          INCS="$INCS -I $ROOT/freertos_port/include"
+          INCS="$INCS -I $ROOT/fault-inject/inc"
+
+          DEFS="-DCONFIG_ENABLE_CRYPTO=1"
+
+          echo "=== ARM Cross-Compile CI ==="
+          echo "CC:        $CC"
+          echo "CFLAGS:    $CFLAGS"
+          echo "DEFS:      $DEFS"
+          echo "WORKSPACE: $ROOT"
+          echo ""
+
+          # ── Collect source files ──────────────────────────────────────
+          # Exclude CMake generated files and build artifacts.
+          SRC_FILES=$(find "$ROOT" -name '*.c' \
+            -not -path '*/CMakeFiles/*' \
+            -not -path '*/build-*/*' \
+            -not -path '*/build/*' \
+            -not -name 'CMakeCCompilerId.c' \
+            -not -path '*/tests/*' \
+            -not -path '*/fault-inject/test/*' \
+          )
+          TOTAL=$(echo "$SRC_FILES" | wc -l)
+
+          PASS=0
+          FAIL=0
+
+          echo "Source files to compile: $TOTAL"
+          echo ""
+
+          for src in $SRC_FILES; do
+            [ -z "$src" ] && continue
+            rel="${src#${ROOT}/}"
+            obj="${BUILD}/${rel}.o"
+            obj_dir="$(dirname "$obj")"
+            mkdir -p "$obj_dir"
+
+            printf "  [%3d/%3d] %s ... " "$((PASS + FAIL + 1))" "$TOTAL" "$rel"
+            if $CC $CFLAGS $INCS $DEFS -o "$obj" "$src" 2>> "${BUILD}/errors.log"; then
+              echo "OK"
+              PASS=$((PASS + 1))
+            else
+              echo "FAIL"
+              FAIL=$((FAIL + 1))
+            fi
+          done
+
+          echo ""
+          echo "============================================"
+          echo " Summary: $PASS passed, $FAIL failed"
+          echo "============================================"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo ""
+            echo "=== Compilation Errors ==="
+            grep -E '(error|warning)' "${BUILD}/errors.log" | head -40
+            exit 1
+          fi
+
+          # Persist counts for subsequent steps
+          echo "PASS=$PASS" >> "$GITHUB_ENV"
+          echo "FAIL=$FAIL" >> "$GITHUB_ENV"
+          echo "TOTAL=$TOTAL" >> "$GITHUB_ENV"
+
+      - name: Generate report
+        if: always()
+        run: |
+          PASS="${PASS:-0}"
+          FAIL="${FAIL:-0}"
+          TOTAL="${TOTAL:-0}"
+          BUILD="${GITHUB_WORKSPACE}/build-cross"
+          ERRLOG="${BUILD}/errors.log"
+
+          echo "## ARM Cross-Compile Results (Cortex-M4)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Target files** | ${TOTAL} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Compiled OK** | ${PASS} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Failed** | ${FAIL} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **CPU** | Cortex-M4 (thumb) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Standard** | C99 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Toolchain** | arm-none-eabi-gcc |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "### ❌ Build FAILED — ${FAIL} file(s) failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            grep -E '(error|warning)' "${ERRLOG}" 2>/dev/null | head -80 >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ✅ All ${TOTAL} source files compiled successfully!" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload cross-compile artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-compile-artifacts
+          path: |
+            ${{ github.workspace }}/build-cross/

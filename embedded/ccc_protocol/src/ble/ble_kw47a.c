@@ -4,6 +4,7 @@
  */
 
 #include "ccc_digital_key.h"
+#include "../../../system_architecture/sys_time.h"
 
 /* KW47A SPI Command Interface */
 #define KW47A_CMD_RESET             0x01
@@ -62,24 +63,155 @@ typedef enum {
     UWB_WAKE_SECURITY         /* Security operation */
 } uwb_wake_reason_e;
 
-/* Global state */
-static ble_power_state_e g_ble_pwr_state = BLE_PWR_OFF;
+/* Global state — all IRQ-accessible globals are volatile to prevent
+ * compiler reordering/caching across ISR boundaries [EMB-P1-01] */
+static ble_power_state_e volatile g_ble_pwr_state = BLE_PWR_OFF;
 static ble_lp_config_t g_ble_lp_cfg;
-static uint16_t g_conn_handle = 0xFFFF;
-static bool g_adv_active = false;
-static bool g_lp_mode = false;
+static uint16_t volatile g_conn_handle = 0xFFFF;
+static bool volatile g_adv_active = false;
+static bool volatile g_lp_mode = false;
 
-/* Callbacks */
-static ble_recv_cb_t    g_recv_cb    = NULL;
-static ble_conn_cb_t    g_conn_cb    = NULL;
-static ble_disconn_cb_t g_disconn_cb = NULL;
-static void (*g_uwb_wake_cb)(uwb_wake_reason_e reason) = NULL;
+/* Callbacks — may be invoked from ISR context, must be volatile */
+static ble_recv_cb_t volatile    g_recv_cb    = NULL;
+static ble_conn_cb_t volatile    g_conn_cb    = NULL;
+static ble_disconn_cb_t volatile g_disconn_cb = NULL;
+static void (* volatile g_uwb_wake_cb)(uwb_wake_reason_e reason) = NULL;
 
 /* External dependencies */
 extern int32_t spi_transfer(uint8_t dev, const uint8_t *tx, uint8_t *rx, uint16_t len);
 extern void    gpio_write(uint8_t port, uint8_t pin, uint8_t val);
 extern void    gpio_write_wake(uint8_t pin, uint8_t val);  /* UWB wake GPIO */
 extern void    delay_ms(uint32_t ms);
+
+/* ========================================================================
+ *  [EMB-P1-10] BLE Bonding Cache — 限制大小防止资源耗尽
+ * ======================================================================== */
+#define MAX_BONDING_CACHE_ENTRIES  16  /* 最多缓存16个配对设备 */
+
+typedef struct {
+    uint8_t  addr[6];         /* 蓝牙设备地址 */
+    uint8_t  addr_type;       /* 地址类型 */
+    uint8_t  ltk[16];         /* 长期密钥 */
+    uint8_t  irk[16];         /* 身份解析密钥 */
+    uint32_t last_used;       /* 最后使用时间 (系统tick) */
+    uint8_t  valid;           /* 是否有效 */
+} bonding_cache_entry_t;
+
+static bonding_cache_entry_t g_bonding_cache[MAX_BONDING_CACHE_ENTRIES];
+static uint32_t g_bonding_count = 0;
+
+/* [EMB-P1-10 FIX] Bonding 缓存清理: 移除最久未用的条目 */
+static void bonding_cache_evict_lru(void)
+{
+    if (g_bonding_count == 0) return;
+
+    uint32_t oldest_idx = 0;
+    uint32_t oldest_time = g_bonding_cache[0].last_used;
+
+    for (uint32_t i = 1; i < g_bonding_count; i++) {
+        if (g_bonding_cache[i].last_used < oldest_time) {
+            oldest_idx = i;
+            oldest_time = g_bonding_cache[i].last_used;
+        }
+    }
+
+    memset(&g_bonding_cache[oldest_idx], 0, sizeof(bonding_cache_entry_t));
+
+    /* 压缩数组: 将后续元素前移 */
+    for (uint32_t i = oldest_idx; i < g_bonding_count - 1; i++) {
+        memcpy(&g_bonding_cache[i], &g_bonding_cache[i + 1], sizeof(bonding_cache_entry_t));
+    }
+    memset(&g_bonding_cache[g_bonding_count - 1], 0, sizeof(bonding_cache_entry_t));
+    g_bonding_count--;
+}
+
+/* [EMB-P1-10 FIX] 添加 BLE bonding 条目 */
+static ccc_status_t ble_bonding_cache_add(const uint8_t addr[6], uint8_t addr_type,
+                                    const uint8_t ltk[16], const uint8_t irk[16])
+{
+    if (!addr || !ltk) return CCC_ERR_INVALID_PARAM;
+
+    /* 检查是否已存在 */
+    for (uint32_t i = 0; i < g_bonding_count; i++) {
+        if (memcmp(g_bonding_cache[i].addr, addr, 6) == 0) {
+            /* 更新已有条目 */
+            memcpy(g_bonding_cache[i].ltk, ltk, 16);
+            if (irk) memcpy(g_bonding_cache[i].irk, irk, 16);
+            g_bonding_cache[i].addr_type = addr_type;
+            g_bonding_cache[i].last_used = sys_tick_get_ms();
+            g_bonding_cache[i].valid = 1;
+            return CCC_OK;
+        }
+    }
+
+    /* [EMB-P1-10 FIX] 检查缓存是否已满, 满则执行LRU淘汰 */
+    if (g_bonding_count >= MAX_BONDING_CACHE_ENTRIES) {
+        bonding_cache_evict_lru();
+    }
+
+    /* 添加新条目 */
+    memcpy(g_bonding_cache[g_bonding_count].addr, addr, 6);
+    g_bonding_cache[g_bonding_count].addr_type = addr_type;
+    memcpy(g_bonding_cache[g_bonding_count].ltk, ltk, 16);
+    if (irk) memcpy(g_bonding_cache[g_bonding_count].irk, irk, 16);
+    g_bonding_cache[g_bonding_count].last_used = sys_tick_get_ms();
+    g_bonding_cache[g_bonding_count].valid = 1;
+    g_bonding_count++;
+
+    return CCC_OK;
+}
+
+/* [EMB-P1-11] PAN ID 变化状态跟踪 */
+#define PAN_ID_CACHE_SIZE  8
+static struct {
+    uint8_t  pan_id[4];       /* 上一次记录的 PAN ID */
+    uint16_t conn_handle;     /* 关联的连接句柄 */
+    uint32_t last_seen;       /* 最后更新时间 */
+    uint8_t  valid;
+} g_pan_id_cache[PAN_ID_CACHE_SIZE];
+
+/* [EMB-P1-11 FIX] 检查 PAN ID 是否发生变化, 发生变化则触发重连 */
+static ccc_status_t ble_check_pan_id_change(uint16_t conn_handle, const uint8_t new_pan_id[4])
+{
+    if (!new_pan_id) return CCC_ERR_INVALID_PARAM;
+
+    for (int i = 0; i < PAN_ID_CACHE_SIZE; i++) {
+        if (g_pan_id_cache[i].conn_handle == conn_handle && g_pan_id_cache[i].valid) {
+            if (memcmp(g_pan_id_cache[i].pan_id, new_pan_id, 4) != 0) {
+                /* [EMB-P1-11 FIX] PAN ID 变化: 断开当前连接, 触发重连 */
+                uint16_t handle = conn_handle;
+                ble_disconnect(handle);
+                delay_ms(50);  /* 等待断开完成 */
+
+                /* 更新为新 PAN ID */
+                memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
+                g_pan_id_cache[i].last_seen = sys_tick_get_ms();
+
+                /* 重新开始广播以便重连 */
+                ble_adv_param_t adv = {0};
+                adv.interval_min = 100;
+                adv.interval_max = 200;
+                ble_start_adv(&adv);
+
+                return CCC_OK;
+            }
+            return CCC_OK;
+        }
+    }
+
+    /* 未找到记录: 添加新记录 */
+    for (int i = 0; i < PAN_ID_CACHE_SIZE; i++) {
+        if (!g_pan_id_cache[i].valid) {
+            memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
+            g_pan_id_cache[i].conn_handle = conn_handle;
+            g_pan_id_cache[i].last_seen = sys_tick_get_ms();
+            g_pan_id_cache[i].valid = 1;
+            break;
+        }
+    }
+
+    return CCC_OK;
+}
 
 static ccc_status_t kw47a_send_cmd(uint8_t cmd, const uint8_t *payload, uint16_t len)
 {
@@ -210,7 +342,7 @@ ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t 
     if (!data || len == 0 || len > 240) return CCC_ERR_INVALID_PARAM;
     
     /* Data format: [session_id:4][data...] */
-    uint8_t buf[244];
+    static uint8_t buf[244];
     buf[0] = (uint8_t)(session_id >> 24);
     buf[1] = (uint8_t)(session_id >> 16);
     buf[2] = (uint8_t)(session_id >> 8);
@@ -351,8 +483,9 @@ ccc_status_t ble_oob_pair(const ccc_nfc_oob_data_t *oob)
 /* IRQ handler */
 void kw47a_irq_handler(void)
 {
-    uint8_t evt_buf[260] = {0};
+    static uint8_t evt_buf[260];
     uint8_t header[4] = {0};
+    memset(evt_buf, 0, sizeof(evt_buf));
 
     gpio_write(KW47A_CS_PORT, KW47A_CS_PIN, 0);
     spi_transfer(1, NULL, header, 4);
@@ -370,6 +503,10 @@ void kw47a_irq_handler(void)
         g_ble_pwr_state = BLE_PWR_CONNECTED;
         /* Wake UWB for ranging */
         ble_trigger_uwb_wake(UWB_WAKE_RANGING_REQ);
+        /* [EMB-P1-11 FIX] 连接后检查 PAN ID 变化 (扩展数据从evt_buf中提取) */
+        if (payload_len >= 10) {
+            ble_check_pan_id_change(g_conn_handle, &evt_buf[2]);
+        }
         if (g_conn_cb) g_conn_cb(g_conn_handle, 0);
         break;
 
@@ -611,7 +748,9 @@ ccc_status_t ble_gatt_notify(uint16_t char_uuid, const uint8_t *data, uint16_t l
 {
     if (!data || len == 0) return CCC_ERR_INVALID_PARAM;
 
-    uint8_t buf[8 + len];
+    static uint8_t buf[260]; /* 固定最大: 8 + 252 */
+    if ((uint16_t)(8 + len) > sizeof(buf)) return CCC_ERR_INVALID_PARAM;
+    memset(buf, 0, sizeof(buf));
     buf[0] = (uint8_t)(char_uuid >> 8);
     buf[1] = (uint8_t)(char_uuid & 0xFF);
     buf[2] = (uint8_t)(len >> 8);

@@ -1,0 +1,1 @@
+/opt/homebrew/bin/arm-none-eabi-gcc -Wall -Wextra -Wpedantic -Werror -I/Users/stefan/yuleDKCS/embedded/freestanding_includes -Wall -Wextra -Werror CMakeFiles/dk_example.dir/example.c.obj -o dk_example  ../libdk_unified.a -lccc_protocol -liccoa_protocol -licce_protocol

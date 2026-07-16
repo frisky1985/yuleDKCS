@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_nvm.a CMakeFiles/bsw_nvm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/nvm/src/NvM.c.obj CMakeFiles/bsw_nvm.dir/src/dk_nvm_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_nvm.a

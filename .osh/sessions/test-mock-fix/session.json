@@ -1,0 +1,220 @@
+{
+  "name": "test-mock-fix",
+  "spec_path": "/Users/stefan/yuleDKCS/.yuleosh/spec-contract.md",
+  "status": "failed",
+  "current_step": 16,
+  "created_at": "2026-07-07T20:56:56.121426",
+  "updated_at": "2026-07-07T20:56:57.142824",
+  "steps": [
+    {
+      "step": 1,
+      "name": "spec-check",
+      "agent": "小明",
+      "action": "OpenSpec 合规检查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.121483",
+      "completed_at": "2026-07-07T20:56:56.163675",
+      "output_path": ".osh/sessions/test-mock-fix/spec-check.json",
+      "errors": []
+    },
+    {
+      "step": 2,
+      "name": "super-analysis",
+      "agent": "小明",
+      "action": "S.U.P.E.R 启动分析",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.163714",
+      "completed_at": "2026-07-07T20:56:56.164579",
+      "output_path": ".osh/sessions/test-mock-fix/startup-analysis.md",
+      "errors": []
+    },
+    {
+      "step": 3,
+      "name": "prd",
+      "agent": "Hermes",
+      "action": "产品需求分析",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.164589",
+      "completed_at": "2026-07-07T20:56:56.165026",
+      "output_path": ".osh/sessions/test-mock-fix/prd.md",
+      "errors": []
+    },
+    {
+      "step": 4,
+      "name": "prd-review",
+      "agent": "小马",
+      "action": "PRD 质量审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.165032",
+      "completed_at": "2026-07-07T20:56:56.171013",
+      "output_path": ".osh/sessions/test-mock-fix/prd-review.json",
+      "errors": []
+    },
+    {
+      "step": 5,
+      "name": "architecture",
+      "agent": "Claude",
+      "action": "架构设计",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.171021",
+      "completed_at": "2026-07-07T20:56:56.171493",
+      "output_path": ".osh/sessions/test-mock-fix/architecture.md",
+      "errors": []
+    },
+    {
+      "step": 6,
+      "name": "arch-review",
+      "agent": "小克",
+      "action": "架构审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.171499",
+      "completed_at": "2026-07-07T20:56:56.189962",
+      "output_path": ".osh/sessions/test-mock-fix/arch-review.json",
+      "errors": []
+    },
+    {
+      "step": 7,
+      "name": "development",
+      "agent": "Claude",
+      "action": "开发计划与代码实现",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.189984",
+      "completed_at": "2026-07-07T20:56:56.204435",
+      "output_path": ".osh/sessions/test-mock-fix/development-plan.md",
+      "errors": []
+    },
+    {
+      "step": 8,
+      "name": "devplan-review",
+      "agent": "小克",
+      "action": "开发计划审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.204452",
+      "completed_at": "2026-07-07T20:56:56.206006",
+      "output_path": ".osh/sessions/test-mock-fix/devplan-review.json",
+      "errors": []
+    },
+    {
+      "step": 9,
+      "name": "internal-code-review",
+      "agent": "小克",
+      "action": "代码实现预审",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.206015",
+      "completed_at": "2026-07-07T20:56:56.206620",
+      "output_path": ".osh/sessions/test-mock-fix/internal-code-review.json",
+      "errors": []
+    },
+    {
+      "step": 10,
+      "name": "test-planning",
+      "agent": "Claude",
+      "action": "测试规划",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.206627",
+      "completed_at": "2026-07-07T20:56:56.207030",
+      "output_path": ".osh/sessions/test-mock-fix/test-plan.md",
+      "errors": []
+    },
+    {
+      "step": 11,
+      "name": "self-test",
+      "agent": "Claude",
+      "action": "自测验证",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.207037",
+      "completed_at": "2026-07-07T20:56:56.630688",
+      "output_path": ".osh/sessions/test-mock-fix/self-test-report.md",
+      "errors": []
+    },
+    {
+      "step": 12,
+      "name": "self-test-review",
+      "agent": "小克",
+      "action": "自测结果审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.630745",
+      "completed_at": "2026-07-07T20:56:56.837899",
+      "output_path": ".osh/sessions/test-mock-fix/selftest-review.json",
+      "errors": []
+    },
+    {
+      "step": 13,
+      "name": "c-unit-test",
+      "agent": "小克",
+      "action": "C 单元测试 (Unity)",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:56.837911",
+      "completed_at": "2026-07-07T20:56:57.137312",
+      "output_path": ".osh/sessions/test-mock-fix/c-unit-test.json",
+      "errors": []
+    },
+    {
+      "step": 14,
+      "name": "integration-test",
+      "agent": "小克",
+      "action": "接口集成测试",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:57.137343",
+      "completed_at": "2026-07-07T20:56:57.138315",
+      "output_path": ".osh/sessions/test-mock-fix/integration-test.json",
+      "errors": []
+    },
+    {
+      "step": 15,
+      "name": "code-review",
+      "agent": "Hermes",
+      "action": "集成代码审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:57.138322",
+      "completed_at": "2026-07-07T20:56:57.139200",
+      "output_path": ".osh/sessions/test-mock-fix/code-review.json",
+      "errors": []
+    },
+    {
+      "step": 16,
+      "name": "misra-review",
+      "agent": "小马",
+      "action": "MISRA 合规审查",
+      "status": "completed",
+      "started_at": "2026-07-07T20:56:57.139208",
+      "completed_at": "2026-07-07T20:56:57.139603",
+      "output_path": ".osh/sessions/test-mock-fix/misra-review.json",
+      "errors": []
+    },
+    {
+      "step": 17,
+      "name": "coverage-review",
+      "agent": "小马",
+      "action": "测试覆盖审查",
+      "status": "failed",
+      "started_at": "2026-07-07T20:56:57.139609",
+      "completed_at": "2026-07-07T20:56:57.142820",
+      "output_path": null,
+      "errors": [
+        "Test coverage review step failed: 'utf-8' codec can't decode byte 0x8a in position 98: invalid start byte"
+      ]
+    }
+  ],
+  "artifacts": {
+    "spec-check": ".osh/sessions/test-mock-fix/spec-check.json",
+    "super-analysis": ".osh/sessions/test-mock-fix/startup-analysis.md",
+    "prd": ".osh/sessions/test-mock-fix/prd.md",
+    "prd-review": ".osh/sessions/test-mock-fix/prd-review.json",
+    "architecture": ".osh/sessions/test-mock-fix/architecture.md",
+    "arch-review": ".osh/sessions/test-mock-fix/arch-review.json",
+    "development": ".osh/sessions/test-mock-fix/development-plan.md",
+    "devplan-review": ".osh/sessions/test-mock-fix/devplan-review.json",
+    "internal-code-review": ".osh/sessions/test-mock-fix/internal-code-review.json",
+    "test-planning": ".osh/sessions/test-mock-fix/test-plan.md",
+    "self-test": ".osh/sessions/test-mock-fix/self-test-report.md",
+    "self-test-review": ".osh/sessions/test-mock-fix/selftest-review.json",
+    "c-unit-test": ".osh/sessions/test-mock-fix/c-unit-test.json",
+    "integration-test": ".osh/sessions/test-mock-fix/integration-test.json",
+    "code-review": ".osh/sessions/test-mock-fix/code-review.json",
+    "misra-review": ".osh/sessions/test-mock-fix/misra-review.json"
+  },
+  "errors": [
+    "Test coverage review step failed: 'utf-8' codec can't decode byte 0x8a in position 98: invalid start byte"
+  ]
+}

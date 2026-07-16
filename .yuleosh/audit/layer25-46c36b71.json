@@ -1,0 +1,23 @@
+{
+  "layer": 25,
+  "commit": "46c36b71",
+  "status": "passed",
+  "started_at": "2026-06-26T17:29:48.380472",
+  "completed_at": "2026-06-26T17:29:48.521419",
+  "stages": [
+    {
+      "name": "target-detect",
+      "status": "passed",
+      "detail": "mock mode",
+      "timestamp": "2026-06-26T17:29:48.410435"
+    },
+    {
+      "name": "hil-tests",
+      "status": "passed",
+      "detail": "3 test(s) passed",
+      "timestamp": "2026-06-26T17:29:48.520909"
+    }
+  ],
+  "coverage": null,
+  "errors": []
+}

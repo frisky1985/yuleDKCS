@@ -1,8 +1,10 @@
 /**
  * @file ccc_digital_key.h
+ * @module EMB-SWC-CCC (ASPICE SWE.6)
  * @brief CCC Digital Key Protocol Stack - Main Header
  * @version 1.0
  * @date 2026-05-06
+ * Layer: Application Layer (SWC)
  *
  * Hardware: NXP KW47A (BLE) + NXP NCJ29D6 (UWB) + ST ST25R501 (NFC) + NXP SE050 (Security)
  */

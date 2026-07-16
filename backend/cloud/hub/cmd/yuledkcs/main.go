@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
+	hub_logger "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/logger"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 )
 
@@ -23,7 +24,33 @@ func main() {
 	grpcAddr := flag.String("grpc-addr", ":9090", "gRPC 监听地址")
 	jwtSecret := flag.String("jwt-secret", "", "JWT 签名密钥 (建议从环境变量读取)")
 	dbDSN := flag.String("db-dsn", "", "数据库连接串 (可选)")
+	logLevel := flag.String("log-level", "info", "日志级别: trace/debug/info/warn/error/fatal")
+	logFile := flag.String("log-file", "", "日志输出文件 (默认 stderr)")
 	flag.Parse()
+
+	// ── 初始化内部日志系统 ──
+	{
+		lvl, err := hub_logger.ParseLevel(*logLevel)
+		if err != nil {
+			log.Fatalf("invalid --log-level: %v", err)
+		}
+		cfg := hub_logger.LoggerConfig{
+			ServiceName: "yuledkcs",
+			Level:       lvl,
+			EnableJSON:  true,
+		}
+		if *logFile != "" {
+			f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			if err != nil {
+				log.Fatalf("open log file %q failed: %v", *logFile, err)
+			}
+			cfg.Output = f
+		}
+		hub_logger.Init(cfg)
+		hub_logger.Info("INIT", "logger initialized",
+			hub_logger.WithField("level", *logLevel),
+			hub_logger.WithField("log_file", *logFile))
+	}
 
 	// ── 日志 ──
 	logger, err := zap.NewProduction()

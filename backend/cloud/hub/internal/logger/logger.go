@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -24,6 +25,26 @@ const (
 	LevelError Level = 4
 	LevelFatal Level = 5
 )
+
+// ParseLevel 解析日志级别字符串
+func ParseLevel(s string) (Level, error) {
+	switch strings.ToLower(s) {
+	case "trace":
+		return LevelTrace, nil
+	case "debug":
+		return LevelDebug, nil
+	case "info":
+		return LevelInfo, nil
+	case "warn":
+		return LevelWarn, nil
+	case "error":
+		return LevelError, nil
+	case "fatal":
+		return LevelFatal, nil
+	default:
+		return LevelInfo, fmt.Errorf("unknown log level: %q (valid: trace/debug/info/warn/error/fatal)", s)
+	}
+}
 
 func (l Level) String() string {
 	switch l {

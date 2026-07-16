@@ -1,0 +1,13 @@
+FROM golang:1.21-alpine AS builder
+WORKDIR /build
+COPY proto/ proto/
+COPY carsim/ carsim/
+COPY go.work .
+WORKDIR /build/carsim
+RUN go build -o /car-simulator .
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /car-simulator /usr/local/bin/car-simulator
+EXPOSE 18001
+ENTRYPOINT ["car-simulator"]

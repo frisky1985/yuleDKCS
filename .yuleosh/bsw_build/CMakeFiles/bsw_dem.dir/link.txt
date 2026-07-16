@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_dem.a CMakeFiles/bsw_dem.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/dem/src/Dem.c.obj CMakeFiles/bsw_dem.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/dem/src/Dem_Int.c.obj CMakeFiles/bsw_dem.dir/src/dk_dem_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_dem.a

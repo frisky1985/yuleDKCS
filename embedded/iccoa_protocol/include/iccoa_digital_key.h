@@ -1,8 +1,10 @@
 /**
  * @file iccoa_digital_key.h
+ * @module EMB-SWC-ICCOA (ASPICE SWE.6)
  * @brief ICCOA Digital Key Protocol Stack - Main Header
  * @version 1.0
  * @date 2026-05-06
+ * Layer: Application Layer (SWC)
  */
 
 #ifndef ICCOA_DIGITAL_KEY_H

@@ -118,7 +118,8 @@ dependencies {
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
 
     // ==================== 安全 ====================
-    // Android Security Crypto - EncryptedSharedPreferences
+    // 运行时使用 Android KeyStore AES-GCM 加密元数据（见 KeyStoreMetadataStore）
+    // security-crypto 仅用于迁移遗留 EncryptedSharedPreferences 数据
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // ==================== Hardware硬件交互 ====================
@@ -137,5 +138,6 @@ dependencies {
     testImplementation("androidx.test:core:1.5.0")
 
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }

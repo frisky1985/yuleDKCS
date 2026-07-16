@@ -1,0 +1,268 @@
+ci:
+  layers:
+  - 1
+  - 2
+  - 25
+  - 3
+  layer_dependencies:
+    1: []
+    2:
+    - 1
+    25:
+    - 1
+    - 2
+    3:
+    - 1
+    - 2
+    - 25
+coverage:
+  threshold_line: 15.0
+  threshold_condition: 10.0
+  strict: true
+  c_fail_under: 70
+  # Sprint 1 target: global ≥15%, key modules ≥60%
+  module_thresholds:
+    ci: 90.0
+    evidence: 80.0
+docsync:
+  enabled: true
+  rules:
+  - id: code-to-docs
+    description: 源文件修改后需同步文档
+    enabled: true
+    code_patterns:
+    - pattern: src/yuleosh/api/**/*.py
+      must_sync:
+      - docs/api/**/*.md
+      - docs/openapi/**/*.yaml
+    - pattern: src/yuleosh/ci/**/*.py
+      must_sync:
+      - docs/ci/**/*.md
+      - README.md
+    - pattern: src/yuleosh/cross/**/*.py
+      must_sync:
+      - docs/cross/**/*.md
+      - docs/sil/**/*.md
+    - pattern: src/yuleosh/pipeline/**/*.py
+      must_sync:
+      - docs/pipeline/**/*.md
+    - pattern: src/yuleosh/evidence/**/*.py
+      must_sync:
+      - docs/evidence/**/*.md
+    - pattern: src/yuleosh/hardware/**/*.py
+      must_sync:
+      - docs/hardware/**/*.md
+    - pattern: '*.md'
+      must_sync: []
+      bypass: true
+  - id: hal-api-docs
+    description: HAL API 变更需同步 API 文档
+    enabled: true
+    code_patterns:
+    - pattern: src/**/hal/**/*.h
+      must_sync:
+      - src/**/hal/README.md
+      - docs/hal/*.md
+  - id: ci-config-comment
+    description: CI 配置变更需同步注释
+    enabled: true
+    code_patterns:
+    - pattern: .yuleosh/ci-config.yaml
+      must_sync:
+      - docs/ci/configuration.md
+      ignore_if_comment_only: true
+  - id: template-docs
+    description: 模板变更需同步模板文档
+    enabled: true
+    code_patterns:
+    - pattern: src/yuleosh/templates/**/template.yaml
+      must_sync:
+      - docs/templates/**/*.md
+    - pattern: src/yuleosh/templates/**/src/**
+      must_sync:
+      - docs/templates/**/*.md
+      exempt_templates:
+      - arm-cmsis
+      - generic-python
+  - id: config-change-notify
+    description: 配置文件变更需复核文档一致性
+    enabled: true
+    code_patterns:
+    - pattern: '**/*.yaml'
+      must_sync: []
+      severity: warning
+    - pattern: '**/*.json'
+      must_sync: []
+      severity: warning
+  mode: blocking
+  exempt_paths:
+  - .gitignore
+  - '*.md'
+  - CHANGELOG.md
+  - LICENSE
+  - CODE_OF_CONDUCT.md
+  - SECURITY.md
+  - CONTRIBUTING.md
+  - '**/__pycache__/**'
+  - '**/*.pyc'
+  - '**/*.egg-info/**'
+  - frontend/out/**
+  - docs/**
+  critical_docs:
+  - README.md
+  - docs/architecture.md
+  - docs/ci/README.md
+  - SECURITY.md
+  staleness_days: 30
+  audit:
+    evidence_path: .yuleosh/reports/docsync-evidence.json
+    exemptions:
+    - rule_id: template-docs
+      reason: Starter template documentation is maintained separately
+      approved_by: arch-team
+      expires: '2027-01-01'
+misra:
+  enabled: true
+  addon: misra
+  fail_on_required: true
+  fail_on_violation: false
+  fail_on_advisory: false
+  fail_threshold: 10
+  violations_per_kloc: 2.0
+  cppcheck_std: c11
+  suppress_rules: []
+  exclude_paths:
+    - tests/**
+    - third_party/**
+    - build/**
+  code_categories:
+    template:
+      paths:
+        - src/yuleosh/templates/**
+        - test-dogfood/**
+      action: exclude
+      block_on: false
+    third_party:
+      paths:
+        - third_party/**
+        - Drivers/**
+        - Middlewares/**
+        - CMSIS/**
+        - vendor/**
+        - lib/**
+      action: alert
+      block_on: false
+    business:
+      paths:
+        - src/**
+      action: enforce
+      block_on: true
+  active_profile: safety
+  rule_texts_path: misra-rules.yaml
+  profiles:
+    safety:
+      name: Safety
+      description: Full safety-critical compliance — all rules enabled, strictest
+      rule_overrides: []
+      deviations: []
+      severity_map:
+        Dir-4-12: warning
+        Rule-21-21: warning
+    ci:
+      name: CI Pipeline
+      description: CI-optimized — faster turnaround, excludes LLM-heavy review steps
+      rule_overrides:
+      - rule: Dir-4-12
+        enabled: false
+      - rule: Rule-21-21
+        enabled: false
+      deviations: []
+      severity_map:
+        Dir-4-12: info
+        Rule-21-21: info
+  rules:
+    Dir-4-12:
+      enabled: false
+    Rule-21-21:
+      enabled: false
+  deviations:
+  - rule: misra-c2023-17.7
+    file: tests/unity/src/unity.c
+    reason: Unity test framework stdio calls — test code, not production
+    approved_by: test-lead
+    expires: '2027-06-30'
+    status: approved
+  - rule: misra-c2023-2.5
+    file: tests/unity/src/unity.h
+    reason: Unity test framework macros — not deployed in production
+    approved_by: test-lead
+    expires: '2027-06-30'
+    status: approved
+  - rule: misra-c2023-8.7
+    file: tests/unity/src/unity.c
+    reason: Unity test framework functions — non-static linkage for test usage
+    approved_by: test-lead
+    expires: '2027-06-30'
+    status: approved
+  - rule: misra-c2023-15.6
+    file: tests/unity/src/unity.c
+    reason: Unity framework coding style — not production code
+    approved_by: test-lead
+    expires: '2027-06-30'
+    status: approved
+  - rule: Rule-17.7
+    file: src/**/legacy/old_protocol.c
+    reason: Legacy protocol implementation — refactoring scheduled for v2.0
+    approved_by: safety-manager
+    expires: '2026-12-31'
+    status: approved
+  - rule: Rule-21.21
+    file: src/**/hal/*.c
+    reason: Standard library usage in HAL layer — bounded context, reviewed by safety
+      team
+    approved_by: safety-manager
+    expires: '2026-12-31'
+    status: approved
+  - rule: Dir-4.12
+    file: src/**/mem_pool.c
+    reason: Dynamic memory pool for boot-time allocation only — no runtime free
+    approved_by: architect
+    expires: '2026-11-15'
+    status: rejected
+  - rule: Rule-7.2
+    file: src/**/startup/*.c
+    reason: Undefined behavior in startup assembly wrapper — alternative implementation
+      needed
+    approved_by: safety-manager
+    expires: '2026-10-01'
+    status: closed
+  - rule: Rule-12.2
+    file: src/**/config/*.c
+    reason: Signed/unsigned mismatch in config parser — analysis shows no runtime
+      impact
+    approved_by: safety-manager
+    expires: '2027-06-30'
+    status: open
+  - rule: Rule-8.1
+    file: src/**/gen/*.c
+    reason: Generated code has auto-generated naming
+    approved_by: architect
+    expires: '2027-01-01'
+    status: approved
+  alm:
+    enabled: false
+    backend: jira
+    url: ''
+    project_key: ''
+    api_token: ''
+hardware_test:
+  enabled: true
+  firmware: build/firmware.elf
+  boot_pattern: Boot Complete
+  flash_tool: auto
+  serial_port: ''
+  baud: 115200
+  test_timeout: 30
+  boot_delay: 2.0
+  test_scripts_dir: tests/hil
+  mock: true

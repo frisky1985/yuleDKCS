@@ -1,8 +1,10 @@
 /**
  * @file dk_unified.h
+ * @module EMB-SWC-UNIFIED (ASPICE SWE.6)
  * @brief Digital Key Unified Protocol Interface
  * @version 1.0
  * @date 2026-05-08
+ * Layer: Application Layer (SWC)
  *
  * 统一接口层 - 整合 CCC / ICCOA / ICCE 三套协议
  * 设计原则：

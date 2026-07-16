@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_com.a CMakeFiles/bsw_com.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/com/src/Com.c.obj CMakeFiles/bsw_com.dir/src/dk_com_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_com.a

@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>
 
 /* ========================================================================
  *  System Time
@@ -429,18 +428,10 @@ dk_status_t dk_protocol_get_info(dk_protocol_e p, uint16_t *v, const char **n)
 { (void)p; *v=0x0300; *n="test"; return DK_OK; }
 
 /* ========================================================================
- *  ICCE BLE stubs — icce_digital_key.h API
- *  icce_ble_* is declared in icce_digital_key.h, normally in ble/ble_manager.c.
- *  These stubs let high-level ICCE modules compile without the real BLE HAL.
+ *  Unity setUp / tearDown — one definition for monolithic build
+ *  Individual test files define their own empty setUp/tearDown for standalone runs.
  * ======================================================================== */
-#include "icce_digital_key.h"
-
-int32_t icce_ble_init(void) { return ICCE_OK; }
-int32_t icce_ble_deinit(void) { return ICCE_OK; }
-int32_t icce_ble_start_adv(void) { return ICCE_OK; }
-int32_t icce_ble_stop_adv(void) { return ICCE_OK; }
-int32_t icce_ble_send(const uint8_t *data, uint16_t len) { (void)data;(void)len; return ICCE_OK; }
-int32_t icce_ble_register_cb(icce_ble_recv_cb_t cb) { (void)cb; return ICCE_OK; }
-
-/* se05x_rng — referenced by icce crypto_utils.c (if compiled) */
-int se05x_rng(uint8_t *buf, size_t len) { (void)buf;(void)len; return 0; }
+#if defined(MONOLITHIC_BUILD)
+void setUp(void) {}
+void tearDown(void) {}
+#endif

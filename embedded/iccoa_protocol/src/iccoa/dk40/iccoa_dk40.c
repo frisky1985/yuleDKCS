@@ -615,8 +615,9 @@ int32_t iccoa_dk40_process(const uint8_t *raw, uint16_t len)
     if (ret != ICCOA_OK) return ret;
 
     /* 准备响应 */
-    uint8_t rsp_payload[ICCOA_MAX_PAYLOAD];
+    static uint8_t rsp_payload[ICCOA_MAX_PAYLOAD];
     uint16_t rsp_len = 0;
+    memset(rsp_payload, 0, sizeof(rsp_payload));
 
     /* 分发处理 */
     switch (req->msg_type) {

@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_dk_diag.a CMakeFiles/bsw_dk_diag.dir/src/dk_diag_callbacks.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_dk_diag.a

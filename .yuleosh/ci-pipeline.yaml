@@ -1,0 +1,81 @@
+# yuleDKCS CI Pipeline — 对接 yuleOSH 证据链
+# 版本: 1.0.0 | 日期: 2026-07-07
+#
+# 定义三层 CI Pipeline，产出 yuleOSH 兼容的证据包。
+# 配合 .github/workflows/yuleosh-ci.yml 使用。
+#
+# 参考: spec-contract.md (142 SHALL/SHALL_NOT 约束行)
+# 参考: ASPICE SWE.1~SWE.6 过程域要求
+
+version: "1.0"
+project: yuleDKCS
+
+# ── 项目元信息 ──────────────────────────────────────────────
+metadata:
+  generated_at: "2026-07-07T16:28:00+08:00"
+  description: |
+    yuleDKCS Digital Key System — 三端架构（Go 后端 + Embedded C + Mobile SDK）
+    覆盖: 密钥生命周期管理、被动无感解锁、NFC刷卡、远程控车、发动机启动、
+          钥匙分享、钥匙吊销、防中继攻击、密钥存储安全、通信安全、OTA升级
+    安全等级: ASIL-B(D) / ASIL-A
+    协议标准: ICCE / CCC 3.0 / ICCOA DK3.0/DK4.0
+  spec_ref: ".yuleosh/spec-contract.md"
+  go_modules:
+    backend/dkcs: "核心 DKCS 服务 (Go)"
+    backend/cloud/hub: "HUB 网关 (Go)"
+
+# ── Stages ───────────────────────────────────────────────────
+stages:
+  - name: layer1-dev
+    label: "L1: 开发验证层 — Build + Test + Coverage"
+    spec_ref: "SWE.4 软件单元验证"
+    commands:
+      - cd backend/dkcs && go build ./...
+      - cd backend/cloud/hub && go build ./...
+      - cd backend/dkcs && go test -count=1 -coverprofile=coverage.out ./...
+      - cd backend/cloud/hub && go test -count=1 -coverprofile=coverage.out ./...
+    evidence:
+      - coverage.out
+      - report: go-test-output
+
+  - name: layer2-integration
+    label: "L2: 集成验证层 — Lint + 静态分析"
+    spec_ref: "SWE.5 软件集成与测试"
+    commands:
+      - cd backend/dkcs && golangci-lint run ./...
+      - cd backend/cloud/hub && golangci-lint run ./...
+    evidence:
+      - report: lint-results
+
+  - name: layer3-evidence-pack
+    label: "L3: 证据打包层 — yuleOSH 证据链生成"
+    spec_ref: "SWE.6 软件合格性测试"
+    commands:
+      - yuleosh evidence pack --project-dir . -o .yuleosh/evidence
+    evidence:
+      - .yuleosh/evidence/audit-manifest.json
+      - .yuleosh/evidence/manifest.json
+      - .yuleosh/evidence/compliance-pack.zip
+
+# ── 证据配置 ─────────────────────────────────────────────────
+evidence:
+  output_dir: .yuleosh/evidence
+  manifest_format: json
+  bundle:
+    ci_results: true
+    coverage: true
+    lint_results: true
+    traceability: true
+    spec_validation: true
+  spec:
+    contract: .yuleosh/spec-contract.md
+    shall_validation: required
+
+# ── 通知 ─────────────────────────────────────────────────────
+notifications:
+  on_failure:
+    - type: log
+      level: error
+  on_success:
+    - type: log
+      level: info

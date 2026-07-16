@@ -1,0 +1,125 @@
+# ── yuleDKCS Go 覆盖率门禁 ──────────────────────────────────────────────
+# Phase 3: 在已有 CI 中增加覆盖率检查
+# 运行: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+
+name: yuleDKCS Coverage Check
+
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - 'backend/**/*.go'
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Hub Coverage
+        working-directory: backend/cloud/hub
+        run: |
+          go test -coverprofile=hub_cov.out -coverpkg=./... ./...
+          go tool cover -func=hub_cov.out | tee hub_coverage.txt
+          # 检查关键模块覆盖率
+          MODULES=("github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway" \
+                   "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service" \
+                   "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token" \
+                   "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/codec/bertlv" \
+                   "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter")
+          FAIL=0
+          for mod in "${MODULES[@]}"; do
+            COV=$(grep "^${mod}" hub_coverage.txt | tail -1 | awk '{print $NF}' | tr -d '%')
+            if [ -z "$COV" ]; then COV=0; fi
+            INTCOV=${COV%.*}
+            echo "${mod}: ${INTCOV}%"
+            case "${mod}" in
+              *internal/codec*)  THRESH=50 ;;
+              *)                 THRESH=60 ;;
+            esac
+            if [ "$INTCOV" -lt "$THRESH" ]; then
+              echo "❌ ${mod}: ${INTCOV}% < ${THRESH}% (FAIL)"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then exit 1; fi
+          echo "✅ All Hub packages meet coverage thresholds"
+
+      - name: DKCS Coverage
+        working-directory: backend/dkcs
+        run: |
+          go test -coverprofile=dkcs_cov.out -coverpkg=./... ./...
+          go tool cover -func=dkcs_cov.out | tee dkcs_coverage.txt
+
+      - name: Overall Coverage Gate (≥60%)
+        id: overall_cov
+        run: |
+          # Extract total coverage from DKCS output (last line: "total: ... X.X%")
+          DKCS_TOTAL=$(grep "^total:" backend/dkcs/dkcs_coverage.txt | awk '{print $NF}' | tr -d '%' || echo "0")
+          # Extract Hub total
+          HUB_TOTAL=$(grep "^total:" backend/cloud/hub/hub_coverage.txt | awk '{print $NF}' | tr -d '%' || echo "0")
+          echo "DKCS coverage: ${DKCS_TOTAL}%"
+          echo "Hub coverage:  ${HUB_TOTAL}%"
+          # Compute simple average as overall indicator
+          OVERALL=$(echo "scale=2; (${DKCS_TOTAL} + ${HUB_TOTAL}) / 2" | bc)
+          echo "overall=${OVERALL}" >> $GITHUB_OUTPUT
+          echo "dkcs=${DKCS_TOTAL}" >> $GITHUB_OUTPUT
+          echo "hub=${HUB_TOTAL}" >> $GITHUB_OUTPUT
+          echo "Overall coverage: ${OVERALL}%"
+          FAIL_OVERALL=$(echo "${OVERALL} < 60" | bc)
+          if [ "$FAIL_OVERALL" -eq 1 ]; then
+            echo "❌ Overall coverage ${OVERALL}% < 60% (FAIL)"
+            echo "failed=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "✅ Overall coverage ${OVERALL}% ≥ 60%"
+          echo "failed=false" >> $GITHUB_OUTPUT
+
+      - name: Upload Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            backend/cloud/hub/hub_coverage.txt
+            backend/dkcs/dkcs_coverage.txt
+
+      - name: Post Coverage Report as PR Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const hubCov = fs.readFileSync('backend/cloud/hub/hub_coverage.txt', 'utf8');
+            const dkcsCov = fs.readFileSync('backend/dkcs/dkcs_coverage.txt', 'utf8');
+            const overall = '${{ steps.overall_cov.outputs.overall }}';
+            const hubTotal = '${{ steps.overall_cov.outputs.hub }}';
+            const dkcsTotal = '${{ steps.overall_cov.outputs.dkcs }}';
+
+            const hubLines = hubCov.split('\n').filter(l => l.includes('%)'));
+            const dkcsLines = dkcsCov.split('\n').filter(l => l.includes('%)'));
+            const allLines = [...hubLines, ...dkcsLines];
+            const tableRows = allLines.map(l => {
+              const parts = l.trim().split(/\s+/);
+              if (parts.length < 3) return null;
+              const func = parts[0];
+              const pct = parts[parts.length - 1];
+              const status = parseFloat(pct) >= 50 ? '🟢' : parseFloat(pct) >= 30 ? '🟡' : '🔴';
+              return `| \`${func}\` | ${pct} | ${status} |`;
+            }).filter(Boolean);
+
+            const header = `## 📊 Coverage Report\n\n| Package | Coverage | Status |\n|---------|----------|--------|\n`;
+            const summary = `\n**Summary**\n- Hub: **${hubTotal}%**\n- DKCS: **${dkcsTotal}%**\n- Overall: **${overall}%**`;
+            const gate = parseFloat(overall) >= 60
+              ? '\n✅ **Coverage gate PASSED** (≥60%)'
+              : '\n❌ **Coverage gate FAILED** (<60%)';
+
+            const body = header + tableRows.join('\n') + '\n' + summary + gate;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

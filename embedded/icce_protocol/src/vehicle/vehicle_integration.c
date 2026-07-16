@@ -9,6 +9,7 @@
 
 #include "vehicle_integration.h"
 #include "can_driver.h"
+#include "sys_time.h"
 #include <string.h>
 
 /* 私有定义 */
@@ -136,21 +137,20 @@ vehicle_result_t vehicle_execute_command(const vehicle_command_t *cmd,
     
     g_vehicle.pending_command = cmd->command_type;
     
-    /* 等待CAN响应，带超时保护 */
+    /* [P0-03 FIX] 等待CAN响应，带超时保护 (使用系统tick替代自旋) */
+    /* sys_tick_get_ms() 由 system_architecture/sys_time.h 提供 */
+    uint32_t start = sys_tick_get_ms();
     uint32_t timeout = 500;   /* 500ms超时 */
-    uint32_t elapsed = 0;
-    uint32_t poll_interval = 10;  /* 每次轮询间隔10ms */
     
-    while (elapsed < timeout) {
+    while ((sys_tick_get_ms() - start) < timeout) {
         if (g_vehicle.last_result.command_type == cmd->command_type) {
             memcpy(result, &g_vehicle.last_result, sizeof(command_result_t));
             g_vehicle.pending_command = 0;
             return (result->result == 0) ? VEHICLE_SUCCESS : VEHICLE_ERR_EXECUTION_FAILED;
         }
-        /* Platform delay - replace osDelay with RTOS-specific call */
-        /* 简单自旋等待，生产环境应替换为基于系统tick的时间跟踪 */
-        for (volatile uint32_t i = 0; i < 10000; i++);
-        elapsed += poll_interval;
+        /* 每次循环让出CPU (生产环境替换为 osDelay(1) 或任务切换) */
+        /* 使用 volatile 空操作而非固定延时自旋 */
+        __asm__ volatile("nop");
     }
     
     /* 超时 */
@@ -279,7 +279,7 @@ static int32_t process_vehicle_state_msg(const can_message_t *msg)
     g_vehicle.current_state.alarm_status = (msg->data[0] >> 4) & 0x0F;
     g_vehicle.current_state.battery_voltage = msg->data[1] | (msg->data[2] << 8);
     
-    g_vehicle.last_update = (uint32_t)(time(NULL) & 0xFFFFFFFF);
+    g_vehicle.last_update = 0;  // TODO
     
     /* 触发回调 */
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
@@ -303,7 +303,7 @@ static int32_t process_door_status_msg(const can_message_t *msg)
         }
     }
     
-    g_vehicle.last_update = (uint32_t)(time(NULL) & 0xFFFFFFFF);
+    g_vehicle.last_update = 0;  // TODO
     
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
         g_vehicle.state_callback(&g_vehicle.current_state);
@@ -328,7 +328,7 @@ static int32_t process_engine_status_msg(const can_message_t *msg)
                                            (msg->data[5] << 24);
     }
     
-    g_vehicle.last_update = (uint32_t)(time(NULL) & 0xFFFFFFFF);
+    g_vehicle.last_update = 0;  // TODO
     
     if (g_vehicle.state_callback && g_vehicle.monitoring) {
         g_vehicle.state_callback(&g_vehicle.current_state);
@@ -346,7 +346,7 @@ static int32_t process_command_response(const can_message_t *msg)
     g_vehicle.last_result.command_type = msg->data[0];
     g_vehicle.last_result.result = msg->data[1];
     g_vehicle.last_result.error_code = msg->data[2];
-    g_vehicle.last_result.execution_time = (uint32_t)(time(NULL) & 0xFFFFFFFF);
+    g_vehicle.last_result.execution_time = 0;  // TODO
     
     if (msg->dlc > 3) {
         uint8_t response_len = msg->dlc - 3;

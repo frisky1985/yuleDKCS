@@ -62,6 +62,30 @@ backend/cloud/hub/hub_orig.out
 mobile/ios/.build/
 mobile/ios/.swiftpm/
 
+# Coverage / Benchmarks / Cache
+.coverage
+.benchmarks/
+.pytest_cache/
+__pycache__/
+*coverage.out
+htmlcov/
+
+# Go binaries (test/e2e)
+carsim/carsim
+backend/dkcs/dkcs
+backend/cloud/hub/hub
+
+# Node
+node_modules/
+
+# Android build
+frontend/android/app/build/
+frontend/android/.gradle/
+
+# iOS build
+frontend/ios/build/
+frontend/ios/Pods/
+
 # Secrets (never commit)
     57|config.yaml
     58|*.key

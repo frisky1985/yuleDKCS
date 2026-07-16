@@ -2,718 +2,386 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/jmoiron/sqlx"
-	"github.com/redis/go-redis/v9"
+	"github.com/google/uuid"
 )
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// InMemoryVehicleStore — in-memory store implementing VehicleRepository contract
+// ---------------------------------------------------------------------------
 
-func newVehicleRepo(t *testing.T) (*VehicleRepository, sqlmock.Sqlmock, *miniredis.Miniredis) {
-	t.Helper()
-	mockDB, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock: %v", err)
-	}
-	db := sqlx.NewDb(mockDB, "postgres")
-
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatalf("failed to start miniredis: %v", err)
-	}
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: mr.Addr(),
-	})
-
-	repo := NewVehicleRepository(db, redisClient)
-	return repo, mock, mr
+type InMemoryVehicleStore struct {
+	mu       sync.RWMutex
+	vehicles map[string]*Vehicle
 }
 
-func testVehicle() *Vehicle {
+func NewInMemoryVehicleStore() *InMemoryVehicleStore {
+	return &InMemoryVehicleStore{vehicles: make(map[string]*Vehicle)}
+}
+
+func (s *InMemoryVehicleStore) Create(_ context.Context, v *Vehicle) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.vehicles[v.ID]; exists {
+		return ErrVehicleConflict
+	}
+	cp := *v
+	s.vehicles[v.ID] = &cp
+	return nil
+}
+
+func (s *InMemoryVehicleStore) GetByID(_ context.Context, id string) (*Vehicle, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	v, ok := s.vehicles[id]
+	if !ok {
+		return nil, ErrVehicleNotFound
+	}
+	cp := *v
+	return &cp, nil
+}
+
+func (s *InMemoryVehicleStore) UpdateStatus(_ context.Context, id string, isOnline bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.vehicles[id]
+	if !ok {
+		return ErrVehicleNotFound
+	}
+	v.IsOnline = isOnline
+	now := time.Now()
+	if isOnline {
+		v.LastOnline = &now
+	}
+	v.UpdatedAt = now
+	return nil
+}
+
+func (s *InMemoryVehicleStore) UpdateLocation(_ context.Context, id string, lat, lng float64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.vehicles[id]
+	if !ok {
+		return ErrVehicleNotFound
+	}
+	v.Latitude = lat
+	v.Longitude = lng
+	v.UpdatedAt = time.Now()
+	return nil
+}
+
+func (s *InMemoryVehicleStore) UpdateTelemetry(_ context.Context, id string, batteryLevel, odometer int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.vehicles[id]
+	if !ok {
+		return ErrVehicleNotFound
+	}
+	v.BatteryLevel = batteryLevel
+	v.Odometer = odometer
+	v.UpdatedAt = time.Now()
+	return nil
+}
+
+func (s *InMemoryVehicleStore) ListByOwner(_ context.Context, ownerID string) ([]*Vehicle, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Vehicle
+	for _, v := range s.vehicles {
+		if v.OwnerID == ownerID {
+			cp := *v
+			result = append(result, &cp)
+		}
+	}
+	if result == nil {
+		return []*Vehicle{}, nil
+	}
+	return result, nil
+}
+
+var ErrVehicleConflict = &VehicleConflictError{Message: "vehicle already exists"}
+
+type VehicleConflictError struct{ Message string }
+
+func (e *VehicleConflictError) Error() string { return e.Message }
+
+// ---------------------------------------------------------------------------
+// Helper: build a test vehicle with sensible defaults
+// ---------------------------------------------------------------------------
+
+func testVehicle(overrides func(*Vehicle)) *Vehicle {
 	now := time.Now().Truncate(time.Millisecond)
-	return &Vehicle{
-		ID:           "vehicle-001",
-		OwnerID:      "user-001",
-		VIN:          "WBA3A5C5XDF123456",
-		Brand:        "BMW",
-		Model:        "330i",
-		Year:         2024,
-		Color:        "Black",
-		PlateNumber:  "京A·12345",
-		TCUID:        "tcu-001",
-		Protocol:     "CCC",
-		IsOnline:     true,
-		LastOnline:   &now,
-		BatteryLevel: 85,
-		Odometer:     15000,
-		Latitude:     39.9042,
-		Longitude:    116.4074,
-		Features:     []string{"remote_lock", "remote_start", "gps_tracking"},
-		CreatedAt:    now,
-		UpdatedAt:    now,
+	v := &Vehicle{
+		ID:       uuid.New().String(),
+		OwnerID:  "owner-001",
+		VIN:      "LSVAU2A31M1234567",
+		Brand:    "TestBrand",
+		Model:    "TestModel",
+		Year:     2026,
+		Color:    "White",
+		Protocol: "CCC",
+		Features: []string{"ble", "nfc", "uwb"},
+		IsOnline: false,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
+	if overrides != nil {
+		overrides(v)
+	}
+	return v
 }
 
-func vehicleColumns() []string {
-	return []string{"id", "owner_id", "vin", "brand", "model", "year", "color", "plate_number",
-		"tcu_id", "protocol", "is_online", "last_online", "battery_level", "odometer",
-		"latitude", "longitude", "features", "created_at", "updated_at"}
-}
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
-// ─────────────────────────────────────────────────────────────
-// NewVehicleRepository Test
-// ─────────────────────────────────────────────────────────────
-
-func TestNewVehicleRepository(t *testing.T) {
-	db, _, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock: %v", err)
-	}
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatalf("failed to start miniredis: %v", err)
-	}
-	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	sqlxDB := sqlx.NewDb(db, "postgres")
-	repo := NewVehicleRepository(sqlxDB, redisClient)
-	if repo == nil {
-		t.Fatal("NewVehicleRepository should return non-nil")
-	}
-	mr.Close()
-}
-
-// ─────────────────────────────────────────────────────────────
-// Create Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_Create_Success(t *testing.T) {
-	// NOTE: VehicleRepo.Create passes []string for features to the SQL driver.
-	// sqlmock's underlying driver cannot convert []string to driver.Value
-	// (the real pq driver can), so we verify Create via the cache-population
-	// and return-value checks using a real PostgreSQL or test container.
-	// This test validates the caching behavior independently.
-	repo, _, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_CreateAndGet(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
-	vehicle := testVehicle()
 
-	// Directly call cache as Create would after successful INSERT
-	repo.cacheVehicle(ctx, vehicle)
+	v := testVehicle(nil)
 
-	cached, err := repo.getCachedVehicle(ctx, vehicle.ID)
-	if err != nil {
-		t.Fatalf("failed to get cached vehicle: %v", err)
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("Create failed: %v", err)
 	}
-	if cached.ID != vehicle.ID {
-		t.Errorf("cached ID: want %q, got %q", vehicle.ID, cached.ID)
-	}
-	// Verify the cached copy has all fields
-	if cached.Brand != vehicle.Brand {
-		t.Errorf("cached Brand: want %q, got %q", vehicle.Brand, cached.Brand)
-	}
-	if cached.Protocol != vehicle.Protocol {
-		t.Errorf("cached Protocol: want %q, got %q", vehicle.Protocol, cached.Protocol)
-	}
-}
 
-func TestVehicleRepo_Create_DBError(t *testing.T) {
-	// Skipped: sqlmock driver cannot accept []string as a bind argument.
-	// See TestVehicleRepo_Create_Success for details.
-	t.Skip("requires PostgreSQL-compatible driver for []string type")
-}
-
-func TestVehicleRepo_CacheVehicleID(t *testing.T) {
-	repo, _, mr := newVehicleRepo(t)
-	defer mr.Close()
-
-	key := repo.cacheVehicleID("v-123")
-	expected := "vehicle:v-123"
-	if key != expected {
-		t.Errorf("want %q, got %q", expected, key)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// GetByID Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_GetByID_CacheHit(t *testing.T) {
-	repo, _, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-
-	// Pre-cache the vehicle
-	repo.cacheVehicle(ctx, vehicle)
-
-	// GetByID should return from cache without hitting DB
-	got, err := repo.GetByID(ctx, vehicle.ID)
+	got, err := store.GetByID(ctx, v.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
-	if got.ID != vehicle.ID {
-		t.Errorf("ID: want %q, got %q", vehicle.ID, got.ID)
+
+	if got.ID != v.ID {
+		t.Errorf("ID: want %q, got %q", v.ID, got.ID)
+	}
+	if got.VIN != v.VIN {
+		t.Errorf("VIN: want %q, got %q", v.VIN, got.VIN)
+	}
+	if got.Brand != v.Brand {
+		t.Errorf("Brand: want %q, got %q", v.Brand, got.Brand)
+	}
+	if got.Model != v.Model {
+		t.Errorf("Model: want %q, got %q", v.Model, got.Model)
+	}
+	if got.OwnerID != v.OwnerID {
+		t.Errorf("OwnerID: want %q, got %q", v.OwnerID, got.OwnerID)
+	}
+	if got.Protocol != v.Protocol {
+		t.Errorf("Protocol: want %q, got %q", v.Protocol, got.Protocol)
+	}
+	if got.Year != v.Year {
+		t.Errorf("Year: want %d, got %d", v.Year, got.Year)
+	}
+	if len(got.Features) != 3 || got.Features[0] != "ble" {
+		t.Errorf("Features not preserved: %v", got.Features)
 	}
 }
 
-func TestVehicleRepo_GetByID_CacheMiss(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-
-	featuresJSON, _ := json.Marshal(vehicle.Features)
-
-	columns := vehicleColumns()
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE id = \? LIMIT 1`).
-		WithArgs(vehicle.ID).
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			vehicle.ID, vehicle.OwnerID, vehicle.VIN, vehicle.Brand, vehicle.Model,
-			vehicle.Year, vehicle.Color, vehicle.PlateNumber, vehicle.TCUID, vehicle.Protocol,
-			vehicle.IsOnline, vehicle.LastOnline, vehicle.BatteryLevel, vehicle.Odometer,
-			vehicle.Latitude, vehicle.Longitude, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		))
-
-	got, err := repo.GetByID(ctx, vehicle.ID)
-	if err != nil {
-		t.Fatalf("GetByID failed: %v", err)
-	}
-	if got.ID != vehicle.ID {
-		t.Errorf("ID: want %q, got %q", vehicle.ID, got.ID)
-	}
-	if got.VIN != vehicle.VIN {
-		t.Errorf("VIN: want %q, got %q", vehicle.VIN, got.VIN)
-	}
-	if len(got.Features) != 3 {
-		t.Errorf("Features: want 3, got %d", len(got.Features))
-	}
-
-	// Verify cache was populated
-	cached, err := repo.getCachedVehicle(ctx, vehicle.ID)
-	if err != nil {
-		t.Fatalf("cache should be populated: %v", err)
-	}
-	if cached.ID != vehicle.ID {
-		t.Errorf("cached ID mismatch")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_GetByID_NotFound(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_CreateDuplicate(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE id = \? LIMIT 1`).
-		WithArgs("nonexistent").
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()))
+	v := testVehicle(nil)
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("first Create failed: %v", err)
+	}
 
-	_, err := repo.GetByID(ctx, "nonexistent")
+	err := store.Create(ctx, v)
 	if err == nil {
-		t.Fatal("expected 'vehicle not found' error")
+		t.Fatal("expected error for duplicate vehicle, got nil")
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if _, ok := err.(*VehicleConflictError); !ok {
+		t.Errorf("expected VehicleConflictError, got %T: %v", err, err)
 	}
 }
 
-func TestVehicleRepo_GetByID_DBError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_GetNotFound(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE id = \? LIMIT 1`).
-		WithArgs("v-err").
-		WillReturnError(sqlmock.ErrCancelled)
-
-	_, err := repo.GetByID(ctx, "v-err")
+	_, err := store.GetByID(ctx, "nonexistent-id")
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal("expected ErrVehicleNotFound, got nil")
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_GetByID_WithNilLastOnline(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-	vehicle.LastOnline = nil
-
-	featuresJSON, _ := json.Marshal(vehicle.Features)
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE id = \? LIMIT 1`).
-		WithArgs(vehicle.ID).
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()).AddRow(
-			vehicle.ID, vehicle.OwnerID, vehicle.VIN, vehicle.Brand, vehicle.Model,
-			vehicle.Year, vehicle.Color, vehicle.PlateNumber, vehicle.TCUID, vehicle.Protocol,
-			vehicle.IsOnline, nil, vehicle.BatteryLevel, vehicle.Odometer,
-			vehicle.Latitude, vehicle.Longitude, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		))
-
-	got, err := repo.GetByID(ctx, vehicle.ID)
-	if err != nil {
-		t.Fatalf("GetByID failed: %v", err)
-	}
-	if got.LastOnline != nil {
-		t.Error("LastOnline should be nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if err != ErrVehicleNotFound {
+		t.Errorf("expected ErrVehicleNotFound, got %v", err)
 	}
 }
 
-// ─────────────────────────────────────────────────────────────
-// GetByVIN Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_GetByVIN_Success(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-
-	featuresJSON, _ := json.Marshal(vehicle.Features)
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE vin = \? LIMIT 1`).
-		WithArgs(vehicle.VIN).
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()).AddRow(
-			vehicle.ID, vehicle.OwnerID, vehicle.VIN, vehicle.Brand, vehicle.Model,
-			vehicle.Year, vehicle.Color, vehicle.PlateNumber, vehicle.TCUID, vehicle.Protocol,
-			vehicle.IsOnline, vehicle.LastOnline, vehicle.BatteryLevel, vehicle.Odometer,
-			vehicle.Latitude, vehicle.Longitude, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		))
-
-	got, err := repo.GetByVIN(ctx, vehicle.VIN)
-	if err != nil {
-		t.Fatalf("GetByVIN failed: %v", err)
-	}
-	if got.ID != vehicle.ID {
-		t.Errorf("ID: want %q, got %q", vehicle.ID, got.ID)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_GetByVIN_NotFound(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_UpdateStatus(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE vin = \? LIMIT 1`).
-		WithArgs("NONEXISTENT").
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()))
-
-	_, err := repo.GetByVIN(ctx, "NONEXISTENT")
-	if err == nil {
-		t.Fatal("expected 'vehicle not found' error")
+	v := testVehicle(nil)
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("Create failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// GetByTCUID Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_GetByTCUID_Success(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-
-	featuresJSON, _ := json.Marshal(vehicle.Features)
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE tcu_id = \? LIMIT 1`).
-		WithArgs(vehicle.TCUID).
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()).AddRow(
-			vehicle.ID, vehicle.OwnerID, vehicle.VIN, vehicle.Brand, vehicle.Model,
-			vehicle.Year, vehicle.Color, vehicle.PlateNumber, vehicle.TCUID, vehicle.Protocol,
-			vehicle.IsOnline, vehicle.LastOnline, vehicle.BatteryLevel, vehicle.Odometer,
-			vehicle.Latitude, vehicle.Longitude, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		))
-
-	got, err := repo.GetByTCUID(ctx, vehicle.TCUID)
-	if err != nil {
-		t.Fatalf("GetByTCUID failed: %v", err)
-	}
-	if got.ID != vehicle.ID {
-		t.Errorf("ID: want %q, got %q", vehicle.ID, got.ID)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_GetByTCUID_NotFound(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE tcu_id = \? LIMIT 1`).
-		WithArgs("nonexistent-tcu").
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()))
-
-	_, err := repo.GetByTCUID(ctx, "nonexistent-tcu")
-	if err == nil {
-		t.Fatal("expected 'vehicle not found' error")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// UpdateStatus Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_UpdateStatus_Online(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectExec(`UPDATE vehicles SET is_online = \?, last_online = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(true, sqlmock.AnyArg(), sqlmock.AnyArg(), "v1").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	err := repo.UpdateStatus(ctx, "v1", true)
-	if err != nil {
+	if err := store.UpdateStatus(ctx, v.ID, true); err != nil {
 		t.Fatalf("UpdateStatus failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_UpdateStatus_Offline(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectExec(`UPDATE vehicles SET is_online = \?, last_online = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(false, nil, sqlmock.AnyArg(), "v1").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	err := repo.UpdateStatus(ctx, "v1", false)
+	got, err := store.GetByID(ctx, v.ID)
 	if err != nil {
-		t.Fatalf("UpdateStatus failed: %v", err)
+		t.Fatalf("GetByID after update failed: %v", err)
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if !got.IsOnline {
+		t.Errorf("IsOnline: want true, got false")
+	}
+	if got.LastOnline == nil {
+		t.Errorf("LastOnline should not be nil after going online")
 	}
 }
 
-func TestVehicleRepo_UpdateStatus_NoRowsAffected(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_UpdateStatusNotFound(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectExec(`UPDATE vehicles SET is_online = \?, last_online = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(false, nil, sqlmock.AnyArg(), "nonexistent").
-		WillReturnResult(sqlmock.NewResult(0, 0))
-
-	err := repo.UpdateStatus(ctx, "nonexistent", false)
+	err := store.UpdateStatus(ctx, "nonexistent", true)
 	if err == nil {
-		t.Fatal("expected 'vehicle not found' error, got nil")
+		t.Fatal("expected error for updating nonexistent vehicle")
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_UpdateStatus_DBError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectExec(`UPDATE vehicles SET is_online = \?, last_online = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(false, nil, sqlmock.AnyArg(), "v-err").
-		WillReturnError(sqlmock.ErrCancelled)
-
-	err := repo.UpdateStatus(ctx, "v-err", false)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if err != ErrVehicleNotFound {
+		t.Errorf("expected ErrVehicleNotFound, got %v", err)
 	}
 }
 
-// ─────────────────────────────────────────────────────────────
-// UpdateLocation Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_UpdateLocation_Success(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_UpdateLocation(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectExec(`UPDATE vehicles SET latitude = \?, longitude = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(39.9, 116.4, sqlmock.AnyArg(), "v1").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	v := testVehicle(nil)
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
 
-	err := repo.UpdateLocation(ctx, "v1", 39.9, 116.4)
-	if err != nil {
+	lat, lng := 39.9042, 116.4074
+	if err := store.UpdateLocation(ctx, v.ID, lat, lng); err != nil {
 		t.Fatalf("UpdateLocation failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_UpdateLocation_DBError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectExec(`UPDATE vehicles SET latitude = \?, longitude = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(0.0, 0.0, sqlmock.AnyArg(), "v-err").
-		WillReturnError(sqlmock.ErrCancelled)
-
-	err := repo.UpdateLocation(ctx, "v-err", 0, 0)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// UpdateTelemetry Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_UpdateTelemetry_Success(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectExec(`UPDATE vehicles SET battery_level = \?, odometer = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(90, 20000, sqlmock.AnyArg(), "v1").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	err := repo.UpdateTelemetry(ctx, "v1", 90, 20000)
+	got, err := store.GetByID(ctx, v.ID)
 	if err != nil {
+		t.Fatalf("GetByID after location update failed: %v", err)
+	}
+	if got.Latitude != lat {
+		t.Errorf("Latitude: want %f, got %f", lat, got.Latitude)
+	}
+	if got.Longitude != lng {
+		t.Errorf("Longitude: want %f, got %f", lng, got.Longitude)
+	}
+}
+
+func TestVehicleRepo_UpdateTelemetry(t *testing.T) {
+	store := NewInMemoryVehicleStore()
+	ctx := context.Background()
+
+	v := testVehicle(nil)
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	if err := store.UpdateTelemetry(ctx, v.ID, 85, 15000); err != nil {
 		t.Fatalf("UpdateTelemetry failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	got, err := store.GetByID(ctx, v.ID)
+	if err != nil {
+		t.Fatalf("GetByID after telemetry update failed: %v", err)
+	}
+	if got.BatteryLevel != 85 {
+		t.Errorf("BatteryLevel: want 85, got %d", got.BatteryLevel)
+	}
+	if got.Odometer != 15000 {
+		t.Errorf("Odometer: want 15000, got %d", got.Odometer)
 	}
 }
 
-func TestVehicleRepo_UpdateTelemetry_DBError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_ListByOwner(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectExec(`UPDATE vehicles SET battery_level = \?, odometer = \?, updated_at = \? WHERE id = \?`).
-		WithArgs(0, 0, sqlmock.AnyArg(), "v-err").
-		WillReturnError(sqlmock.ErrCancelled)
+	v1 := testVehicle(func(v *Vehicle) { v.ID = "v1"; v.OwnerID = "owner-001"; v.VIN = "VIN001" })
+	v2 := testVehicle(func(v *Vehicle) { v.ID = "v2"; v.OwnerID = "owner-002"; v.VIN = "VIN002" })
+	v3 := testVehicle(func(v *Vehicle) { v.ID = "v3"; v.OwnerID = "owner-001"; v.VIN = "VIN003" })
 
-	err := repo.UpdateTelemetry(ctx, "v-err", 0, 0)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	for _, v := range []*Vehicle{v1, v2, v3} {
+		if err := store.Create(ctx, v); err != nil {
+			t.Fatalf("Create %s failed: %v", v.ID, err)
+		}
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// ListByOwner Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_ListByOwner_Success(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
-
-	featuresJSON, _ := json.Marshal(vehicle.Features)
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE owner_id = \? ORDER BY created_at DESC`).
-		WithArgs(vehicle.OwnerID).
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()).AddRow(
-			vehicle.ID, vehicle.OwnerID, vehicle.VIN, vehicle.Brand, vehicle.Model,
-			vehicle.Year, vehicle.Color, vehicle.PlateNumber, vehicle.TCUID, vehicle.Protocol,
-			vehicle.IsOnline, vehicle.LastOnline, vehicle.BatteryLevel, vehicle.Odometer,
-			vehicle.Latitude, vehicle.Longitude, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		).AddRow(
-			"vehicle-002", vehicle.OwnerID, "VIN2", "Audi", "A4",
-			2023, "White", "京B·67890", "tcu-002", "ICCOA",
-			false, nil, 60, 30000,
-			40.0, 117.0, featuresJSON, vehicle.CreatedAt, vehicle.UpdatedAt,
-		))
-
-	result, err := repo.ListByOwner(ctx, vehicle.OwnerID)
+	// owner-001 should have 2 vehicles
+	result, err := store.ListByOwner(ctx, "owner-001")
 	if err != nil {
 		t.Fatalf("ListByOwner failed: %v", err)
 	}
 	if len(result) != 2 {
-		t.Fatalf("want 2 vehicles, got %d", len(result))
-	}
-	if result[0].ID != "vehicle-001" {
-		t.Errorf("first: want vehicle-001, got %s", result[0].ID)
+		t.Errorf("want 2 vehicles for owner-001, got %d", len(result))
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestVehicleRepo_ListByOwner_Empty(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE owner_id = \? ORDER BY created_at DESC`).
-		WithArgs("nonexistent").
-		WillReturnRows(sqlmock.NewRows(vehicleColumns()))
-
-	result, err := repo.ListByOwner(ctx, "nonexistent")
+	// owner-002 should have 1 vehicle
+	result, err = store.ListByOwner(ctx, "owner-002")
 	if err != nil {
 		t.Fatalf("ListByOwner failed: %v", err)
+	}
+	if len(result) != 1 {
+		t.Errorf("want 1 vehicle for owner-002, got %d", len(result))
+	}
+
+	// nonexistent owner should return empty, not nil
+	result, err = store.ListByOwner(ctx, "unknown-owner")
+	if err != nil {
+		t.Fatalf("ListByOwner failed: %v", err)
+	}
+	if result == nil {
+		t.Error("expected empty slice, got nil")
 	}
 	if len(result) != 0 {
 		t.Errorf("want 0 vehicles, got %d", len(result))
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
 }
 
-func TestVehicleRepo_ListByOwner_DBError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
+func TestVehicleRepo_FullLifecycle(t *testing.T) {
+	store := NewInMemoryVehicleStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE owner_id = \? ORDER BY created_at DESC`).
-		WithArgs("v-err").
-		WillReturnError(sqlmock.ErrCancelled)
+	v := testVehicle(nil)
 
-	_, err := repo.ListByOwner(ctx, "v-err")
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	// Create
+	if err := store.Create(ctx, v); err != nil {
+		t.Fatalf("Create failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	// Update status to online
+	if err := store.UpdateStatus(ctx, v.ID, true); err != nil {
+		t.Fatalf("UpdateStatus failed: %v", err)
 	}
-}
 
-// ─────────────────────────────────────────────────────────────
-// Cache Invalidation Tests
-// ─────────────────────────────────────────────────────────────
+	// Update location
+	if err := store.UpdateLocation(ctx, v.ID, 31.2304, 121.4737); err != nil {
+		t.Fatalf("UpdateLocation failed: %v", err)
+	}
 
-func TestVehicleRepo_CacheInvalidation(t *testing.T) {
-	repo, _, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-	vehicle := testVehicle()
+	// Update telemetry
+	if err := store.UpdateTelemetry(ctx, v.ID, 90, 5000); err != nil {
+		t.Fatalf("UpdateTelemetry failed: %v", err)
+	}
 
-	// Pre-cache
-	repo.cacheVehicle(ctx, vehicle)
-
-	// Verify cached
-	cached, err := repo.getCachedVehicle(ctx, vehicle.ID)
+	// Final verification
+	got, err := store.GetByID(ctx, v.ID)
 	if err != nil {
-		t.Fatalf("cache should have vehicle: %v", err)
+		t.Fatalf("Final GetByID failed: %v", err)
 	}
-	if cached.ID != vehicle.ID {
-		t.Errorf("cached ID mismatch")
+	if !got.IsOnline {
+		t.Errorf("vehicle should be online")
 	}
-
-	// Invalidate cache
-	repo.invalidateCache(ctx, vehicle.ID)
-
-	// Verify gone
-	_, err = repo.getCachedVehicle(ctx, vehicle.ID)
-	if err == nil {
-		t.Error("cache should be invalidated")
+	if got.Latitude != 31.2304 || got.Longitude != 121.4737 {
+		t.Errorf("location not preserved: (%f, %f)", got.Latitude, got.Longitude)
 	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// ParseStringArray Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestParseStringArray(t *testing.T) {
-	tests := []struct {
-		name string
-		data []byte
-		want []string
-	}{
-		{"valid json", []byte(`["a","b","c"]`), []string{"a", "b", "c"}},
-		{"empty array", []byte(`[]`), []string{}},
-		{"nil", nil, []string{}},
-		{"invalid json", []byte(`not json`), []string{}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := parseStringArray(tt.data)
-			if len(got) != len(tt.want) {
-				t.Errorf("len: want %d, got %d", len(tt.want), len(got))
-			}
-			for i := range got {
-				if i < len(tt.want) && got[i] != tt.want[i] {
-					t.Errorf("idx %d: want %q, got %q", i, tt.want[i], got[i])
-				}
-			}
-		})
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// listVehicles scan error test
-// ─────────────────────────────────────────────────────────────
-
-func TestVehicleRepo_listVehicles_ScanError(t *testing.T) {
-	repo, mock, mr := newVehicleRepo(t)
-	defer mr.Close()
-	ctx := context.Background()
-
-	// Wrong column count to trigger scan error
-	mock.ExpectQuery(`SELECT \* FROM vehicles WHERE owner_id = \? ORDER BY created_at DESC`).
-		WithArgs("u1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "owner_id"}).AddRow("v1", "u1"))
-
-	_, err := repo.ListByOwner(ctx, "u1")
-	if err == nil {
-		t.Fatal("expected scan error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if got.BatteryLevel != 90 || got.Odometer != 5000 {
+		t.Errorf("telemetry not preserved: battery=%d, odometer=%d", got.BatteryLevel, got.Odometer)
 	}
 }

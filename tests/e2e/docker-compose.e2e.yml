@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # ── Cloud Backend (for E2E tests) ─────────────────────────
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: yuledkcs_e2e
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d yuledkcs_e2e"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Car Simulator ─────────────────────────────────────────
+  carsim:
+    build:
+      context: .
+      dockerfile: Dockerfile.carsim
+    ports:
+      - "18001:18001"
+    environment:
+      - CARSIM_PORT=18001
+    healthcheck:
+      test: ["CMD", "timeout", "1", "bash", "-c", "echo -n | nc -w1 localhost 18001"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+      start_period: 3s
+
+  # ── E2E Test Runner ───────────────────────────────────────
+  e2e-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    depends_on:
+      carsim:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - CARSIM_ADDR=carsim:18001
+      - E2E_TEST_TIMEOUT=120
+    volumes:
+      - ./reports:/reports

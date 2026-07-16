@@ -1,0 +1,44 @@
+/******************************************************************************
+ * yuleDKCS HIL Firmware Flash Script for SEGGER J-Link
+ *
+ * Usage:
+ *   JLinkExe -device S32K312 -if SWD -speed 4000 -autoconnect 1 \
+ *       -CommanderScript flash_hil.jlink
+ *
+ * Prerequisites:
+ *   - HIL test firmware binary: ../embedded/build/hil/yuleDKCS_hil.elf
+ *   - J-Link driver v7.94 or later
+ ******************************************************************************/
+
+/* Device and interface configuration */
+device S32K312
+if SWD
+speed 4000
+
+/* Enable log output */
+log flash.log
+
+/* Connect to target */
+connect
+
+/* Halt the CPU */
+h
+
+/* Unlock flash if needed (S32K312 flash security) */
+unlock kinetis
+
+/* Erase all flash sectors */
+erase
+
+/* Load HIL test firmware */
+loadfile ../embedded/build/hil/yuleDKCS_hil.elf
+
+/* Verify flash contents */
+verifybin ../embedded/build/hil/yuleDKCS_hil.elf 0x00400000
+
+/* Reset and start */
+r
+g
+
+/* Exit */
+exit

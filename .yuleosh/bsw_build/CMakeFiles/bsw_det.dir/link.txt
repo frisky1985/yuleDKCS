@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_det.a CMakeFiles/bsw_det.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/src/Det.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_det.a
