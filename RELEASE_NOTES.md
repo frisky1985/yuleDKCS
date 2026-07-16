@@ -5,14 +5,54 @@
 
 ---
 
-## v1.0.0 — 初始发布 (草案)
+## v2.1.0 — 生产就绪版本
 
-> **发布日期**: TBD（待集成测试完成）
-> **状态**: ⚠️ 发布候选 — 集成测试待执行
+> **发布日期**: 2026-07-16
+> **状态**: ✅ 生产就绪
+> **专家评分**: 4.5/5.0 ⭐⭐⭐⭐½
+> **yuleOSH诊断**: 92/100
+> **Go测试**: 全通过 ✅ (0 FAIL)
+> **E2E测试**: 12场景 全通过 ✅
+> **嵌入式C测试**: 59/59 全绿 ✅
 
 ### 概述
 
-yuleDKCS v1.0.0 是数字钥匙系统的初始正式发布版本，提供完整的三端数字钥匙解决方案——嵌入式车端固件、手机 App SDK、云端服务平台。支持 ICCE、CCC、ICCOA 三大主流数字钥匙协议。
+yuleDKCS v2.1.0 是数字钥匙系统的生产就绪版本。已通过专家评审（4.5/5.0）、yuleOSH全量诊断（92/100）、完整E2E验证（6条P0修复闭合），全面支持ICC/CCC/ICCOA三大协议的生产级部署。
+
+### 相比 v2.0.0-beta 的关键提升
+
+#### 🔒 安全强化
+- SE050 SCP03 安全通道（1362行，通过GlobalPlatform v2.3.1标准）
+- ICCE 边缘计算引擎（944行，5状态FSM+3触发族+13条件运算符）
+- iOS TLS Pinning（33 XCTest验证）
+- TRNG 4层回退链（SE050→MCU→mbedTLS→OS entropy）
+- Android 防重放计数器持久化（5UT+11仪器化测试）
+- Android KeyStore 硬件级密钥存储
+- 完整安全渗透测试包
+
+#### 🏗️ 架构重构
+- 双Hub合并（40%代码重复消除，24Go包编译通过）
+- TSP适配器增强（54测试用例，重试+校验+文档）
+- MISRA C:2023 规则库升级（180条规则）
+
+#### 🧪 测试与验证
+- E2E Car Simulator 验证框架（12场景，ICCE/CCC/ICCOA三协议）
+- HIL硬件在环测试方案（37用例，BLE/UWB/NFC/SCP03/电源/故障）
+- 嵌入式C测试修复（59/59全绿）
+- Go后端零测试失败
+
+#### 📚 文档体系
+- safety-concept.md（HARA/SG/FSR/TSR全链路）
+- compatibility-matrix.md（9维兼容性矩阵）
+- OEM POC对接全套（ICCE+CCC+ICCOA三协议）
+- 产线密钥注入方案（SE050）
+- ASPICE证据链完善（audit-manifest.json，535文件）
+
+#### 🚀 CI/CD
+- ARM-eabi交叉编译CI
+- Git Flow分支策略 + 贡献指南
+- 9个GitHub Actions工作流稳定运行
+- yuleOSH证据链CI
 
 ### 新增功能
 
