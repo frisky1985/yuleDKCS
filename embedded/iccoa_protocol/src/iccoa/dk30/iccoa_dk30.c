@@ -53,7 +53,8 @@ static int32_t handle_bind_request(const uint8_t *payload, uint16_t len)
     /* Parse phone public key from payload */
     /* Generate vehicle key pair via SE050 */
     /* Build bind response with vehicle public key */
-    uint8_t rsp_payload[128] = {0};
+    static uint8_t rsp_payload[128];
+    memset(rsp_payload, 0, sizeof(rsp_payload));
     /* TODO: Fill with vehicle public key + signature */
     return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 64);
 }

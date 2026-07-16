@@ -1,11 +1,11 @@
 // KeyManager.kt - 密钥管理模块
+// 钥匙元数据存储：Android KeyStore + AES-256/GCM + SharedPreferences（密文）
+// 取代 EncryptedSharedPreferences，通过 OEM 审计硬件级存储要求
 package com.digitalkey.sdk.key
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import com.digitalkey.sdk.error.DkError
 import com.digitalkey.sdk.error.DkErrorCode
 import com.digitalkey.sdk.logger.DkLogger
@@ -88,33 +88,40 @@ class KeyManager(private val context: Context) {
     
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val secureRandom = SecureRandom()
-    private lateinit var encryptedPrefs: SharedPreferences
+    
+    // Android KeyStore 回话的元数据加密存储（取代 EncryptedSharedPreferences）
+    private val metadataStore = KeyStoreMetadataStore(context)
 
     private val listeners = mutableListOf<KeyEventListener>()
     private val keysCache = ConcurrentHashMap<String, DigitalKey>()
-    
+
     // KeyStore alias prefix
     companion object {
         private const val KEY_ALIAS_PREFIX = "dk_key_"
-        private const val TRANSACTION_ID_ALIAS = "dk_transaction_counter"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
 
-        // Transaction counter for replay protection
-        @Volatile
-        private var transactionCounter: Long = 0
+        /**
+         * 交易计数器的最大允许值。
+         * 1 万亿次交易在数字钥匙设备生命周期内足够了。
+         * 达到此值后 [getNextTransactionId] 将抛出异常，拒绝新交易。
+         */
+        private const val MAX_TRANSACTION_COUNT = 1_000_000_000_000L
     }
+
+    /**
+     * 持久化的交易计数器，用于防重放保护。
+     * 在 [init] 中从 KeyStore 加密存储加载，每次递增后写回。
+     */
+    private var transactionCounter: Long = 0
     
     init {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        encryptedPrefs = EncryptedSharedPreferences.create(
-            context,
-            "digital_keys_encrypted",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        // 从遗留 EncryptedSharedPreferences 迁移到 KeyStore 回话存储（仅一次）
+        metadataStore.migrateFromLegacyIfNeeded()
+
+        // 从持久化存储加载交易计数器（向后兼容：无数据时从 0 开始）
+        transactionCounter = metadataStore.readCounter()
+        logger.info("Loaded transaction counter: $transactionCounter")
+
         loadKeysFromStorage()
         logger.info("Key Manager initialized, loaded ${keysCache.size} keys")
     }
@@ -449,11 +456,50 @@ class KeyManager(private val context: Context) {
         DkResult.success(Unit)
     }
     
-    // 获取下一个交易ID
+    /**
+     * 获取下一个交易 ID（自动递增计数器）。
+     *
+     * - 计数器从持久化存储加载，保证进程重启后不归零
+     * - 每次递增后立即写回 KeyStore 加密存储
+     * - 达到 [MAX_TRANSACTION_COUNT] 时抛出异常拒绝交易
+     * - 线程安全通过 synchronized 保证
+     *
+     * @return 新的交易 ID（从 1 开始递增）
+     * @throws DkError 当计数器达到 [MAX_TRANSACTION_COUNT] 时拒绝交易
+     */
     fun getNextTransactionId(): Long {
-        return ++transactionCounter
+        synchronized(this) {
+            if (transactionCounter >= MAX_TRANSACTION_COUNT) {
+                val errMsg = "Transaction counter reached maximum ($MAX_TRANSACTION_COUNT), cannot issue new transaction"
+                logger.error(errMsg)
+                telemetry.trackError(DkErrorCode.ERR_QUOTA_EXCEEDED, errMsg)
+                throw DkError(DkErrorCode.ERR_QUOTA_EXCEEDED, errMsg)
+            }
+            transactionCounter++
+            metadataStore.writeCounter(transactionCounter)
+            return transactionCounter
+        }
     }
     
+    /**
+     * 重置交易计数器（仅用于测试）。
+     * 生产代码中不应调用此方法。
+     */
+    fun resetTransactionCounter() {
+        synchronized(this) {
+            transactionCounter = 0L
+            metadataStore.clearCounter()
+            logger.warn("Transaction counter reset to 0 (test only)")
+        }
+    }
+
+    /**
+     * 获取当前交易计数器值（仅用于测试/监控）。
+     */
+    fun getTransactionCounter(): Long {
+        return transactionCounter
+    }
+
     // 释放资源
     fun release() {
         scope.cancel()
@@ -486,6 +532,9 @@ class KeyManager(private val context: Context) {
         )
             .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
             .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384)
+            // 生物识别注册变更时是否使数字签名密钥失效
+            // 此处硬编码 false 以保持与 KeyManager 公共 API 的兼容性；
+            // 如需可配置，可类似 KeyStoreMetadataStore 通过构造函数参数注入。
             .setInvalidatedByBiometricEnrollment(false)
             .build()
 
@@ -502,7 +551,7 @@ class KeyManager(private val context: Context) {
     }
     
     private fun loadKeysFromStorage() {
-        val keysJson = encryptedPrefs.getString("keys", null)
+        val keysJson = metadataStore.readMetadata()
 
         if (keysJson != null) {
             try {
@@ -513,29 +562,29 @@ class KeyManager(private val context: Context) {
                     keysCache[keyId] = key
                 }
             } catch (e: Exception) {
-                logger.error("Failed to load keys", e)
+                logger.error("Failed to load keys from KeyStore-backed store", e)
             }
         }
     }
 
     private fun saveKeyToStorage(key: DigitalKey) {
-        val keysJson = encryptedPrefs.getString("keys", null)
+        val keysJson = metadataStore.readMetadata()
         val json = if (keysJson != null) JSONObject(keysJson) else JSONObject()
 
         json.put(key.keyId, keyToJson(key))
-        encryptedPrefs.edit().putString("keys", json.toString()).apply()
+        metadataStore.writeMetadata(json.toString())
     }
 
     private fun removeKeyFromStorage(keyId: String) {
-        val keysJson = encryptedPrefs.getString("keys", null)
+        val keysJson = metadataStore.readMetadata()
 
         if (keysJson != null) {
             try {
                 val json = JSONObject(keysJson)
                 json.remove(keyId)
-                encryptedPrefs.edit().putString("keys", json.toString()).apply()
+                metadataStore.writeMetadata(json.toString())
             } catch (e: Exception) {
-                logger.error("Failed to remove key", e)
+                logger.error("Failed to remove key from KeyStore-backed store", e)
             }
         }
     }

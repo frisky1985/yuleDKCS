@@ -185,6 +185,7 @@ static int sha256_update(sha256_ctx_t *ctx, const uint8_t *data, size_t len)
 static int sha256_final(sha256_ctx_t *ctx, uint8_t hash[32])
 {
     if (!ctx || !hash) return CRYPTO_ERR_NULL_PTR;
+    uint64_t orig_bits = ctx->total_bits;
     uint8_t pad = 0x80;
     sha256_update(ctx, &pad, 1);
     while (ctx->block_len != 56) {
@@ -192,7 +193,7 @@ static int sha256_final(sha256_ctx_t *ctx, uint8_t hash[32])
         sha256_update(ctx, &zero, 1);
     }
     uint8_t bits[8];
-    store_be64(bits, ctx->total_bits);
+    store_be64(bits, orig_bits);
     sha256_update(ctx, bits, 8);
 
     for (int i = 0; i < 8; i++)
@@ -274,18 +275,28 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
                const uint8_t *info, size_t info_len,
                uint8_t *out, size_t out_len)
 {
+    int ret;
+
     if (!key || !out) return CRYPTO_ERR_NULL_PTR;
+    if (out_len == 0) return CRYPTO_ERR_BAD_LENGTH;
 
     /* 简单 HMAC-SHA256 派生 */
     uint8_t prk[32];
 
-    /* 提取: PRK = HMAC-SHA256(salt, key) */
+    /* [EMB-P1-06 FIX] 提取阶段: 校验 HMAC 返回值并传播错误 */
     if (salt && salt_len > 0) {
-        crypto_hmac_sha256(salt, salt_len, key, key_len, prk);
+        ret = crypto_hmac_sha256(salt, salt_len, key, key_len, prk);
+        if (ret != CRYPTO_SUCCESS) {
+            return ret;
+        }
     } else {
         /* 无 salt, 使用空串 (32 字节 0) 作为 salt */
         uint8_t zero_salt[32] = {0};
-        crypto_hmac_sha256(zero_salt, 32, key, key_len, prk);
+        ret = crypto_hmac_sha256(zero_salt, 32, key, key_len, prk);
+        if (ret != CRYPTO_SUCCESS) {
+            crypto_secure_zero(zero_salt, sizeof(zero_salt));
+            return ret;
+        }
     }
 
     /* 展开: T(i) = HMAC-SHA256(PRK, T(i-1) || info || i) */
@@ -302,6 +313,12 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
             ctx_len = 32;
         }
         if (info && info_len > 0) {
+            /* [EMB-P1-06 FIX] 检查 info 不超过缓冲区上限 */
+            if (info_len > 256) {
+                crypto_secure_zero(prk, sizeof(prk));
+                crypto_secure_zero(T, sizeof(T));
+                return CRYPTO_ERR_BAD_LENGTH;
+            }
             memcpy(ctx_buf + ctx_len, info, info_len);
             ctx_len += info_len;
         }
@@ -310,7 +327,13 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
         memcpy(ctx_buf + ctx_len, c_be, 4);
         ctx_len += 4;
 
-        crypto_hmac_sha256(prk, 32, ctx_buf, ctx_len, T);
+        /* [EMB-P1-06 FIX] 校验每次 HMAC 调用返回值 */
+        ret = crypto_hmac_sha256(prk, 32, ctx_buf, ctx_len, T);
+        if (ret != CRYPTO_SUCCESS) {
+            crypto_secure_zero(prk, sizeof(prk));
+            crypto_secure_zero(T, sizeof(T));
+            return ret;
+        }
 
         size_t todo = (out_len - offset < 32) ? (out_len - offset) : 32;
         memcpy(out + offset, T, todo);

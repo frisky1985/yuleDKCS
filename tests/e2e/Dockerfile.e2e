@@ -1,0 +1,13 @@
+FROM golang:1.21-alpine AS builder
+WORKDIR /build
+COPY proto/ proto/
+COPY client/ client/
+COPY scenarios/ scenarios/
+COPY go.work .
+RUN go build ./scenarios/... -o /dev/null
+
+FROM golang:1.21-alpine
+WORKDIR /test
+COPY --from=builder /build /test
+RUN apk add --no-cache ca-certificates
+ENTRYPOINT ["go", "test", "-v", "-count=1", "./scenarios/..."]

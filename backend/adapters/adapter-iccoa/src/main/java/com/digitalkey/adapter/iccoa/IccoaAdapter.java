@@ -10,6 +10,17 @@ import java.util.concurrent.CompletableFuture;
 /**
  * ICCOA (Intelligent Car Connectivity Over Air) TSP Adapter.
  * Implements communication with ICCOA cloud services for digital key management.
+ *
+ * <p>Protocol version: ICCOA Digital Key 3.0
+ * <br>API base: {@code /v1/}
+ *
+ * <h3>OEM prerequisites</h3>
+ * <ul>
+ *   <li>ICCOA TSP endpoint URL configured via {@code adapter.iccoa.api-url}</li>
+ *   <li>App ID and App Secret for authentication</li>
+ *   <li>Region setting (cn/us) for regional routing</li>
+ *   <li>Network access to the TSP endpoint (HTTPS only)</li>
+ * </ul>
  */
 @Component
 @ConditionalOnProperty(name = "adapter.iccoa.enabled", havingValue = "true", matchIfMissing = true)
@@ -24,6 +35,11 @@ public class IccoaAdapter extends AbstractTspAdapter {
         this.client = new IccoaClient(config);
     }
 
+    IccoaAdapter(AdapterConfig.IccoaProperties config, IccoaClient client) {
+        this.config = config;
+        this.client = client;
+    }
+
     @Override
     public String getAdapterName() {
         return "iccoa-adapter";
@@ -31,7 +47,7 @@ public class IccoaAdapter extends AbstractTspAdapter {
 
     @Override
     protected void doInitialize() {
-        log.info("Initializing ICCOA adapter with API URL: {} region: {}", 
+        log.info("Initializing ICCOA adapter with API URL: {} region: {}",
             config.getApiUrl(), config.getRegion());
         client.init();
         log.info("ICCOA adapter initialized");
@@ -46,7 +62,7 @@ public class IccoaAdapter extends AbstractTspAdapter {
     @Override
     protected CompletableFuture<VehicleListResponse> doGetVehicles(String userId) {
         return CompletableFuture.supplyAsync(() -> {
-            log.debug("Getting vehicles for ICCOA user: {}", userId);
+            log.debug("Getting ICCOA vehicles for user: {}", userId);
             return client.getVehicles(userId);
         }, executor);
     }
@@ -64,6 +80,31 @@ public class IccoaAdapter extends AbstractTspAdapter {
         return CompletableFuture.supplyAsync(() -> {
             log.debug("Revoking ICCOA keys for vehicle: {}", request.vehicleId());
             return client.revokeKeys(request);
+        }, executor);
+    }
+
+    @Override
+    protected CompletableFuture<BindKeyResponse> doBindKey(BindKeyRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            log.debug("Binding ICCOA key for vehicle: {} device: {}",
+                request.vehicleId(), request.deviceId());
+            return client.bindKey(request);
+        }, executor);
+    }
+
+    @Override
+    protected CompletableFuture<KeyResponse> doUnbindKey(UnbindKeyRequest request) {
+        return CompletableFuture.supplyAsync(() -> {
+            log.debug("Unbinding ICCOA key: {} reason: {}", request.keyId(), request.reason());
+            return client.unbindKey(request);
+        }, executor);
+    }
+
+    @Override
+    protected CompletableFuture<KeyStatusResponse> doGetKeyStatus(String keyId) {
+        return CompletableFuture.supplyAsync(() -> {
+            log.debug("Getting ICCOA key status: {}", keyId);
+            return client.getKeyStatus(keyId);
         }, executor);
     }
 

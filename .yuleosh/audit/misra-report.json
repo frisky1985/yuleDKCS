@@ -1,0 +1,744 @@
+{
+  "schema_version": "misra-report-v2",
+  "generated_at": "2026-06-29T01:52:45.166583",
+  "tool": "cppcheck --addon=misra",
+  "tool_version": "Cppcheck 2.17.1 from cppcheck-wheel 1.5.1",
+  "ruleset_version": "2023.1",
+  "standard": "MISRA C:2023",
+  "build_id": "",
+  "commit_sha": "",
+  "branch": "",
+  "excluded": {
+    "rules": [
+      "Dir-4-12",
+      "Rule-21-21"
+    ],
+    "files": [
+      "src/**/mem_pool.c",
+      "src/**/startup/*.c"
+    ]
+  },
+  "deviations": [
+    {
+      "deviation_rule": "misra-c2023-17.7",
+      "file_pattern": "tests/unity/src/unity.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "misra-c2023-2.5",
+      "file_pattern": "tests/unity/src/unity.h",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "misra-c2023-8.7",
+      "file_pattern": "tests/unity/src/unity.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "misra-c2023-15.6",
+      "file_pattern": "tests/unity/src/unity.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Rule-17.7",
+      "file_pattern": "src/**/legacy/old_protocol.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Rule-21.21",
+      "file_pattern": "src/**/hal/*.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Dir-4.12",
+      "file_pattern": "src/**/mem_pool.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Rule-7.2",
+      "file_pattern": "src/**/startup/*.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Rule-12.2",
+      "file_pattern": "src/**/config/*.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    },
+    {
+      "deviation_rule": "Rule-8.1",
+      "file_pattern": "src/**/gen/*.c",
+      "reason": "",
+      "approved_by": "",
+      "risk_level": "mid",
+      "expires": "",
+      "status": "pending",
+      "alm_ticket": ""
+    }
+  ],
+  "aspice_map": {
+    "SWE.4": {
+      "description": "Software Unit Verification",
+      "bp1": {
+        "id": "SWE.4.BP1",
+        "title": "Develop unit verification specification including regression strategy",
+        "report_section": "Violations by Rule / Traceability Matrix"
+      },
+      "bp2": {
+        "id": "SWE.4.BP2",
+        "title": "Verify software units",
+        "report_section": "Summary / Severity Breakdown"
+      }
+    }
+  },
+  "summary": {
+    "total_violations": 25,
+    "total_rules_violated": 7,
+    "severity_counts": {
+      "style": 25
+    },
+    "misra_classification": {
+      "project_specific": 25
+    },
+    "unique_files": [
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c"
+    ],
+    "per_file_counts": {
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c": 3,
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c": 4,
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c": 4,
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c": 4,
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c": 8,
+      "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c": 2
+    },
+    "total_kloc": 0.07,
+    "violations_per_kloc": 357.14,
+    "directive_count": 0,
+    "rule_count": 25
+  },
+  "violations_raw": [
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+      "line": 13,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+      "line": 16,
+      "col": 30,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+      "rule_id": "misra-c2023-11.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+      "line": 15,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+      "line": 22,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+      "line": 20,
+      "col": 20,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-7.2]",
+      "rule_id": "misra-c2023-7.2",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+      "line": 19,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+      "line": 25,
+      "col": 5,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-17.7]",
+      "rule_id": "misra-c2023-17.7",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+      "line": 20,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+      "line": 22,
+      "col": 14,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+      "rule_id": "misra-c2023-11.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+      "line": 25,
+      "col": 5,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+      "rule_id": "misra-c2023-11.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 23,
+      "col": 13,
+      "severity": "style",
+      "message": "Variable 'msg' can be declared as const array [constVariable]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 23,
+      "col": 21,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-7.4]",
+      "rule_id": "misra-c2023-7.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 17,
+      "col": 10,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 22,
+      "col": 6,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+      "rule_id": "misra-c2023-8.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c",
+      "line": 34,
+      "col": 9,
+      "severity": "style",
+      "message": "Condition 'valid' is always true [knownConditionTrueFalse]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c",
+      "line": 36,
+      "col": 25,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+      "rule_id": "misra-c2023-11.4",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+      "line": 13,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'write_to_register' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+      "line": 15,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'tx_application_define' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+      "line": 22,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'vTaskFunction' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+      "line": 19,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'compute_crc' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+      "line": 20,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'uart_send_char' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 22,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'send_message' is never used. [unusedFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 17,
+      "col": 0,
+      "severity": "style",
+      "message": "The function 'hal_uart_transmit' should have static linkage since it is not used outside of its translation unit. [staticFunction]",
+      "rule_id": null,
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 14,
+      "col": 0,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.5]",
+      "rule_id": "misra-c2023-2.5",
+      "code_category": "business"
+    },
+    {
+      "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+      "line": 15,
+      "col": 0,
+      "severity": "style",
+      "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.5]",
+      "rule_id": "misra-c2023-2.5",
+      "code_category": "business"
+    }
+  ],
+  "groups": {
+    "misra-c2023-8.4": {
+      "rule_id": "misra-c2023-8.4",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+          "line": 13,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+          "line": 15,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+          "line": 22,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+          "line": 19,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+          "line": 20,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 17,
+          "col": 10,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 22,
+          "col": 6,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]",
+          "rule_id": "misra-c2023-8.4",
+          "code_category": "business"
+        }
+      ],
+      "count": 7,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c"
+      ],
+      "title": "Compatible declaration shall be visible",
+      "severity_category": "required",
+      "category": "声明 (Declarations)",
+      "description": "兼容声明应对所有 translation units 可见",
+      "type": "rule"
+    },
+    "misra-c2023-11.4": {
+      "rule_id": "misra-c2023-11.4",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+          "line": 16,
+          "col": 30,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+          "rule_id": "misra-c2023-11.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+          "line": 22,
+          "col": 14,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+          "rule_id": "misra-c2023-11.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+          "line": 25,
+          "col": 5,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+          "rule_id": "misra-c2023-11.4",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c",
+          "line": 36,
+          "col": 25,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-11.4]",
+          "rule_id": "misra-c2023-11.4",
+          "code_category": "business"
+        }
+      ],
+      "count": 4,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c"
+      ],
+      "title": "Cast of integer to pointer type",
+      "severity_category": "required",
+      "category": "指针类型转换 (Pointer Type Conversions)",
+      "description": "将整数转换为指针类型应谨慎",
+      "type": "rule"
+    },
+    "misra-c2023-7.2": {
+      "rule_id": "misra-c2023-7.2",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+          "line": 20,
+          "col": 20,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-7.2]",
+          "rule_id": "misra-c2023-7.2",
+          "code_category": "business"
+        }
+      ],
+      "count": 1,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c"
+      ],
+      "title": "U or u suffix on unsigned integer constants",
+      "severity_category": "required",
+      "category": "字面量 (Literals)",
+      "description": "无符号整数常量应使用 U 或 u 后缀",
+      "type": "rule"
+    },
+    "misra-c2023-17.7": {
+      "rule_id": "misra-c2023-17.7",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+          "line": 25,
+          "col": 5,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-17.7]",
+          "rule_id": "misra-c2023-17.7",
+          "code_category": "business"
+        }
+      ],
+      "count": 1,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c"
+      ],
+      "title": "返回值必须被使用",
+      "severity_category": "required",
+      "category": "函数行为",
+      "description": "调用具有返回值的函数，其返回值应被检查或使用",
+      "type": "rule"
+    },
+    "null": {
+      "rule_id": null,
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 23,
+          "col": 13,
+          "severity": "style",
+          "message": "Variable 'msg' can be declared as const array [constVariable]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c",
+          "line": 34,
+          "col": 9,
+          "severity": "style",
+          "message": "Condition 'valid' is always true [knownConditionTrueFalse]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+          "line": 13,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'write_to_register' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+          "line": 15,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'tx_application_define' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+          "line": 22,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'vTaskFunction' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+          "line": 19,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'compute_crc' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+          "line": 20,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'uart_send_char' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 22,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'send_message' is never used. [unusedFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 17,
+          "col": 0,
+          "severity": "style",
+          "message": "The function 'hal_uart_transmit' should have static linkage since it is not used outside of its translation unit. [staticFunction]",
+          "rule_id": null,
+          "code_category": "business"
+        }
+      ],
+      "count": 9,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case002_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case003_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case004_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case005_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case007_true_negative.c"
+      ],
+      "title": "",
+      "severity_category": "unknown",
+      "category": "unrecognized",
+      "description": "",
+      "type": "rule"
+    },
+    "misra-c2023-7.4": {
+      "rule_id": "misra-c2023-7.4",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 23,
+          "col": 21,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-7.4]",
+          "rule_id": "misra-c2023-7.4",
+          "code_category": "business"
+        }
+      ],
+      "count": 1,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c"
+      ],
+      "title": "不应使用字符串字面量作为条件表达式",
+      "severity_category": "required",
+      "category": "字面量 (Literals)",
+      "description": "字符串字面量不得用作条件表达式或布尔上下文中的操作数",
+      "type": "rule"
+    },
+    "misra-c2023-2.5": {
+      "rule_id": "misra-c2023-2.5",
+      "violations": [
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 14,
+          "col": 0,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.5]",
+          "rule_id": "misra-c2023-2.5",
+          "code_category": "business"
+        },
+        {
+          "file": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c",
+          "line": 15,
+          "col": 0,
+          "severity": "style",
+          "message": "misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-2.5]",
+          "rule_id": "misra-c2023-2.5",
+          "code_category": "business"
+        }
+      ],
+      "count": 2,
+      "files": [
+        "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/benchmark/misra-fp-cases/case006_false_positive.c"
+      ],
+      "title": "Source code shall not contain unused macro declarations",
+      "severity_category": "advisory",
+      "category": "未分类 (Uncategorized)",
+      "description": "源代码不得包含未使用的宏定义",
+      "type": "rule"
+    }
+  },
+  "type_classification": {
+    "directive_count": 0,
+    "rule_count": 32
+  },
+  "code_category_breakdown": {
+    "business": 25
+  },
+  "prev_build_diff": {
+    "total_violations_delta": 0,
+    "severity_deltas": {},
+    "files_added": [],
+    "files_removed": []
+  }
+}

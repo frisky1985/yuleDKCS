@@ -1,0 +1,112 @@
+{
+  "bundle": {
+    "generated_at": "2026-07-07T10:25:50.383007",
+    "project_dir": ".",
+    "version": "1.0.0",
+    "spec_ref": "G-50 / §22.1~§22.9"
+  },
+  "components": {
+    "ci-results": {
+      "label": "CI Layer Results",
+      "spec_ref": "§22.1",
+      "artifacts": []
+    },
+    "misra-reports": {
+      "label": "MISRA Analysis Reports",
+      "spec_ref": "§22.2",
+      "artifacts": []
+    },
+    "trend-data": {
+      "label": "KPI/Trend Data",
+      "spec_ref": "§22.3",
+      "artifacts": []
+    },
+    "coverage": {
+      "label": "Test Coverage",
+      "spec_ref": "§22.4",
+      "artifacts": []
+    },
+    "reviews": {
+      "label": "Review Artifacts",
+      "spec_ref": "§22.5",
+      "artifacts": []
+    },
+    "traceability": {
+      "label": "Traceability Matrices",
+      "spec_ref": "§22.6",
+      "artifacts": [
+        {
+          "type": "traceability",
+          "source": ".yuleosh/reports/traceability-report.json",
+          "dest": ".yuleosh/evidence/traceability/traceability-report.json",
+          "sha256": "a3640da4bfcd6122582af00b154965ed06c7df6cfe2e0d375a8a5fc7e3af3bd0"
+        }
+      ]
+    }
+  },
+  "integrity": {},
+  "artifacts": [
+    {
+      "type": "traceability",
+      "source": ".yuleosh/reports/traceability-report.json",
+      "dest": ".yuleosh/evidence/traceability/traceability-report.json",
+      "sha256": "a3640da4bfcd6122582af00b154965ed06c7df6cfe2e0d375a8a5fc7e3af3bd0"
+    }
+  ],
+  "swe_status": {
+    "SWE.1": {
+      "name": "SWE.1 软件需求分析",
+      "short": "SWE.1",
+      "color": "#10b981",
+      "description": "Requirements traceability and analysis",
+      "status": "completed",
+      "label": "✅ 完成",
+      "last_updated": "2026-07-07"
+    },
+    "SWE.2": {
+      "name": "SWE.2 软件架构设计",
+      "short": "SWE.2",
+      "color": "#10b981",
+      "description": "Architecture design documentation",
+      "status": "partial",
+      "label": "⚠️ 部分完成",
+      "last_updated": "2026-07-07"
+    },
+    "SWE.3": {
+      "name": "SWE.3 软件详细设计",
+      "short": "SWE.3",
+      "color": "#faad14",
+      "description": "Detailed design and interface definitions",
+      "status": "completed",
+      "label": "✅ 完成",
+      "last_updated": "2026-07-07"
+    },
+    "SWE.4": {
+      "name": "SWE.4 软件单元验证",
+      "short": "SWE.4",
+      "color": "#faad14",
+      "description": "Unit test coverage and static analysis",
+      "status": "completed",
+      "label": "✅ 完成",
+      "last_updated": "2026-07-07"
+    },
+    "SWE.5": {
+      "name": "SWE.5 软件集成与测试",
+      "short": "SWE.5",
+      "color": "#ff4d4f",
+      "description": "Integration testing",
+      "status": "completed",
+      "label": "✅ 完成",
+      "last_updated": "2026-07-07"
+    },
+    "SWE.6": {
+      "name": "SWE.6 软件合格性测试",
+      "short": "SWE.6",
+      "color": "#10b981",
+      "description": "Qualification testing",
+      "status": "completed",
+      "label": "✅ 完成",
+      "last_updated": "2026-07-07"
+    }
+  }
+}

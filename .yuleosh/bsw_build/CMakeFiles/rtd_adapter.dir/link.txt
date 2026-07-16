@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc librtd_adapter.a CMakeFiles/rtd_adapter.dir/mcal/rtd_adapter.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib librtd_adapter.a

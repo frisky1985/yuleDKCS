@@ -16,6 +16,7 @@
  */
 
 #include "sm3.h"
+#include "crypto_utils.h"
 
 /* ========================================================================
  *  SM3 初始值 IV
@@ -214,6 +215,9 @@ int sm3_final(sm3_ctx_t *ctx, uint8_t hash[SM3_DIGEST_SIZE])
 {
     if (!ctx || !hash) return CRYPTO_ERR_NULL_PTR;
 
+    /* 保存原始消息长度 (填充不应计入长度字段) */
+    uint64_t orig_bits = ctx->total_bits;
+
     /* 填充: 先补 0x80, 再补 0x00 直到剩余 8 字节存长度 */
     uint8_t pad = 0x80;
     sm3_update(ctx, &pad, 1);
@@ -224,9 +228,9 @@ int sm3_final(sm3_ctx_t *ctx, uint8_t hash[SM3_DIGEST_SIZE])
         sm3_update(ctx, &zero, 1);
     }
 
-    /* 写入总位数 (大端 64 位) */
+    /* 写入原始消息总位数 (大端 64 位) */
     uint8_t bits[8];
-    store_be64(bits, ctx->total_bits);
+    store_be64(bits, orig_bits);
     sm3_update(ctx, bits, 8);
 
     /* 输出 state → hash */

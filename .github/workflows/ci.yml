@@ -1,3 +1,21 @@
+# yuleDKCS Core CI Pipeline
+#
+# == Branch Strategy ==
+#
+#   develop  ← feature branches (feat/*, fix/*, docs/*, refactor/*, test/*, chore/*)
+#     ↓ PR
+#   main     ← release branch (protected, only squash-merges from develop)
+#
+# == Triggers ==
+#
+#   push / PR to develop    → Runs full test suite (this workflow)
+#   merge to main           → Extra yuleOSH evidence chain (see yuleosh-ci.yml)
+#   release/*               → Additional Android/iOS/Java adapter CI builds
+#
+# This workflow runs on every push and pull_request across all branches.
+# Branch-specific path filters are applied in platform-specific workflows
+# (android-ci.yml, ios-ci.yml, ci-java.yml, misra-ci.yml, fault-inject-ci.yml).
+#=====================================================================
 name: CI
 on: [push, pull_request]
 
@@ -21,3 +39,34 @@ jobs:
         run: |
           cd backend/dkcs && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
           cd ../cloud/hub && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+
+  # ── Embedded C Unity 测试 ──────────────────────────────────────────────────
+  # Runs vehicle C-Code unit tests (ICCOA, CCC, Unified protocol stacks)
+  # using the Unity test framework.
+  c-test:
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc make libc6-dev
+      - name: Build and Run Embedded C Unity Tests
+        run: |
+          bash scripts/run_embedded_tests.sh native
+      - name: Upload C Test Logs & Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-test-verification
+          path: |
+            reports/embedded-tests-verification.md
+            embedded/tests/build/.*.out
+            embedded/tests/build_output.txt
+
+  # ── Coverage Gate (PR only) ────────────────────────────────────────────────
+  coverage-gate:
+    needs: [test, c-test]
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/cover-check.yml

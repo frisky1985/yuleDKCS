@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # 编译选项
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror -ffreestanding")  # [P0-05 FIX]
 set(CMAKE_C_FLAGS_DEBUG "-g -O0 -DDEBUG")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 
@@ -32,6 +32,7 @@ target_include_directories(dk_unified
         ${CMAKE_CURRENT_SOURCE_DIR}/../ccc_protocol/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../iccoa_protocol/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../icce_protocol/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../freestanding_includes  # [P0-05 FIX]
 )
 
 # 链接协议库

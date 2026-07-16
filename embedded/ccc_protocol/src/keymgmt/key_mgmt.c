@@ -4,6 +4,9 @@
  */
 
 #include "ccc_digital_key.h"
+/* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
+void *pvPortMalloc(size_t xSize);
+void vPortFree(void *pv);
 
 /* ========================================================================
  *  密钥持久化 — [P0-4] 非易失存储
@@ -96,7 +99,9 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
     /* 构造持久化载荷: [magic(4)][version(2)][count(1)][keys(N)][crc32(4)] */
     uint16_t keys_data_len = active_count * sizeof(ccc_digital_key_t);
     uint16_t blob_len = 4 + 2 + 1 + keys_data_len + 4;
-    uint8_t blob[blob_len];
+    uint8_t *blob = (uint8_t *)pvPortMalloc(blob_len);
+    if (!blob) return CCC_ERR_NO_MEM;
+    memset(blob, 0, blob_len);
     uint16_t pos = 0;
 
     /* Magic */
@@ -133,6 +138,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
                          blob, blob_len);
     if (ret == CCC_OK) {
         keystore_secure_zero(blob, blob_len);
+        vPortFree(blob);
         return CCC_OK;
     }
 
@@ -140,6 +146,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
     ret = (ccc_status_t)virt_flash_erase(KEYSTORE_FLASH_ADDR, KEYSTORE_FLASH_SIZE);
     if (ret != 0) {
         keystore_secure_zero(blob, blob_len);
+        vPortFree(blob);
         return CCC_ERR_HARDWARE;
     }
 
@@ -150,6 +157,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
         uint16_t chunk = (remaining > 256) ? 256 : remaining;
         if (virt_flash_write(KEYSTORE_FLASH_ADDR + offset, blob + offset, chunk) != 0) {
             keystore_secure_zero(blob, blob_len);
+            vPortFree(blob);
             return CCC_ERR_HARDWARE;
         }
         offset += chunk;
@@ -157,6 +165,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
     }
 
     keystore_secure_zero(blob, blob_len);
+    vPortFree(blob);
     return CCC_OK;
 }
 
@@ -168,7 +177,8 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
  */
 static ccc_status_t load_keys(void)  /* [P0-4] */
 {
-    uint8_t blob[KEYSTORE_FLASH_SIZE];
+    uint8_t *blob = (uint8_t *)pvPortMalloc(KEYSTORE_FLASH_SIZE);
+    if (!blob) return CCC_ERR_NO_MEM;
     uint16_t blob_len = 0;
     ccc_status_t ret;
 
@@ -182,35 +192,41 @@ static ccc_status_t load_keys(void)  /* [P0-4] */
         /* 回退到 Flash 读取 */
         uint16_t flash_len = KEYSTORE_FLASH_SIZE;
         if (virt_flash_read(KEYSTORE_FLASH_ADDR, blob, flash_len) != 0) {
+            vPortFree(blob);
             return CCC_ERR_HARDWARE;
         }
         blob_len = flash_len;
     }
 
     if (blob_len < 11) { /* min: 4 + 2 + 1 + 0 + 4 = 11 */
+        vPortFree(blob);
         return CCC_ERR_SECURITY;
     }
 
     /* 验证 Magic */
     if (keystore_load_be32(blob) != KEYSTORE_MAGIC) {
+        vPortFree(blob);
         return CCC_ERR_SECURITY;
     }
 
     /* 验证 Version */
     uint16_t version = (uint16_t)((uint16_t)blob[4] << 8) | blob[5];
     if (version != KEYSTORE_VERSION) {
+        vPortFree(blob);
         return CCC_ERR_SECURITY;  /* 不兼容版本, 需要迁移 */
     }
 
     /* 解析密钥数 */
     uint8_t count = blob[6];
     if (count > MAX_KEYS || count == 0) {
+        vPortFree(blob);
         return CCC_ERR_SECURITY;
     }
 
     /* 计算预期长度 */
     uint16_t expected_len = 4 + 2 + 1 + count * sizeof(ccc_digital_key_t) + 4;
     if (blob_len < expected_len) {
+        vPortFree(blob);
         return CCC_ERR_SECURITY;
     }
 
@@ -221,6 +237,7 @@ static ccc_status_t load_keys(void)  /* [P0-4] */
                           (uint32_t)blob[expected_len - 1];
     uint32_t computed_crc = keystore_crc32(blob, expected_len - 4);
     if (computed_crc != stored_crc) {
+        vPortFree(blob);
         return CCC_ERR_SECURITY;  /* 数据篡改或损坏 */
     }
 
@@ -241,6 +258,7 @@ static ccc_status_t load_keys(void)  /* [P0-4] */
     }
 
     keystore_secure_zero(blob, blob_len);
+    vPortFree(blob);
     return CCC_OK;
 }
 

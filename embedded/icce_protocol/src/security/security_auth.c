@@ -127,15 +127,33 @@ security_result_t security_verify_response(
         return SEC_ERR_SIGNATURE_INVALID;
     }
     
-    /* 检查挑战是否过期 */
+    /* [EMB-P1-04] Nonce 去重: 检查重复 Nonce (防重放) */
+    if (is_nonce_used(challenge->nonce)) {
+        return SEC_ERR_NONCE_REUSE;
+    }
+    
+    /* [EMB-P1-08] Challenge-Response 超时窗口检查 */
     uint32_t current_time = sys_tick_get_ms();
     if (current_time > challenge->expiry) {
+        /* [EMB-P1-08 FIX] 超时后立即标记 Nonce 防止后续重放 */
+        mark_nonce_used(challenge->nonce);
         return SEC_ERR_CHALLENGE_EXPIRED;
     }
     
+    /* [EMB-P1-08 FIX] 验证响应时间戳在挑战发出之后 */
+    if (response->timestamp < challenge->timestamp) {
+        /* 响应时间戳早于挑战: 回滚攻击迹象 */
+        mark_nonce_used(challenge->nonce);
+        return SEC_ERR_SIGNATURE_INVALID;
+    }
+    
+    /* [EMB-P1-04 FIX] Nonce 防重放: 接受前标记 Nonce */
+    mark_nonce_used(challenge->nonce);
+    
     /* 构建验证数据 */
-    uint8_t verify_data[128];
+    static uint8_t verify_data[128];
     uint16_t verify_len = 0;
+    memset(verify_data, 0, sizeof(verify_data));
     
     memcpy(&verify_data[verify_len], challenge->nonce, sizeof(challenge->nonce));
     verify_len += sizeof(challenge->nonce);
@@ -201,19 +219,21 @@ security_result_t security_establish_session(
 #ifdef USE_SM_CRYPTO
     /* SM2 密钥交换 */
     {
-        uint8_t my_private_key[32];
-        uint8_t shared_secret[32];
+        static uint8_t my_private_key[32];
+        static uint8_t shared_secret[32];
 
         if (hsm_generate_random(my_private_key, 32) != HSM_SUCCESS) {
+            crypto_secure_zero(my_private_key, 32);
             return SEC_ERR_KEY_GENERATION_FAILED;
         }
 
         if (crypto_sm2_key_exchange(my_private_key, public_key,
                                     shared_secret) != CRYPTO_SUCCESS) {
+            crypto_secure_zero(my_private_key, 32);
             return SEC_ERR_KEY_GENERATION_FAILED;
         }
 
-        uint8_t key_material[48];
+        static uint8_t key_material[48];
         if (crypto_kdf(shared_secret, 32, NULL, 0, NULL, 0,
                        key_material, 48) != CRYPTO_SUCCESS) {
             return SEC_ERR_KEY_GENERATION_FAILED;
@@ -240,20 +260,22 @@ security_result_t security_establish_session(
     }
 #else
     {
-        uint8_t my_private_key[32];
-        uint8_t my_public_key[64];
+        static uint8_t my_private_key[32];
+        static uint8_t my_public_key[64];
 
         if (hsm_generate_ecdh_keypair(my_private_key, my_public_key) != HSM_SUCCESS) {
+            crypto_secure_zero(my_private_key, 32);
             return SEC_ERR_KEY_GENERATION_FAILED;
         }
 
-        uint8_t shared_secret[32];
+        static uint8_t shared_secret[32];
         if (hsm_ecdh_compute_shared(my_private_key, public_key,
                                     shared_secret) != HSM_SUCCESS) {
+            crypto_secure_zero(my_private_key, 32);
             return SEC_ERR_KEY_GENERATION_FAILED;
         }
 
-        uint8_t key_material[48];
+        static uint8_t key_material[48];
         if (crypto_kdf(shared_secret, 32, NULL, 0, NULL, 0,
                        key_material, 48) != CRYPTO_SUCCESS) {
             return SEC_ERR_KEY_GENERATION_FAILED;

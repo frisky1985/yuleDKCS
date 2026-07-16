@@ -1,0 +1,130 @@
+{
+  "success": true,
+  "line_rate": 99.19,
+  "branch_rate": 71.05,
+  "function_rate": 100.0,
+  "total_files": 7,
+  "files": [
+    {
+      "file": "src/yuleosh/cross/hal_mock/gpio_mock.h",
+      "line_rate": 100.0,
+      "branch_rate": 92.86,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 25,
+        "hit": 25
+      },
+      "functions": {
+        "found": 3,
+        "hit": 3
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hal_mock/i2c_mock.h",
+      "line_rate": 100.0,
+      "branch_rate": 50.0,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 23,
+        "hit": 23
+      },
+      "functions": {
+        "found": 4,
+        "hit": 4
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hal_mock/mock_core.h",
+      "line_rate": 97.22,
+      "branch_rate": 66.67,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 36,
+        "hit": 35
+      },
+      "functions": {
+        "found": 3,
+        "hit": 3
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hal_mock/spi_mock.h",
+      "line_rate": 100.0,
+      "branch_rate": 50.0,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 12,
+        "hit": 12
+      },
+      "functions": {
+        "found": 2,
+        "hit": 2
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hal_mock/timer_mock.h",
+      "line_rate": 100.0,
+      "branch_rate": 0.0,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 10,
+        "hit": 10
+      },
+      "functions": {
+        "found": 2,
+        "hit": 2
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hal_mock/uart_mock.h",
+      "line_rate": 100.0,
+      "branch_rate": 50.0,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 13,
+        "hit": 13
+      },
+      "functions": {
+        "found": 2,
+        "hit": 2
+      }
+    },
+    {
+      "file": "src/yuleosh/cross/hello.c",
+      "line_rate": 100.0,
+      "branch_rate": 0.0,
+      "function_rate": 100.0,
+      "lines": {
+        "found": 5,
+        "hit": 5
+      },
+      "functions": {
+        "found": 1,
+        "hit": 1
+      }
+    }
+  ],
+  "totals": {
+    "lines": {
+      "found": 124,
+      "hit": 123
+    },
+    "functions": {
+      "found": 17,
+      "hit": 17
+    },
+    "branches": {
+      "found": 38,
+      "hit": 27
+    }
+  },
+  "gate_passed": true,
+  "gate_details": [
+    {
+      "metric": "line_rate",
+      "value": 99.19,
+      "threshold": 60.0,
+      "passed": true
+    }
+  ]
+}

@@ -114,7 +114,7 @@ const char* dk_logger_get_trace_id(void);
  */
 void dk_logger_log(dk_log_level_t level, const char* tag, 
                    const char* file, int line,
-                   const char* format, va_list args);
+                   const char* format, ...);
 
 /**
  * @brief 日志输出宏

@@ -1,0 +1,122 @@
+# ============================================================================
+# yuleDKCS Embedded C — MISRA C:2023 cppcheck Baseline Configuration
+# ============================================================================
+# Purpose: Quality gate — catch NEW MISRA violations only.
+# Existing violations are listed under --suppress as baseline.
+# ============================================================================
+
+## General ------------------------------------------------------------------
+
+# Standard
+--std=c99
+--language=c
+
+# Check everything, but report only what matters
+--enable=style,warning,performance,portability,information
+
+# MISRA C:2023 addon
+--addon=misra
+
+# ============================================================================
+# BASELINE SUPPRESSIONS — Known existing violations, do NOT flag again.
+# These represent accepted technical debt (tracked in tech-debt.md).
+# When a suppression is removed, the corresponding fix must be verified first.
+# ============================================================================
+
+# ---- Rule: Dir-4.12 (Dynamic memory allocation) ---------------------------
+# Approved for cache module (bounded pool allocator with OOM fallback).
+# Approved for unit test support files.
+--suppress=misra-c2023-dir-4.12:embedded/icce_protocol/src/cache/cache_manager.c
+--suppress=misra-c2023-dir-4.12:embedded/icce_protocol/src/decision/offline_decision.c
+--suppress=misra-c2023-dir-4.12:embedded/tests/support/stubs.c
+
+# ---- Rule: 2.5 (Macro used with suspicious macro) -------------------------
+# Accepted for test support macros (TEST_ASSERT_EQUAL, etc.)
+--suppress=misra-c2023-2.5:embedded/tests/*
+
+# ---- Rule: 8.7 (Function not called locally) ------------------------------
+# All public API functions are called across files; cppcheck cannot
+# follow cross-file call chains. Suppress globally for API headers.
+--suppress=misra-c2023-8.7:embedded/icce_protocol/include/*
+--suppress=misra-c2023-8.7:embedded/ccc_protocol/include/*
+--suppress=misra-c2023-8.7:embedded/iccoa_protocol/include/*
+--suppress=misra-c2023-8.7:embedded/unified_protocol/include/*
+--suppress=misra-c2023-8.7:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-8.7:embedded/icce_protocol/src/icce_edge.c
+--suppress=misra-c2023-8.7:embedded/icce_protocol/src/icce_zone.c
+
+# ---- Rule: 15.6 (Single-statement if/while/for body) ----------------------
+# Accepted for compact guard expressions in driver code.
+--suppress=misra-c2023-15.6:embedded/ccc_protocol/src/ble/ble_kw47a.c
+--suppress=misra-c2023-15.6:embedded/ccc_protocol/src/nfc/nfc_st25r501.c
+--suppress=misra-c2023-15.6:embedded/ccc_protocol/src/uwb/uwb_ncj29d6.c
+
+# ---- Rule: 17.7 (Function may return without value) -----------------------
+# Accepted for SE050 hardware abstraction stubs that must match
+# vendor callback signatures.
+--suppress=misra-c2023-17.7:embedded/ccc_protocol/src/security/security.c
+--suppress=misra-c2023-17.7:embedded/ccc_protocol/src/keymgmt/key_mgmt.c
+
+# ---- Rule: 21.21 (stdlib.h functions: malloc/free) ------------------------
+# Accepted — cache module uses bounded, fallible heap allocation.
+--suppress=misra-c2023-rule-21-21:embedded/icce_protocol/src/cache/cache_manager.c
+
+# ---- Rule: 7.2 (unsigned integer literal suffix) --------------------------
+# Accepted for startup assembly wrapper and bare-metal constants.
+--suppress=misra-c2023-7.2:embedded/icce_protocol/src/ble/*
+
+# ---- ICCOA cross-file references (MISRA Dir-4.10, Rule-8.4) ----------------
+# ICCOA references CCC logger by path; accepted for phase-2 decoupling.
+--suppress=misra-c2023-dir-4.10:embedded/iccoa_protocol/src/*
+--suppress=misra-c2023-rule-8-4:embedded/iccoa_protocol/src/*
+
+# ---- Unified protocol layer patterns --------------------------------------
+# Uses goto for single-cleanup-path pattern; accepted per AUTOSAR C++14.
+--suppress=misra-c2023-rule-15-1:embedded/unified_protocol/src/dk_unified.c
+
+# ---- Crypto library patterns (pure computation) ---------------------------
+# Loop counters, intermediate constants, and bit-manipulation patterns
+# that intentionally deviate from MISRA for performance/correctness.
+--suppress=misra-c2023-rule-10-1:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-10-3:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-10-4:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-10-8:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-12-1:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-14-4:embedded/icce_protocol/src/crypto/*
+--suppress=misra-c2023-rule-20-7:embedded/icce_protocol/src/crypto/*
+
+# ============================================================================
+# PROJECT-WIDE SUPPRESSIONS (by pattern, not file) -- use sparingly
+# ============================================================================
+
+# unusedFunction checks are noisy for embedded because build targets
+# are separate; limit to test files only.
+--suppress=unusedFunction:embedded/tests/*
+
+# Dollar-in-identifier ($) — generated CMSIS headers
+--suppress=dollarInStringLiteral:embedded/*/build/*
+
+# ============================================================================
+# Build directives
+# ============================================================================
+# Include paths for freestanding compilation
+-I embedded/freestanding_includes
+-I embedded/icce_protocol/include
+-I embedded/icce_protocol/src
+-I embedded/ccc_protocol/include
+-I embedded/iccoa_protocol/include
+-I embedded/unified_protocol/include
+-I embedded/icce_protocol/src/crypto
+-I embedded/icce_protocol/src/security
+-I embedded/icce_protocol/src/decision
+-I embedded/icce_protocol/src/cache
+-I embedded/icce_protocol/src/ble
+-I embedded/icce_protocol/src/vehicle
+-I embedded/ccc_protocol/src/security
+-I embedded/ccc_protocol/src/error
+-I embedded/ccc_protocol/src/logger
+-I embedded/tests/support
+
+# Defines for freestanding mode
+-D__freestanding__
+-DCONFIG_ENABLE_CRYPTO=1

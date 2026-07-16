@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_memif.a CMakeFiles/bsw_memif.dir/Users/stefan/yuleDKCS/embedded/mcal_stubs/src/memif_impl.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_memif.a

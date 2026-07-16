@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_bswm.a CMakeFiles/bsw_bswm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/bswm/src/BswM.c.obj CMakeFiles/bsw_bswm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/bswm/src/BswM_Lcfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_bswm.a

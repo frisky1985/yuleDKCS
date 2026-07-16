@@ -1,8 +1,10 @@
 /**
  * @file crypto_engine.h
+ * @module EMB-BSW-CRYPTO (ASPICE SWE.4)
  * @brief 统一密码算法引擎接口
  * @version 1.0
  * @date 2026-05-28
+ * Layer: BSW (Basic Software Layer)
  *
  * 提供 ICCE 协议栈统一的密码学接口。
  * 支持国密 SM2/SM3/SM4 与标准 P-256/SHA-256/AES-256-GCM 两套算法栈,

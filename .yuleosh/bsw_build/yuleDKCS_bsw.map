@@ -1,0 +1,673 @@
+Archive member included to satisfy reference by file (symbol)
+
+libbsw_os.a(Os.c.obj)         CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj (DisableAllInterrupts)
+libbsw_det.a(Det.c.obj)       libbsw_os.a(Os.c.obj) (Det_ReportError)
+libbsw_ecum.a(EcuM.c.obj)     CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj (EcuM_Init)
+libbsw_stubs.a(bsw_stubs.c.obj)
+                              libbsw_ecum.a(EcuM.c.obj) (NvM_Init)
+
+Merging object attributes
+
+
+Discarded input sections
+
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .comment       0x00000000       0x13 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .group         0x00000000        0xc CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_macro   0x00000000      0xaf0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_macro   0x00000000      0x18f CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .comment       0x00000000       0x13 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00000000      0xaf0 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00000000      0x18f libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00000000      0x16c libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00000000       0x1c libbsw_os.a(Os.c.obj)
+ .comment       0x00000000       0x13 libbsw_os.a(Os.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000      0xaf0 libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000      0x18f libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000       0x4c libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000       0x22 libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000       0x52 libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000       0x16 libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00000000       0x26 libbsw_det.a(Det.c.obj)
+ .comment       0x00000000       0x13 libbsw_det.a(Det.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000      0xaf0 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000      0x18f libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000      0x35b libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000      0x110 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x4c libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x22 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x52 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x16 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x26 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x2e libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x76 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00000000       0x88 libbsw_ecum.a(EcuM.c.obj)
+ .comment       0x00000000       0x13 libbsw_ecum.a(EcuM.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .group         0x00000000        0xc libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000      0xaf0 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000      0x18f libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000       0xf4 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000      0x107 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000       0x19 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000       0x76 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000       0xf4 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x00000000       0x4c libbsw_stubs.a(bsw_stubs.c.obj)
+ .comment       0x00000000       0x13 libbsw_stubs.a(bsw_stubs.c.obj)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+flash_rsvd1      0x00000000         0x00000400         xr
+flash_vector     0x00000400         0x00000100         xr
+flash_text       0x00000500         0x001f7b00         xr
+flash_rsvd2      0x001f8000         0x00008000         xr
+ram_safe         0x20000000         0x00010000         xrw
+ram_general      0x20010000         0x00060000         xrw
+ram_shared       0x20070000         0x00010000         xrw
+peripherals      0x40000000         0x10000000         rw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /opt/homebrew/Cellar/arm-none-eabi-gcc/16.1.0/lib/gcc/arm-none-eabi/16.1.0/thumb/v7e-m+fp/hard/libgcc.a
+LOAD CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+LOAD CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+LOAD libbsw_app_tasks.a
+LOAD libbsw_os.a
+LOAD libbsw_det.a
+LOAD libbsw_bswm.a
+LOAD libbsw_ecum.a
+LOAD libbsw_wdgm.a
+LOAD libbsw_stubs.a
+LOAD libmcal_stubs.a
+LOAD libfreertos_port.a
+                0x20080000                        STACK_TOP = 0x20080000
+                0x00020000                        STACK_SIZE = 0x20000
+                0x00040000                        HEAP_SIZE = 0x40000
+                0x00000500                        __FLASH_START = ORIGIN (flash_text)
+                0x001f7b00                        __FLASH_SIZE = LENGTH (flash_text)
+                0x20000000                        __RAM_SAFE_START = ORIGIN (ram_safe)
+                0x00010000                        __RAM_SAFE_SIZE = LENGTH (ram_safe)
+                0x20010000                        __RAM_GP_START = ORIGIN (ram_general)
+                0x00060000                        __RAM_GP_SIZE = LENGTH (ram_general)
+                0x20070000                        __RAM_SHARED_START = ORIGIN (ram_shared)
+                0x00010000                        __RAM_SHARED_SIZE = LENGTH (ram_shared)
+                0x20080000                        __OS_STACK_TOP = STACK_TOP
+                0x00020000                        __OS_STACK_SIZE = STACK_SIZE
+
+.vectors        0x00000400        0x0
+                0x00000400                        __vector_table = ABSOLUTE (.)
+ *(.isr_vector)
+ *(.isr_vector.*)
+                0x00000400                        . = ALIGN (0x100)
+
+.text           0x00000500     0x1370
+                0x00000500                        . = ALIGN (0x4)
+                0x00000500                        __text_start = ABSOLUTE (.)
+ *(.os_startup)
+ *(.os_text)
+ *(.os_text.*)
+ *(.mcal_text)
+ *(.mcal_text.*)
+ *(.safety_text)
+ *(.safety_text.*)
+ *(.text)
+ .text          0x00000500       0x40 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+                0x00000500                EcuM_DriverInitOne
+                0x00000502                EcuM_DriverInitTwo
+                0x00000504                EcuM_DriverInitThree
+                0x00000508                EcuM_DriverRestart
+                0x0000051a                EcuM_AL_DriverInitOne
+                0x0000051c                EcuM_AL_DriverInitTwo
+                0x0000051e                EcuM_AL_DriverInitThree
+                0x00000520                EcuM_AL_DriverRestart
+                0x00000522                EcuM_AL_SwitchOff
+                0x00000534                EcuM_AL_Reset
+                0x00000536                EcuM_AL_EnterSleep
+                0x00000538                EcuM_AL_WakeupCheck
+                0x0000053a                EcuM_AL_WakeupValidation
+                0x0000053c                EcuM_AL_WakeupReaction
+ .text          0x00000540       0xb6 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+                0x00000540                memset
+                0x00000550                memcpy
+                0x00000566                memmove
+                0x00000592                memcmp
+                0x000005b2                strlen
+                0x000005c0                strcpy
+                0x000005d0                strcmp
+                0x000005e6                __aeabi_memcmp
+                0x000005ea                __aeabi_memcpy
+                0x000005ee                __aeabi_memmove
+                0x000005f2                __aeabi_memset
+ *fill*         0x000005f6        0x2 
+ .text          0x000005f8      0x7dc libbsw_os.a(Os.c.obj)
+                0x000005f8                Os_AlarmCallback
+                0x0000062a                ShutdownOS
+                0x00000638                Os_Internal_ShutdownOS
+                0x00000644                GetActiveApplicationMode
+                0x00000650                Os_Internal_ActivateTask
+                0x000006b0                ActivateTask
+                0x000006e8                Os_Internal_StartOS
+                0x0000079c                StartOS
+                0x000007a0                Os_Internal_TerminateTask
+                0x000007d8                TerminateTask
+                0x000007f2                Os_TaskWrapper
+                0x00000802                ChainTask
+                0x00000850                Schedule
+                0x0000085a                GetTaskID
+                0x0000089c                Os_Internal_GetTaskState
+                0x000008d0                GetTaskState
+                0x00000908                EnableAllInterrupts
+                0x0000090c                DisableAllInterrupts
+                0x00000910                ResumeAllInterrupts
+                0x00000914                SuspendAllInterrupts
+                0x00000918                ResumeOSInterrupts
+                0x0000091c                SuspendOSInterrupts
+                0x00000920                Os_Internal_SetEvent
+                0x00000948                SetEvent
+                0x00000980                Os_Internal_ClearEvent
+                0x000009c0                ClearEvent
+                0x000009da                Os_Internal_WaitEvent
+                0x00000a48                WaitEvent
+                0x00000a62                Os_Internal_GetEvent
+                0x00000a8c                GetEvent
+                0x00000ad4                Os_Internal_GetResource
+                0x00000b0c                GetResource
+                0x00000b44                Os_Internal_ReleaseResource
+                0x00000b84                ReleaseResource
+                0x00000bbc                GetAlarmBase
+                0x00000bfc                Os_Internal_GetAlarm
+                0x00000c1c                GetAlarm
+                0x00000c64                Os_Internal_SetRelAlarm
+                0x00000cac                SetRelAlarm
+                0x00000cf4                SetAbsAlarm
+                0x00000d30                Os_Internal_SetAbsAlarm
+                0x00000d34                Os_Internal_CancelAlarm
+                0x00000d6c                CancelAlarm
+                0x00000da4                ErrorHook
+                0x00000da6                Os_Internal_ErrorHook
+                0x00000da8                Appl_ErrorHook
+                0x00000daa                PreTaskHook
+                0x00000dac                Os_Internal_PreTaskHook
+                0x00000dae                Appl_PreTaskHook
+                0x00000db0                PostTaskHook
+                0x00000db2                Os_Internal_PostTaskHook
+                0x00000db4                Appl_PostTaskHook
+                0x00000db6                StartupHook
+                0x00000db8                Os_Internal_StartupHook
+                0x00000dba                Appl_StartupHook
+                0x00000dbc                ShutdownHook
+                0x00000dbe                Os_Internal_ShutdownHook
+                0x00000dc0                Appl_ShutdownHook
+                0x00000dc2                Os_GetVersionInfo
+ .text          0x00000dd4      0x130 libbsw_det.a(Det.c.obj)
+                0x00000dd4                Det_Init
+                0x00000e10                Det_ReportError
+                0x00000e50                Det_Start
+                0x00000e64                Det_ReportRuntimeError
+                0x00000ea4                Det_ReportTransientFault
+                0x00000ee4                Det_GetVersionInfo
+ .text          0x00000f04      0x948 libbsw_ecum.a(EcuM.c.obj)
+                0x00000f38                EcuM_RequestRUN
+                0x00000f7c                EcuM_ReleaseRUN
+                0x00000fb8                EcuM_KillAllRUNRequests
+                0x00000fe0                EcuM_GetState
+                0x0000100c                EcuM_GetSubState
+                0x00001040                EcuM_SelectShutdownTarget
+                0x00001078                EcuM_GetShutdownTarget
+                0x000010b4                EcuM_GetLastShutdownTarget
+                0x000010e8                EcuM_SelectShutdownCause
+                0x00001110                EcuM_GetShutdownCause
+                0x00001144                EcuM_SetWakeupEvent
+                0x000011a4                EcuM_ClearWakeupEvent
+                0x00001204                EcuM_CheckWakeup
+                0x0000121c                EcuM_EnableWakeupSources
+                0x00001248                EcuM_DisableWakeupSources
+                0x00001274                EcuM_GetStatusOfWakeupSource
+                0x000012c4                EcuM_GetWakeupSources
+                0x000012f8                EcuM_CheckValidation
+                0x00001338                EcuM_SelectBootTarget
+                0x0000136c                EcuM_GetBootTarget
+                0x000013a0                EcuM_SelectApplicationMode
+                0x000013c4                EcuM_GetApplicationMode
+                0x000013f4                EcuM_ComM_RequestComMode
+                0x00001414                EcuM_ComM_ReleaseComMode
+                0x00001434                EcuM_StartBswMode
+                0x00001436                EcuM_StopBswMode
+                0x00001438                EcuM_GetVersionInfo
+                0x0000145c                EcuM_StartupTwo
+                0x000014da                EcuM_Shutdown
+                0x0000153a                EcuM_GoSleep
+                0x0000158e                EcuM_StartupOne
+                0x000015e8                EcuM_Init
+                0x0000164c                EcuM_WakeupRestart
+                0x000016a8                EcuM_MainFunction
+                0x000017c0                EcuM_GoHalt
+                0x00001804                EcuM_GoPoll
+ .text          0x0000184c       0x14 libbsw_stubs.a(bsw_stubs.c.obj)
+                0x0000184c                NvM_Init
+                0x0000184e                NvM_ReadAll
+                0x00001852                NvM_WriteAll
+                0x00001856                ComM_Init
+                0x00001858                ComM_DeInit
+                0x0000185a                SchM_Init
+                0x0000185c                SchM_Deinit
+                0x0000185e                BswM_EcuM_CurrentWakeup
+ *(.text.*)
+ .text.startup  0x00001860        0xe CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+                0x00001860                main
+ *(.glue_7)
+ .glue_7        0x0000186e        0x0 linker stubs
+ *(.glue_7t)
+ .glue_7t       0x0000186e        0x0 linker stubs
+ *(.eh_frame)
+ *(.init)
+ *(.fini)
+ *(.ctors)
+ *(.dtors)
+                0x00001870                        . = ALIGN (0x4)
+ *fill*         0x0000186e        0x2 
+                0x00001870                        __text_end = ABSOLUTE (.)
+
+.vfp11_veneer   0x00001870        0x0
+ .vfp11_veneer  0x00001870        0x0 linker stubs
+
+.v4_bx          0x00001870        0x0
+ .v4_bx         0x00001870        0x0 linker stubs
+
+.iplt           0x00001870        0x0
+ .iplt          0x00001870        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+
+.rodata         0x00001870       0x88
+                0x00001870                        . = ALIGN (0x4)
+                0x00001870                        __rodata_start = ABSOLUTE (.)
+ *(.calibration)
+ *(.calibration.*)
+ *(.safety_rodata)
+ *(.safety_rodata.*)
+ *(.rodata)
+ .rodata        0x00001870       0x78 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+                0x00001870                EcuM_Config
+ *(.rodata.*)
+ .rodata.str1.1
+                0x000018e8        0xf libbsw_os.a(Os.c.obj)
+                0x000018f8                        . = ALIGN (0x4)
+ *fill*         0x000018f7        0x1 
+                0x000018f8                        __rodata_end = ABSOLUTE (.)
+
+.rel.dyn        0x000018f8        0x0
+ .rel.iplt      0x000018f8        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+
+.ARM.extab
+ *(.ARM.extab* .gnu.linkonce.armextab.*)
+                0x000018f8                        __exidx_start = ABSOLUTE (.)
+
+.ARM.exidx
+ *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+                0x000018f8                        __exidx_end = ABSOLUTE (.)
+                0x000018f8                        __copy_table_start = ABSOLUTE (.)
+
+.copy.table     0x000018f8       0x18
+                0x000018f8                        . = ALIGN (0x4)
+                0x000018f8        0x4 LONG 0x18f8 LOADADDR (.data)
+                0x000018fc        0x4 LONG 0x20010000 ADDR (.data)
+                0x00001900        0x4 LONG 0xc SIZEOF (.data)
+                0x00001904        0x4 LONG 0x18f8 LOADADDR (.ram_safe_data)
+                0x00001908        0x4 LONG 0x20000000 ADDR (.ram_safe_data)
+                0x0000190c        0x4 LONG 0x0 SIZEOF (.ram_safe_data)
+                0x00001910                        __copy_table_end = ABSOLUTE (.)
+                0x00001910                        __zero_table_start = ABSOLUTE (.)
+
+.zero.table     0x00001910       0x18
+                0x00001910                        . = ALIGN (0x4)
+                0x00001910        0x4 LONG 0x2001000c ADDR (.bss)
+                0x00001914        0x4 LONG 0x120 SIZEOF (.bss)
+                0x00001918        0x4 LONG 0x20000000 ADDR (.ram_safe_bss)
+                0x0000191c        0x4 LONG 0x0 SIZEOF (.ram_safe_bss)
+                0x00001920        0x4 LONG 0x2001012c ADDR (.os_bss)
+                0x00001924        0x4 LONG 0x4 SIZEOF (.os_bss)
+                0x00001928                        __zero_table_end = ABSOLUTE (.)
+
+.ram_safe_data  0x20000000        0x0 load address 0x000018f8
+                0x20000000                        . = ALIGN (0x8)
+                0x20000000                        __safe_data_start = ABSOLUTE (.)
+ *(.safety_data)
+ *(.safety_data.*)
+ *(.ecc_data)
+ *(.ecc_data.*)
+                0x20000000                        . = ALIGN (0x8)
+                0x20000000                        __safe_data_end = ABSOLUTE (.)
+                0x000018f8                        __safe_data_load = LOADADDR (.ram_safe_data)
+
+.ram_safe_bss   0x20000000        0x0
+                0x20000000                        . = ALIGN (0x8)
+                0x20000000                        __safe_bss_start = ABSOLUTE (.)
+ *(.safety_bss)
+ *(.safety_bss.*)
+ *(.ecc_bss)
+ *(.ecc_bss.*)
+                0x20000000                        . = ALIGN (0x8)
+                0x20000000                        __safe_bss_end = ABSOLUTE (.)
+
+.data           0x20010000        0xc load address 0x000018f8
+                0x20010000                        . = ALIGN (0x4)
+                0x20010000                        __data_start = ABSOLUTE (.)
+ *(.bsw_data)
+ *(.bsw_data.*)
+ *(.rte_data)
+ *(.rte_data.*)
+ *(.data)
+ .data          0x20010000        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .data          0x20010000        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .data          0x20010000        0x0 libbsw_os.a(Os.c.obj)
+ .data          0x20010000        0x0 libbsw_det.a(Det.c.obj)
+ .data          0x20010000        0x9 libbsw_ecum.a(EcuM.c.obj)
+ .data          0x20010009        0x0 libbsw_stubs.a(bsw_stubs.c.obj)
+ *(.data.*)
+                0x2001000c                        . = ALIGN (0x4)
+ *fill*         0x20010009        0x3 
+                0x2001000c                        __data_end = ABSOLUTE (.)
+                0x000018f8                        __data_load = LOADADDR (.data)
+
+.igot.plt       0x2001000c        0x0 load address 0x00001904
+ .igot.plt      0x2001000c        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+
+.bss            0x2001000c      0x120 load address 0x00001904
+                0x2001000c                        . = ALIGN (0x4)
+                0x2001000c                        __bss_start = ABSOLUTE (.)
+ *(.bsw_bss)
+ *(.bsw_bss.*)
+ *(.rte_bss)
+ *(.rte_bss.*)
+ *(.bss)
+ .bss           0x2001000c        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .bss           0x2001000c        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .bss           0x2001000c       0x1c libbsw_os.a(Os.c.obj)
+                0x2001000c                Os_GlobalState
+ .bss           0x20010028       0x44 libbsw_det.a(Det.c.obj)
+                0x2001002c                DetConfigPtr
+                0x20010030                DetInitialized
+ .bss           0x2001006c       0xc0 libbsw_ecum.a(EcuM.c.obj)
+ .bss           0x2001012c        0x0 libbsw_stubs.a(bsw_stubs.c.obj)
+ *(.bss.*)
+ *(COMMON)
+                0x2001012c                        . = ALIGN (0x4)
+                0x2001012c                        __bss_end = ABSOLUTE (.)
+
+.os_bss         0x2001012c        0x4 load address 0x00001a24
+                0x20010130                        . = ALIGN (0x8)
+ *fill*         0x2001012c        0x4 
+                0x20010130                        __os_bss_start = ABSOLUTE (.)
+ *(.os_bss)
+ *(.os_bss.*)
+ *(.task_stacks)
+ *(.isr_stacks)
+                0x20010130                        . = ALIGN (0x8)
+                0x20010130                        __os_bss_end = ABSOLUTE (.)
+
+.heap           0x20010130    0x40000 load address 0x00001a28
+                0x20010130                        . = ALIGN (0x8)
+                0x20010130                        __heap_start = ABSOLUTE (.)
+                0x20050130                        . = (. + HEAP_SIZE)
+ *fill*         0x20010130    0x40000 
+                0x20050130                        . = ALIGN (0x8)
+                0x20050130                        __heap_end = ABSOLUTE (.)
+                0x20060000                        __stack_bottom = (STACK_TOP - STACK_SIZE)
+
+.shared_ram     0x20070000        0x0
+                0x20070000                        . = ALIGN (0x4)
+                0x20070000                        __shared_ram_start = ABSOLUTE (.)
+ *(.shared_data)
+ *(.shared_data.*)
+ *(.dma_buffer)
+ *(.dma_buffer.*)
+                0x20070000                        . = ALIGN (0x4)
+                0x20070000                        __shared_ram_end = ABSOLUTE (.)
+
+.lockstep_test  0x20000000        0x0
+                0x20000000                        . = ALIGN (0x4)
+                0x20000000                        __lockstep_test_start = ABSOLUTE (.)
+ *(.lockstep_test)
+ *(.lockstep_test.*)
+                0x20000000                        . = ALIGN (0x4)
+                0x20000000                        __lockstep_test_end = ABSOLUTE (.)
+                0x00000500                        __mpu_text_start = ALIGN (__text_start, 0x20)
+                0x00001880                        __mpu_text_end = ALIGN (__text_end, 0x20)
+                0x20010000                        __mpu_ram_start = ALIGN (__data_start, 0x20)
+                0x20010140                        __mpu_ram_end = ALIGN (__bss_end, 0x20)
+
+.debug_info     0x00000000     0x4652
+ *(.debug_info)
+ .debug_info    0x00000000      0x3d4 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_info    0x000003d4      0x531 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_info    0x00000905     0x1c88 libbsw_os.a(Os.c.obj)
+ .debug_info    0x0000258d      0x6dc libbsw_det.a(Det.c.obj)
+ .debug_info    0x00002c69     0x18b5 libbsw_ecum.a(EcuM.c.obj)
+ .debug_info    0x0000451e      0x134 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_abbrev   0x00000000      0xf70
+ *(.debug_abbrev)
+ .debug_abbrev  0x00000000      0x210 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_abbrev  0x00000210      0x175 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_abbrev  0x00000385      0x438 libbsw_os.a(Os.c.obj)
+ .debug_abbrev  0x000007bd      0x25e libbsw_det.a(Det.c.obj)
+ .debug_abbrev  0x00000a1b      0x48f libbsw_ecum.a(EcuM.c.obj)
+ .debug_abbrev  0x00000eaa       0xc6 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_aranges  0x00000000       0xc8
+ *(.debug_aranges)
+ .debug_aranges
+                0x00000000       0x28 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_aranges
+                0x00000028       0x20 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_aranges
+                0x00000048       0x20 libbsw_os.a(Os.c.obj)
+ .debug_aranges
+                0x00000068       0x20 libbsw_det.a(Det.c.obj)
+ .debug_aranges
+                0x00000088       0x20 libbsw_ecum.a(EcuM.c.obj)
+ .debug_aranges
+                0x000000a8       0x20 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_line     0x00000000     0x2e2e
+ *(.debug_line)
+ .debug_line    0x00000000      0x317 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_line    0x00000317      0x2f1 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_line    0x00000608      0xfc7 libbsw_os.a(Os.c.obj)
+ .debug_line    0x000015cf      0x43e libbsw_det.a(Det.c.obj)
+ .debug_line    0x00001a0d     0x119d libbsw_ecum.a(EcuM.c.obj)
+ .debug_line    0x00002baa      0x284 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_str      0x00000000     0xa8d7
+ *(.debug_str)
+ .debug_str     0x00000000     0xa8d7 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+                               0x67c7 (size before relaxing)
+ .debug_str     0x0000a8d7        0x0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+                               0x38ca (size before relaxing)
+ .debug_str     0x0000a8d7        0x0 libbsw_os.a(Os.c.obj)
+                               0x6329 (size before relaxing)
+ .debug_str     0x0000a8d7        0x0 libbsw_det.a(Det.c.obj)
+                               0x3fcc (size before relaxing)
+ .debug_str     0x0000a8d7        0x0 libbsw_ecum.a(EcuM.c.obj)
+                               0x74e8 (size before relaxing)
+ .debug_str     0x0000a8d7        0x0 libbsw_stubs.a(bsw_stubs.c.obj)
+                               0x5acd (size before relaxing)
+
+.debug_frame    0x00000000      0xd5c
+ *(.debug_frame)
+ .debug_frame   0x00000000      0x120 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_frame   0x00000120       0xd8 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_frame   0x000001f8      0x518 libbsw_os.a(Os.c.obj)
+ .debug_frame   0x00000710       0xac libbsw_det.a(Det.c.obj)
+ .debug_frame   0x000007bc      0x510 libbsw_ecum.a(EcuM.c.obj)
+ .debug_frame   0x00000ccc       0x90 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_ranges
+ *(.debug_ranges)
+
+/DISCARD/
+ *(.comment)
+ *(.note)
+ *(.note.gnu.build-id)
+                0x2001012c                        __end = __bss_end
+                0x2001012c                        end = __end
+                0x20080000                        __stack_top = STACK_TOP
+                [!provide]                        PROVIDE (__os_stack_bottom = __stack_bottom)
+                [!provide]                        PROVIDE (__os_heap_start = __heap_start)
+                [!provide]                        PROVIDE (__os_heap_end = __heap_end)
+                [!provide]                        PROVIDE (__ecc_protected_start = __safe_data_start)
+                [!provide]                        PROVIDE (__ecc_protected_end = __safe_bss_end)
+                [!provide]                        PROVIDE (__mpu_region_text_start = __mpu_text_start)
+                [!provide]                        PROVIDE (__mpu_region_text_size = (__mpu_text_end - __mpu_text_start))
+                [!provide]                        PROVIDE (__mpu_region_ram_start = __mpu_ram_start)
+                [!provide]                        PROVIDE (__mpu_region_ram_size = (__mpu_ram_end - __mpu_ram_start))
+                [!provide]                        PROVIDE (__mpu_region_safe_start = __RAM_SAFE_START)
+                [!provide]                        PROVIDE (__mpu_region_safe_size = __RAM_SAFE_SIZE)
+OUTPUT(yuleDKCS_bsw.elf elf32-littlearm)
+LOAD linker stubs
+
+.ARM.attributes
+                0x00000000       0x34
+ .ARM.attributes
+                0x00000000       0x34 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .ARM.attributes
+                0x00000034       0x34 CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .ARM.attributes
+                0x00000068       0x34 libbsw_os.a(Os.c.obj)
+ .ARM.attributes
+                0x0000009c       0x34 libbsw_det.a(Det.c.obj)
+ .ARM.attributes
+                0x000000d0       0x34 libbsw_ecum.a(EcuM.c.obj)
+ .ARM.attributes
+                0x00000104       0x34 libbsw_stubs.a(bsw_stubs.c.obj)
+
+.debug_loclists
+                0x00000000     0x1e49
+ .debug_loclists
+                0x00000000       0x46 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_loclists
+                0x00000046      0x43c CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_loclists
+                0x00000482      0xe6f libbsw_os.a(Os.c.obj)
+ .debug_loclists
+                0x000012f1      0x395 libbsw_det.a(Det.c.obj)
+ .debug_loclists
+                0x00001686      0x7c3 libbsw_ecum.a(EcuM.c.obj)
+
+.debug_rnglists
+                0x00000000      0x192
+ .debug_rnglists
+                0x00000000       0x19 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_rnglists
+                0x00000019       0x88 libbsw_os.a(Os.c.obj)
+ .debug_rnglists
+                0x000000a1       0x4b libbsw_det.a(Det.c.obj)
+ .debug_rnglists
+                0x000000ec       0xa6 libbsw_ecum.a(EcuM.c.obj)
+
+.debug_macro    0x00000000     0x268f
+ .debug_macro   0x00000000       0x91 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000091      0xaf0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000b81      0x18f CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000d10      0x16c CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000e7c       0x1c CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000e98      0x130 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00000fc8      0x35b CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00001323      0x110 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00001433       0x2e CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x00001461       0x76 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x000014d7       0x88 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x0000155f       0x82 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x000015e1       0x10 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x000015f1       0xd0 CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj
+ .debug_macro   0x000016c1       0x1a CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj
+ .debug_macro   0x000016db      0x11d libbsw_os.a(Os.c.obj)
+ .debug_macro   0x000017f8      0x16c libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001964      0x189 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001aed       0x40 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001b2d       0xca libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001bf7       0x16 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001c0d       0x22 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001c2f       0x4c libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001c7b       0x22 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001c9d       0x52 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001cef       0x16 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001d05       0x26 libbsw_os.a(Os.c.obj)
+ .debug_macro   0x00001d2b       0xb7 libbsw_det.a(Det.c.obj)
+ .debug_macro   0x00001de2       0xe0 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00001ec2       0x4c libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00001f0e       0xf4 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00002002      0x107 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00002109       0x1c libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x00002125       0x19 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x0000213e       0x76 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x000021b4       0xf4 libbsw_ecum.a(EcuM.c.obj)
+ .debug_macro   0x000022a8       0x75 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x0000231d       0x11 libbsw_stubs.a(bsw_stubs.c.obj)
+ .debug_macro   0x0000232e      0x361 libbsw_stubs.a(bsw_stubs.c.obj)

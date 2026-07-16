@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_pdur.a CMakeFiles/bsw_pdur.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/pdur/src/PduR.c.obj CMakeFiles/bsw_pdur.dir/src/dk_pdur_lcfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_pdur.a

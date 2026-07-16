@@ -1,0 +1,182 @@
+# ============================================================================
+# yuleDKCS MISRA C:2023 Quality Gate (P2.1 / TD-05)
+# ============================================================================
+# Runs cppcheck with MISRA C:2023 addon on embedded C source.
+# Baselines known violations via embedded/.cppcheck — only NEW violations
+# will fail the build.
+# ============================================================================
+
+name: MISRA C:2023 Static Analysis
+on:
+  push:
+    branches: [main, develop, feat/**]
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/misra-ci.yml'
+  pull_request:
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/misra-ci.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  cppcheck-misra:
+    name: cppcheck MISRA C:2023
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cppcheck 2>&1 | tail -3
+          cppcheck --version
+
+      - name: Verify MISRA addon availability
+        run: |
+          cppcheck --addon=misra --doc 2>&1 | head -5 || echo "MISRA addon check failed (may need cppcheck >= 2.12)"
+          python3 -c "import sys; print('python3 ok:', sys.version)"
+
+      - name: Run cppcheck on ICCE protocol
+        run: |
+          echo "=== ICCE Protocol ==="
+          set +e
+          cppcheck --addon=misra \
+            --suppressions-list=embedded/.cppcheck \
+            --error-exitcode=1 \
+            --template='[{file}:{line}]: ({severity}-{id}) {message}' \
+            -I embedded/freestanding_includes \
+            -I embedded/icce_protocol/include \
+            -I embedded/icce_protocol/src \
+            -I embedded/icce_protocol/src/crypto \
+            -I embedded/icce_protocol/src/security \
+            -I embedded/icce_protocol/src/decision \
+            -I embedded/icce_protocol/src/cache \
+            -I embedded/icce_protocol/src/ble \
+            -I embedded/icce_protocol/src/vehicle \
+            -D__freestanding__ \
+            -DCONFIG_ENABLE_CRYPTO=1 \
+            embedded/icce_protocol/src/ 2>&1 | tee /tmp/icce-misra.log
+          ICCE_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "ICCE_EXIT=$ICCE_EXIT" >> "$GITHUB_ENV"
+          echo "### ICCE MISRA violations: $(wc -l < /tmp/icce-misra.log)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run cppcheck on CCC protocol
+        run: |
+          echo "=== CCC Protocol ==="
+          set +e
+          cppcheck --addon=misra \
+            --suppressions-list=embedded/.cppcheck \
+            --error-exitcode=1 \
+            --template='[{file}:{line}]: ({severity}-{id}) {message}' \
+            -I embedded/freestanding_includes \
+            -I embedded/ccc_protocol/include \
+            -I embedded/ccc_protocol/src/security \
+            -I embedded/ccc_protocol/src/error \
+            -I embedded/ccc_protocol/src/logger \
+            -D__freestanding__ \
+            -DCONFIG_ENABLE_CRYPTO=1 \
+            embedded/ccc_protocol/src/ 2>&1 | tee /tmp/ccc-misra.log
+          CCC_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "CCC_EXIT=$CCC_EXIT" >> "$GITHUB_ENV"
+          echo "### CCC MISRA violations: $(wc -l < /tmp/ccc-misra.log)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run cppcheck on ICCOA protocol
+        run: |
+          echo "=== ICCOA Protocol ==="
+          set +e
+          cppcheck --addon=misra \
+            --suppressions-list=embedded/.cppcheck \
+            --error-exitcode=1 \
+            --template='[{file}:{line}]: ({severity}-{id}) {message}' \
+            -I embedded/freestanding_includes \
+            -I embedded/iccoa_protocol/include \
+            -I embedded/ccc_protocol/src/logger \
+            -DCONFIG_ENABLE_CRYPTO=1 \
+            embedded/iccoa_protocol/src/ 2>&1 | tee /tmp/iccoa-misra.log
+          ICCOA_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "ICCOA_EXIT=$ICCOA_EXIT" >> "$GITHUB_ENV"
+          echo "### ICCOA MISRA violations: $(wc -l < /tmp/iccoa-misra.log)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run cppcheck on Unified protocol
+        run: |
+          echo "=== Unified Protocol ==="
+          set +e
+          cppcheck --addon=misra \
+            --suppressions-list=embedded/.cppcheck \
+            --error-exitcode=1 \
+            --template='[{file}:{line}]: ({severity}-{id}) {message}' \
+            -I embedded/freestanding_includes \
+            -I embedded/unified_protocol/include \
+            -DCONFIG_ENABLE_CRYPTO=1 \
+            embedded/unified_protocol/src/ 2>&1 | tee /tmp/unified-misra.log
+          UNIFIED_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "UNIFIED_EXIT=$UNIFIED_EXIT" >> "$GITHUB_ENV"
+          echo "### Unified MISRA violations: $(wc -l < /tmp/unified-misra.log)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check for NEW (unbaselined) violations
+        run: |
+          echo "## MISRA C:2023 — Violation Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          FAILURE=false
+
+          # Check each protocol module
+          for entry in "icce|ICCE" "ccc|CCC" "iccoa|ICCOA" "unified|UNIFIED"; do
+            mod="${entry%|*}"
+            label="${entry#*|}"
+            log="/tmp/${mod}-misra.log"
+            exit_var="${label}_EXIT"
+            exit_code="${!exit_var}"
+            count=$(grep -cE '(misra|error|warning)' "$log" 2>/dev/null || echo 0)
+
+            if [ "$exit_code" -ne 0 ]; then
+              echo "- **${label}**: ${count} NEW violation(s) (unbaselined) ⚠️" >> "$GITHUB_STEP_SUMMARY"
+              FAILURE=true
+            else
+              echo "- **${label}**: ${count} violation(s) — all baselined ✅" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$FAILURE" = "true" ]; then
+            echo "## ❌ NEW MISRA Violations Detected — Build Failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The violations below are NOT covered by the baseline in \`embedded/.cppcheck\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "Fix them or suppress them (add to \`embedded/.cppcheck\`) before merging." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            for mod in icce ccc iccoa unified; do
+              log="/tmp/${mod}-misra.log"
+              if [ -s "$log" ]; then
+                echo "[${mod^^}]" >> "$GITHUB_STEP_SUMMARY"
+                cat "$log" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "## ✅ All Clear" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "All violations are baselined in \`embedded/.cppcheck\`. No NEW violations detected." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload MISRA report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: misra-reports
+          path: |
+            /tmp/*-misra.log

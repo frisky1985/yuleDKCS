@@ -23,6 +23,7 @@ type KeyService struct {
 	vehicleRepo VehicleRepository
 	logger      Logger
 	telemetry   Telemetry
+	eventBus    EventBus // optional Kafka event producer
 
 	// [M-07] 幂等性保证
 	idempotencyMu     sync.RWMutex
@@ -71,6 +72,15 @@ func NewKeyService(
 		logger:      logger,
 		telemetry:   telemetry,
 	}
+}
+
+// WithEventBus attaches an optional EventBus for publishing key lifecycle events.
+// Events are published asynchronously; failures are logged but never block the
+// business flow. Use the optional EventBus builder pattern to avoid coupling
+// the service layer to a specific message queue implementation.
+func (s *KeyService) WithEventBus(bus EventBus) *KeyService {
+	s.eventBus = bus
+	return s
 }
 
 // CreateKey creates a new digital key
@@ -172,6 +182,9 @@ func (s *KeyService) ActivateKey(ctx context.Context, req *pb.ActivateKeyRequest
 	s.telemetry.IncCounter("dkcs.key.activate.success", nil)
 	s.logger.Info("Key activated successfully", "key_id", req.KeyId)
 
+	// [MQ] Emit key_activated event (async, fire-and-forget)
+	s.emitKeyEvent(ctx, "key_activated", req.KeyId, key.UserID, "")
+
 	return &pb.ActivateKeyResponse{
 		KeyId:      req.KeyId,
 		Status:     "active",
@@ -255,6 +268,9 @@ func (s *KeyService) RevokeKey(ctx context.Context, req *pb.RevokeKeyRequest) (*
 
 	s.telemetry.IncCounter("dkcs.key.revoke.success", nil)
 	s.logger.Info("Key revoked successfully", "key_id", req.KeyId)
+
+	// [MQ] Emit key_revoked event (async, fire-and-forget)
+	s.emitKeyEvent(ctx, "key_revoked", req.KeyId, key.UserID, "")
 
 	return &pb.RevokeKeyResponse{
 		KeyId:     req.KeyId,
@@ -425,11 +441,45 @@ func (s *KeyService) ShareKey(ctx context.Context, req *pb.ShareKeyRequest) (*pb
 
 	s.telemetry.IncCounter("dkcs.key.share.success", nil)
 
+	// [MQ] Emit key_shared event (async, fire-and-forget)
+	s.emitKeyEvent(ctx, "key_shared", sharedKeyID, origKey.UserID, req.ToUserId)
+
 	return &pb.ShareKeyResponse{
 		SharedKeyId: sharedKeyID,
 		ShareCode:   generateShareCode(),
 		ExpiresAt:   sharedKey.ExpiresAt.Unix(),
 	}, nil
+}
+
+// emitKeyEvent publishes a key lifecycle event to the optional EventBus.
+// The publish is non-blocking: it uses a select with a 500ms timeout and
+// a goroutine fallback to prevent the business flow from stalling.
+// This is a fire-and-forget pattern — failures are logged but not returned.
+func (s *KeyService) emitKeyEvent(ctx context.Context, eventType, keyID, ownerID, targetID string) {
+	if s.eventBus == nil {
+		return // Kafka not configured, silently skip
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- s.eventBus.PublishKeyEvent(ctx, eventType, keyID, ownerID, targetID)
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			s.logger.Error("Failed to publish key event to EventBus",
+				"event_type", eventType,
+				"key_id", keyID,
+				"error", err,
+			)
+		}
+	case <-time.After(500 * time.Millisecond):
+		s.logger.Warn("EventBus publish timed out (fire-and-forget)",
+			"event_type", eventType,
+			"key_id", keyID,
+		)
+	}
 }
 
 func generateShareCode() string {

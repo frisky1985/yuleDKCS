@@ -1,0 +1,134 @@
+# =============================================================================
+# fault-inject-ci.yml — yuleDKCS Fault Injection CI Pipeline
+#
+# Runs the digital key protocol fault injection test suite.
+# This is an optional gate — the main CI pipeline does not depend on it.
+# Add as a required check only for release/debug builds.
+#
+# Runs:
+#   1. Host-side compilation with DK_FAULT_INJECT_ENABLE=1
+#   2. All ICCE / CCC / ICCOA protocol fault injection tests
+#   3. Generates fault-injection-report.md
+# =============================================================================
+
+name: Fault Injection CI
+
+on:
+  push:
+    branches: [main, develop, release/*]
+    paths:
+      - 'embedded/**'
+      - '.github/workflows/fault-inject-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'embedded/**'
+  workflow_dispatch:
+    # Manual trigger for ad-hoc testing
+
+env:
+  FAULT_INJECT_DIR: embedded/fault-inject
+
+jobs:
+  fault-injection-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc cmake build-essential
+
+      - name: Build fault injection test runner (host)
+        run: |
+          echo "Building with DK_FAULT_INJECT_ENABLE=1..."
+          mkdir -p ${{ env.FAULT_INJECT_DIR }}/build-ci
+          gcc -DDK_FAULT_INJECT_ENABLE=1 \
+              -I${{ env.FAULT_INJECT_DIR }}/inc \
+              -I${{ env.FAULT_INJECT_DIR }}/test \
+              -o ${{ env.FAULT_INJECT_DIR }}/build-ci/dk_fault_inject_runner \
+              ${{ env.FAULT_INJECT_DIR }}/test/test_dk_fault_inject.c \
+              ${{ env.FAULT_INJECT_DIR }}/src/DKFaultInject.c \
+              -lm
+          echo "Build successful."
+
+      - name: Run fault injection tests
+        id: run_tests
+        run: |
+          ${{ env.FAULT_INJECT_DIR }}/build-ci/dk_fault_inject_runner 2>&1 | \
+            tee ${{ env.FAULT_INJECT_DIR }}/build-ci/test_output.txt
+
+      - name: Generate test report
+        run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          mkdir -p .yuleosh
+          
+          TOTAL=$(grep -oE 'Total: [0-9]+' ${{ env.FAULT_INJECT_DIR }}/build-ci/test_output.txt | grep -oE '[0-9]+' | tail -1 || echo "0")
+          PASSED=$(grep -oE 'Passed: [0-9]+' ${{ env.FAULT_INJECT_DIR }}/build-ci/test_output.txt | grep -oE '[0-9]+' | tail -1 || echo "0")
+          FAILED=$(grep -oE 'Failed: [0-9]+' ${{ env.FAULT_INJECT_DIR }}/build-ci/test_output.txt | grep -oE '[0-9]+' | tail -1 || echo "0")
+          
+          cat > .yuleosh/fault-injection-report.md << EOF
+          # yuleDKCS Fault Injection Test Report
+          
+          **Generated:** ${TIMESTAMP}
+          **Build:** GitHub Actions (gcc, DK_FAULT_INJECT_ENABLE=1)
+          
+          ## Summary
+          
+          | Metric | Value |
+          |--------|-------|
+          | Total Tests | ${TOTAL} |
+          | Passed | ${PASSED} |
+          | Failed | ${FAILED} |
+          | Pass Rate | $(( PASSED * 100 / (TOTAL > 0 ? TOTAL : 1) ))% |
+          
+          ## Protocols Tested
+          
+          ### ICCE Protocol (5 injectors)
+          - Signature Forgery Detection
+          - Certificate Expiry Detection
+          - Illegal State Transition Detection
+          - Communication Timeout Detection
+          - Distance Spoof Detection
+          
+          ### CCC Protocol (5 injectors)
+          - Secure Channel Failure Detection
+          - Certificate Verify Anomaly Detection
+          - NFC OOB Corruption Detection
+          - BLE Encryption Failure Detection
+          - Illegal State Detection
+          
+          ### ICCOA Protocol (5 injectors)
+          - Handshake Failure Detection
+          - Key Derivation Error Detection
+          - Downgrade Attack Detection
+          - Permission Bypass Detection
+          - HMAC Tamper Detection
+          
+          ## Status
+          
+          $([ "${FAILED}" -gt 0 ] && echo "⚠️  ${FAILED} test(s) simulated issues." || echo "✅ All tests passed.")
+          
+          ## Raw Output
+          
+          \`\`\`
+          $(cat ${{ env.FAULT_INJECT_DIR }}/build-ci/test_output.txt)
+          \`\`\`
+          EOF
+          
+          echo "Report generated: .yuleosh/fault-injection-report.md"
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fault-injection-report
+          path: .yuleosh/fault-injection-report.md
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fault-injection-binaries
+          path: ${{ env.FAULT_INJECT_DIR }}/build-ci/

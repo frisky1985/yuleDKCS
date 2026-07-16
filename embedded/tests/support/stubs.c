@@ -426,3 +426,12 @@ dk_status_t dk_protocol_send_raw(dk_protocol_e p, const uint8_t *d, uint16_t l)
 { (void)p;(void)d;(void)l; return DK_OK; }
 dk_status_t dk_protocol_get_info(dk_protocol_e p, uint16_t *v, const char **n)
 { (void)p; *v=0x0300; *n="test"; return DK_OK; }
+
+/* ========================================================================
+ *  Unity setUp / tearDown — one definition for monolithic build
+ *  Individual test files define their own empty setUp/tearDown for standalone runs.
+ * ======================================================================== */
+#if defined(MONOLITHIC_BUILD)
+void setUp(void) {}
+void tearDown(void) {}
+#endif

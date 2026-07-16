@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_cryif.a CMakeFiles/bsw_cryif.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/cryif/src/CryIf.c.obj CMakeFiles/bsw_cryif.dir/src/dk_cryif_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_cryif.a

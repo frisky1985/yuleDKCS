@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_csm.a CMakeFiles/bsw_csm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/csm/src/Csm.c.obj CMakeFiles/bsw_csm.dir/src/dk_csm_cfg.c.obj CMakeFiles/bsw_csm.dir/src/dk_csm_callouts.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_csm.a

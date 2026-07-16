@@ -1,82 +1,103 @@
 package com.digitalkey.adapter.core;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Map;
+import java.util.List;
 
 /**
  * TSP (Trusted Service Provider) Adapter interface.
  * All protocol-specific adapters (CCC, ICCOA, ICCE) must implement this interface.
+ *
+ * <h3>Lifecycle</h3>
+ * <ol>
+ *   <li>{@link #initialize()} — establish connection / auth</li>
+ *   <li>{@link #getVehicles(String)}, {@link #requestKeys(KeyRequest)},
+ *       {@link #bindKey(BindKeyRequest)} — business operations</li>
+ *   <li>{@link #shutdown()} — cleanup</li>
+ * </ol>
+ *
+ * <h3>Retry guarantee</h3>
+ * All async operations in {@link AbstractTspAdapter} apply exponential-backoff
+ * retry when {@code adapter.retry-enabled=true}.
  */
 public interface TspAdapter {
 
-    /**
-     * Get the adapter identifier.
-     * @return unique adapter name
-     */
+    // ──────────────────────────────────────────────
+    //  Lifecycle
+    // ──────────────────────────────────────────────
+
+    /** Unique adapter name, e.g. "ccc-adapter". */
     String getAdapterName();
 
-    /**
-     * Check if this adapter is currently enabled.
-     * @return true if enabled
-     */
+    /** Whether this adapter is currently enabled. */
     boolean isEnabled();
 
-    /**
-     * Initialize the adapter and establish connections.
-     * @return CompletableFuture that completes when initialization is done
-     */
+    /** Initialize connections and authenticate with the TSP. */
     CompletableFuture<Void> initialize();
 
-    /**
-     * Close connections and cleanup resources.
-     * @return CompletableFuture that completes when shutdown is done
-     */
+    /** Gracefully close connections and release resources. */
     CompletableFuture<Void> shutdown();
 
-    /**
-     * Get the vehicle list from the TSP.
-     * @param userId user identifier
-     * @return CompletableFuture with vehicle list response
-     */
+    // ──────────────────────────────────────────────
+    //  Business Operations
+    // ──────────────────────────────────────────────
+
+    /** Retrieve the user's vehicle list from the TSP. */
     CompletableFuture<VehicleListResponse> getVehicles(String userId);
 
-    /**
-     * Request vehicle keys.
-     * @param request key request details
-     * @return CompletableFuture with key response
-     */
+    /** Request one or more digital keys from the TSP. */
     CompletableFuture<KeyResponse> requestKeys(KeyRequest request);
 
-    /**
-     * Revoke vehicle keys.
-     * @param request revocation details
-     * @return CompletableFuture with revocation response
-     */
+    /** Revoke existing digital keys. */
     CompletableFuture<KeyResponse> revokeKeys(KeyRequest request);
 
     /**
-     * Health check for this adapter.
-     * @return true if adapter is healthy
+     * Bind a digital key to a user's device.
+     * This maps to the Go adapter's BindKey method and involves
+     * device attestation, certificate exchange, and shared-secret
+     * establishment with the TSP.
      */
-    boolean healthCheck();
+    CompletableFuture<BindKeyResponse> bindKey(BindKeyRequest request);
 
     /**
-     * Get protocol-specific metadata.
-     * @return adapter metadata map
+     * Unbind (permanently remove) a key binding.
+     * The TSP must invalidate the key on its side.
      */
-    default java.util.Map<String, String> getMetadata() {
-        return java.util.Map.of(
+    CompletableFuture<KeyResponse> unbindKey(UnbindKeyRequest request);
+
+    /**
+     * Query the current status of a key from the TSP.
+     * @param keyId  TSP-assigned key identifier
+     * @return status response containing state, timestamps, etc.
+     */
+    CompletableFuture<KeyStatusResponse> getKeyStatus(String keyId);
+
+    // ──────────────────────────────────────────────
+    //  Diagnostics
+    // ──────────────────────────────────────────────
+
+    /** Health check — returns true if the adapter can service requests. */
+    boolean healthCheck();
+
+    /** Protocol-specific metadata for observability. */
+    default Map<String, String> getMetadata() {
+        return Map.of(
             "adapter", getAdapterName(),
             "enabled", String.valueOf(isEnabled()),
             "protocol", getClass().getSimpleName()
         );
     }
 
-    // DTO classes
+    // ═══════════════════════════════════════════════
+    //  DTO Records
+    // ═══════════════════════════════════════════════
+
+    // ─── Vehicle ──────────────────────────────────
 
     record VehicleListResponse(
         boolean success,
         String message,
-        java.util.List<VehicleInfo> vehicles
+        List<VehicleInfo> vehicles
     ) {}
 
     record VehicleInfo(
@@ -87,18 +108,75 @@ public interface TspAdapter {
         int modelYear
     ) {}
 
+    // ─── Key Management ───────────────────────────
+
     record KeyRequest(
         String userId,
         String vehicleId,
         String vin,
-        java.util.List<String> keyTypes,
-        java.util.Map<String, String> options
+        List<String> keyTypes,
+        Map<String, String> options
     ) {}
 
     record KeyResponse(
         boolean success,
         String message,
         String keyId,
-        java.util.List<String> keyData
+        List<String> keyData
+    ) {}
+
+    // ─── Bind / Unbind ────────────────────────────
+
+    /**
+     * BindKey request matching the Go adapter interface.
+     * In production, the TSP validates the device certificate
+     * and performs ECDH to derive a shared secret.
+     */
+    record BindKeyRequest(
+        String userId,
+        String vehicleId,
+        String vin,
+        String deviceId,
+        String devicePublicKey,    // base64-encoded device public key
+        String attestationToken,  // device attestation
+        Map<String, String> options
+    ) {}
+
+    /**
+     * BindKey response containing the shared secret and
+     * TSP-side parameters for completing the binding.
+     */
+    record BindKeyResponse(
+        boolean success,
+        String message,
+        String keyId,
+        String sharedSecret,        // base64-encoded ECDH shared secret
+        String tspPublicKey,        // base64-encoded TSP public key
+        String sessionId,
+        int keySlot,
+        List<String> keyData
+    ) {}
+
+    /**
+     * UnbindKey request — identifies which binding to remove.
+     */
+    record UnbindKeyRequest(
+        String userId,
+        String keyId,
+        String vehicleId,
+        String reason
+    ) {}
+
+    // ─── Key Status ───────────────────────────────
+
+    record KeyStatusResponse(
+        boolean success,
+        String message,
+        String keyId,
+        String status,              // ACTIVE / SUSPENDED / REVOKED / EXPIRED
+        long createdAtEpochMs,
+        long expiresAtEpochMs,
+        String boundDeviceId,
+        Map<String, String> metadata
     ) {}
 }

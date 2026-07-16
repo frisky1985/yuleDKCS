@@ -1,0 +1,1 @@
+/opt/homebrew/bin/arm-none-eabi-gcc  -Wall -Wextra -Werror -ffreestanding CMakeFiles/dk_example.dir/example.c.obj -o dk_example  ../libdk_unified.a -lccc_protocol -liccoa_protocol -licce_protocol

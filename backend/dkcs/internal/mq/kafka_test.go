@@ -56,6 +56,10 @@ func (m *mockSyncProducer) AddOffsetsToTxn(offsets map[string][]*sarama.Partitio
 	return nil
 }
 
+func (m *mockSyncProducer) AddOffsetsToTxnWithGroupMetadata(offsets map[string][]*sarama.PartitionOffsetMetadata, groupMetadata *sarama.ConsumerGroupMetadata) error {
+	return nil
+}
+
 func (m *mockSyncProducer) IsTransactional() bool {
 	return false
 }
@@ -77,6 +81,10 @@ func (m *mockSyncProducer) WithTxnID(txnID string) sarama.SyncProducer {
 }
 
 func (m *mockSyncProducer) AddPartitionToTxn(topic string, partition int32) error {
+	return nil
+}
+
+func (m *mockSyncProducer) AddMessageToTxnWithGroupMetadata(msg *sarama.ConsumerMessage, groupMetadata *sarama.ConsumerGroupMetadata, metadata *string) error {
 	return nil
 }
 

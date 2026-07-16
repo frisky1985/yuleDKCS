@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -18,10 +19,40 @@ import (
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
+	hub_logger "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/logger"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 )
 
 func main() {
+	// ── 命令行参数 ──
+	logLevel := flag.String("log-level", "info", "日志级别: trace/debug/info/warn/error/fatal")
+	logFile := flag.String("log-file", "", "日志输出文件 (默认 stderr)")
+	flag.Parse()
+
+	// ── 初始化内部日志系统 ──
+	{
+		lvl, err := hub_logger.ParseLevel(*logLevel)
+		if err != nil {
+			log.Fatalf("invalid --log-level: %v", err)
+		}
+		cfg := hub_logger.LoggerConfig{
+			ServiceName: "hub",
+			Level:       lvl,
+			EnableJSON:  true,
+		}
+		if *logFile != "" {
+			f, err := os.OpenFile(*logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			if err != nil {
+				log.Fatalf("open log file %q failed: %v", *logFile, err)
+			}
+			cfg.Output = f
+		}
+		hub_logger.Init(cfg)
+		hub_logger.Info("HUB", "logger initialized",
+			hub_logger.WithField("level", *logLevel),
+			hub_logger.WithField("log_file", *logFile))
+	}
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 

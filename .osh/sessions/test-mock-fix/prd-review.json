@@ -1,0 +1,2098 @@
+{
+  "session": "test-mock-fix",
+  "reviewer": "小马",
+  "timestamp": "2026-07-07T20:56:56.168878",
+  "status": "warning",
+  "spec": "/Users/stefan/yuleDKCS/.yuleosh/spec-contract.md",
+  "prd_artifact": ".osh/sessions/test-mock-fix/prd.md",
+  "super_analysis_artifact": ".osh/sessions/test-mock-fix/startup-analysis.md",
+  "summary": {
+    "spec_shalls_total": 139,
+    "spec_shalls": 115,
+    "spec_shoulds": 15,
+    "spec_mays": 9,
+    "prd_requirements_extracted": 1,
+    "shall_coverage": {
+      "covered": 0,
+      "uncovered": 130,
+      "high_confidence": 0,
+      "coverage_pct": 0.0
+    },
+    "testability_score": 0,
+    "consistency_issues": 18
+  },
+  "shall_coverage_details": [
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "> **约束**: SHALL/SHALL NOT 为不可变需求，变更须全员（PM+架构+QA）同意",
+        "line": 6
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "## 1. 契约层：SHALL / SHALL NOT 需求",
+        "line": 42
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-01 | 系统 SHALL 支持数字钥匙的完整生命周期：创建(Created) → 预配对(Pre-Paired) → 配对完成(Paired) → 激活(Active) → 更新(Updated) → 吊销(Revoked) → 删除(Deleted) | ASIL-B | 全部 |",
+        "line": 48
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-02 | 系统 SHALL 在钥匙创建时使用非对称密钥对，私钥在手机 SE/TEE 中生成，公钥上传云端 | ASIL-B | App + Cloud |",
+        "line": 49
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-03 | 系统 SHALL 在配对过程中完成双向身份认证：车端验证手机签名，手机验证车端签名 | ASIL-B | Embedded + App |",
+        "line": 50
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-04 | 系统 SHALL 限制同一车辆绑定的有效数字钥匙数量 ≤ 10 把 | QM | Cloud |",
+        "line": 51
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-05 | 系统 SHALL 在钥匙状态变更（激活/暂停/吊销/过期）时通过 MQTT 推送实时同步至车端 | ASIL-B | Cloud + Embedded |",
+        "line": 52
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-06 | 系统 SHALL 允许车主暂停、恢复和吊销其名下车辆的任意钥匙 | ASIL-A | App + Cloud |",
+        "line": 53
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-07 | 系统 SHALL 确保钥匙更新（权限变更/有效期延长/密钥轮换）经密码学签名验证后才生效 | ASIL-B | 全部 |",
+        "line": 54
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-08 | 系统 SHALL 在钥匙创建和配对过程中，通过安全通道传输所有密钥材料，不允许明文密钥暴露于网络 | ASIL-B | 全部 |",
+        "line": 55
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-NOT-01 | 系统 SHALL NOT 允许越权用户（非钥匙持有者/非车主）执行钥匙创建、更新或吊销操作 | ASIL-B | 全部 |",
+        "line": 56
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KL-SHALL-NOT-02 | 系统 SHALL NOT 在未经配对确认的情况下激活任何数字钥匙 | ASIL-B | 全部 |",
+        "line": 57
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-01 | 系统 SHALL 在手机靠近车辆 ≤ 2m 时自动完成 BLE 连接 + UWB 测距 + 双向认证，总延迟 ≤ 1 秒 | ASIL-B | Embedded + App |",
+        "line": 63
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-02 | 系统 SHALL 在车主离开车辆 ≥ 5m 且超过 30 秒后自动上锁所有车门 | ASIL-B | Embedded |",
+        "line": 64
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-03 | 系统 SHALL 在上锁前确认车内无有效数字钥匙（防止钥匙锁在车内） | ASIL-B | Embedded |",
+        "line": 65
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-04 | 系统 SHALL 在解锁指令执行前，完成 UWB 距离验证（距离 < 2m 阈值）和 BLE RSSI 交叉校验 | ASIL-B(D) | Embedded + App |",
+        "line": 66
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-05 | 系统 SHALL 每次解锁/上锁操作使用新的一次性随机数 (Nonce)，防止重放攻击 | ASIL-B | Embedded + App |",
+        "line": 67
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-06 | 系统 SHALL 在解锁/上锁成功后通过 CAN FD 向 BCM/GW 发送对应指令 | QM | Embedded |",
+        "line": 68
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-07 | 系统 SHALL 在解锁/上锁时提供视觉/声音反馈（车灯闪烁/鸣笛） | QM | Embedded |",
+        "line": 69
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-08 | 系统 SHALL 支持 BLE Central (Peripheral) 角色，保持与最多 8 台设备的并发 BLE 连接 | QM | Embedded |",
+        "line": 70
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-NOT-01 | 系统 SHALL NOT 在 UWB 测距距离 > 2m 时执行解锁指令 | ASIL-B(D) | Embedded + App |",
+        "line": 71
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| PE-SHALL-NOT-02 | 系统 SHALL NOT 在无有效经过认证的数字钥匙时执行任何车辆解锁/车门打开操作 | ASIL-B | 全部 |",
+        "line": 72
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-01 | 系统 SHALL 支持通过 NFC 被动刷卡方式解锁车门（手机电量耗尽/离线时仍可用） | QM | Embedded + App |",
+        "line": 78
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-02 | 系统 SHALL 在 NFC 交互中使用 ISO/IEC 7816-4 APDU 协议完成 SELECT → GET CHALLENGE → INTERNAL AUTHENTICATE → CONTROL 完整交易序列 | QM | Embedded + App |",
+        "line": 79
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-03 | 系统 SHALL 支持 CCC Digital Key AID (`A000000F5A3`) 和 ICCE AID (`A000000F5A3ICCE`) 两种应用选择 | QM | Embedded |",
+        "line": 80
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-04 | 系统 SHALL 在 NFC 刷卡解锁时完成芯片级安全认证（签名验证），认证失败则拒绝解锁 | ASIL-B | Embedded |",
+        "line": 81
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-05 | NFC 刷卡解锁响应时间 SHALL ≤ 500ms（从手机触碰 NFC 读卡器到解锁成功反馈） | QM | Embedded + App |",
+        "line": 82
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| NF-SHALL-NOT-01 | 系统 SHALL NOT 在 NFC 交互超时或卡片会话异常中断后，残留任何未提交的解锁状态 | QM | Embedded |",
+        "line": 83
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-01 | 系统 SHALL 要求所有远程控车指令携带 JWT 签名和密钥签名双重认证 | ASIL-A | App + Cloud |",
+        "line": 89
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-02 | 系统 SHALL 支持以下远程控车动作：解锁/上锁、启动/停止发动机、闪灯鸣笛、空调控制、车窗控制 | ASIL-A | Cloud + Embedded |",
+        "line": 90
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-03 | 远程控车指令从 App 发出到车端执行的端到端响应时间 SHALL ≤ 3s | QM | 全部 |",
+        "line": 91
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-04 | 系统 SHALL 在远程控车指令经过云端时记录完整审计日志（用户ID、钥匙ID、操作类型、时间戳、结果） | ASIL-A | Cloud |",
+        "line": 92
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-05 | 远程控车指令 SHALL 通过 MQTT over TLS 1.3 通道下发至车端 | ASIL-A | Cloud + Embedded |",
+        "line": 93
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-06 | 系统 SHALL 在车端离线时返回明确的\"车辆离线\"状态给 App 端 | QM | Cloud |",
+        "line": 94
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-07 | 系统 SHALL 支持远程控车指令的状态查询（PENDING/EXECUTING/EXECUTED/FAILED/TIMEOUT） | QM | Cloud |",
+        "line": 95
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-NOT-01 | 系统 SHALL NOT 执行缺少有效密钥签名的远程控车指令 | ASIL-A | Cloud + Embedded |",
+        "line": 96
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RC-SHALL-NOT-02 | 系统 SHALL NOT 允许临时钥匙或权限不足的钥匙执行 START_ENGINE 等受限操作 | ASIL-B | Cloud + Embedded |",
+        "line": 97
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-01 | 系统 SHALL 仅在车内检测到有效经认证的数字钥匙时授权发动机启动 | ASIL-B | Embedded + App |",
+        "line": 103
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-02 | 系统 SHALL 在启动授权前建立 BLE 安全会话并完成双向签名验证 | ASIL-B | Embedded + App |",
+        "line": 104
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-03 | 系统 SHALL 确认车内测距结果（UWB 检出手机位于驾驶舱内）后才发送启动授权 | ASIL-B | Embedded |",
+        "line": 105
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-04 | 发动机启动授权响应时间 SHALL ≤ 500ms | ASIL-B | Embedded + App |",
+        "line": 106
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-NOT-01 | 系统 SHALL NOT 在没有有效经认证数字钥匙的情况下授权发动机启动 | ASIL-B | Embedded + App |",
+        "line": 107
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| ES-SHALL-NOT-02 | 系统 SHALL NOT 允许已吊销/暂停/过期的钥匙授权发动机启动 | ASIL-B | Embedded |",
+        "line": 108
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-01 | 系统 SHALL 支持车主创建三种级别钥匙分享：主钥匙(Full Access)、副钥匙(Limited Admin)、临时钥匙(Time/Location Restricted) | QM | App + Cloud |",
+        "line": 114
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-02 | 系统 SHALL 支持四种分享方式：二维码分享、链接分享、NFC 碰一碰分享、手机号直接推送 | QM | App + Cloud |",
+        "line": 115
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-03 | 系统 SHALL 支持以下分享约束设置：时间窗口（开始/结束时间）、使用次数上限、地理围栏 | QM | App + Cloud |",
+        "line": 116
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-04 | 系统 SHALL 在车主撤销分享后，被分享方的钥匙在 < 10s 内失效 | ASIL-A | Cloud + Embedded + App |",
+        "line": 117
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-05 | 分享创建请求 SHALL 在 30 秒内完成云端处理和分享链接/码生成 | QM | Cloud |",
+        "line": 118
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-06 | 系统 SHALL 完整记录每次钥匙分享的创建、接受、使用和撤销事件 | QM | Cloud |",
+        "line": 119
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-07 | 系统 SHALL 在受邀者首次接受分享钥匙时，要求受邀者注册/登录并通过身份认证 | QM | App + Cloud |",
+        "line": 120
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-NOT-01 | 系统 SHALL NOT 允许非车主用户创建或撤销钥匙分享 | QM | Cloud |",
+        "line": 121
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KS-SHALL-NOT-02 | 系统 SHALL NOT 允许被分享钥匙超出其权限约束（时间/次数/地理范围）执行操作 | ASIL-A | 全部 |",
+        "line": 122
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-01 | 系统 SHALL 支持云端即时吊销数字钥匙，云端吊销列表 TTL ≤ 10s | ASIL-A | Cloud |",
+        "line": 128
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-02 | 系统 SHALL 在车端维护本地吊销缓存，车辆下次联网时同步更新 | ASIL-A | Cloud + Embedded |",
+        "line": 129
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-03 | 系统 SHALL 在被吊销钥匙尝试操作时，车端本地缓存能独立判定吊销状态并拒绝 | ASIL-A | Embedded |",
+        "line": 130
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-04 | 系统 SHALL 在钥匙吊销后通过推送通知告知钥匙持有者 | QM | Cloud + App |",
+        "line": 131
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-05 | 吊销操作 SHALL 记录完整的审计日志（操作人、时间、原因、关联钥匙） | QM | Cloud |",
+        "line": 132
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KR-SHALL-NOT-01 | 系统 SHALL NOT 允许被吊销的钥匙在吊销操作完成后继续执行任何车辆操作 | ASIL-A | Embedded + Cloud |",
+        "line": 133
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-01 | 系统 SHALL 使用 UWB 物理层 ToF (Time of Flight) 测距测量手机与车辆的真实距离 | ASIL-B(D) | Embedded + App |",
+        "line": 139
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-02 | 系统 SHALL 对每次测距使用一次性随机数 (Nonce)，防止测距结果重放 | ASIL-B(D) | Embedded + App |",
+        "line": 140
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-03 | 系统 SHALL 验证测距结果的签名，确保测距数据未被中间人篡改 | ASIL-B(D) | Embedded + App |",
+        "line": 141
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-04 | 系统 SHALL 在解锁指令的响应时间超出协议规定阈值（~3μs）时拒绝执行 | ASIL-B(D) | Embedded + App |",
+        "line": 142
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-05 | 系统 SHALL 实现 BLE RSSI + UWB 距离多因子交叉验证：若 BLE RSSI 估算距离与 UWB 测距结果显著不一致，拒绝解锁 | ASIL-B(D) | Embedded + App |",
+        "line": 143
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-06 | 系统 SHALL 实现防重放计数器，拒绝计数器值小于或等于上次已接收值的消息 | ASIL-B | Embedded + App |",
+        "line": 144
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-07 | 系统 SHALL 在检测到疑似中继攻击时记录安全事件并推送告警至车主 App | ASIL-B(D) | Embedded + Cloud |",
+        "line": 145
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-NOT-01 | 系统 SHALL NOT 在未完成 UWB 安全测距的情况下仅凭 BLE 连接执行解锁 | ASIL-B(D) | Embedded + App |",
+        "line": 146
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| RA-SHALL-NOT-02 | 系统 SHALL NOT 允许同一 Nonce 值被使用两次（重放攻击） | ASIL-B | Embedded + App |",
+        "line": 147
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-01 | 车端私钥 SHALL 存储于 SE050 安全芯片内，任何软件层无法以明文形式读取私钥 | ASIL-B | Embedded |",
+        "line": 153
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-02 | 手机端私钥 SHALL 存储于 SE/TEE 安全区域（iOS Keychain / Android KeyStore）内 | ASIL-B | App |",
+        "line": 154
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-03 | 所有密码学运算（签名/解密/密钥派生）SHALL 在 SE/TEE 安全环境中执行，而非在通用 CPU/内存中 | ASIL-B | Embedded + App |",
+        "line": 155
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-04 | SE050 SHALL 满足 EAL6+（安全芯片认证等级）及以上 | ASIL-B | Embedded |",
+        "line": 156
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-05 | 系统 SHALL 支持多重密钥层级：Root Key → Master Key → Device Key → Session Key，各级密钥通过 HKDF 派生 | ASIL-B | Embedded + App |",
+        "line": 157
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-06 | 会话密钥 (Session Key) SHALL 每次连接通过 ECDH (P-256/SM2) 密钥协商生成，用完即销毁 | ASIL-B | Embedded + App |",
+        "line": 158
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-07 | 系统 SHALL 支持 ICCE 模式下的国密算法 (SM2/SM3/SM4) 和 CCC 模式下的国际算法 (ECDSA/AES-256-GCM) | ASIL-B | 全部 |",
+        "line": 159
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-08 | 系统 SHALL 支持安全启动链：Boot ROM → BootLoader(SE050验签) → TFM → Application 逐级校验 | ASIL-B | Embedded |",
+        "line": 160
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-NOT-01 | 密钥材料 SHALL NOT 以明文形式离开安全环境 (SE/TEE/HSM) | ASIL-B | 全部 |",
+        "line": 161
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| KSS-SHALL-NOT-02 | 系统 SHALL NOT 在生产环境中使用 Mock HSM 或模拟安全元件执行密码学操作 | ASIL-B | Cloud + Embedded |",
+        "line": 162
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-01 | 手机与云端之间所有通信 SHALL 使用 TLS 1.3 加密 | ASIL-A | App + Cloud |",
+        "line": 168
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-02 | 云端与车端之间所有通信 SHALL 使用 MQTT over TLS 1.3 或 gRPC over TLS | ASIL-B | Cloud + Embedded |",
+        "line": 169
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-03 | 手机与车端 BLE 通信 SHALL 使用 LE Secure Connections (LE SC) 建立安全认证链路 | ASIL-B | Embedded + App |",
+        "line": 170
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-04 | BLE GATT 连接参数 SHALL 满足：连接间隔 30ms~50ms、MTU ≥ 512 bytes | QM | Embedded + App |",
+        "line": 171
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-05 | 内部协议消息 SHALL 使用 BER-TLV 编码（紧凑、标准化） | QM | 全部 |",
+        "line": 172
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-06 | 所有远程控车接口（REST API）SHALL 使用 Bearer Token (JWT) 鉴权 | ASIL-A | App + Cloud |",
+        "line": 173
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-07 | JWT Access Token 有效期 SHALL ≤ 1 小时，Refresh Token SHALL ≤ 7 天 | ASIL-A | Cloud |",
+        "line": 174
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-08 | 系统 SHALL 在云端 REST API 对所有关键操作（钥匙创建/吊销/分享、远程控车）进行细粒度权限校验 | ASIL-A | Cloud |",
+        "line": 175
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-NOT-01 | 系统 SHALL NOT 使用未加密的明文信道传输任何密钥材料、认证令牌或车辆控制指令 | ASIL-B | 全部 |",
+        "line": 176
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| CM-SHALL-NOT-02 | 系统 SHALL NOT 允许缺少有效 JWT Token 或 Token 已过期的 API 请求通过 | ASIL-A | Cloud |",
+        "line": 177
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OT-SHALL-01 | 系统 SHALL 支持通过 OTA 方式升级车端固件 | QM | Cloud + Embedded |",
+        "line": 183
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OT-SHALL-02 | OTA 升级包 SHALL 经过数字签名，车端在安装前 SHALL 验证签名完整性 | ASIL-B | Embedded |",
+        "line": 184
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OT-SHALL-03 | 系统 SHALL 支持 OTA 升级状态追踪（DOWNLOAD_PENDING → DOWNLOADING → VERIFYING → INSTALLING → REBOOTING → COMPLETED/FAILED） | QM | Cloud + Embedded |",
+        "line": 185
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OT-SHALL-NOT-01 | 系统 SHALL NOT 安装签名校验失败的 OTA 升级包 | ASIL-B | Embedded |",
+        "line": 186
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-01 | 系统 SHALL 支持手机号+验证码、第三方 OAuth（微信/Apple ID/Google）等多种登录方式 | QM | App + Cloud |",
+        "line": 192
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-02 | 系统 SHALL 基于 OAuth 2.0 / OpenID Connect 协议实现用户认证 | ASIL-A | Cloud |",
+        "line": 193
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-03 | 系统 SHALL 在车主证明环节要求用户通过 VIN 码 + 购车证明或车厂 API 验证车辆所有权 | QM | App + Cloud |",
+        "line": 194
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-04 | 系统 SHALL 支持多因子认证 (MFA)：短信验证码、生物识别等 | QM | App + Cloud |",
+        "line": 195
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-05 | 系统 SHALL 基于 RBAC + ABAC 实现细粒度权限控制 | ASIL-A | Cloud |",
+        "line": 196
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| UA-SHALL-NOT-01 | 系统 SHALL NOT 允许未通过车辆所有权验证的用户创建该车辆的主钥匙 | QM | Cloud |",
+        "line": 197
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-01 | 系统 SHALL 记录所有钥匙生命周期变更（创建、激活、暂停、恢复、吊销、过期）的审计日志 | QM | Cloud |",
+        "line": 203
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-02 | 系统 SHALL 记录所有车辆控制和车门操作（解锁、上锁、启动、寻车等）的审计日志 | QM | 全部 |",
+        "line": 204
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-03 | 审计日志 SHALL 包含：操作人、关联钥匙、操作类型、时间戳、设备信息、地理位置、操作结果 | QM | Cloud |",
+        "line": 205
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-04 | 审计日志保留期限 SHALL ≥ 3 年 | QM | Cloud |",
+        "line": 206
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-05 | 系统 SHALL 记录安全事件（认证失败、中继攻击检测、异常权限使用）到独立的安全事件日志 | QM | 全部 |",
+        "line": 207
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-06 | 审计日志 SHALL 通过消息队列 (Kafka Topic: `digitalkey.audit`) 异步写入 | QM | Cloud |",
+        "line": 208
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| AL-SHALL-NOT-01 | 系统 SHALL NOT 允许非授权用户删除或篡改审计日志 | QM | Cloud |",
+        "line": 209
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-01 | 系统 SHALL 同时支持 ICCE、(T/CA 110-2020) 和 CCC (Digital Key 3.0) 两种数字钥匙协议 | QM | 全部 |",
+        "line": 215
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-02 | 车端固件 SHALL 同时包含 ICCE 和 CCC 协议栈，配对时自动协商协议类型 | QM | Embedded |",
+        "line": 216
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-03 | 云端 SHALL 同时管理 ICCE 国密证书和 CCC X.509 证书 | QM | Cloud |",
+        "line": 217
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-04 | App SHALL 根据车辆 VIN 自动识别并选用对应协议，用户无感知 | QM | App |",
+        "line": 218
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-NOT-01 | ICCE 模式 SHALL NOT 使用国际算法（ECDSA/AES）替代国密算法（SM2/SM3/SM4） | QM | 全部 |",
+        "line": 219
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| DP-SHALL-NOT-02 | CCC 模式 SHALL NOT 使用国密算法替代国际算法（ECDSA/P-256/AES-256-GCM） | QM | 全部 |",
+        "line": 220
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OM-SHALL-01 | 系统 SHALL 在手机无网络连接时，通过 NFC 刷卡方式仍然可执行车辆解锁 | QM | Embedded + App |",
+        "line": 226
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OM-SHALL-02 | 预下载的离线钥匙授权数据在有效期内 SHALL 可在无网络环境下使用 | QM | App |",
+        "line": 227
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OM-SHALL-03 | 离线期间的操作记录（解锁/上锁等）在网络恢复后 SHALL 自动同步至云端 | QM | App + Cloud |",
+        "line": 228
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| OM-SHALL-NOT-01 | 离线钥匙 SHALL NOT 在过期后仍可用于车辆解锁或启动 | ASIL-B | Embedded + App |",
+        "line": 229
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "## 2. SHOULD / MAY 需求",
+        "line": 233
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "### 2.1 SHOULD（建议实现）",
+        "line": 235
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-01 | 车门解锁响应时间 SHOULD ≤ 800ms（目标优于 1 秒阈值） | PRD 性能 | Embedded + App |",
+        "line": 239
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-02 | App 冷启动时间 SHOULD ≤ 2s | PRD 6.1 | App |",
+        "line": 240
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-03 | 云端 API P99 响应时间 SHOULD ≤ 200ms | PRD 6.1 | Cloud |",
+        "line": 241
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-04 | 服务可用性 SHOULD ≥ 99.9% | PRD 6.2 | Cloud |",
+        "line": 242
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-05 | App SHOULD 在检测到设备被 root/jailbreak 后拒绝使用敏感功能（解锁、启动） | TEST-PLAN AS-SEC-02 | App |",
+        "line": 243
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-06 | BLE SHOULD 采用 2M PHY 提升数据传输速率 | 架构最佳实践 | Embedded + App |",
+        "line": 244
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-07 | 系统 SHOULD 支持 ICCOA DK3.0/DK4.0 协议作为第三协议 | 架构规划 | 全部 |",
+        "line": 245
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-08 | UWB 测距结果 SHOULD 包含方位角和俯仰角数据，支持三维定位 | PRD 3.1.2 | Embedded |",
+        "line": 246
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-09 | 系统 SHOULD 在车端离线时在本地存储吊销缓存，确保下次联网时立即同步 | safety-concept | Embedded |",
+        "line": 247
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-10 | 钥匙分享的地理围栏限制 SHOULD 支持多边形 (Polygon) 和区域列表 (Region) 两种类型 | PRD US2.3 | Cloud + App |",
+        "line": 248
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-11 | 系统 SHOULD 在钥匙过期前 7 天/3 天/1 天分别推送提醒通知 | 用户体验 | Cloud + App |",
+        "line": 249
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD-12 | UWB 测距 SHOULD 支持 SE050 签名的安全测距，测距结果附加密码学签名 | IEEE 802.15.4z | Embedded |",
+        "line": 250
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHALL",
+        "statement": "| SHALL/SHALL NOT 新增或修改 | 全员同意（PM+架构+QA+开发代表） | 不可逆变更，需正式变更请求 |",
+        "line": 527
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    },
+    {
+      "shall": {
+        "kind": "SHOULD",
+        "statement": "| SHOULD/MAY 新增或修改 | 团队讨论 + 架构师确认 | 建议性变更 |",
+        "line": 528
+      },
+      "covered": false,
+      "matched_prd": "",
+      "confidence": "none"
+    }
+  ],
+  "testability": {
+    "has_acceptance_criteria": false,
+    "acceptance_indicators": [],
+    "score": 0
+  },
+  "consistency_findings": [
+    {
+      "type": "missing_reference",
+      "spec_section": "# 项目概述",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 业务目标",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# ASIL 等级映射",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.1 密钥生命周期管理 (Key Lifecycle)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.2 被动无感解锁/上锁 (Passive Entry/Exit)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.3 NFC 刷卡解锁 (NFC Tap)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.4 远程控车 (Remote Vehicle Control)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.5 发动机启动 (Engine Start)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.6 钥匙分享 (Key Sharing)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.7 钥匙吊销 (Key Revocation)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.8 防中继攻击 (Relay Attack Protection)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.9 密钥存储与安全 (Key Storage & Security)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.10 通信安全 (Communication Security)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.11 OTA 升级 (OTA Update)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.12 用户认证与会话管理 (User Auth & Session)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.13 审计日志 (Audit Logging)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.14 双协议支持 (Dual Protocol Support)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    },
+    {
+      "type": "missing_reference",
+      "spec_section": "# 1.15 离线模式 (Offline Mode)",
+      "risk": "Spec section may not be reflected in S.U.P.E.R analysis",
+      "severity": "minor"
+    }
+  ],
+  "uncovered_shalls": [
+    {
+      "kind": "SHALL",
+      "statement": "> **约束**: SHALL/SHALL NOT 为不可变需求，变更须全员（PM+架构+QA）同意",
+      "line": 6
+    },
+    {
+      "kind": "SHALL",
+      "statement": "## 1. 契约层：SHALL / SHALL NOT 需求",
+      "line": 42
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-01 | 系统 SHALL 支持数字钥匙的完整生命周期：创建(Created) → 预配对(Pre-Paired) → 配对完成(Paired) → 激活(Active) → 更新(Updated) → 吊销(Revoked) → 删除(Deleted) | ASIL-B | 全部 |",
+      "line": 48
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-02 | 系统 SHALL 在钥匙创建时使用非对称密钥对，私钥在手机 SE/TEE 中生成，公钥上传云端 | ASIL-B | App + Cloud |",
+      "line": 49
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-03 | 系统 SHALL 在配对过程中完成双向身份认证：车端验证手机签名，手机验证车端签名 | ASIL-B | Embedded + App |",
+      "line": 50
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-04 | 系统 SHALL 限制同一车辆绑定的有效数字钥匙数量 ≤ 10 把 | QM | Cloud |",
+      "line": 51
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-05 | 系统 SHALL 在钥匙状态变更（激活/暂停/吊销/过期）时通过 MQTT 推送实时同步至车端 | ASIL-B | Cloud + Embedded |",
+      "line": 52
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-06 | 系统 SHALL 允许车主暂停、恢复和吊销其名下车辆的任意钥匙 | ASIL-A | App + Cloud |",
+      "line": 53
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-07 | 系统 SHALL 确保钥匙更新（权限变更/有效期延长/密钥轮换）经密码学签名验证后才生效 | ASIL-B | 全部 |",
+      "line": 54
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-08 | 系统 SHALL 在钥匙创建和配对过程中，通过安全通道传输所有密钥材料，不允许明文密钥暴露于网络 | ASIL-B | 全部 |",
+      "line": 55
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-NOT-01 | 系统 SHALL NOT 允许越权用户（非钥匙持有者/非车主）执行钥匙创建、更新或吊销操作 | ASIL-B | 全部 |",
+      "line": 56
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KL-SHALL-NOT-02 | 系统 SHALL NOT 在未经配对确认的情况下激活任何数字钥匙 | ASIL-B | 全部 |",
+      "line": 57
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-01 | 系统 SHALL 在手机靠近车辆 ≤ 2m 时自动完成 BLE 连接 + UWB 测距 + 双向认证，总延迟 ≤ 1 秒 | ASIL-B | Embedded + App |",
+      "line": 63
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-02 | 系统 SHALL 在车主离开车辆 ≥ 5m 且超过 30 秒后自动上锁所有车门 | ASIL-B | Embedded |",
+      "line": 64
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-03 | 系统 SHALL 在上锁前确认车内无有效数字钥匙（防止钥匙锁在车内） | ASIL-B | Embedded |",
+      "line": 65
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-04 | 系统 SHALL 在解锁指令执行前，完成 UWB 距离验证（距离 < 2m 阈值）和 BLE RSSI 交叉校验 | ASIL-B(D) | Embedded + App |",
+      "line": 66
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-05 | 系统 SHALL 每次解锁/上锁操作使用新的一次性随机数 (Nonce)，防止重放攻击 | ASIL-B | Embedded + App |",
+      "line": 67
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-06 | 系统 SHALL 在解锁/上锁成功后通过 CAN FD 向 BCM/GW 发送对应指令 | QM | Embedded |",
+      "line": 68
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-07 | 系统 SHALL 在解锁/上锁时提供视觉/声音反馈（车灯闪烁/鸣笛） | QM | Embedded |",
+      "line": 69
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-08 | 系统 SHALL 支持 BLE Central (Peripheral) 角色，保持与最多 8 台设备的并发 BLE 连接 | QM | Embedded |",
+      "line": 70
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-NOT-01 | 系统 SHALL NOT 在 UWB 测距距离 > 2m 时执行解锁指令 | ASIL-B(D) | Embedded + App |",
+      "line": 71
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| PE-SHALL-NOT-02 | 系统 SHALL NOT 在无有效经过认证的数字钥匙时执行任何车辆解锁/车门打开操作 | ASIL-B | 全部 |",
+      "line": 72
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-01 | 系统 SHALL 支持通过 NFC 被动刷卡方式解锁车门（手机电量耗尽/离线时仍可用） | QM | Embedded + App |",
+      "line": 78
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-02 | 系统 SHALL 在 NFC 交互中使用 ISO/IEC 7816-4 APDU 协议完成 SELECT → GET CHALLENGE → INTERNAL AUTHENTICATE → CONTROL 完整交易序列 | QM | Embedded + App |",
+      "line": 79
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-03 | 系统 SHALL 支持 CCC Digital Key AID (`A000000F5A3`) 和 ICCE AID (`A000000F5A3ICCE`) 两种应用选择 | QM | Embedded |",
+      "line": 80
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-04 | 系统 SHALL 在 NFC 刷卡解锁时完成芯片级安全认证（签名验证），认证失败则拒绝解锁 | ASIL-B | Embedded |",
+      "line": 81
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-05 | NFC 刷卡解锁响应时间 SHALL ≤ 500ms（从手机触碰 NFC 读卡器到解锁成功反馈） | QM | Embedded + App |",
+      "line": 82
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| NF-SHALL-NOT-01 | 系统 SHALL NOT 在 NFC 交互超时或卡片会话异常中断后，残留任何未提交的解锁状态 | QM | Embedded |",
+      "line": 83
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-01 | 系统 SHALL 要求所有远程控车指令携带 JWT 签名和密钥签名双重认证 | ASIL-A | App + Cloud |",
+      "line": 89
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-02 | 系统 SHALL 支持以下远程控车动作：解锁/上锁、启动/停止发动机、闪灯鸣笛、空调控制、车窗控制 | ASIL-A | Cloud + Embedded |",
+      "line": 90
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-03 | 远程控车指令从 App 发出到车端执行的端到端响应时间 SHALL ≤ 3s | QM | 全部 |",
+      "line": 91
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-04 | 系统 SHALL 在远程控车指令经过云端时记录完整审计日志（用户ID、钥匙ID、操作类型、时间戳、结果） | ASIL-A | Cloud |",
+      "line": 92
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-05 | 远程控车指令 SHALL 通过 MQTT over TLS 1.3 通道下发至车端 | ASIL-A | Cloud + Embedded |",
+      "line": 93
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-06 | 系统 SHALL 在车端离线时返回明确的\"车辆离线\"状态给 App 端 | QM | Cloud |",
+      "line": 94
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-07 | 系统 SHALL 支持远程控车指令的状态查询（PENDING/EXECUTING/EXECUTED/FAILED/TIMEOUT） | QM | Cloud |",
+      "line": 95
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-NOT-01 | 系统 SHALL NOT 执行缺少有效密钥签名的远程控车指令 | ASIL-A | Cloud + Embedded |",
+      "line": 96
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RC-SHALL-NOT-02 | 系统 SHALL NOT 允许临时钥匙或权限不足的钥匙执行 START_ENGINE 等受限操作 | ASIL-B | Cloud + Embedded |",
+      "line": 97
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-01 | 系统 SHALL 仅在车内检测到有效经认证的数字钥匙时授权发动机启动 | ASIL-B | Embedded + App |",
+      "line": 103
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-02 | 系统 SHALL 在启动授权前建立 BLE 安全会话并完成双向签名验证 | ASIL-B | Embedded + App |",
+      "line": 104
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-03 | 系统 SHALL 确认车内测距结果（UWB 检出手机位于驾驶舱内）后才发送启动授权 | ASIL-B | Embedded |",
+      "line": 105
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-04 | 发动机启动授权响应时间 SHALL ≤ 500ms | ASIL-B | Embedded + App |",
+      "line": 106
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-NOT-01 | 系统 SHALL NOT 在没有有效经认证数字钥匙的情况下授权发动机启动 | ASIL-B | Embedded + App |",
+      "line": 107
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| ES-SHALL-NOT-02 | 系统 SHALL NOT 允许已吊销/暂停/过期的钥匙授权发动机启动 | ASIL-B | Embedded |",
+      "line": 108
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-01 | 系统 SHALL 支持车主创建三种级别钥匙分享：主钥匙(Full Access)、副钥匙(Limited Admin)、临时钥匙(Time/Location Restricted) | QM | App + Cloud |",
+      "line": 114
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-02 | 系统 SHALL 支持四种分享方式：二维码分享、链接分享、NFC 碰一碰分享、手机号直接推送 | QM | App + Cloud |",
+      "line": 115
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-03 | 系统 SHALL 支持以下分享约束设置：时间窗口（开始/结束时间）、使用次数上限、地理围栏 | QM | App + Cloud |",
+      "line": 116
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-04 | 系统 SHALL 在车主撤销分享后，被分享方的钥匙在 < 10s 内失效 | ASIL-A | Cloud + Embedded + App |",
+      "line": 117
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-05 | 分享创建请求 SHALL 在 30 秒内完成云端处理和分享链接/码生成 | QM | Cloud |",
+      "line": 118
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-06 | 系统 SHALL 完整记录每次钥匙分享的创建、接受、使用和撤销事件 | QM | Cloud |",
+      "line": 119
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-07 | 系统 SHALL 在受邀者首次接受分享钥匙时，要求受邀者注册/登录并通过身份认证 | QM | App + Cloud |",
+      "line": 120
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-NOT-01 | 系统 SHALL NOT 允许非车主用户创建或撤销钥匙分享 | QM | Cloud |",
+      "line": 121
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KS-SHALL-NOT-02 | 系统 SHALL NOT 允许被分享钥匙超出其权限约束（时间/次数/地理范围）执行操作 | ASIL-A | 全部 |",
+      "line": 122
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-01 | 系统 SHALL 支持云端即时吊销数字钥匙，云端吊销列表 TTL ≤ 10s | ASIL-A | Cloud |",
+      "line": 128
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-02 | 系统 SHALL 在车端维护本地吊销缓存，车辆下次联网时同步更新 | ASIL-A | Cloud + Embedded |",
+      "line": 129
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-03 | 系统 SHALL 在被吊销钥匙尝试操作时，车端本地缓存能独立判定吊销状态并拒绝 | ASIL-A | Embedded |",
+      "line": 130
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-04 | 系统 SHALL 在钥匙吊销后通过推送通知告知钥匙持有者 | QM | Cloud + App |",
+      "line": 131
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-05 | 吊销操作 SHALL 记录完整的审计日志（操作人、时间、原因、关联钥匙） | QM | Cloud |",
+      "line": 132
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KR-SHALL-NOT-01 | 系统 SHALL NOT 允许被吊销的钥匙在吊销操作完成后继续执行任何车辆操作 | ASIL-A | Embedded + Cloud |",
+      "line": 133
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-01 | 系统 SHALL 使用 UWB 物理层 ToF (Time of Flight) 测距测量手机与车辆的真实距离 | ASIL-B(D) | Embedded + App |",
+      "line": 139
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-02 | 系统 SHALL 对每次测距使用一次性随机数 (Nonce)，防止测距结果重放 | ASIL-B(D) | Embedded + App |",
+      "line": 140
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-03 | 系统 SHALL 验证测距结果的签名，确保测距数据未被中间人篡改 | ASIL-B(D) | Embedded + App |",
+      "line": 141
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-04 | 系统 SHALL 在解锁指令的响应时间超出协议规定阈值（~3μs）时拒绝执行 | ASIL-B(D) | Embedded + App |",
+      "line": 142
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-05 | 系统 SHALL 实现 BLE RSSI + UWB 距离多因子交叉验证：若 BLE RSSI 估算距离与 UWB 测距结果显著不一致，拒绝解锁 | ASIL-B(D) | Embedded + App |",
+      "line": 143
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-06 | 系统 SHALL 实现防重放计数器，拒绝计数器值小于或等于上次已接收值的消息 | ASIL-B | Embedded + App |",
+      "line": 144
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-07 | 系统 SHALL 在检测到疑似中继攻击时记录安全事件并推送告警至车主 App | ASIL-B(D) | Embedded + Cloud |",
+      "line": 145
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-NOT-01 | 系统 SHALL NOT 在未完成 UWB 安全测距的情况下仅凭 BLE 连接执行解锁 | ASIL-B(D) | Embedded + App |",
+      "line": 146
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| RA-SHALL-NOT-02 | 系统 SHALL NOT 允许同一 Nonce 值被使用两次（重放攻击） | ASIL-B | Embedded + App |",
+      "line": 147
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-01 | 车端私钥 SHALL 存储于 SE050 安全芯片内，任何软件层无法以明文形式读取私钥 | ASIL-B | Embedded |",
+      "line": 153
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-02 | 手机端私钥 SHALL 存储于 SE/TEE 安全区域（iOS Keychain / Android KeyStore）内 | ASIL-B | App |",
+      "line": 154
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-03 | 所有密码学运算（签名/解密/密钥派生）SHALL 在 SE/TEE 安全环境中执行，而非在通用 CPU/内存中 | ASIL-B | Embedded + App |",
+      "line": 155
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-04 | SE050 SHALL 满足 EAL6+（安全芯片认证等级）及以上 | ASIL-B | Embedded |",
+      "line": 156
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-05 | 系统 SHALL 支持多重密钥层级：Root Key → Master Key → Device Key → Session Key，各级密钥通过 HKDF 派生 | ASIL-B | Embedded + App |",
+      "line": 157
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-06 | 会话密钥 (Session Key) SHALL 每次连接通过 ECDH (P-256/SM2) 密钥协商生成，用完即销毁 | ASIL-B | Embedded + App |",
+      "line": 158
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-07 | 系统 SHALL 支持 ICCE 模式下的国密算法 (SM2/SM3/SM4) 和 CCC 模式下的国际算法 (ECDSA/AES-256-GCM) | ASIL-B | 全部 |",
+      "line": 159
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-08 | 系统 SHALL 支持安全启动链：Boot ROM → BootLoader(SE050验签) → TFM → Application 逐级校验 | ASIL-B | Embedded |",
+      "line": 160
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-NOT-01 | 密钥材料 SHALL NOT 以明文形式离开安全环境 (SE/TEE/HSM) | ASIL-B | 全部 |",
+      "line": 161
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| KSS-SHALL-NOT-02 | 系统 SHALL NOT 在生产环境中使用 Mock HSM 或模拟安全元件执行密码学操作 | ASIL-B | Cloud + Embedded |",
+      "line": 162
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-01 | 手机与云端之间所有通信 SHALL 使用 TLS 1.3 加密 | ASIL-A | App + Cloud |",
+      "line": 168
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-02 | 云端与车端之间所有通信 SHALL 使用 MQTT over TLS 1.3 或 gRPC over TLS | ASIL-B | Cloud + Embedded |",
+      "line": 169
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-03 | 手机与车端 BLE 通信 SHALL 使用 LE Secure Connections (LE SC) 建立安全认证链路 | ASIL-B | Embedded + App |",
+      "line": 170
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-04 | BLE GATT 连接参数 SHALL 满足：连接间隔 30ms~50ms、MTU ≥ 512 bytes | QM | Embedded + App |",
+      "line": 171
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-05 | 内部协议消息 SHALL 使用 BER-TLV 编码（紧凑、标准化） | QM | 全部 |",
+      "line": 172
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-06 | 所有远程控车接口（REST API）SHALL 使用 Bearer Token (JWT) 鉴权 | ASIL-A | App + Cloud |",
+      "line": 173
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-07 | JWT Access Token 有效期 SHALL ≤ 1 小时，Refresh Token SHALL ≤ 7 天 | ASIL-A | Cloud |",
+      "line": 174
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-08 | 系统 SHALL 在云端 REST API 对所有关键操作（钥匙创建/吊销/分享、远程控车）进行细粒度权限校验 | ASIL-A | Cloud |",
+      "line": 175
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-NOT-01 | 系统 SHALL NOT 使用未加密的明文信道传输任何密钥材料、认证令牌或车辆控制指令 | ASIL-B | 全部 |",
+      "line": 176
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| CM-SHALL-NOT-02 | 系统 SHALL NOT 允许缺少有效 JWT Token 或 Token 已过期的 API 请求通过 | ASIL-A | Cloud |",
+      "line": 177
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OT-SHALL-01 | 系统 SHALL 支持通过 OTA 方式升级车端固件 | QM | Cloud + Embedded |",
+      "line": 183
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OT-SHALL-02 | OTA 升级包 SHALL 经过数字签名，车端在安装前 SHALL 验证签名完整性 | ASIL-B | Embedded |",
+      "line": 184
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OT-SHALL-03 | 系统 SHALL 支持 OTA 升级状态追踪（DOWNLOAD_PENDING → DOWNLOADING → VERIFYING → INSTALLING → REBOOTING → COMPLETED/FAILED） | QM | Cloud + Embedded |",
+      "line": 185
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OT-SHALL-NOT-01 | 系统 SHALL NOT 安装签名校验失败的 OTA 升级包 | ASIL-B | Embedded |",
+      "line": 186
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-01 | 系统 SHALL 支持手机号+验证码、第三方 OAuth（微信/Apple ID/Google）等多种登录方式 | QM | App + Cloud |",
+      "line": 192
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-02 | 系统 SHALL 基于 OAuth 2.0 / OpenID Connect 协议实现用户认证 | ASIL-A | Cloud |",
+      "line": 193
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-03 | 系统 SHALL 在车主证明环节要求用户通过 VIN 码 + 购车证明或车厂 API 验证车辆所有权 | QM | App + Cloud |",
+      "line": 194
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-04 | 系统 SHALL 支持多因子认证 (MFA)：短信验证码、生物识别等 | QM | App + Cloud |",
+      "line": 195
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-05 | 系统 SHALL 基于 RBAC + ABAC 实现细粒度权限控制 | ASIL-A | Cloud |",
+      "line": 196
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| UA-SHALL-NOT-01 | 系统 SHALL NOT 允许未通过车辆所有权验证的用户创建该车辆的主钥匙 | QM | Cloud |",
+      "line": 197
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-01 | 系统 SHALL 记录所有钥匙生命周期变更（创建、激活、暂停、恢复、吊销、过期）的审计日志 | QM | Cloud |",
+      "line": 203
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-02 | 系统 SHALL 记录所有车辆控制和车门操作（解锁、上锁、启动、寻车等）的审计日志 | QM | 全部 |",
+      "line": 204
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-03 | 审计日志 SHALL 包含：操作人、关联钥匙、操作类型、时间戳、设备信息、地理位置、操作结果 | QM | Cloud |",
+      "line": 205
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-04 | 审计日志保留期限 SHALL ≥ 3 年 | QM | Cloud |",
+      "line": 206
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-05 | 系统 SHALL 记录安全事件（认证失败、中继攻击检测、异常权限使用）到独立的安全事件日志 | QM | 全部 |",
+      "line": 207
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-06 | 审计日志 SHALL 通过消息队列 (Kafka Topic: `digitalkey.audit`) 异步写入 | QM | Cloud |",
+      "line": 208
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| AL-SHALL-NOT-01 | 系统 SHALL NOT 允许非授权用户删除或篡改审计日志 | QM | Cloud |",
+      "line": 209
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-01 | 系统 SHALL 同时支持 ICCE、(T/CA 110-2020) 和 CCC (Digital Key 3.0) 两种数字钥匙协议 | QM | 全部 |",
+      "line": 215
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-02 | 车端固件 SHALL 同时包含 ICCE 和 CCC 协议栈，配对时自动协商协议类型 | QM | Embedded |",
+      "line": 216
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-03 | 云端 SHALL 同时管理 ICCE 国密证书和 CCC X.509 证书 | QM | Cloud |",
+      "line": 217
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-04 | App SHALL 根据车辆 VIN 自动识别并选用对应协议，用户无感知 | QM | App |",
+      "line": 218
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-NOT-01 | ICCE 模式 SHALL NOT 使用国际算法（ECDSA/AES）替代国密算法（SM2/SM3/SM4） | QM | 全部 |",
+      "line": 219
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| DP-SHALL-NOT-02 | CCC 模式 SHALL NOT 使用国密算法替代国际算法（ECDSA/P-256/AES-256-GCM） | QM | 全部 |",
+      "line": 220
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OM-SHALL-01 | 系统 SHALL 在手机无网络连接时，通过 NFC 刷卡方式仍然可执行车辆解锁 | QM | Embedded + App |",
+      "line": 226
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OM-SHALL-02 | 预下载的离线钥匙授权数据在有效期内 SHALL 可在无网络环境下使用 | QM | App |",
+      "line": 227
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OM-SHALL-03 | 离线期间的操作记录（解锁/上锁等）在网络恢复后 SHALL 自动同步至云端 | QM | App + Cloud |",
+      "line": 228
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| OM-SHALL-NOT-01 | 离线钥匙 SHALL NOT 在过期后仍可用于车辆解锁或启动 | ASIL-B | Embedded + App |",
+      "line": 229
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "## 2. SHOULD / MAY 需求",
+      "line": 233
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "### 2.1 SHOULD（建议实现）",
+      "line": 235
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-01 | 车门解锁响应时间 SHOULD ≤ 800ms（目标优于 1 秒阈值） | PRD 性能 | Embedded + App |",
+      "line": 239
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-02 | App 冷启动时间 SHOULD ≤ 2s | PRD 6.1 | App |",
+      "line": 240
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-03 | 云端 API P99 响应时间 SHOULD ≤ 200ms | PRD 6.1 | Cloud |",
+      "line": 241
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-04 | 服务可用性 SHOULD ≥ 99.9% | PRD 6.2 | Cloud |",
+      "line": 242
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-05 | App SHOULD 在检测到设备被 root/jailbreak 后拒绝使用敏感功能（解锁、启动） | TEST-PLAN AS-SEC-02 | App |",
+      "line": 243
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-06 | BLE SHOULD 采用 2M PHY 提升数据传输速率 | 架构最佳实践 | Embedded + App |",
+      "line": 244
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-07 | 系统 SHOULD 支持 ICCOA DK3.0/DK4.0 协议作为第三协议 | 架构规划 | 全部 |",
+      "line": 245
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-08 | UWB 测距结果 SHOULD 包含方位角和俯仰角数据，支持三维定位 | PRD 3.1.2 | Embedded |",
+      "line": 246
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-09 | 系统 SHOULD 在车端离线时在本地存储吊销缓存，确保下次联网时立即同步 | safety-concept | Embedded |",
+      "line": 247
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-10 | 钥匙分享的地理围栏限制 SHOULD 支持多边形 (Polygon) 和区域列表 (Region) 两种类型 | PRD US2.3 | Cloud + App |",
+      "line": 248
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-11 | 系统 SHOULD 在钥匙过期前 7 天/3 天/1 天分别推送提醒通知 | 用户体验 | Cloud + App |",
+      "line": 249
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD-12 | UWB 测距 SHOULD 支持 SE050 签名的安全测距，测距结果附加密码学签名 | IEEE 802.15.4z | Embedded |",
+      "line": 250
+    },
+    {
+      "kind": "SHALL",
+      "statement": "| SHALL/SHALL NOT 新增或修改 | 全员同意（PM+架构+QA+开发代表） | 不可逆变更，需正式变更请求 |",
+      "line": 527
+    },
+    {
+      "kind": "SHOULD",
+      "statement": "| SHOULD/MAY 新增或修改 | 团队讨论 + 架构师确认 | 建议性变更 |",
+      "line": 528
+    }
+  ],
+  "recommendations": [
+    "130 SHALL/SHOULD statement(s) lack corresponding PRD requirements.  Review each uncovered item and add the missing requirement to the PRD.",
+    "PRD testability score is low.  Add explicit acceptance criteria (GIVEN/WHEN/THEN or 验收标准) for each requirement.",
+    "18 section(s) in the spec lack coverage in the S.U.P.E.R analysis.  Review the analysis and ensure all spec sections are addressed."
+  ]
+}

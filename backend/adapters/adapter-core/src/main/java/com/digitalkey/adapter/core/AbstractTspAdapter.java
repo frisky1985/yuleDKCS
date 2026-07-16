@@ -10,7 +10,17 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Abstract base class for TSP adapters providing common functionality.
- * Protocol-specific adapters extend this class.
+ *
+ * <h3>What this provides</h3>
+ * <ul>
+ *   <li>Async execution via cached daemon thread pool</li>
+ *   <li>Lifecycle management (init/shutdown)</li>
+ *   <li>Enabled / disabled guard</li>
+ *   <li>Exponential-backoff retry via {@link RetryUtil}</li>
+ *   <li>Response validation after each operation</li>
+ * </ul>
+ *
+ * <p>Subclasses implement the {@code do*()} abstract methods.
  */
 public abstract class AbstractTspAdapter implements TspAdapter {
 
@@ -21,27 +31,59 @@ public abstract class AbstractTspAdapter implements TspAdapter {
         return t;
     });
 
+    /** Retry utility configured from adapter properties. */
+    private volatile RetryUtil retryUtil;
+
     private volatile boolean enabled = true;
     private volatile boolean initialized = false;
+
+    // ── Retry configuration (call from subclass constructor) ───────────
+
+    /**
+     * Configure retry. Call from subclass constructor if custom values needed.
+     */
+    protected void configureRetry(int maxRetries, long initialDelayMs, long maxTimeoutMs) {
+        this.retryUtil = new RetryUtil(getAdapterName(), log, maxRetries, initialDelayMs, maxTimeoutMs);
+    }
+
+    /**
+     * Configure retry from {@link AdapterConfig.AdapterProperties}.
+     */
+    protected void configureRetry(AdapterConfig.AdapterProperties props) {
+        if (props.isRetryEnabled()) {
+            this.retryUtil = new RetryUtil(getAdapterName(), log,
+                props.getMaxRetries(), 1000L, props.getTimeoutMs());
+        }
+    }
+
+    /** Access the configured RetryUtil (may be null if retry disabled). */
+    protected RetryUtil getRetryUtil() {
+        return retryUtil;
+    }
+
+    // ── Enabled / disabled ────────────────────────────────────────────
 
     @Override
     public boolean isEnabled() {
         return enabled;
     }
 
-    /**
-     * Set the enabled state.
-     */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         log.info("Adapter {} enabled state changed to: {}", getAdapterName(), enabled);
     }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────
 
     @Override
     public CompletableFuture<Void> initialize() {
         return CompletableFuture.runAsync(() -> {
             try {
                 log.info("Initializing adapter: {}", getAdapterName());
+                // Configure default retry if not explicitly set
+                if (retryUtil == null) {
+                    this.retryUtil = new RetryUtil(getAdapterName(), log, 3, 1000, 30000);
+                }
                 doInitialize();
                 initialized = true;
                 log.info("Adapter {} initialized successfully", getAdapterName());
@@ -70,93 +112,152 @@ public abstract class AbstractTspAdapter implements TspAdapter {
         }, executor);
     }
 
+    // ── Business operations with retry + validation ────────────────────
+
     @Override
     public CompletableFuture<VehicleListResponse> getVehicles(String userId) {
         return checkEnabled()
-            .thenCompose(v -> doGetVehicles(userId))
+            .thenCompose(v -> executeWithRetry(() -> doGetVehicles(userId)))
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
             .whenComplete((r, e) -> {
-                if (e != null) {
-                    log.error("getVehicles failed for user {}: {}", userId, e.getMessage());
-                }
+                if (e != null) log.error("getVehicles failed for user {}: {}", userId, e.getMessage());
             });
     }
 
     @Override
     public CompletableFuture<KeyResponse> requestKeys(KeyRequest request) {
         return checkEnabled()
-            .thenCompose(v -> doRequestKeys(request))
+            .thenCompose(v -> executeWithRetry(() -> doRequestKeys(request)))
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
             .whenComplete((r, e) -> {
-                if (e != null) {
-                    log.error("requestKeys failed: {}", e.getMessage());
-                }
+                if (e != null) log.error("requestKeys failed: {}", e.getMessage());
             });
     }
 
     @Override
     public CompletableFuture<KeyResponse> revokeKeys(KeyRequest request) {
         return checkEnabled()
-            .thenCompose(v -> doRevokeKeys(request))
+            .thenCompose(v -> executeWithRetry(() -> doRevokeKeys(request)))
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
             .whenComplete((r, e) -> {
-                if (e != null) {
-                    log.error("revokeKeys failed: {}", e.getMessage());
+                if (e != null) log.error("revokeKeys failed: {}", e.getMessage());
+            });
+    }
+
+    @Override
+    public CompletableFuture<BindKeyResponse> bindKey(BindKeyRequest request) {
+        return checkEnabled()
+            .thenCompose(v -> {
+                // Pre-flight validation
+                var errors = ResponseValidator.validate(request);
+                if (!errors.isEmpty()) {
+                    String msg = "BindKeyRequest validation failed: " + errors;
+                    log.error(msg);
+                    return CompletableFuture.completedFuture(
+                        new BindKeyResponse(false, msg, null, null, null, null, 0, List.of()));
                 }
+                return executeWithRetry(() -> doBindKey(request));
+            })
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
+            .whenComplete((r, e) -> {
+                if (e != null) log.error("bindKey failed: {}", e.getMessage());
+            });
+    }
+
+    @Override
+    public CompletableFuture<KeyResponse> unbindKey(UnbindKeyRequest request) {
+        return checkEnabled()
+            .thenCompose(v -> executeWithRetry(() -> doUnbindKey(request)))
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
+            .whenComplete((r, e) -> {
+                if (e != null) log.error("unbindKey failed: {}", e.getMessage());
+            });
+    }
+
+    @Override
+    public CompletableFuture<KeyStatusResponse> getKeyStatus(String keyId) {
+        return checkEnabled()
+            .thenCompose(v -> executeWithRetry(() -> doGetKeyStatus(keyId)))
+            .thenApply(resp -> {
+                ResponseValidator.validate(resp);
+                return resp;
+            })
+            .whenComplete((r, e) -> {
+                if (e != null) log.error("getKeyStatus failed for key {}: {}", keyId, e.getMessage());
             });
     }
 
     @Override
     public boolean healthCheck() {
-        if (!enabled) {
-            return false;
-        }
+        if (!enabled) return false;
         return doHealthCheck();
     }
 
-    /**
-     * Check if adapter is enabled, throw exception if not.
-     */
+    // ── Internal helpers ──────────────────────────────────────────────
+
     protected CompletableFuture<Void> checkEnabled() {
         if (!enabled) {
             return CompletableFuture.failedFuture(
-                new IllegalStateException("Adapter " + getAdapterName() + " is disabled")
-            );
+                new IllegalStateException("Adapter " + getAdapterName() + " is disabled"));
         }
         if (!initialized) {
             return CompletableFuture.failedFuture(
-                new IllegalStateException("Adapter " + getAdapterName() + " is not initialized")
-            );
+                new IllegalStateException("Adapter " + getAdapterName() + " is not initialized"));
         }
         return CompletableFuture.completedFuture(null);
     }
 
-    // Abstract methods for protocol-specific implementation
-
     /**
-     * Protocol-specific initialization logic.
+     * Execute a callable with retry if {@link #retryUtil} is configured.
+     * Falls back to direct execution on the executor.
      */
+    private <T> CompletableFuture<T> executeWithRetry(java.util.concurrent.Callable<T> callable) {
+        RetryUtil ru = retryUtil;
+        if (ru != null) {
+            return ru.executeAsync(callable, executor);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return callable.call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  Abstract methods for protocol-specific implementation
+    // ════════════════════════════════════════════════════════════════════
+
     protected abstract void doInitialize();
-
-    /**
-     * Protocol-specific shutdown logic.
-     */
     protected abstract void doShutdown();
-
-    /**
-     * Protocol-specific vehicle list retrieval.
-     */
     protected abstract CompletableFuture<VehicleListResponse> doGetVehicles(String userId);
-
-    /**
-     * Protocol-specific key request.
-     */
     protected abstract CompletableFuture<KeyResponse> doRequestKeys(KeyRequest request);
-
-    /**
-     * Protocol-specific key revocation.
-     */
     protected abstract CompletableFuture<KeyResponse> doRevokeKeys(KeyRequest request);
 
-    /**
-     * Protocol-specific health check.
-     */
+    /** Bind a key — protocol-specific TSP call. */
+    protected abstract CompletableFuture<BindKeyResponse> doBindKey(BindKeyRequest request);
+
+    /** Unbind a key — protocol-specific TSP call. */
+    protected abstract CompletableFuture<KeyResponse> doUnbindKey(UnbindKeyRequest request);
+
+    /** Query key status from the TSP. */
+    protected abstract CompletableFuture<KeyStatusResponse> doGetKeyStatus(String keyId);
+
     protected abstract boolean doHealthCheck();
 }
