@@ -13,6 +13,7 @@ Thank you for your interest in contributing to yuleDKCS! This guide covers the c
 - [Pull Request Process](#pull-request-process)
 - [Testing Requirements](#testing-requirements)
 - [Documentation](#documentation)
+- [Spec Delta 流程](#-spec-delta--变更管理流程)
 - [Security](#security)
 - [Community](#community)
 
@@ -314,6 +315,31 @@ All contributors get listed in:
 - [CONTRIBUTORS.md](CONTRIBUTORS.md) (alphabetical by username)
 - Release notes for the version they contributed to
 - Annual yuleDKCS contributor spotlight
+
+---
+
+## 📋 Spec Delta & 变更管理流程
+
+所有代码变更（包括 bug fix、refactor、feature）必须附带 **Spec Delta**，确保变更可追溯、可验证。
+
+### 核心要求
+
+- 每个 PR 必须包含 Spec Delta（内联或独立文件）
+- Spec Delta 模板见 [`docs/spec-delta-template.md`](docs/spec-delta-template.md)
+- 完整的变更管理流程见 [`docs/CHANGE_PROCESS.md`](docs/CHANGE_PROCESS.md)
+
+### 快速开始
+
+1. 复制 [`docs/spec-delta-template.md`](docs/spec-delta-template.md) 中的模板
+2. 填写变更范围、影响模块、变更类型、受影响需求
+3. 将模板内容放入 PR 描述或保存为 `docs/spec/deltas/YYYY-MM-DD-<brief>.md`
+4. 更新 CHANGELOG 的 `[Unreleased]` 章节
+
+### PR Checklist 补充项
+
+- [ ] Spec Delta 已填写并与变更一致
+- [ ] 受影响需求可在 `docs/requirement-traceability-matrix.md` 中找到
+- [ ] CHANGELOG 已更新
 
 ---
 

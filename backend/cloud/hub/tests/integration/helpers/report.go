@@ -105,7 +105,7 @@ func (r *TestReport) GenerateHTML(outputPath string) error {
 		scenarioMap[tr.Scenario] = append(scenarioMap[tr.Scenario], tr)
 	}
 	var groups []scenarioGroup
-	for _, key := range []string{"E2E-01", "E2E-02", "E2E-03", "E2E-04", "E2E-05"} {
+	for _, key := range []string{"E2E-01", "E2E-02", "E2E-03", "E2E-04", "E2E-05", "E2E-06", "E2E-07", "E2E-08", "E2E-09", "E2E-10"} {
 		if cases, ok := scenarioMap[key]; ok {
 			groups = append(groups, scenarioGroup{scenario: key, cases: cases})
 		}
@@ -130,6 +130,11 @@ func (r *TestReport) GenerateHTML(outputPath string) error {
 		"E2E-03": "#fff3e0",
 		"E2E-04": "#f3e5f5",
 		"E2E-05": "#fce4ec",
+		"E2E-06": "#ede7f6",
+		"E2E-07": "#e0f2f1",
+		"E2E-08": "#fbe9e7",
+		"E2E-09": "#fff8e1",
+		"E2E-10": "#f1f8e9",
 	}
 
 	for _, g := range groups {

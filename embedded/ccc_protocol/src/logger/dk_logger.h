@@ -112,9 +112,16 @@ const char* dk_logger_get_trace_id(void);
  * @param format 格式化字符串
  * @param args 可变参数
  */
+#ifdef UNIT_TEST
+/* Unit test build: use variadic to match DK_LOG macro expansion */
+void dk_logger_log(dk_log_level_t level, const char* tag,
+                   const char* file, int line,
+                   const char* format, ...);
+#else
 void dk_logger_log(dk_log_level_t level, const char* tag, 
                    const char* file, int line,
                    const char* format, va_list args);
+#endif
 
 /**
  * @brief 日志输出宏

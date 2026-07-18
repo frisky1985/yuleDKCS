@@ -552,4 +552,87 @@ func TestValidateJWT_ValidToken(t *testing.T) {
 	}
 }
 
+// --- validateJWT additional coverage ---
+
+func TestValidateJWT_WrongSigningMethod(t *testing.T) {
+	secret := "test-secret"
+	// A malformed RS256 JWT to trigger the signing method check
+	_, err := validateJWT("eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoidGVzdCJ9.invalid", secret)
+	if err == nil {
+		t.Fatal("expected error for wrong signing method")
+	}
+}
+
+func TestValidateJWT_ExpiredToken(t *testing.T) {
+	secret := "test-secret"
+	claims := &Claims{
+		UserID: "user-expired",
+		Role:   "test",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Hour)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, _ := token.SignedString([]byte(secret))
+
+	_, err := validateJWT(tokenStr, secret)
+	if err == nil {
+		t.Fatal("expected error for expired token")
+	}
+}
+
+// --- AuthInterceptor: empty token after Bearer prefix ---
+
+func TestAuthInterceptor_EmptyBearerToken(t *testing.T) {
+	interceptor := AuthInterceptor("test-secret")
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return "ok", nil
+	}
+
+	// "Bearer " without any actual token
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("authorization", "Bearer "))
+	info := &grpc.UnaryServerInfo{FullMethod: "/dkcs.KeyService/Create"}
+	_, err := interceptor(ctx, "req", info, handler)
+	if err == nil {
+		t.Fatal("expected error for empty bearer token")
+	}
+	if status.Code(err) != codes.Unauthenticated {
+		t.Errorf("expected Unauthenticated, got %v", status.Code(err))
+	}
+}
+
+// --- TokenBucket: Allow after refill goroutine fires ---
+
+func TestTokenBucket_Refill(t *testing.T) {
+	tb := NewTokenBucket(5)
+	defer tb.Stop()
+
+	// Drain all tokens
+	for i := 0; i < 5; i++ {
+		if !tb.Allow() {
+			t.Fatalf("expected allow on attempt %d", i+1)
+		}
+	}
+	// All tokens consumed
+	if tb.Allow() {
+		t.Error("expected deny when bucket is empty")
+	}
+
+	// Wait for refill (refill rate = 1s/5 = 200ms per token)
+	time.Sleep(250 * time.Millisecond)
+
+	// Should have 1 token now
+	if !tb.Allow() {
+		t.Error("expected allow after refill")
+	}
+}
+
+func TestTokenBucket_StopMultiple(t *testing.T) {
+	tb := NewTokenBucket(3)
+	tb.Stop()
+	tb.Stop()
+	tb.Stop()
+}
+
+
 

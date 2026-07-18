@@ -1,0 +1,61 @@
+name: Coverage Monitor
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # 每周一 08:00 UTC
+  workflow_dispatch:       # 手动触发
+
+jobs:
+  trend:
+    name: Coverage Trend Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run coverage and generate trend report
+        run: |
+          mkdir -p reports
+          echo "# Coverage Trend Report" > reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+
+          TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          echo "**Generated:** $TIMESTAMP" >> reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+          echo "## Summary" >> reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+
+          # dkcs
+          echo "### dkcs" >> reports/coverage-trend.md
+          echo '```' >> reports/coverage-trend.md
+          go test -coverprofile=/tmp/dkcs-mon.out ./backend/dkcs/... 2>&1 | grep "coverage:" >> reports/coverage-trend.md
+          echo '```' >> reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+
+          # hub (exclude proto & cmd, matching CI gate)
+          echo "### hub" >> reports/coverage-trend.md
+          echo '```' >> reports/coverage-trend.md
+          cd backend/cloud/hub
+          go test -coverprofile=/tmp/hub-mon.out -covermode=atomic $(go list ./... | grep -v api/v1 | grep -v cmd/) 2>&1 | grep "coverage:" >> reports/coverage-trend.md
+          cd ../../..
+          echo '```' >> reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+
+          # Overall totals (CI-gate semantics)
+          echo "### Gate Totals" >> reports/coverage-trend.md
+          echo "" >> reports/coverage-trend.md
+          echo '| Module | Coverage | Threshold | Status |' >> reports/coverage-trend.md
+          echo '|--------|----------|-----------|--------|' >> reports/coverage-trend.md
+
+          dkcs_total=$(go tool cover -func=/tmp/dkcs-mon.out | grep 'total:' | awk '{print $3}')
+          hub_total=$(go tool cover -func=/tmp/hub-mon.out | grep 'total:' | awk '{print $3}')
+          dkcs_pass=$(echo "$dkcs_total >= 70" | bc -l)
+          hub_pass=$(echo "$hub_total >= 70" | bc -l)
+          [ "$dkcs_pass" = "1" ] && dkcs_status="✅ PASS" || dkcs_status="❌ FAIL"
+          [ "$hub_pass" = "1" ] && hub_status="✅ PASS" || hub_status="❌ FAIL"
+
+          echo "| dkcs | $dkcs_total | 70% | $dkcs_status |" >> reports/coverage-trend.md
+          echo "| hub  | $hub_total | 70% | $hub_status |" >> reports/coverage-trend.md

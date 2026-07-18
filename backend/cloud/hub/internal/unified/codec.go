@@ -211,6 +211,9 @@ func (c *ICCOACodec) detectMessageType(data []byte) MessageType {
 }
 
 func (c *ICCOACodec) encodeKeyBind(msg *UnifiedMessage) ([]byte, error) {
+	if msg.KeyBind == nil {
+		return nil, fmt.Errorf("ICCOA: KeyBind is nil")
+	}
 	kb := msg.KeyBind
 	var buf bytes.Buffer
 	
@@ -221,7 +224,9 @@ func (c *ICCOACodec) encodeKeyBind(msg *UnifiedMessage) ([]byte, error) {
 	buf.WriteByte(0x11)
 	
 	// 序列号 (2 bytes)
-	binary.BigEndian.PutUint16(make([]byte, 2), uint16(msg.Sequence))
+	seqBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(seqBytes, uint16(msg.Sequence))
+	buf.Write(seqBytes)
 	
 	// TLV 编码各个字段
 	if kb.VehicleID != "" {
@@ -235,17 +240,24 @@ func (c *ICCOACodec) encodeKeyBind(msg *UnifiedMessage) ([]byte, error) {
 	}
 	
 	// 时间戳 (8 bytes)
-	binary.BigEndian.PutUint64(make([]byte, 8), uint64(kb.ValidFrom))
+	tsBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(tsBytes, uint64(kb.ValidFrom))
+	buf.Write(tsBytes)
 	
 	return buf.Bytes(), nil
 }
 
 func (c *ICCOACodec) encodeKeyShare(msg *UnifiedMessage) ([]byte, error) {
+	if msg.KeyShare == nil {
+		return nil, fmt.Errorf("ICCOA: KeyShare is nil")
+	}
 	ks := msg.KeyShare
 	var buf bytes.Buffer
 	buf.WriteByte(0xA0)
 	buf.WriteByte(0x21)  // share request
-	binary.BigEndian.PutUint16(make([]byte, 2), uint16(msg.Sequence))
+	seqBytes := make([]byte, 2)
+	binary.BigEndian.PutUint16(seqBytes, uint16(msg.Sequence))
+	buf.Write(seqBytes)
 	
 	buf.Write(c.encodeTLV(0x01, []byte(ks.KeyID)))
 	if ks.RecipientID != "" {
@@ -256,6 +268,9 @@ func (c *ICCOACodec) encodeKeyShare(msg *UnifiedMessage) ([]byte, error) {
 }
 
 func (c *ICCOACodec) encodeRemoteControl(msg *UnifiedMessage) ([]byte, error) {
+	if msg.RemoteControl == nil {
+		return nil, fmt.Errorf("ICCOA: RemoteControl is nil")
+	}
 	rc := msg.RemoteControl
 	var buf bytes.Buffer
 	buf.WriteByte(0xA0)
@@ -278,11 +293,16 @@ func (c *ICCOACodec) encodeRemoteControl(msg *UnifiedMessage) ([]byte, error) {
 	}
 	
 	buf.WriteByte(action)
-	binary.BigEndian.PutUint64(make([]byte, 8), uint64(rc.Timestamp))
+	tsBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(tsBytes, uint64(rc.Timestamp))
+	buf.Write(tsBytes)
 	return buf.Bytes(), nil
 }
 
 func (c *ICCOACodec) encodeVehicleStatus(msg *UnifiedMessage) ([]byte, error) {
+	if msg.VehicleStatus == nil {
+		return nil, fmt.Errorf("ICCOA: VehicleStatus is nil")
+	}
 	vs := msg.VehicleStatus
 	var buf bytes.Buffer
 	buf.WriteByte(0xA0)
@@ -321,10 +341,19 @@ func (c *ICCOACodec) decodeKeyBind(msg *UnifiedMessage, data []byte) (*UnifiedMe
 	msg.KeyBind = &KeyBindMessage{}
 	offset := 2  // skip header
 	for offset < len(data) {
+		if offset >= len(data) {
+			break
+		}
 		tag := data[offset]
 		offset++
+		if offset >= len(data) {
+			break
+		}
 		length, n := c.decodeLength(data[offset:])
 		offset += n
+		if offset+length > len(data) || length < 0 {
+			break
+		}
 		value := data[offset : offset+length]
 		offset += length
 		
@@ -374,17 +403,23 @@ func (c *ICCOACodec) decodeVehicleStatus(msg *UnifiedMessage, data []byte) (*Uni
 	}
 	msg.VehicleStatus.DoorsLocked = data[2] == 0x01
 	msg.VehicleStatus.EngineOn = data[3] == 0x01
+	if len(data) >= 5 {
+		msg.VehicleStatus.BatteryLevel = int(data[4])
+	}
 	return msg, nil
 }
 
 func (c *ICCOACodec) decodeLength(data []byte) (int, int) {
+	if len(data) == 0 {
+		return 0, 0
+	}
 	if data[0] <= 0x7F {
 		return int(data[0]), 1
 	}
-	if data[0] == 0x81 {
+	if data[0] == 0x81 && len(data) >= 2 {
 		return int(data[1]), 2
 	}
-	if data[0] == 0x82 {
+	if data[0] == 0x82 && len(data) >= 3 {
 		return int(data[1])<<8 | int(data[2]), 3
 	}
 	return 0, 1
@@ -404,6 +439,9 @@ func (c *ICCECodec) Encode(msg *UnifiedMessage) ([]byte, error) {
 	var buf bytes.Buffer
 	switch msg.Type {
 	case MsgTypeKeyBind:
+		if msg.KeyBind == nil {
+			return nil, fmt.Errorf("ICCE: KeyBind is nil")
+		}
 		kb := msg.KeyBind
 		buf.Write(c.encodeTag(0x9F01))  // ICCE_MSG_BIND
 		// device ID
@@ -417,6 +455,9 @@ func (c *ICCECodec) Encode(msg *UnifiedMessage) ([]byte, error) {
 		return buf.Bytes(), nil
 		
 	case MsgTypeRemoteControl:
+		if msg.RemoteControl == nil {
+			return nil, fmt.Errorf("ICCE: RemoteControl is nil")
+		}
 		rc := msg.RemoteControl
 		action := c.actionToTag(rc.Action)
 		buf.Write(c.encodeTag(0x9F10))  // ICCE_MSG_CONTROL
@@ -424,6 +465,9 @@ func (c *ICCECodec) Encode(msg *UnifiedMessage) ([]byte, error) {
 		return buf.Bytes(), nil
 		
 	case MsgTypeVehicleStatus:
+		if msg.VehicleStatus == nil {
+			return nil, fmt.Errorf("ICCE: VehicleStatus is nil")
+		}
 		vs := msg.VehicleStatus
 		buf.Write(c.encodeTag(0x9F20))  // ICCE_MSG_STATUS
 		locked := byte(0)
@@ -452,17 +496,22 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 	switch msg.Type {
 	case MsgTypeKeyBind:
 		msg.KeyBind = &KeyBindMessage{}
-		// Skip message type tag (2 bytes, e.g. 0x9F01)
 		offset := 2
 		for offset < len(data) {
 			tag, tagLen := c.decodeTag(data[offset:])
+			if tagLen == 0 {
+				break
+			}
 			offset += tagLen
 			if offset >= len(data) {
 				break
 			}
 			length, lenLen := c.decodeLength(data[offset:])
+			if lenLen == 0 {
+				break
+			}
 			offset += lenLen
-			if offset+length > len(data) {
+			if length < 0 || offset+length > len(data) {
 				break
 			}
 			value := data[offset : offset+length]
@@ -477,19 +526,23 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 		}
 	case MsgTypeRemoteControl:
 		msg.RemoteControl = &RemoteControlMessage{}
-		// ICCE remote control: [0x9F10 msg_tag][0x9F11 action_tag len action]
-		if len(data) >= 6 {
-			// action_tag (0x9F11) starts at data[2], len at data[4], action value at data[5]
+		if len(data) >= 4 {
 			offset := 2
-			for offset+1 < len(data) {
+			for offset < len(data) {
 				_, tagLen := c.decodeTag(data[offset:])
+				if tagLen == 0 {
+					break
+				}
 				offset += tagLen
 				if offset >= len(data) {
 					break
 				}
 				length, lenLen := c.decodeLength(data[offset:])
+				if lenLen == 0 {
+					break
+				}
 				offset += lenLen
-				if offset+length <= len(data) && length >= 1 {
+				if length >= 1 && offset+length <= len(data) {
 					msg.RemoteControl.Action = c.tagToAction(data[offset])
 				}
 				offset += length
@@ -497,18 +550,23 @@ func (c *ICCECodec) Decode(data []byte) (*UnifiedMessage, error) {
 		}
 	case MsgTypeVehicleStatus:
 		msg.VehicleStatus = &VehicleStatusMessage{}
-		// ICCE vehicle status: [0x9F20 msg_tag][0x9F21 locked_tag len locked]
-		if len(data) >= 6 {
+		if len(data) >= 4 {
 			offset := 2
-			for offset+1 < len(data) {
+			for offset < len(data) {
 				_, tagLen := c.decodeTag(data[offset:])
+				if tagLen == 0 {
+					break
+				}
 				offset += tagLen
 				if offset >= len(data) {
 					break
 				}
 				length, lenLen := c.decodeLength(data[offset:])
+				if lenLen == 0 {
+					break
+				}
 				offset += lenLen
-				if offset+length <= len(data) && length >= 1 {
+				if length >= 1 && offset+length <= len(data) {
 					msg.VehicleStatus.DoorsLocked = data[offset] == 0x01
 				}
 				offset += length
@@ -591,13 +649,16 @@ func (c *ICCECodec) encodeTLV(tag uint16, value []byte) []byte {
 }
 
 func (c *ICCECodec) decodeLength(data []byte) (int, int) {
+	if len(data) == 0 {
+		return 0, 0
+	}
 	if data[0] <= 0x7F {
 		return int(data[0]), 1
 	}
-	if data[0] == 0x81 {
+	if data[0] == 0x81 && len(data) >= 2 {
 		return int(data[1]), 2
 	}
-	if data[0] == 0x82 {
+	if data[0] == 0x82 && len(data) >= 3 {
 		return int(data[1])<<8 | int(data[2]), 3
 	}
 	return 0, 1

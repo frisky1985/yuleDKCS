@@ -2,10 +2,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
+	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -340,3 +344,81 @@ func TestGenerateCommandID(t *testing.T) {
 		t.Errorf("command ID length: want >= 18, got %d", len(id1))
 	}
 }
+
+// ═════════════════════════════════════════════════════════════
+// sendCommand Success Path (exercises publishCommand + RecordEvent)
+// ═════════════════════════════════════════════════════════════
+
+func buildCommandServiceWithEventRepo(t *testing.T) (*CommandService, sqlmock.Sqlmock) {
+	t.Helper()
+
+	keyRepo := newMockKeyRepo()
+	vehicleRepo := newMockVehicleRepo()
+	logger := &mockLogger{}
+	telemetry := newMockTelemetry()
+
+	// Create EventService with sqlmock-backed event repo
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	db := sqlx.NewDb(mockDB, "postgres")
+	eventRepo := repository.NewEventRepository(db)
+
+	eventSvc := NewEventService(eventRepo, logger, telemetry)
+
+	svc := NewCommandService(keyRepo, vehicleRepo, logger, telemetry, eventSvc)
+	return svc, mock
+}
+
+func TestSendCommand_Success(t *testing.T) {
+	svc, mock := buildCommandServiceWithEventRepo(t)
+	ctx := context.Background()
+
+	// Setup: active key with unlock permission
+	keyRepo := svc.keyRepo.(*mockKeyRepo)
+	keyRepo.keys["key-success"] = &repository.Key{
+		ID:          "key-success",
+		VehicleID:   "vehicle-online",
+		UserID:      "user-001",
+		Status:      "active",
+		Permissions: []string{"unlock"},
+	}
+
+	// Setup: online vehicle
+	vehicleRepo := svc.vehicleRepo.(*mockVehicleRepo)
+	vehicleRepo.vehicles["vehicle-online"] = &repository.Vehicle{
+		ID:       "vehicle-online",
+		OwnerID:  "user-001",
+		IsOnline: true,
+	}
+
+	// Expect the RecordEvent INSERT call
+	mock.ExpectQuery(
+		`INSERT INTO events \(id,type,vehicle_id,user_id,key_id,data,created_at\) VALUES \(\?,\?,\?,\?,\?,\?,\?\) RETURNING id`).
+		WithArgs(sqlmock.AnyArg(), "command_sent", "vehicle-online", "user-001", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("evt-001"))
+
+	// Send command
+	resp, err := svc.Unlock(ctx, &pb.UnlockRequest{KeyId: "key-success", VehicleId: "vehicle-online"})
+	if err != nil {
+		t.Fatalf("Unlock success path failed: %v", err)
+	}
+	if resp.CommandId == "" {
+		t.Error("CommandId should not be empty")
+	}
+	if resp.Status != "accepted" {
+		t.Errorf("Status: want 'accepted', got %q", resp.Status)
+	}
+	if resp.Timestamp == 0 {
+		t.Error("Timestamp should be non-zero")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("expectations not met: %v", err)
+	}
+}
+
+// Ensure json and time are used
+var _ = json.Marshal
+var _ = time.Now

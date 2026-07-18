@@ -43,10 +43,15 @@ func NewManager(cfg *Config) *Manager {
 		})
 	}
 	
+	sessionTimeout := cfg.SessionTimeout
+	if sessionTimeout == 0 {
+		sessionTimeout = 30 * time.Minute // 默认超时
+	}
+	
 	m := &Manager{
 		logger:    cfg.Logger,
 		codecRegistry: NewCodecRegistry(),
-		sessionManager: NewSessionManager(cfg.SessionTimeout),
+		sessionManager: NewSessionManager(sessionTimeout),
 		negotiator:    negotiator,
 		codecs:        make(map[ProtocolType]MessageCodec),
 	}
@@ -85,24 +90,30 @@ func (m *Manager) RegisterCodec(proto ProtocolType, codec MessageCodec) {
 // 设备上线时调用，根据设备能力和车辆支持情况协商最佳协议
 func (m *Manager) NegotiateProtocol(ctx context.Context, req *NegotiateRequest) (*NegotiateResponse, error) {
 	// 1. 构建设备能力集
-	deviceCaps := &CapabilitySet{
-		BLE:         req.DeviceCaps.BLE,
-		UWB:         req.DeviceCaps.UWB,
-		NFC:         req.DeviceCaps.NFC,
-		SE:          req.DeviceCaps.SE,
-		FiRa:        req.DeviceCaps.FiRa,
-		BLEVersion:  req.DeviceCaps.BLEVersion,
-		UWBVersion:  req.DeviceCaps.UWBVersion,
-		UWBAccuracy: req.DeviceCaps.UWBAccuracy,
+	deviceCaps := &CapabilitySet{}
+	if req.DeviceCaps != nil {
+		deviceCaps = &CapabilitySet{
+			BLE:         req.DeviceCaps.BLE,
+			UWB:         req.DeviceCaps.UWB,
+			NFC:         req.DeviceCaps.NFC,
+			SE:          req.DeviceCaps.SE,
+			FiRa:        req.DeviceCaps.FiRa,
+			BLEVersion:  req.DeviceCaps.BLEVersion,
+			UWBVersion:  req.DeviceCaps.UWBVersion,
+			UWBAccuracy: req.DeviceCaps.UWBAccuracy,
+		}
 	}
 	
 	// 2. 构建车辆能力集
-	vehicleCaps := &CapabilitySet{
-		BLE:  req.VehicleCaps.BLE,
-		UWB:  req.VehicleCaps.UWB,
-		NFC:  req.VehicleCaps.NFC,
-		SE:   req.VehicleCaps.SE,
-		FiRa: req.VehicleCaps.FiRa,
+	vehicleCaps := &CapabilitySet{}
+	if req.VehicleCaps != nil {
+		vehicleCaps = &CapabilitySet{
+			BLE:  req.VehicleCaps.BLE,
+			UWB:  req.VehicleCaps.UWB,
+			NFC:  req.VehicleCaps.NFC,
+			SE:   req.VehicleCaps.SE,
+			FiRa: req.VehicleCaps.FiRa,
+		}
 	}
 	
 	// 3. 协商

@@ -13,7 +13,7 @@
 
 static void on_connection_change(const dk_device_status_t *status, void *user_data)
 {
-    printf("[CONN] NFC: %d, BLE: %d, UWB: %d\n",
+    printf("[CONN] NFC: %u, BLE: %u, UWB: %u\n",
            status->conn.nfc_state,
            status->conn.ble_state,
            status->conn.uwb_state);
@@ -21,7 +21,7 @@ static void on_connection_change(const dk_device_status_t *status, void *user_da
 
 static void on_auth_change(const dk_auth_status_t *auth, void *user_data)
 {
-    printf("[AUTH] State: %d, Key ID: %02x%02x...\n",
+    printf("[AUTH] State: %u, Key ID: %02x%02x...\n",
            auth->state, auth->key_id[0], auth->key_id[1]);
 }
 
@@ -30,7 +30,7 @@ static void on_zone_change(dk_zone_e zone, uint32_t distance_mm, void *user_data
     const char *zone_names[] = {
         "LOCKED", "APPROACH", "UNLOCK", "ENTRY", "INSIDE", "UNKNOWN"
     };
-    printf("[ZONE] %s (%d mm)\n", zone_names[zone], distance_mm);
+    printf("[ZONE] %s (%u mm)\n", zone_names[zone], distance_mm);
     
     // 根据区域自动执行操作
     switch (zone) {
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     printf("Initializing...\n");
     dk_status_t ret = dk_init(&device);
     if (ret != DK_OK) {
-        printf("Init failed: %d\n", ret);
+        printf("Init failed: %u\n", ret);
         return -1;
     }
     printf("Initialized OK\n\n");

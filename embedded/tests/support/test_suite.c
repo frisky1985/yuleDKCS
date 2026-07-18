@@ -12,6 +12,7 @@
 extern int run_iccoa_core_tests(void);
 extern int run_iccoa_ble_tests(void);
 extern int run_ccc_core_tests(void);
+extern int run_icce_tests(void);
 extern int run_unified_tests(void);
 
 int main(void)
@@ -30,6 +31,9 @@ int main(void)
 
     printf("\n--- CCC Digital Key Core Tests ---\n");
     ret += run_ccc_core_tests();
+
+    printf("\n--- ICCE Protocol Tests ---\n");
+    ret += run_icce_tests();
 
     printf("\n--- Unified Protocol Tests ---\n");
     ret += run_unified_tests();

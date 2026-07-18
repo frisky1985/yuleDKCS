@@ -504,6 +504,7 @@ static void aes_ghash(uint8_t result[16], const uint8_t H[16],
                       const uint8_t *aad, size_t aad_len,
                       const uint8_t *ct, size_t ct_len)
 {
+    if ((aad_len > 0 && !aad) || (ct_len > 0 && !ct)) return;
     uint8_t Y[16] = {0};
     uint8_t block[16];
     size_t pos;

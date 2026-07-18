@@ -291,4 +291,6 @@ int run_iccoa_core_tests(void)
     UNITY_END();
 }
 
+#ifndef ICCOA_CORE_NO_MAIN
 int main(void) { return run_iccoa_core_tests(); }
+#endif

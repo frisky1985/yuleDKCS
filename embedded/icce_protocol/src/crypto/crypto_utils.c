@@ -218,7 +218,7 @@ void bn256_rshift1(bn256_t *r, const bn256_t *a)
  */
 
 /* 单次 Montgomery 约简 (将 512-bit 积约简到 256-bit) */
-static void mont_reduce(bn256_t *r, uint32_t t[16])
+static void mont_reduce(bn256_t *r, uint32_t t[17])
 {
     for (int i = 0; i < 8; i++) {
         uint32_t u = t[i] * MONT_MU;
@@ -283,7 +283,7 @@ static void mul_512(uint32_t r[16], const bn256_t *a, const bn256_t *b)
 
 void fp_mul(bn256_t *r, const bn256_t *a, const bn256_t *b)
 {
-    uint32_t t[16];
+    uint32_t t[17];
     mul_512(t, a, b);
     mont_reduce(r, t);
 }
@@ -430,7 +430,7 @@ static void fn_mul_reduce(bn256_t *r, const uint32_t t[16])
 
 void fn_mul(bn256_t *r, const bn256_t *a, const bn256_t *b)
 {
-    uint32_t t[16];
+    uint32_t t[17];
     mul_512(t, a, b);
     fn_mul_reduce(r, t);
 }

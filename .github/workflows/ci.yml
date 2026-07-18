@@ -1,23 +1,240 @@
-name: CI
+name: CI — L1/L2/L3 Pipeline
+
 on: [push, pull_request]
 
+# ── Global Environment ──
+env:
+  GO_VERSION: '1.26'
+
+# ── Pipeline Architecture ──
+# L1: unit tests + coverage gate + go vet (fast, must pass to merge)
+# L2: integration tests + SAST scan (L1 OK → run)
+# L3: full build + docker build (L2 OK → run)
+
 jobs:
-  test:
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # L1 — 单元测试 + 覆盖率门禁 + go vet
+  # ═══════════════════════════════════════════════════════════════════════
+
+  l1-unit-and-vet:
+    name: L1 — Unit Tests + Coverage Gate + Go Vet
     runs-on: ubuntu-latest
+    outputs:
+      coverage_ok: ${{ steps.coverage-gate.outputs.coverage_ok }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
-      - name: Build
+          go-version: ${{ env.GO_VERSION }}
+
+      # ── dkcs: build ──
+      - name: Build dkcs
+        working-directory: backend/dkcs
+        run: go build ./...
+
+      # ── dkcs: vet ──
+      - name: Go vet dkcs
+        working-directory: backend/dkcs
+        run: go vet ./...
+
+      # ── dkcs: test + coverage ──
+      - name: Test dkcs with coverage
+        working-directory: backend/dkcs
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      # ── hub: build ──
+      - name: Build hub
+        working-directory: backend/cloud/hub
+        run: go build ./...
+
+      # ── hub: vet ──
+      - name: Go vet hub
+        working-directory: backend/cloud/hub
+        run: go vet ./...
+
+      # ── hub: test + coverage ──
+      - name: Test hub with coverage
+        working-directory: backend/cloud/hub
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      # ── Coverage Gate ──
+      - name: Coverage Gate (≥70%)
+        id: coverage-gate
         run: |
-          cd backend/dkcs && go build ./...
-          cd ../cloud/hub && go build ./...
-      - name: Test
+          echo "Checking coverage for dkcs..."
+          cd backend/dkcs
+          go test -coverprofile=coverage.out -covermode=atomic ./... 2>/dev/null
+          TOTAL=$(go tool cover -func=coverage.out | grep 'total:' | awk '{print $3}' | tr -d '%')
+          echo "dkcs total coverage: ${TOTAL}%"
+          if (( $(echo "$TOTAL < 70" | bc -l) )); then
+            echo "❌ FAIL: dkcs coverage ${TOTAL}% is below 70% threshold"
+            echo "coverage_ok=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "Checking coverage for hub..."
+          cd ../cloud/hub
+          # Exclude auto-generated protobuf (api/v1) and cmd/main packages
+          go test -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v api/v1 | grep -v cmd/) 2>/dev/null
+          TOTAL=$(go tool cover -func=coverage.out | grep 'total:' | awk '{print $3}' | tr -d '%')
+          echo "hub total coverage: ${TOTAL}%"
+          if (( $(echo "$TOTAL < 70" | bc -l) )); then
+            echo "❌ FAIL: hub coverage ${TOTAL}% is below 70% threshold"
+            echo "coverage_ok=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ Coverage gate passed — both modules ≥70%"
+          echo "coverage_ok=true" >> $GITHUB_OUTPUT
+
+      # ── Coverage Report (info only) ──
+      - name: Upload coverage report (dkcs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dkcs
+          path: backend/dkcs/coverage.out
+          retention-days: 7
+
+      - name: Upload coverage report (hub)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-hub
+          path: backend/cloud/hub/coverage.out
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # L2 — 集成测试 + SAST 扫描 (L1 通过后触发)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  l2-integration-and-sast:
+    name: L2 — Integration Tests + SAST Scan
+    runs-on: ubuntu-latest
+    needs: [l1-unit-and-vet]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # ── 集成测试 ──
+      - name: Integration Tests (hub)
+        working-directory: backend/cloud/hub/tests/integration
+        run: go test -v -count=1 ./...
+        continue-on-error: false  # Integration tests must pass
+
+      - name: Upload integration test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-report
+          path: backend/cloud/hub/tests/integration/test-output/
+          retention-days: 7
+
+      # ── Embedded C 单元测试 ──
+      - name: Embedded C Unit Tests (ICCOA/CCC/ICCE/Unified)
+        working-directory: embedded/tests
         run: |
-          cd backend/dkcs && go test -cover ./...
-          cd ../cloud/hub && go test -cover ./...
-      - name: Coverage check
+          make clean
+          make test_iccoa test_ccc test_icce 2>&1
+          echo "✅ C unit tests complete"
+
+      - name: Upload C test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-unit-test-report
+          path: embedded/tests/build/
+          retention-days: 7
+
+      # ── SAST: 尝试 gosec ──
+      - name: Install gosec
+        id: install-gosec
+        continue-on-error: true
         run: |
-          cd backend/dkcs && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
-          cd ../cloud/hub && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
+          go install github.com/securego/gosec/v2/cmd/gosec@latest 2>/dev/null || \
+          go install github.com/securego/gosec/cmd/gosec@latest 2>/dev/null || \
+          echo "gosec_available=false" >> $GITHUB_OUTPUT
+
+      - name: Run gosec SAST scan
+        if: steps.install-gosec.outputs.gosec_available != 'false'
+        continue-on-error: true
+        run: |
+          echo "Running gosec security scan..."
+          gosec -quiet -fmt=json -out=gosec-report.json ./... 2>&1 || true
+          gosec -quiet -fmt=text ./... 2>&1 || true
+          echo "✅ gosec scan complete (warnings only — non-blocking)"
+
+      - name: Upload gosec report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosec-report
+          path: gosec-report.json
+          retention-days: 7
+
+      # ── SAST fallback: golangci-lint (security linters) ──
+      - name: golangci-lint security check (fallback)
+        if: steps.install-gosec.outputs.gosec_available == 'false'
+        continue-on-error: false
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: backend/cloud/hub
+          args: >
+            --disable-all
+            --enable=gosec
+            --enable=govulncheck
+            --enable=errcheck
+            --out-format=colored-line-number
+          only-new-issues: true
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # L3 — Full Build + Docker Build (L2 通过后触发)
+  # ═══════════════════════════════════════════════════════════════════════
+
+  l3-build:
+    name: L3 — Full Build + Docker Build
+    runs-on: ubuntu-latest
+    needs: [l2-integration-and-sast]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # ── Build all modules ──
+      - name: Build all modules
+        run: |
+          echo "Building backend/dkcs..."
+          cd backend/dkcs && go build -v ./...
+          echo ""
+          echo "Building backend/cloud/hub..."
+          cd ../cloud/hub && go build -v ./...
+          echo ""
+          echo "✅ All modules built successfully"
+
+      # ── Docker Build (hub) ──
+      - name: Docker Build hub
+        if: false  # Disabled until Dockerfile is ready
+        run: |
+          docker build -t yuledkcs/hub:latest -f backend/cloud/hub/Dockerfile backend/cloud/hub
+
+      # ── Docker Build (dkcs) ──
+      - name: Docker Build dkcs
+        if: false  # Disabled until Dockerfile is ready
+        run: |
+          docker build -t yuledkcs/dkcs:latest -f backend/dkcs/Dockerfile backend/dkcs
+
+      # ── Summary ──
+      - name: Build summary
+        run: |
+          echo "╔════════════════════════════════════════════════════╗"
+          echo "║  L3 Build Complete                               ║"
+          echo "╠════════════════════════════════════════════════════╣"
+          echo "║  dkcs: ✓                                         ║"
+          echo "║  hub:  ✓                                         ║"
+          echo "╚════════════════════════════════════════════════════╝"

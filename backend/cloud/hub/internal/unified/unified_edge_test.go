@@ -663,3 +663,64 @@ func TestToUnifiedMessageBasic(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================
+// ICCOACodec + ICCECodec nil body 安全 — 不应 panic
+// ============================================================
+
+func TestICCOACodecNilBodySafety(t *testing.T) {
+	codec := NewICCOACodec(ProtocolICCOA40)
+
+	t.Run("ICCOA KeyBind nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeKeyBind})
+		if err == nil {
+			t.Error("expected error for nil KeyBind")
+		}
+	})
+
+	t.Run("ICCOA KeyShare nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeKeyShare})
+		if err == nil {
+			t.Error("expected error for nil KeyShare")
+		}
+	})
+
+	t.Run("ICCOA RemoteControl nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeRemoteControl})
+		if err == nil {
+			t.Error("expected error for nil RemoteControl")
+		}
+	})
+
+	t.Run("ICCOA VehicleStatus nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeVehicleStatus})
+		if err == nil {
+			t.Error("expected error for nil VehicleStatus")
+		}
+	})
+}
+
+func TestICCECodecNilBodySafety(t *testing.T) {
+	codec := NewICCECodec()
+
+	t.Run("ICCE KeyBind nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeKeyBind})
+		if err == nil {
+			t.Error("expected error for nil KeyBind")
+		}
+	})
+
+	t.Run("ICCE RemoteControl nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeRemoteControl})
+		if err == nil {
+			t.Error("expected error for nil RemoteControl")
+		}
+	})
+
+	t.Run("ICCE VehicleStatus nil body", func(t *testing.T) {
+		_, err := codec.Encode(&UnifiedMessage{Type: MsgTypeVehicleStatus})
+		if err == nil {
+			t.Error("expected error for nil VehicleStatus")
+		}
+	})
+}

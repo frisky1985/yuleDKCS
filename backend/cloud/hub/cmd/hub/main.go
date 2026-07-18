@@ -25,6 +25,42 @@ func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
+	grpcSrv, gw := setupHubGRPCServer(logger)
+
+	// ── Start ──
+	lis, err := net.Listen("tcp", ":9090")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	go func() {
+		logger.Info("HUB gRPC server starting", zap.String("addr", ":9090"))
+		if err := grpcSrv.Serve(lis); err != nil {
+			logger.Fatal("gRPC serve failed", zap.Error(err))
+		}
+	}()
+
+	go func() {
+		logger.Info("HUB REST gateway starting", zap.String("addr", ":8080"))
+		if err := gw.Serve(":8080"); err != nil {
+			logger.Fatal("REST gateway failed", zap.Error(err))
+		}
+	}()
+
+	// ── Graceful shutdown ──
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Info("shutting down...")
+	grpcSrv.GracefulStop()
+	gw.Shutdown(context.Background())
+	fmt.Println("HUB stopped")
+}
+
+// setupHubGRPCServer creates and configures the gRPC server with all adapters and services.
+// Extracted for testability — returns the gRPC server and REST gateway.
+func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway) {
 	// ── gRPC Server ──
 	kaParams := keepalive.ServerParameters{
 		MaxConnectionIdle:     5 * time.Minute,
@@ -65,33 +101,5 @@ func main() {
 
 	reflection.Register(grpcSrv)
 
-	// ── Start ──
-	lis, err := net.Listen("tcp", ":9090")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	go func() {
-		logger.Info("HUB gRPC server starting", zap.String("addr", ":9090"))
-		if err := grpcSrv.Serve(lis); err != nil {
-			logger.Fatal("gRPC serve failed", zap.Error(err))
-		}
-	}()
-
-	go func() {
-		logger.Info("HUB REST gateway starting", zap.String("addr", ":8080"))
-		if err := gw.Serve(":8080"); err != nil {
-			logger.Fatal("REST gateway failed", zap.Error(err))
-		}
-	}()
-
-	// ── Graceful shutdown ──
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("shutting down...")
-	grpcSrv.GracefulStop()
-	gw.Shutdown(context.Background())
-	fmt.Println("HUB stopped")
+	return grpcSrv, gw
 }

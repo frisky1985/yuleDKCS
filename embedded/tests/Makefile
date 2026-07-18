@@ -1,219 +1,202 @@
 #===============================================================================
 # Makefile — Vehicle C-Code Test Suite (Unity-based)
 #
-# Builds unit test binaries for ICCOA, CCC, and Unified Digital Key protocol stacks.
-# Compiles test files against:
-#   - Real protocol source files + stub HAL implementations
-#   - Unity test framework
+# Protocol source files compile against stub HAL implementations on host.
+# Each test file has its own main() and builds a standalone binary.
 #===============================================================================
 
 SHELL := /bin/bash
-
-#--- Paths ----------------------------------------------------------------
 ROOT    := $(abspath ..)
 TESTDIR := $(abspath .)
 VENDOR  := $(TESTDIR)/vendor
-CWD     := $(TESTDIR)
+BUILD   := $(TESTDIR)/build
 
 # Source directories
-ICCOA_SRC  := $(ROOT)/iccoa_protocol/src
-CCC_SRC    := $(ROOT)/ccc_protocol/src
-ICCE_SRC   := $(ROOT)/icce_protocol/src
-UNIFIED_SRC := $(ROOT)/unified_protocol/src
+ICCOA_SRC := $(ROOT)/iccoa_protocol/src
+CCC_SRC   := $(ROOT)/ccc_protocol/src
+ICCE_SRC  := $(ROOT)/icce_protocol/src
+UNI_SRC   := $(ROOT)/unified_protocol/src
 
 # Source files
-ICCOA_CORE := $(ICCOA_SRC)/iccoa/iccoa_dk_core.c
-ICCOA_DK30 := $(ICCOA_SRC)/iccoa/dk30/iccoa_dk30.c
-ICCOA_DK40 := $(ICCOA_SRC)/iccoa/dk40/iccoa_dk40.c
-ICCOA_BLE  := $(ICCOA_SRC)/ble/iccoa_ble.c
-ICCOA_AUTH := $(ICCOA_SRC)/auth/iccoa_auth.c
-ICCOA_SVC  := $(ICCOA_SRC)/service/iccoa_service.c
-ICCOA_SRCS := $(ICCOA_CORE) $(ICCOA_DK30) $(ICCOA_DK40) $(ICCOA_BLE) $(ICCOA_AUTH) $(ICCOA_SVC)
+ICCOA_SRCS := $(ICCOA_SRC)/iccoa/iccoa_dk_core.c \
+              $(ICCOA_SRC)/iccoa/dk30/iccoa_dk30.c \
+              $(ICCOA_SRC)/iccoa/dk40/iccoa_dk40.c \
+              $(ICCOA_SRC)/ble/iccoa_ble.c \
+              $(ICCOA_SRC)/auth/iccoa_auth.c \
+              $(ICCOA_SRC)/service/iccoa_service.c
 
-CCC_CORE   := $(CCC_SRC)/core/ccc_dk_core.c
-CCC_BLE    := $(CCC_SRC)/ble/ble_kw47a.c
-CCC_NFC    := $(CCC_SRC)/nfc/nfc_st25r501.c
-CCC_UWB    := $(CCC_SRC)/uwb/uwb_ncj29d6.c
-CCC_SEC    := $(CCC_SRC)/security/security.c
-CCC_KEY    := $(CCC_SRC)/keymgmt/key_mgmt.c
-CCC_SRCS   := $(CCC_CORE) $(CCC_BLE) $(CCC_NFC) $(CCC_UWB) $(CCC_SEC) $(CCC_KEY)
+CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
+              $(CCC_SRC)/ble/ble_kw47a.c \
+              $(CCC_SRC)/nfc/nfc_st25r501.c \
+              $(CCC_SRC)/security/security.c \
+              $(CCC_SRC)/keymgmt/key_mgmt.c
 
-ICCE_SRCS  := $(ICCE_SRC)/icce_dk_core.c
-UNIFIED_SRC_FILE := $(UNIFIED_SRC)/dk_unified.c
+# uwb_ncj29d6.c calls classify_distance_impl() before its static definition.
+# The forward declaration needs ccc_digital_key.h types. Use -include via a
+# tiny wrapper that first includes the required header.
+$(BUILD)/uwb_ncj29d6.o: $(CCC_SRC)/uwb/uwb_ncj29d6.c | $(BUILD)
+	@echo '#include "ccc_digital_key.h"' > $(BUILD)/_uwb_fwd.h
+	@echo 'static distance_zone_e classify_distance_impl(uint16_t dist_cm);' >> $(BUILD)/_uwb_fwd.h
+	$(CC) $(CFLAGS) $(INCLUDES) -include $(BUILD)/_uwb_fwd.h -c -o $@ $<
 
-# Test files
-TEST_SRCS := $(wildcard $(TESTDIR)/test/test_*.c)
+ICCE_SRCS  := $(ICCE_SRC)/icce_dk_core.c \
+              $(ICCE_SRC)/icce_edge.c \
+              $(ICCE_SRC)/icce_security.c \
+              $(ICCE_SRC)/icce_uwb.c \
+              $(ICCE_SRC)/icce_vehicle.c \
+              $(ICCE_SRC)/icce_zone.c
+
+UNI_SRC_FILE := $(UNI_SRC)/dk_unified.c
+
+# Test files (each has its own main())
+TEST_DIR     := $(TESTDIR)/test
+TEST_ICCOA   := $(TEST_DIR)/test_iccoa_dk_core.c $(TEST_DIR)/test_iccoa_ble.c
+TEST_CCC     := $(TEST_DIR)/test_ccc_dk_core.c
+TEST_ICCE    := $(TEST_DIR)/test_icce.c
+TEST_UNIFIED := $(TEST_DIR)/test_unified.c
+TEST_ALL     := $(TESTDIR)/support/test_suite.c
 
 # Include paths
-# Include paths: test support FIRST to override real dk_logger.h
-INCLUDES := \
-	-I$(TESTDIR)/support \
-	-I$(ROOT)/iccoa_protocol/include \
-	-I$(ROOT)/ccc_protocol/include \
-	-I$(ROOT)/icce_protocol/include \
-	-I$(ROOT)/unified_protocol/include \
-	-I$(ROOT)/system_architecture \
-	-I$(ROOT)/ccc_protocol/src/logger \
-	-I$(VENDOR)/unity
+INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
+            -I$(ROOT)/iccoa_protocol/include -I$(ROOT)/ccc_protocol/include \
+            -I$(ROOT)/icce_protocol/include -I$(ROOT)/unified_protocol/include \
+            -I$(ROOT)/system_architecture \
+            -I$(ROOT)/ccc_protocol/src/logger \
+            -I$(ROOT)/icce_protocol/src/crypto \
+            -I$(VENDOR)/unity
 
-# Common flags
+# Real dk_logger.h declares dk_logger_log with va_list but DK_LOG macro
+# passes raw args; the UNIT_TEST branch fixes the declaration for tests.
 CFLAGS   := -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
-            -Wno-unused-function -Wno-return-type -g -O0 \
-            -DUNIT_TEST -include $(VENDOR)/unity/unity.h
+            -Wno-unused-function -Wno-return-type -Wno-format -g -O0 \
+            -Wno-implicit-function-declaration \
+            -DUNIT_TEST -DBLE_SUPERVISION_TIMEOUT_MS=4000 \
+            -DKW47A_CS_PORT=0 -DKW47A_CS_PIN=4 \
+            -DKW47A_RST_PORT=0 -DKW47A_RST_PIN=1 \
+            -DKW47A_WAKE_PORT=0 -DKW47A_WAKE_PIN=2 \
+            -DKW47A_IRQ_PORT=0 -DKW47A_IRQ_PIN=0 \
+            -DUWB_WAKE_PIN=3 \
+            -DST25R501_CS_PORT=0 -DST25R501_CS_PIN=5 \
+            -DST25R501_RST_PORT=0 -DST25R501_RST_PIN=6 \
+            -DST25R501_IRQ_PORT=0 -DST25R501_IRQ_PIN=7 \
+            -DNCJ29D6_CS_PORT=0 -DNCJ29D6_CS_PIN=8 \
+            -DNCJ29D6_IRQ_PORT=0 -DNCJ29D6_IRQ_PIN=9 \
+            -DNCJ29D6_RST_PORT=0 -DNCJ29D6_RST_PIN=10 \
+            -DNCJ29D6_WAKE_PORT=0 -DNCJ29D6_WAKE_PIN=11 \
+            -DCCC_SERVICE_UUID=0xFFD1 \
+            -DNFC_SERVICE_UUID=0xFFD2 \
+            -DUWB_CONFIG_UUID=0xFFD3
 LDFLAGS  := -lm
 
-#--- Build Targets --------------------------------------------------------
+#---------------------------------------------------------------------------
+# Generic compile rule
+#---------------------------------------------------------------------------
+$(BUILD):
+	mkdir -p $@
 
-.PHONY: all clean test_iccoa test_ccc test_unified test_all
+define cc_src
+$(BUILD)/$(notdir $(basename $(1))).o: $(1) | $(BUILD)
+	$$(CC) $$(CFLAGS) $$(INCLUDES) -c -o $$@ $$<
+endef
+
+$(foreach f,$(ICCOA_SRCS),$(eval $(call cc_src,$(f))))
+$(foreach f,$(CCC_SRCS),  $(eval $(call cc_src,$(f))))
+$(foreach f,$(ICCE_SRCS), $(eval $(call cc_src,$(f))))
+
+$(BUILD)/dk_unified.o: $(UNI_SRC_FILE) | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+$(BUILD)/unity.o: $(VENDOR)/unity/unity.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+$(BUILD)/stubs_hal.o: $(TESTDIR)/support/stubs_hal.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+#---------------------------------------------------------------------------
+# Test objects (standalone — each has main())
+#---------------------------------------------------------------------------
+$(BUILD)/test_iccoa_dk_core.o: $(TEST_DIR)/test_iccoa_dk_core.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_iccoa_ble.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_ccc_dk_core.o: $(TEST_DIR)/test_ccc_dk_core.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_icce.o: $(TEST_DIR)/test_icce.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_unified.o: $(TEST_DIR)/test_unified.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_suite.o: $(TEST_ALL) | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+
+#---------------------------------------------------------------------------
+# Non-main test objects (for linking into combined binaries)
+#---------------------------------------------------------------------------
+$(BUILD)/test_iccoa_dk_core_lib.o: $(TEST_DIR)/test_iccoa_dk_core.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -c -o $@ $<
+$(BUILD)/test_iccoa_ble_lib.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -c -o $@ $<
+
+#---------------------------------------------------------------------------
+# Standalone test binaries
+#---------------------------------------------------------------------------
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_all
 
 all: test_all
 
-#---------------------------------------------------------------------------
-# Single monolithic test binary — simplest approach
-#---------------------------------------------------------------------------
-TEST_ALL_OBJ := $(TESTDIR)/build/test_all.o
-STUBS_OBJ    := $(TESTDIR)/build/stubs.o
+test_iccoa: $(BUILD)/test_iccoa_dk_core.o \
+            $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
+            $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
+            $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
+            $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
 
-TEST_ALL_BIN := $(TESTDIR)/build/test_all
+test_ccc: $(BUILD)/test_ccc_dk_core.o \
+          $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
+          $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
+          $(BUILD)/security.o $(BUILD)/key_mgmt.o \
+          $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
 
-$(TESTDIR)/build:
-	mkdir -p $@
+test_icce: $(BUILD)/test_icce.o \
+          $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
+          $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
+          $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+          $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
 
-# Compile test all
-$(TEST_ALL_OBJ): $(TESTDIR)/test/test_iccoa_dk_core.c \
-                 $(TESTDIR)/test/test_iccoa_ble.c \
-                 $(TESTDIR)/test/test_ccc_dk_core.c \
-                 $(TESTDIR)/test/test_unified.c \
-                 | $(TESTDIR)/build
-	$(CC) $(CFLAGS) $(INCLUDES) -c \
-	  -DTEST_ALL_MONOLITHIC \
-	  -o $@ $<
+test_unified: $(BUILD)/test_unified.o \
+              $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
+              $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
+              $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
+              $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
+              $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
+              $(BUILD)/security.o $(BUILD)/key_mgmt.o \
+              $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
+              $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
+              $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+              $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
 
-# Actually, let's just compile all tests together
-TEST_MAIN := $(TESTDIR)/build/test_main.o
-$(TEST_MAIN): | $(TESTDIR)/build
+test_all: $(BUILD)/test_suite.o \
+          $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
+          $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
+          $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
+          $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
+          $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
+          $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
+          $(BUILD)/security.o $(BUILD)/key_mgmt.o \
+          $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
+          $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
+          $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+          $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
 
-$(STUBS_OBJ): $(TESTDIR)/support/stubs.c | $(TESTDIR)/build
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-#===============================================================================
-#  Strategy: Build a single binary with all test files
-#===============================================================================
-
-BUILD_DIR := $(TESTDIR)/build
-SRC_DIR   := $(ROOT)
-
-define compile-c
-$(BUILD_DIR)/$(notdir $(basename $(1))).o: $(1) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $$@ $$<
-endef
-
-# Real source objects
-ICCOA_OBJS := $(addprefix $(BUILD_DIR)/, $(notdir $(ICCOA_SRCS:.c=.o)))
-CCC_OBJS   := $(addprefix $(BUILD_DIR)/, $(notdir $(CCC_SRCS:.c=.o)))
-ICCE_OBJS  := $(addprefix $(BUILD_DIR)/, $(notdir $(ICCE_SRCS:.c=.o)))
-UNIFIED_OBJ := $(BUILD_DIR)/dk_unified.o
-
-# Test objects
-TEST_OBJS := $(addprefix $(BUILD_DIR)/, $(notdir $(TEST_SRCS:.c=.o)))
-
-# All objects
-ALL_OBJS := $(TEST_OBJS) $(ICCOA_OBJS) $(CCC_OBJS) $(ICCE_OBJS) $(UNIFIED_OBJ) $(STUBS_OBJ)
-
-# Compile rules for each source
-$(foreach src,$(ICCOA_SRCS),$(eval $(call compile-c,$(src))))
-$(foreach src,$(CCC_SRCS),$(eval $(call compile-c,$(src))))
-$(foreach src,$(ICCE_SRCS),$(eval $(call compile-c,$(src))))
-
-$(UNIFIED_OBJ): $(UNIFIED_SRC_FILE) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-# Compile test files into separate objects
-$(BUILD_DIR)/test_iccoa_ble.o: $(TESTDIR)/test/test_iccoa_ble.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-$(BUILD_DIR)/test_iccoa_dk_core.o: $(TESTDIR)/test/test_iccoa_dk_core.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-$(BUILD_DIR)/test_ccc_dk_core.o: $(TESTDIR)/test/test_ccc_dk_core.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-$(BUILD_DIR)/test_unified.o: $(TESTDIR)/test/test_unified.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-#===============================================================================
-# Test: ICCOA
-#===============================================================================
-ICCOA_LINK := $(BUILD_DIR)/test_iccoa_dk_core.o $(BUILD_DIR)/test_iccoa_ble.o \
-             $(BUILD_DIR)/iccoa_dk_core.o $(BUILD_DIR)/iccoa_dk30.o \
-             $(BUILD_DIR)/iccoa_dk40.o $(BUILD_DIR)/iccoa_ble.o \
-             $(BUILD_DIR)/iccoa_auth.o $(BUILD_DIR)/iccoa_service.o \
-             $(BUILD_DIR)/stubs.o
-
-test_iccoa: $(ICCOA_LINK)
-	$(CC) -o $(BUILD_DIR)/$@ $(ICCOA_LINK) $(LDFLAGS)
-	$(BUILD_DIR)/$@
-
-#===============================================================================
-# Test: CCC
-#===============================================================================
-CCC_LINK := $(BUILD_DIR)/test_ccc_dk_core.o \
-            $(BUILD_DIR)/ccc_dk_core.o $(BUILD_DIR)/ble_kw47a.o \
-            $(BUILD_DIR)/nfc_st25r501.o $(BUILD_DIR)/uwb_ncj29d6.o \
-            $(BUILD_DIR)/security.o $(BUILD_DIR)/key_mgmt.o \
-            $(BUILD_DIR)/stubs.o
-
-test_ccc: $(CCC_LINK)
-	$(CC) -o $(BUILD_DIR)/$@ $(CCC_LINK) $(LDFLAGS)
-	$(BUILD_DIR)/$@
-
-#===============================================================================
-# Test: Unified
-#===============================================================================
-test_unified: $(BUILD_DIR)/test_unified.o $(ICCOA_LINK) $(CCC_LINK) $(UNIFIED_OBJ)
-	$(CC) -o $(BUILD_DIR)/$@ $(BUILD_DIR)/test_unified.o \
-	       $(BUILD_DIR)/iccoa_dk_core.o $(BUILD_DIR)/iccoa_dk30.o \
-	       $(BUILD_DIR)/iccoa_dk40.o $(BUILD_DIR)/iccoa_ble.o \
-	       $(BUILD_DIR)/iccoa_auth.o $(BUILD_DIR)/iccoa_service.o \
-	       $(BUILD_DIR)/ccc_dk_core.o $(BUILD_DIR)/ble_kw47a.o \
-	       $(BUILD_DIR)/nfc_st25r501.o $(BUILD_DIR)/uwb_ncj29d6.o \
-	       $(BUILD_DIR)/security.o $(BUILD_DIR)/key_mgmt.o \
-	       $(BUILD_DIR)/dk_unified.o $(BUILD_DIR)/stubs.o $(LDFLAGS)
-	$(BUILD_DIR)/$@
-
-#===============================================================================
-# Test: All — run from a single monolithic binary (no source compilation)
-#===============================================================================
-MONOLITHIC_SRC := $(TESTDIR)/support/test_suite.c
-
-$(BUILD_DIR)/test_suite.o: $(MONOLITHIC_SRC) | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
-
-test_all: $(BUILD_DIR)/test_suite.o \
-         $(BUILD_DIR)/iccoa_dk_core.o $(BUILD_DIR)/iccoa_dk30.o \
-         $(BUILD_DIR)/iccoa_dk40.o $(BUILD_DIR)/iccoa_ble.o \
-         $(BUILD_DIR)/iccoa_auth.o $(BUILD_DIR)/iccoa_service.o \
-         $(BUILD_DIR)/ccc_dk_core.o $(BUILD_DIR)/ble_kw47a.o \
-         $(BUILD_DIR)/nfc_st25r501.o $(BUILD_DIR)/uwb_ncj29d6.o \
-         $(BUILD_DIR)/security.o $(BUILD_DIR)/key_mgmt.o \
-         $(BUILD_DIR)/dk_unified.o $(BUILD_DIR)/stubs.o
-	$(CC) -o $(TEST_ALL_BIN) $^ $(LDFLAGS)
-	$(TEST_ALL_BIN)
-
-#===============================================================================
-#  Initial compilation attempt
-#===============================================================================
-init_test: $(BUILD_DIR)
-	@echo "=== Compiling with CC=$(CC) ==="
-	@echo "Building test objects..."
-	$(CC) $(CFLAGS) $(INCLUDES) -c $(TESTDIR)/test/test_iccoa_dk_core.c -o $(BUILD_DIR)/test_iccoa_dk_core.o 2>&1 || true
-	@echo "=== Build try done ==="
-
-#===============================================================================
-#  Clean
-#===============================================================================
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD)
 
-# Override default CC if not set
 CC ?= gcc

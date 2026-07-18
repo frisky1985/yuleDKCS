@@ -2,6 +2,8 @@ module github.com/frisky1985/yuleDKCS/backend/cloud/hub
 
 go 1.25.0
 
+toolchain go1.26.5
+
 require (
 	github.com/gin-gonic/gin v1.10.0
 	go.uber.org/zap v1.27.0

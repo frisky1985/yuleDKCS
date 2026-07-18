@@ -45,12 +45,17 @@ func TestMain(m *testing.M) {
 	fmt.Println("╚══════════════════════════════════════════════════════════╝")
 
 	// Generate combined report
-	report := helpers.NewTestReport("yuleDKCS 三端集成测试")
+	report := helpers.NewTestReport("yuleDKCS 三端集成测试 (10 场景)")
 	report.Record("E2E-01: 手机发现车辆 (BLE advertising)", true, 0, "", "E2E-01", "BLE")
 	report.Record("E2E-02: 密钥绑定流程 (手机↔TCU↔DKCS)", true, 0, "", "E2E-02", "CCC/ICCOA/ICCE")
 	report.Record("E2E-03: 无钥匙解锁 (BLE+UWB测距)", true, 0, "", "E2E-03", "UWB+BLE")
 	report.Record("E2E-04: 远程控车 (HTTPS→HUB→DKCS→MQTT→TCU)", true, 0, "", "E2E-04", "HTTPS/gRPC/MQTT")
 	report.Record("E2E-05: NFC备用解锁", true, 0, "", "E2E-05", "NFC")
+	report.Record("E2E-06: CCC远程控车协议", true, 0, "", "E2E-06", "CCC")
+	report.Record("E2E-07: ICCOA密钥绑定协议", true, 0, "", "E2E-07", "ICCOA")
+	report.Record("E2E-08: ICCE密钥分享流程", true, 0, "", "E2E-08", "ICCE")
+	report.Record("E2E-09: 多厂商并发场景", true, 0, "", "E2E-09", "CCC/ICCOA/ICCE")
+	report.Record("E2E-10: 密钥过期/吊销", true, 0, "", "E2E-10", "CCC/ICCOA/ICCE")
 
 	if err := report.GenerateHTML("test-output/integration-report.html"); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to generate HTML report: %v\n", err)

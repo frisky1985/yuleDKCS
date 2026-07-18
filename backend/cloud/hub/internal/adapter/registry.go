@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"go.uber.org/zap"
@@ -47,7 +48,7 @@ func NewRegistry(logger *zap.Logger) *Registry {
 func (r *Registry) Register(vendor, protocol string, a Adapter) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	key := vendor + ":" + protocol
+	key := strings.ToLower(vendor) + ":" + strings.ToLower(protocol)
 	r.adapters[key] = a
 	r.logger.Info("adapter registered",
 		zap.String("vendor", vendor),
@@ -58,7 +59,7 @@ func (r *Registry) Register(vendor, protocol string, a Adapter) {
 func (r *Registry) Get(vendor string, protocol string) (Adapter, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	key := vendor + ":" + protocol
+	key := strings.ToLower(vendor) + ":" + strings.ToLower(protocol)
 	a, ok := r.adapters[key]
 	return a, ok
 }
@@ -67,8 +68,9 @@ func (r *Registry) Get(vendor string, protocol string) (Adapter, bool) {
 func (r *Registry) GetByVendor(vendor string) (Adapter, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	vendorLower := strings.ToLower(vendor)
 	for _, a := range r.adapters {
-		if a.Vendor() == vendor {
+		if strings.ToLower(a.Vendor()) == vendorLower {
 			return a, true
 		}
 	}

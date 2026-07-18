@@ -101,7 +101,7 @@ func TestGetBytes(t *testing.T) {
 		t.Fatalf("GetBytes failed: %v", err)
 	}
 	if string(data) != `"hello"` {
-		t.Errorf("expected %q, got %q", `"hello"`, string(data))
+		t.Errorf("expected %q,got %q", `"hello"`, string(data))
 	}
 }
 
