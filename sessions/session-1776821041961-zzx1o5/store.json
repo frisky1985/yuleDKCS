@@ -1,0 +1,25 @@
+{
+  "id": "session-1776821041961-zzx1o5",
+  "name": "多Agent软件开发",
+  "status": "active",
+  "createdAt": "2026-04-22T01:27:49.945Z",
+  "updatedAt": "2026-04-22T01:27:49.945Z",
+  "agents": [
+    {
+      "id": "agent_mtivop5c",
+      "name": "Main Agent",
+      "role": "assistant",
+      "status": "idle",
+      "createdAt": "2026-04-22T01:27:49.945Z",
+      "model": "unknown",
+      "systemPrompt": ""
+    }
+  ],
+  "summary": {
+    "id": "summary_378e0d5h",
+    "title": "多Agent软件开发",
+    "createdAt": "2026-04-22T01:27:49.945Z",
+    "file": "summary_378e0d5h.md"
+  },
+  "lastMessageCount": 10
+}

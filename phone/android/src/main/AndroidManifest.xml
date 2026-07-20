@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ==================== 网络权限 ==================== -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- ==================== NFC权限 ==================== -->
+    <uses-permission android:name="android.permission.NFC" />
+    <!-- NFC功能声明 (非必须,允许在未配备NFC的设备上运行) -->
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="false" />
+
+    <!-- ==================== 蓝牙权限 ==================== -->
+    <!-- Android 12 (API 31) 及以上需要新的蓝牙权限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- 蓝牙功能声明 -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+
+    <!-- ==================== UWB权限 ==================== -->
+    <uses-permission android:name="android.permission.UWB_RANGING" />
+    <!-- UWB功能声明 (Android 12+支持) -->
+    <uses-feature
+        android:name="android.hardware.uwb"
+        android:required="false" />
+
+    <!-- ==================== 位置权限 ==================== -->
+    <!-- 蓝牙扫描需要位置权限 (Android 9及以下) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 后台位置权限 (可选) -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- ==================== 相机权限 ==================== -->
+    <!-- 用于扫描分享二维码 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- ==================== 生物识别 ==================== -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- ==================== 震动和声音 ==================== -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- SDK版本配置 -->
+    <!-- 最低支持Android 8.0 (API 26) -->
+    <!-- 目标版本Android 14 (API 34) -->
+</manifest>

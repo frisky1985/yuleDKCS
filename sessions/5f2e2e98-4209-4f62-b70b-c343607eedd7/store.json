@@ -1,0 +1,25 @@
+{
+  "id": "5f2e2e98-4209-4f62-b70b-c343607eedd7",
+  "name": "Git代码同步失败",
+  "status": "active",
+  "createdAt": "2026-04-19T15:23:26.899Z",
+  "updatedAt": "2026-04-19T15:23:26.899Z",
+  "agents": [
+    {
+      "id": "agent_zey12nmd",
+      "name": "Main Agent",
+      "role": "assistant",
+      "status": "idle",
+      "createdAt": "2026-04-19T15:23:26.899Z",
+      "model": "unknown",
+      "systemPrompt": ""
+    }
+  ],
+  "summary": {
+    "id": "summary_n6ib9pk4",
+    "title": "Git代码同步失败",
+    "createdAt": "2026-04-19T15:23:26.899Z",
+    "file": "summary_n6ib9pk4.md"
+  },
+  "lastMessageCount": 84
+}

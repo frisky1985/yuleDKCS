@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "title": "微服务架构图",
+  "type": "engineering-diagram",
+  "source": "generated",
+  "profile": "engineering-review",
+  "theme": "tech-blue",
+  "layout": "horizontal",
+  "counts": {
+    "nodes": 10,
+    "edges": 12,
+    "modules": 4
+  },
+  "nodes": [
+    {
+      "id": "api-gateway",
+      "label": "API Gateway",
+      "type": "service",
+      "module": "gateway",
+      "size": "large"
+    },
+    {
+      "id": "user-service",
+      "label": "User Service",
+      "type": "service",
+      "module": "services",
+      "size": "medium"
+    },
+    {
+      "id": "order-service",
+      "label": "Order Service",
+      "type": "service",
+      "module": "services",
+      "size": "medium"
+    },
+    {
+      "id": "auth-service",
+      "label": "Auth Service",
+      "type": "service",
+      "module": "services",
+      "size": "medium"
+    },
+    {
+      "id": "redis",
+      "label": "Redis Cache",
+      "type": "process",
+      "module": "infra",
+      "size": "medium"
+    },
+    {
+      "id": "mq",
+      "label": "Message Queue\n(RabbitMQ)",
+      "type": "queue",
+      "module": "infra",
+      "size": "medium"
+    },
+    {
+      "id": "load-balancer",
+      "label": "Load Balancer",
+      "type": "cloud",
+      "module": "infra",
+      "size": "medium"
+    },
+    {
+      "id": "user-db",
+      "label": "User DB\n(PostgreSQL)",
+      "type": "database",
+      "module": "data",
+      "size": "medium"
+    },
+    {
+      "id": "order-db",
+      "label": "Order DB\n(PostgreSQL)",
+      "type": "database",
+      "module": "data",
+      "size": "medium"
+    },
+    {
+      "id": "config-server",
+      "label": "Config Server",
+      "type": "service",
+      "module": "data",
+      "size": "medium"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": "load-balancer",
+      "to": "api-gateway",
+      "type": "primary",
+      "label": "HTTPS"
+    },
+    {
+      "id": "edge-2",
+      "from": "api-gateway",
+      "to": "user-service",
+      "type": "primary",
+      "label": "REST/gRPC"
+    },
+    {
+      "id": "edge-3",
+      "from": "api-gateway",
+      "to": "order-service",
+      "type": "primary",
+      "label": "REST/gRPC"
+    },
+    {
+      "id": "edge-4",
+      "from": "api-gateway",
+      "to": "auth-service",
+      "type": "primary",
+      "label": "OAuth2"
+    },
+    {
+      "id": "edge-5",
+      "from": "order-service",
+      "to": "user-service",
+      "type": "optional",
+      "label": "User Info"
+    },
+    {
+      "id": "edge-6",
+      "from": "order-service",
+      "to": "mq",
+      "type": "primary",
+      "label": "Events"
+    },
+    {
+      "id": "edge-7",
+      "from": "user-service",
+      "to": "redis",
+      "type": "data",
+      "label": "Session"
+    },
+    {
+      "id": "edge-8",
+      "from": "auth-service",
+      "to": "redis",
+      "type": "data",
+      "label": "Token"
+    },
+    {
+      "id": "edge-9",
+      "from": "user-service",
+      "to": "user-db",
+      "type": "data",
+      "label": "CRUD"
+    },
+    {
+      "id": "edge-10",
+      "from": "order-service",
+      "to": "order-db",
+      "type": "data",
+      "label": "CRUD"
+    },
+    {
+      "id": "edge-11",
+      "from": "user-service",
+      "to": "config-server",
+      "type": "dependency",
+      "label": "Config"
+    },
+    {
+      "id": "edge-12",
+      "from": "order-service",
+      "to": "config-server",
+      "type": "dependency",
+      "label": "Config"
+    }
+  ],
+  "modules": [
+    {
+      "id": "gateway",
+      "label": "API Gateway"
+    },
+    {
+      "id": "services",
+      "label": "Services"
+    },
+    {
+      "id": "infra",
+      "label": "Infrastructure"
+    },
+    {
+      "id": "data",
+      "label": "Data Layer"
+    }
+  ]
+}

@@ -1,0 +1,303 @@
+// DKCS <-> TCU 私有协议规范
+// 版本: 1.0.0
+// 传输: MQTT over TLS
+// 安全: 设备证书双向认证
+
+syntax = "proto3";
+
+package digitalkey.tcu.v1;
+
+option go_package = "github.com/digitalkey/protocol/tcu/v1";
+
+// ============================================================
+// MQTT Topic 规范
+// ============================================================
+// Topic根目录: digitalkey/{tsp_id}/{vehicle_id}
+//
+// 上行 (TCU -> DKCS):
+//   - {root}/status          车辆状态上报
+//   - {root}/command/ack    指令响应
+//   - {root}/key/bind/ack   绑定响应
+//   - {root}/key/revoke/ack 撤销响应
+//   - {root}/ota/progress   OTA进度
+//   - {root}/heartbeat      心跳
+//
+// 下行 (DKCS -> TCU):
+//   - {root}/command        下发控制指令
+//   - {root}/key/bind      绑定密钥
+//   - {root}/key/unbind    解绑密钥
+//   - {root}/key/revoke    撤销密钥
+//   - {root}/ota/campaign  OTA推送
+//   - {root}/config        远程配置
+
+// ============================================================
+// 1. 控制指令 (下行)
+// ============================================================
+
+message TcuCommand {
+    string cmd_id = 10;           // 指令ID
+    string key_id = 11;          // 使用的密钥ID
+    
+    string action = 20;           // unlock/lock/engine_on/engine_off/trunk/window/climate/find/horn
+    map<string, string> params = 21; // 参数字典
+    
+    int32 priority = 30;         // 优先级: 1=低 2=中 3=高 4=紧急
+    
+    int64 expires_at = 40;       // 过期时间戳, 0=永不过期
+    
+    int32 timeout_ms = 50;       // 期望执行超时
+}
+
+message TcuCommandBatch {
+    repeated TcuCommand commands = 10;
+    int32 total_count = 11;
+}
+
+// ============================================================
+// 2. 密钥绑定 (下行)
+// ============================================================
+
+message TcuKeyBind {
+    string key_id = 10;
+    string vehicle_id = 11;
+    
+    int32 protocol = 20;          // 1=CCC 2=ICCOA 3=ICCE
+    
+    int32 key_type = 21;          // 1=Owner 2=Friend 3=Service 4=Temp
+    
+    int32 access_level = 22;      // 权限位掩码
+    
+    // 密钥材料 (车端存储)
+    bytes se_key_ref = 30;       // SE密钥引用
+    bytes vehicle_key_ref = 31;   // 车辆密钥引用
+    
+    // 协议参数
+    int32 ble_channel = 40;       // BLE通道
+    string ble_mac = 41;          // 车端BLE MAC
+    int32 uwb_channel = 42;      // UWB通道
+    int32 uwb_preamble = 43;     // UWB前导码
+    
+    int64 valid_from = 50;
+    int64 valid_until = 51;
+    int32 max_uses = 52;
+}
+
+message TcuKeyUnbind {
+    string key_id = 10;
+    string reason = 20;
+}
+
+message TcuKeyRevoke {
+    string key_id = 10;
+    string reason = 20;
+    bool emergency = 30;          // 紧急撤销, 立即删除
+}
+
+// ============================================================
+// 3. 车辆状态上报 (上行)
+// ============================================================
+
+message TcuStatusReport {
+    string vehicle_id = 10;
+    string tcu_id = 11;
+    string tcu_firmware = 12;
+    string tcu_hardware = 13;
+    
+    int32 lock_status = 20;       // 0=解锁 1=闭锁 2=未知
+    int32 engine_status = 21;     // 0=熄火 1=运行 2=启动中
+    int32 door_status = 22;      // 位掩码: 0x01=左前 0x02=右前 0x04=左后 0x08=右后 0x10=后备箱
+    int32 window_status = 23;     // 位掩码: 同上
+    
+    int32 battery_voltage = 30;   // mV
+    int32 battery_pct = 31;      // 百分比
+    int32 interior_temp = 32;    // 0.1°C
+    int32 exterior_temp = 33;    // 0.1°C
+    
+    int32 odometer_km = 40;      // 里程(km)
+    int32 fuel_pct = 41;         // 燃油百分比
+    int32 range_km = 42;         // 续航(km)
+    
+    int32 alarm_status = 50;      // 0=正常 1=报警 2=防盗触发
+    
+    double latitude = 60;
+    double longitude = 61;
+    int32 gps_accuracy = 62;
+    
+    // 通信状态
+    int32 signal_strength = 70;   // 信号强度(dBm)
+    int32 ble_connected = 71;    // BLE连接数
+    int32 uwb_connected = 72;    // UWB连接数
+    
+    // 错误码
+    repeated int32 error_codes = 80;
+    
+    int64 timestamp = 90;       // 设备时间戳
+    int64 system_uptime_ms = 91; // 系统运行时间
+}
+
+// ============================================================
+// 4. 指令响应 (上行)
+// ============================================================
+
+message TcuCommandAck {
+    string cmd_id = 10;
+    string key_id = 11;
+    
+    int32 status = 20;           // 0=成功 1=失败 2=超时 3=密钥无效 4=权限不足
+    int32 result_code = 21;      // 车端返回码
+    
+    int64 executed_at = 30;      // 执行时间戳
+    int32 latency_ms = 31;      // 执行耗时
+    
+    string error_detail = 40;   // 错误详情
+}
+
+// ============================================================
+// 5. 密钥操作响应 (上行)
+// ============================================================
+
+message TcuKeyBindAck {
+    string key_id = 10;
+    int32 status = 20;           // 0=成功 1=失败 2=存储满 3=协议不支持
+    string error_msg = 30;
+}
+
+message TcuKeyRevokeAck {
+    string key_id = 10;
+    int32 status = 20;
+}
+
+// ============================================================
+// 6. 心跳 (上行)
+// ============================================================
+
+message TcuHeartbeat {
+    string vehicle_id = 10;
+    string tcu_id = 11;
+    
+    int32 status = 20;           // 0=正常 1=低电量 2=故障
+    
+    int32 ble_available = 30;    // BLE模块状态
+    int32 nfc_available = 31;    // NFC模块状态
+    int32 uwb_available = 32;    // UWB模块状态
+    int32 se_available = 33;     // SE模块状态
+    
+    int32 free_storage = 40;     // 密钥存储余量
+    int32 cpu_usage = 50;        // CPU使用率%
+    int32 mem_usage = 51;        // 内存使用率%
+    
+    int64 timestamp = 90;
+}
+
+// ============================================================
+// 7. OTA (下行+上行)
+// ============================================================
+
+message TcuOtaCampaign {
+    string campaign_id = 10;
+    
+    string target_version = 20;  // 目标版本
+    string download_url = 21;    // 固件URL
+    int32  file_size = 22;       // 文件大小(bytes)
+    string file_hash = 23;       // SHA256
+    
+    int32  priority = 30;        // 1=可选 2=建议 3=强制
+    
+    // 分阶段推送
+    int32 rollout_pct = 40;     // 百分比
+    
+    // 安装条件
+    int32 min_battery_pct = 50;  // 最低电量
+    bool  charging_required = 51; // 是否需要充电
+    int32 min_free_space_mb = 52; // 最低剩余空间(MB)
+    
+    string release_notes = 60;   // 发行说明
+}
+
+message TcuOtaProgress {
+    string campaign_id = 10;
+    
+    int32 phase = 20;            // 1=下载 2=校验 3=安装 4=重启
+    int32 progress_pct = 21;    // 进度百分比
+    
+    int32 downloaded_bytes = 30;
+    int32 total_bytes = 31;
+    
+    int32 result = 40;           // 0=成功 1=失败 2=中断
+    string error_code = 41;
+    string error_msg = 42;
+    
+    int64 started_at = 50;
+    int64 completed_at = 51;
+}
+
+// ============================================================
+// 8. 远程配置 (下行)
+// ============================================================
+
+message TcuConfig {
+    string config_id = 10;
+    
+    // BLE配置
+    int32 ble_tx_power = 20;      // dBm
+    int32 ble_advertise_interval = 21; // ms
+    int32 ble_connection_timeout = 22; // ms
+    
+    // UWB配置
+    int32 uwb_tx_power = 30;
+    int32 uwb_channel = 31;
+    int32 uwb_preamble = 32;
+    int32 uwb_slot_duration = 33; // ms
+    
+    // 测距配置
+    int32 ranging_interval = 40;  // ms
+    int32 zone_unlock_mm = 41;   // 解锁距离(mm)
+    int32 zone_lock_mm = 42;     // 闭锁距离(mm)
+    
+    // 安全配置
+    int32 se_enabled = 50;       // 是否启用SE
+    bool  ble_encryption_required = 51;
+    bool  uwb_ranging_required = 52;
+    
+    // 超时配置
+    int32 command_timeout_ms = 60;
+    int32 pairing_timeout_s = 61;
+    int32 key_expiry_warning_days = 62;
+}
+
+// ============================================================
+// MQTT Payload 包装
+// ============================================================
+
+message MqttMessage {
+    string topic = 1;
+    int64 timestamp = 2;
+    int32 qos = 3;                // 0=at-most-once 1=at-least-once 2=exactly-once
+    
+    bytes payload = 10;           // 序列化后的消息体
+    
+    // 消息类型 (用于解析payload)
+    enum MessageType {
+        TYPE_UNSPECIFIED = 0;
+        
+        // 下行
+        TYPE_COMMAND = 10;
+        TYPE_KEY_BIND = 11;
+        TYPE_KEY_UNBIND = 12;
+        TYPE_KEY_REVOKE = 13;
+        TYPE_OTA_CAMPAIGN = 14;
+        TYPE_CONFIG = 15;
+        
+        // 上行
+        TYPE_STATUS_REPORT = 20;
+        TYPE_COMMAND_ACK = 21;
+        TYPE_KEY_BIND_ACK = 22;
+        TYPE_KEY_REVOKE_ACK = 23;
+        TYPE_OTA_PROGRESS = 24;
+        TYPE_HEARTBEAT = 25;
+    }
+    MessageType message_type = 4;
+    
+    // 签名 (可选, 用于安全验证)
+    bytes signature = 50;
+}
