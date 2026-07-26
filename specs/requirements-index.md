@@ -22,40 +22,43 @@
 ### RS-001: 用户设备注册
 - **Module**: DKCS Core
 - **Source**: `docs/spec/spec-multi-device.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   1. The system SHALL allow a user to register a device after authentication
   2. The device registration SHALL include device capabilities (BLE/UWB/NFC/SE/OS)
   3. The system SHALL assign a unique device_id per device registration
   4. The system SHALL return registered vehicles and existing keys upon registration
+- **Approved**: 2026-07-26
 
 ### RS-002: 多设备配钥
 - **Module**: DKCS Core
 - **Source**: `docs/spec/spec-multi-device.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   5. The system SHALL provision a key to a new device based on the device's capabilities
   6. The provisioning SHALL negotiate the optimal protocol between device and vehicle
   7. The system SHALL generate a device-specific key (bound to this device's identity)
   8. The system SHALL NOT duplicate keys—if device already has a key, return existing
+- **Approved**: 2026-07-26
 
 ### RS-003: 多设备管理
 - **Module**: DKCS Core
 - **Source**: `docs/spec/spec-multi-device.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   9. The system SHALL allow a user to list all devices with provisioned keys
   10. The system SHALL allow a user to remotely revoke a device's key(s)
   11. The system SHALL notify the device when its key is revoked (via push)
   12. The system SHALL limit the number of devices per user (5 minimum)
+- **Approved**: 2026-07-26
 
 ### RS-004: 性能指标
 - **Module**: All
 - **Source**: `docs/design/PRD.md` §6.1
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   13. 解锁响应时间 ≤ 1s (从用户靠近到车门解锁)
@@ -65,11 +68,12 @@
   17. 配对流程完成时间 ≤ 3min
   18. 远程控制响应时间 ≤ 3s
   19. 系统吞吐量 ≥ 100,000 TPS
+- **Approved**: 2026-07-26
 
 ### RS-005: 可用性需求
 - **Module**: Cloud
 - **Source**: `docs/design/PRD.md` §6.2
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   20. 服务可用性 ≥ 99.9%
@@ -77,11 +81,12 @@
   22. 灾备恢复时间 (RTO) ≤ 4h
   23. 数据丢失容限 (RPO) ≤ 1h
   24. 数据备份频率 ≥ 每小时增量
+- **Approved**: 2026-07-26
 
 ### RS-006: 安全性需求
 - **Module**: All
 - **Source**: `docs/design/PRD.md` §6.3, `embedded/system_architecture/SPEC.md` §4
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: ASIL-B (keys), ASIL-A (user data)
 - **SHALL**:
   25. 安全芯片等级 ≥ EAL5+
@@ -92,39 +97,42 @@
   30. 防重放攻击 via 一次性随机数 (Nonce)
   31. 端到端加密，敏感数据密文传输
   32. 审计日志保留 ≥ 3 年
+- **Approved**: 2026-07-26
 
 ### RS-007: 离线能力
 - **Module**: Embedded + Frontend
 - **Source**: `docs/design/PRD.md` §3.2.2
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   33. NFC 刷卡解锁不依赖手机电量 (手机没电时可用)
   34. 离线钥匙在有效期内持续有效
   35. 离线期间操作记录待网络恢复后自动同步
+- **Approved**: 2026-07-26
 
 ### RS-008: 协议兼容性
 - **Module**: Embedded + Protocol
 - **Source**: `docs/design/PRD.md` §5, `embedded/iccoa_protocol/docs/SPEC.md`, `embedded/ccc_protocol/docs/SPEC.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   36. 同时支持 ICCE (T/CA 110-2020) 与 CCC Digital Key 3.0 两大标准
   37. 车端固件同时包含 ICCE 和 CCC 协议栈，配对时自动协商
   38. 双证书支持：云端同时管理 ICCE 国密证书和 CCC X.509 证书
   39. App 根据车辆 VIN 识别协议类型，自动选用对应协议
+- **Approved**: 2026-07-26
 
 ### RS-009: 用户体验
 - **Module**: Frontend + Embedded
 - **Source**: `docs/design/PRD.md` §4.2
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   40. 车主携带手机走近车辆 (≤2m)，车门在 1 秒内自动解锁
   41. 车主离开车辆 (≥5m) 超过 30 秒，车门自动上锁
   42. 解锁过程手机无需解锁屏幕 (后台静默完成)
   43. 同一车辆最多支持 5 把数字钥匙
-
+- **Approved**: 2026-07-26
 ---
 
 ## 二、软件级需求 (Software Requirements)
@@ -216,7 +224,7 @@
 
 #### SWR-HUB-001: Registry 大小写规范化
 - **Source**: `specs/spec-fix-kni.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - Lowercase vendor and protocol strings before registry lookup
@@ -226,7 +234,7 @@
 
 #### SWR-HUB-002: nil 指针安全检查
 - **Source**: `specs/spec-fix-kni.md`
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - Add nil safety check before accessing RemoteControl field
@@ -235,7 +243,7 @@
 
 #### SWR-HUB-003: 单元测试覆盖
 - **Source**: `specs/spec-fix-p0.md` (FIX-001, FIX-002)
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - Add unit tests for `backend/cloud/hub/internal/service/` covering all 7 source files
@@ -247,7 +255,7 @@
 
 #### SWR-HUB-004: CI 覆盖率门禁
 - **Source**: `specs/spec-fix-p0.md` (FIX-003)
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - Enforce a coverage gate at fail-under=60 in CI
@@ -257,7 +265,7 @@
 
 #### SWR-HUB-005: CI 分层机制
 - **Source**: `specs/spec-fix-p0.md` (FIX-004, FIX-005, FIX-006)
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - Restructure CI into 3 layers (L1/L2/L3)
@@ -317,7 +325,7 @@
 
 #### SWR-EMB-001: NFC 通信层 (ST25R501)
 - **Source**: `embedded/ccc_protocol/docs/SPEC.md` §2
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - NFC 场检测 (13.56MHz)
@@ -328,7 +336,7 @@
 
 #### SWR-EMB-002: BLE 通信层 (NXP KW47A)
 - **Source**: `embedded/ccc_protocol/docs/SPEC.md` §3
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - BLE 5.0, GATT Server (CCC DK Service UUID 0xFFD1)
@@ -339,7 +347,7 @@
 
 #### SWR-EMB-003: UWB 测距层 (NXP NCJ29D6)
 - **Source**: `embedded/ccc_protocol/docs/SPEC.md` §4
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - IEEE 802.15.4z 参数配置
@@ -350,7 +358,7 @@
 
 #### SWR-EMB-004: ICCOA DK 3.0/4.0 协议栈
 - **Source**: `embedded/iccoa_protocol/docs/SPEC.md`
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - ICCOA BLE 广播格式
@@ -362,7 +370,7 @@
 
 #### SWR-EMB-005: ICCE 协议栈
 - **Source**: `embedded/icce_protocol/docs/technical_specification.md`
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - 基于 NXP KW47A BLE 模块
@@ -374,7 +382,7 @@
 
 #### SWR-EMB-006: 安全芯片 (SE050) 集成
 - **Source**: `embedded/ccc_protocol/docs/SPEC.md` §6, `embedded/system_architecture/SPEC.md` §4
-- **Status**: PROPOSED (spec completed)
+- **Status**: APPROVED (spec completed)
 - **ASIL**: ASIL-B
 - **SHALL**:
   - SCP03 安全通道建立
@@ -383,7 +391,7 @@
 
 #### SWR-EMB-007: 电源管理
 - **Source**: `embedded/system_architecture/SPEC.md` §5
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: QM
 - **SHALL**:
   - 5 级电源状态: ACTIVE/IDLE/SLEEP/DEEPSLEEP/POWEROFF
@@ -393,7 +401,7 @@
 
 #### SWR-EMB-008: 安全启动
 - **Source**: `embedded/system_architecture/SPEC.md` §4.4
-- **Status**: PROPOSED
+- **Status**: APPROVED
 - **ASIL**: ASIL-B
 - **SHALL**:
   - 4 阶段安全启动: BL → OS → APP → COMPLETE
