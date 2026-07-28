@@ -65,6 +65,13 @@ typedef struct {
     uint16_t uwb_char_handle;
     uint16_t data_ccc_handle;
 
+    /* CCC 描述符状态 (通知使能/禁用) */
+    uint16_t ccc_value;
+
+    /* UWB 测距结果缓存 */
+    int16_t  uwb_last_distance;
+    uint8_t  uwb_last_zone;
+
     /* 接收回调 */
     iccoa_ble_recv_cb_t recv_cb;
 
@@ -255,14 +262,20 @@ void hal_ble_on_write(uint16_t conn_handle, uint16_t char_handle,
         /* 控制命令处理 */
         if (len >= 1) {
             /* cmd = data[0], params = data[1..] */
-            /* TODO: 分发到控制模块 */
+            /* Dispatch control command to vehicle service */
+            if (len >= 2) {
+                iccoa_ctrl_cmd_e cmd = (iccoa_ctrl_cmd_e)data[0];
+                uint8_t param = data[1];
+                iccoa_ctrl_execute(cmd, param);
+            }
         }
     }
     /* CCC 写入 */
     else if (char_handle == g_ble.data_ccc_handle) {
-        /* 通知使能/禁用 */
-        uint16_t ccc = *(uint16_t *)data;
-        (void)ccc; /* TODO: 保存 CCC 状态 */
+        /* 通知使能/禁用 — save CCC descriptor state */
+        if (len >= 2) {
+            g_ble.ccc_value = (uint16_t)(data[0]) | ((uint16_t)(data[1]) << 8);
+        }
     }
 }
 
@@ -282,8 +295,11 @@ void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
         *len = sizeof(status);
     }
     else if (char_handle == g_ble.uwb_char_handle) {
-        /* 返回 UWB 测距数据 */
-        /* TODO: 填充当前测距结果 */
+        /* 返回 UWB 测距数据 — fill cached ranging result */
+        data[0] = (uint8_t)(g_ble.uwb_last_distance & 0xFF);
+        data[1] = (uint8_t)((g_ble.uwb_last_distance >> 8) & 0xFF);
+        data[2] = g_ble.uwb_last_zone;
+        data[3] = 0x00; /* reserved */
         *len = 4;
     }
 }

@@ -326,7 +326,7 @@ ble_result_t ble_send_data(uint16_t conn_handle,
     }
     
     ctx->pending_packets++;
-    ctx->last_activity = 0;  // TODO: 获取实际时间
+    ctx->last_activity = (uint32_t)(time(NULL) & 0xFFFFFFFF);  /* Get current UTC timestamp */
     
     return BLE_SUCCESS;
 }
@@ -391,7 +391,7 @@ static void ble_adapter_event_handler(uint8_t event, void *data)
             conn_context_t *ctx = find_connection(evt->conn_handle);
             if (ctx) {
                 ctx->info.state = BLE_CONN_STATE_CONNECTED;
-                ctx->last_activity = 0;  // TODO
+                ctx->last_activity = (uint32_t)(time(NULL) & 0xFFFFFFFF);
                 
                 /* 启动加密 */
                 ble_adapter_start_encryption(evt->conn_handle);
@@ -432,7 +432,7 @@ static void ble_adapter_event_handler(uint8_t event, void *data)
                     memcpy(&ctx->rx_buffer[ctx->rx_len], evt->data, evt->length);
                     ctx->rx_len += evt->length;
                 }
-                ctx->last_activity = 0;  // TODO
+                ctx->last_activity = (uint32_t)(time(NULL) & 0xFFFFFFFF);
             }
             break;
         }

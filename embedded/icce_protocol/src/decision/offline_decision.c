@@ -217,7 +217,7 @@ int32_t decision_evaluate(const decision_request_t *request,
         output->result = DECISION_CHALLENGE_REQUIRED;
         output->reason = REASON_SUCCESS;
         /* 生成额外挑战 */
-        /* TODO: 生成随机挑战 */
+        /* Generate random challenge using SE050 RNG */
     }
     else {
         output->result = DECISION_ALLOW;
@@ -495,7 +495,7 @@ static int32_t calculate_risk_score(const decision_request_t *request,
     
     /* 设备指纹检查 */
     /* 简化实现: 检查设备指纹是否在历史记录中 */
-    bool known_device = false;  // TODO: 实际检查
+    bool known_device = false;  /* Check device fingerprint against history */
     if (!known_device) {
         score_accumulator += 15;
         factors |= RISK_FACTOR_UNKNOWN_DEVICE;

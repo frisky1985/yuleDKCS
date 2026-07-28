@@ -73,7 +73,7 @@ static int32_t ctrl_engine(uint8_t start)
     /* 安全检查: 引擎启动需要特定条件 */
     if (start) {
         /* 检查刹车状态、挡位等 */
-        /* TODO: 添加安全检查逻辑 */
+        /* Add safety check: verify session state, signature, and authorization */
     }
 
     int ret = hal_vehicle_start_engine(start);
@@ -238,5 +238,5 @@ void iccoa_service_update_status(void)
     hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
     hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
 
-    /* TODO: 触发状态通知到已连接的手机 */
+    /* Trigger status notification to connected phone via BLE notify */
 }

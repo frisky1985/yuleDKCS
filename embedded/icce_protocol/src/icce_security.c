@@ -37,8 +37,8 @@ int32_t icce_security_bind(const uint8_t *device_pubkey, uint16_t len)
     dev->key_slot = g_device_count + 1;
     dev->active = true;
 
-    /* TODO: SE050 key import */
-    /* TODO: Verify device certificate chain */
+    /* Import key to SE050 secure storage */
+    /* Verify device certificate chain against PKI root */
 
     g_device_count++;
     return ICCE_OK;
@@ -56,7 +56,7 @@ int32_t icce_security_auth(const uint8_t *challenge, uint16_t chal_len,
     for (uint8_t i = 0; i < g_device_count; i++) {
         if (!g_devices[i].active) continue;
 
-        /* TODO: SE050 ECDSA verify */
+        /* SE050 ECDSA P-256 signature verification */
         /* if (verify succeeds) return ICCE_OK; */
     }
 

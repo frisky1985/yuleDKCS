@@ -175,7 +175,7 @@ security_result_t security_verify_response(
     ctx->last_activity = current_time;
     
     /* 派生会话密钥 (ECDH) */
-    // TODO: 实际的ECDH密钥协商
+    // Perform ECDH key agreement via SE050\n    uint8_t shared_secret[32];\n    if (se050_ecdh_compute(g_se050_ctx, se050_key_id_vehicle_eph, peer_pub, shared_secret, sizeof(shared_secret)) == 0) {\n        /* Derive session key from shared secret */\n        derive_session_key(shared_secret, sizeof(shared_secret), session_key);\n        return 0;\n    }\n    return -1;
     
     memcpy(session, &ctx->info, sizeof(session_info_t));
     

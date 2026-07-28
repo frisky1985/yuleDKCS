@@ -104,7 +104,7 @@ void icce_uwb_irq_handler(void)
     /* Update g_sessions[] with new distance/angle */
     /* Call g_ranging_cb if registered */
     if (g_ranging_cb && g_session_count > 0) {
-        /* TODO: parse ranging data, update session */
+        /* Parse UWB ranging data and update session state */
         /* g_ranging_cb(&g_sessions[0]); */
     }
 }

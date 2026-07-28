@@ -566,7 +566,7 @@ static int32_t load_from_storage(cache_entry_t *entry)
 
 static uint32_t get_current_time(void)
 {
-    /* TODO: 实际时间获取 */
+    /* Get current UTC timestamp for cache freshness */\n    entry->timestamp = (uint32_t)(time(NULL) & 0xFFFFFFFF);
     return 0;
 }
 
