@@ -123,7 +123,7 @@ jobs:
       - name: Integration Tests (hub)
         working-directory: backend/cloud/hub/tests/integration
         run: go test -v -count=1 ./...
-        continue-on-error: false  # Integration tests must pass
+        # Blocking — integration tests must pass for L3 to proceed
 
       - name: Upload integration test report
         if: always()
@@ -219,15 +219,33 @@ jobs:
 
       # ── Docker Build (hub) ──
       - name: Docker Build hub
-        if: false  # Disabled until Dockerfile is ready
+        env:
+          DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'docker.io' }}
+          IMAGE_TAG: ${{ github.sha || 'latest' }}
         run: |
-          docker build -t yuledkcs/hub:latest -f backend/cloud/hub/Dockerfile backend/cloud/hub
+          IMAGE="${DOCKER_REGISTRY}/yuledkcs/hub:${IMAGE_TAG}"
+          echo "→ Building hub image: ${IMAGE}"
+          docker build \
+            --load \
+            -t "${IMAGE}" \
+            -f backend/cloud/hub/Dockerfile \
+            backend/cloud/hub
+          echo "✅ hub image built: ${IMAGE}"
 
       # ── Docker Build (dkcs) ──
       - name: Docker Build dkcs
-        if: false  # Disabled until Dockerfile is ready
+        env:
+          DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'docker.io' }}
+          IMAGE_TAG: ${{ github.sha || 'latest' }}
         run: |
-          docker build -t yuledkcs/dkcs:latest -f backend/dkcs/Dockerfile backend/dkcs
+          IMAGE="${DOCKER_REGISTRY}/yuledkcs/dkcs:${IMAGE_TAG}"
+          echo "→ Building dkcs image: ${IMAGE}"
+          docker build \
+            --load \
+            -t "${IMAGE}" \
+            -f backend/dkcs/Dockerfile \
+            backend/dkcs
+          echo "✅ dkcs image built: ${IMAGE}"
 
       # ── Summary ──
       - name: Build summary
