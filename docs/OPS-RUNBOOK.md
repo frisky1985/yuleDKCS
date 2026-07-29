@@ -3,6 +3,8 @@
 > 版本: 1.0.0  
 > 更新日期: 2026-07-27  
 > 适用版本: v2.1.x
+>
+> **数据库选型**: 本手册已统一为 PostgreSQL 15+，详见 [DATABASE-DECISION.md](./DATABASE-DECISION.md)
 
 ---
 
@@ -45,7 +47,7 @@ yuleDKCS 是一套完整的数字钥匙解决方案，采用三层云端架构�
 
 | 组件 | 用途 | 部署方式 |
 |------|------|----------|
-| MySQL 8.0 | 持久化存储（密钥记录、设备信息、操作日志） | StatefulSet / Docker |
+| PostgreSQL 15+ | 持久化存储（密钥记录、设备信息、操作日志） | StatefulSet / Docker |
 | Redis 7 | 缓存层（会话、令牌、速率限制计数器） | StatefulSet / Docker |
 | Kafka 7.5 | 消息队列（密钥事件、车控指令、遥测数据） | StatefulSet / Docker |
 | EMQX 5.5 | MQTT Broker（TCU 车端通信） | Deployment / Docker |
@@ -78,7 +80,7 @@ kustomization.yaml
 │   ├── service.yaml            # ClusterIP: 9091(gRPC+metrics)
 │   ├── deployment.yaml         # 3 副本, 滚动更新
 │   └── hpa.yaml                # HPA: 3-20 副本, CPU 70% / Mem 80%
-├── mysql/statefulset.yaml      # MySQL 8.0 单节点
+├── postgresql/statefulset.yaml # PostgreSQL 15+ 单节点
 ├── redis/statefulset.yaml      # Redis 7 单节点
 ├── kafka/kafka.yaml            # Kafka 7.5 + Zookeeper 单节点
 ├── emqx.yaml                   # EMQX 5.5 MQTT Broker
@@ -92,7 +94,7 @@ kustomization.yaml
 |------|------------------|---------------------|
 | Hub | 3 副本 (HPA 3-20) | 1 副本 (HPA 1-3) |
 | DKCS | 3 副本 (HPA 3-20) | 1 副本 (HPA 1-3) |
-| MySQL | 1 单节点 | 1 单节点 |
+| PostgreSQL | 1 单节点 | 1 单节点 |
 | Redis | 1 单节点 | 1 单节点 |
 | Kafka | 1 单节点 | 1 单节点 |
 
