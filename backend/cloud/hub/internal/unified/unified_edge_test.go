@@ -724,3 +724,40 @@ func TestICCECodecNilBodySafety(t *testing.T) {
 		}
 	})
 }
+
+// ============================================================
+// strPtr nil safety — 不应 panic
+// ============================================================
+
+func TestStrPtrNilSafety(t *testing.T) {
+	t.Run("nil pointer returns empty string", func(t *testing.T) {
+		result := strPtr(nil)
+		if result != "" {
+			t.Errorf("expected empty string, got %q", result)
+		}
+	})
+
+	t.Run("non-nil pointer returns value", func(t *testing.T) {
+		val := "hello"
+		result := strPtr(&val)
+		if result != "hello" {
+			t.Errorf("expected \"hello\", got %q", result)
+		}
+	})
+
+	t.Run("empty string pointer returns empty string", func(t *testing.T) {
+		val := ""
+		result := strPtr(&val)
+		if result != "" {
+			t.Errorf("expected empty string, got %q", result)
+		}
+	})
+
+	t.Run("unicode string preserved", func(t *testing.T) {
+		val := "你好世界"
+		result := strPtr(&val)
+		if result != "你好世界" {
+			t.Errorf("expected \"你好世界\", got %q", result)
+		}
+	})
+}

@@ -835,3 +835,11 @@ func ToUnifiedMessage(req interface{}) *UnifiedMessage {
 	_ = reflect.TypeOf(req)
 	return msg
 }
+
+// strPtr safely dereferences a *string, returning "" if nil.
+func strPtr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
