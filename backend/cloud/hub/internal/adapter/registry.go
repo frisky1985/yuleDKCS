@@ -80,7 +80,7 @@ func (r *Registry) GetByVendor(vendor string) (Adapter, bool) {
 func (r *Registry) ListStatus(ctx context.Context) []*pb.AdapterStatus {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var statuses []*pb.AdapterStatus
+	statuses := make([]*pb.AdapterStatus, 0, len(r.adapters))
 	for _, a := range r.adapters {
 		status, err := a.HealthCheck(ctx)
 		if err != nil {

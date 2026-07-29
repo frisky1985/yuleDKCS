@@ -3,6 +3,7 @@ package unified
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // Negotiator 协议协商器 - 根据设备能力和车辆支持情况选择最优协议
@@ -176,7 +177,7 @@ func (n *Negotiator) supports(p ProtocolType) bool {
 
 // AutoDetectProtocol 根据设备信息自动推断协议
 func AutoDetectProtocol(vendor, os, appVersion string) ProtocolType {
-	vendorLower := vendor
+	vendorLower := strings.ToLower(vendor)
 	// Android 厂商特定协议
 	switch vendorLower {
 	case "xiaomi":

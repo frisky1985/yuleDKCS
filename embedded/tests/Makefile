@@ -70,7 +70,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
 CFLAGS   := -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
             -Wno-unused-function -Wno-return-type -Wno-format -g -O0 \
             -Wno-implicit-function-declaration \
-            -DUNIT_TEST -DBLE_SUPERVISION_TIMEOUT_MS=4000 \
+            -DUNIT_TEST -DTEST_MODE -DBLE_SUPERVISION_TIMEOUT_MS=4000 \
             -DKW47A_CS_PORT=0 -DKW47A_CS_PIN=4 \
             -DKW47A_RST_PORT=0 -DKW47A_RST_PIN=1 \
             -DKW47A_WAKE_PORT=0 -DKW47A_WAKE_PIN=2 \

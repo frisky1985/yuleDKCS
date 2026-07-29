@@ -37,7 +37,7 @@ coverage.out
 # Binaries
 hub
 yuledkcs
-dkcs
+backend/dkcs/dkcs
 
 # Reports (generated HTML)
 *.html

@@ -15,6 +15,45 @@
 #include "unity.h"
 #include "ccc_digital_key.h"
 
+/* Forward declarations for internal functions not in public header */
+/* NFC LPCD internal types */
+typedef enum { NFC_PWR_OFF = 0, NFC_PWR_LPCD, NFC_PWR_LISTEN, NFC_PWR_ACTIVE } nfc_power_state_e;
+typedef struct {
+    uint8_t enable; uint8_t poll_interval_ms; uint8_t sense_dur_ms;
+    uint8_t rssi_thresh; uint16_t field_upper_mv; uint16_t field_lower_mv;
+} nfc_lpcd_config_t;
+
+/* NFC internal functions */
+ccc_status_t nfc_send(const uint8_t *data, uint16_t len);
+ccc_status_t nfc_recv(uint8_t *buf, uint16_t *len, uint32_t timeout_ms);
+ccc_status_t nfc_oob_exchange(ccc_nfc_oob_data_t *oob_out, ccc_nfc_oob_data_t *oob_in);
+ccc_status_t nfc_enter_lpcd(const nfc_lpcd_config_t *cfg);
+ccc_status_t nfc_exit_lpcd(void);
+ccc_status_t nfc_power_down(void);
+bool         nfc_lpcd_field_detect(void);
+bool         nfc_is_lpcd_active(void);
+nfc_power_state_e nfc_get_power_state(void);
+
+/* BLE low power internal types */
+typedef enum {
+    BLE_PWR_OFF = 0, BLE_PWR_IDLE, BLE_PWR_ADV_CONN, BLE_PWR_ADV_NCONN,
+    BLE_PWR_CONNECTED, BLE_PWR_SLEEP
+} ble_power_state_e;
+typedef struct {
+    uint8_t adv_interval_ms; uint8_t tx_power_dbm; uint8_t min_conn_interval;
+    uint8_t max_conn_interval; uint16_t slave_latency; uint16_t adv_timeout_s;
+} ble_lp_config_t;
+
+/* BLE internal functions */
+ccc_status_t ble_enter_lp_mode(const ble_lp_config_t *cfg);
+ccc_status_t ble_exit_lp_mode(void);
+ccc_status_t ble_enter_deep_sleep(void);
+ccc_status_t ble_wake_from_sleep(void);
+ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t len);
+ccc_status_t ble_register_uwb_wake_cb(void (*cb)(int reason));
+bool         ble_is_lp_mode(void);
+ble_power_state_e ble_get_power_state(void);
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -245,7 +284,7 @@ void test_se_key_store_load(void)
     ccc_status_t ret = sec_store_key(key_id, key_data, sizeof(key_data));
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
-    uint8_t loaded[16];
+    uint8_t loaded[32];
     uint16_t loaded_len = sizeof(loaded);
     ret = sec_load_key(key_id, loaded, &loaded_len);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
@@ -349,30 +388,32 @@ void test_key_sharing(void)
 
     ccc_digital_key_t key;
     memset(&key, 0, sizeof(key));
-    memcpy(key.key_id, "share_test_key", 14);
+    uint8_t key_id[KEY_ID_LEN];
+    memcpy(key_id, "share_test_key__", KEY_ID_LEN);
+    memcpy(key.key_id, key_id, KEY_ID_LEN);
     key.key_type = KEY_TYPE_OWNER;
     key.state = KEY_STATE_ACTIVE;
     key_create(&key);
 
     /* 分享密钥 */
-    ccc_status_t ret = key_share((const uint8_t*)"share_test_key",
+    ccc_status_t ret = key_share(key_id,
                                   KEY_TYPE_TEMPORARY,
                                   3600); /* 1 hour */
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
     /* 暂停 */
-    ret = key_suspend((const uint8_t*)"share_test_key");
+    ret = key_suspend(key_id);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
     /* 恢复 */
-    ret = key_resume((const uint8_t*)"share_test_key");
+    ret = key_resume(key_id);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
     /* 撤销 */
-    ret = key_revoke((const uint8_t*)"share_test_key");
+    ret = key_revoke(key_id);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
-    key_delete((const uint8_t*)"share_test_key");
+    key_delete(key_id);
     key_mgmt_deinit();
 }
 
@@ -442,6 +483,349 @@ void test_security_sign_verify(void)
 }
 
 /* ========================================================================
+ *  CCC_NFC_010 — NFC LPCD 低功耗检测模式
+ * ======================================================================== */
+void test_nfc_lpcd_mode(void)
+{
+    nfc_st25r501_init();
+
+    /* 默认 LPCD 配置 */
+    ccc_status_t ret = nfc_enter_lpcd(NULL);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 确认处于 LPCD 状态 */
+    bool lpcd_active = nfc_is_lpcd_active();
+    TEST_ASSERT_TRUE(lpcd_active);
+
+    nfc_power_state_e pwr = nfc_get_power_state();
+    TEST_ASSERT_EQUAL(1, pwr); /* NFC_PWR_LPCD */
+
+    /* 场检测 (LPCD 模式下) */
+    bool field = nfc_lpcd_field_detect();
+    TEST_ASSERT_FALSE(field);
+
+    /* 退出 LPCD */
+    ret = nfc_exit_lpcd();
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    lpcd_active = nfc_is_lpcd_active();
+    TEST_ASSERT_FALSE(lpcd_active);
+
+    /* 带自定义配置进入 LPCD */
+    nfc_lpcd_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.enable = 1;
+    cfg.poll_interval_ms = 128;
+    cfg.sense_dur_ms = 8;
+    cfg.rssi_thresh = 30;
+    cfg.field_upper_mv = 500;
+    cfg.field_lower_mv = 100;
+
+    ret = nfc_enter_lpcd(&cfg);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 电源关闭 */
+    ret = nfc_power_down();
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    pwr = nfc_get_power_state();
+    TEST_ASSERT_EQUAL(0, pwr); /* NFC_PWR_OFF */
+
+    nfc_st25r501_deinit();
+}
+
+/* ========================================================================
+ *  CCC_NFC_011 — NFC 数据发送/接收
+ * ======================================================================== */
+void test_nfc_send_recv(void)
+{
+    nfc_st25r501_init();
+
+    uint8_t data[] = { 0x00, 0x01, 0x02, 0x03, 0x04 };
+
+    /* 发送数据 */
+    ccc_status_t ret = nfc_send(data, sizeof(data));
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 非法参数 */
+    ret = nfc_send(NULL, 5);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = nfc_send(data, 0);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    /* 接收数据 */
+    uint8_t buf[64];
+    uint16_t len = sizeof(buf);
+    ret = nfc_recv(buf, &len, 100);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 非法参数 */
+    ret = nfc_recv(NULL, &len, 100);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    nfc_st25r501_deinit();
+}
+
+/* ========================================================================
+ *  CCC_NFC_012 — NFC OOB 交换非法参数
+ * ======================================================================== */
+void test_nfc_oob_exchange(void)
+{
+    nfc_st25r501_init();
+
+    ccc_nfc_oob_data_t oob_in, oob_out;
+    memset(&oob_in, 0, sizeof(oob_in));
+    memset(&oob_out, 0, sizeof(oob_out));
+
+    /* 非法参数 */
+    ccc_status_t ret = nfc_oob_exchange(NULL, &oob_in);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = nfc_oob_exchange(&oob_out, NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    nfc_st25r501_deinit();
+}
+
+/* ========================================================================
+ *  CCC_BLE_020 — BLE 低功耗模式
+ * ======================================================================== */
+void test_ble_low_power_mode(void)
+{
+    ble_kw47a_init();
+
+    /* 进入低功耗广播模式 */
+    ccc_status_t ret = ble_enter_lp_mode(NULL);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    TEST_ASSERT_TRUE(ble_is_lp_mode());
+
+    /* 带自定义配置 */
+    ble_lp_config_t cfg;
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.adv_interval_ms = 200;
+    cfg.tx_power_dbm = -4;
+    cfg.min_conn_interval = 30;
+    cfg.max_conn_interval = 250;
+    cfg.slave_latency = 500;
+    cfg.adv_timeout_s = 120;
+
+    ret = ble_enter_lp_mode(&cfg);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 退出低功耗模式 */
+    ret = ble_exit_lp_mode();
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    TEST_ASSERT_FALSE(ble_is_lp_mode());
+
+    ble_kw47a_deinit();
+}
+
+/* ========================================================================
+ *  CCC_BLE_021 — BLE 深度睡眠
+ * ======================================================================== */
+void test_ble_deep_sleep(void)
+{
+    ble_kw47a_init();
+
+    ccc_status_t ret = ble_enter_deep_sleep();
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    ret = ble_wake_from_sleep();
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    ble_kw47a_deinit();
+}
+
+/* ========================================================================
+ *  CCC_BLE_022 — BLE UWB 数据桥接
+ * ======================================================================== */
+void test_ble_send_to_uwb(void)
+{
+    ble_kw47a_init();
+
+    uint8_t data[] = { 0xAA, 0xBB, 0xCC };
+    ccc_status_t ret = ble_send_to_uwb(0x12345678, data, sizeof(data));
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 非法参数 */
+    ret = ble_send_to_uwb(0, NULL, 0);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    /* 注册 UWB 唤醒回调 */
+    ret = ble_register_uwb_wake_cb(NULL);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    ble_kw47a_deinit();
+}
+
+/* ========================================================================
+ *  CCC_CORE_015 — 密钥验证
+ * ======================================================================== */
+void test_key_validate(void)
+{
+    key_mgmt_init();
+
+    /* 创建密钥 */
+    ccc_digital_key_t key;
+    memset(&key, 0, sizeof(key));
+    uint8_t key_id[KEY_ID_LEN] = "validate_test_k00";
+    memcpy(key.key_id, key_id, KEY_ID_LEN);
+    key.key_type = KEY_TYPE_OWNER;
+    key.state = KEY_STATE_ACTIVE;
+    key.valid_from = 1000000;
+    key.valid_until = 2000000;
+    key_create(&key);
+
+    /* 验证有效密钥 */
+    ccc_status_t ret = key_validate(key_id);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 暂停后验证应被拒绝 */
+    key_suspend(key_id);
+    ret = key_validate(key_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_DENIED, ret);
+
+    /* 恢复后应通过 */
+    key_resume(key_id);
+    ret = key_validate(key_id);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 撤销后应被拒绝 */
+    key_revoke(key_id);
+    ret = key_validate(key_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_DENIED, ret);
+
+    /* 不存在的密钥 */
+    uint8_t fake_id[KEY_ID_LEN] = "fake_key_0000000";
+    ret = key_validate(fake_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    key_delete(key_id);
+    key_mgmt_deinit();
+}
+
+/* ========================================================================
+ *  CCC_CORE_016 — 密钥管理边界条件
+ * ======================================================================== */
+void test_key_mgmt_edge_cases(void)
+{
+    key_mgmt_init();
+
+    /* 重复创建 */
+    ccc_digital_key_t key;
+    memset(&key, 0, sizeof(key));
+    uint8_t key_id[KEY_ID_LEN] = "dup_test_key_000";
+    memcpy(key.key_id, key_id, KEY_ID_LEN);
+    key_create(&key);
+
+    ccc_status_t ret = key_create(&key);
+    TEST_ASSERT_EQUAL(CCC_ERR_ALREADY_EXISTS, ret);
+
+    /* NULL 参数 */
+    ret = key_create(NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = key_get(NULL, &key);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = key_get(key_id, NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = key_delete(NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = key_list(NULL, NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    /* 不存在的密钥 */
+    uint8_t fake_id[KEY_ID_LEN] = "nonexistent_key0";
+    ret = key_get(fake_id, &key);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    ret = key_delete(fake_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    ret = key_share(fake_id, KEY_TYPE_FRIEND, 3600);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    ret = key_suspend(fake_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    ret = key_resume(fake_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    ret = key_revoke(fake_id);
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_FOUND, ret);
+
+    key_delete(key_id);
+    key_mgmt_deinit();
+}
+
+/* ========================================================================
+ *  CCC_BLE_030 — GATT 回调注册和通知
+ * ======================================================================== */
+/* 有效的回调 — 静态回调函数 */
+static void test_gatt_cb(uint16_t char_uuid, const uint8_t *data, uint16_t len)
+{
+    (void)char_uuid; (void)data; (void)len;
+}
+
+void test_ble_gatt_callbacks(void)
+{
+    ble_kw47a_init();
+
+    /* 注册 GATT 值变化回调 */
+    ccc_status_t ret = ble_register_gatt_value_change_cb(NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    /* 有效的回调 */
+    ret = ble_register_gatt_value_change_cb(test_gatt_cb);
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* GATT 通知 */
+    uint8_t notify_data[] = { 0x10, 0x20, 0x30 };
+    ret = ble_gatt_notify(0xFFD2, notify_data, sizeof(notify_data));
+    TEST_ASSERT_EQUAL(CCC_OK, ret);
+
+    /* 非法参数 */
+    ret = ble_gatt_notify(0xFFD2, NULL, 0);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ble_kw47a_deinit();
+}
+
+/* ========================================================================
+ *  CCC_SEC_010 — 安全模块边界测试
+ * ======================================================================== */
+void test_security_edge_cases(void)
+{
+    sec_init();
+
+    /* 未初始化时调用 */
+    sec_deinit();
+
+    ccc_status_t ret = sec_store_key(NULL, NULL, 0);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    uint8_t buf[32];
+    uint16_t len = sizeof(buf);
+    ret = sec_load_key(NULL, buf, &len);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    ret = sec_delete_key(NULL);
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, ret);
+
+    /* 重新初始化 */
+    sec_init();
+    TEST_ASSERT_EQUAL(CCC_OK, sec_init()); /* 重复初始化 */
+
+    sec_deinit();
+}
+
+/* ========================================================================
  *  Test Runner
  * ======================================================================== */
 int run_ccc_core_tests(void)
@@ -466,6 +850,16 @@ int run_ccc_core_tests(void)
     RUN_TEST(test_uwb_threshold_and_callback);
     RUN_TEST(test_ccc_full_lifecycle);
     RUN_TEST(test_security_sign_verify);
+    RUN_TEST(test_nfc_lpcd_mode);
+    RUN_TEST(test_nfc_send_recv);
+    RUN_TEST(test_nfc_oob_exchange);
+    RUN_TEST(test_ble_low_power_mode);
+    RUN_TEST(test_ble_deep_sleep);
+    RUN_TEST(test_ble_send_to_uwb);
+    RUN_TEST(test_key_validate);
+    RUN_TEST(test_key_mgmt_edge_cases);
+    RUN_TEST(test_ble_gatt_callbacks);
+    RUN_TEST(test_security_edge_cases);
 
     UNITY_END();
 }

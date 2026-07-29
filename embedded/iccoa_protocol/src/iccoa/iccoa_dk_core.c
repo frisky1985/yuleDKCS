@@ -148,7 +148,8 @@ int32_t iccoa_dk_run(void)
 
     g_ctx.running = 1;
 
-    /* 主循环 (阻塞) */
+#ifndef TEST_MODE
+    /* 主循环 (阻塞) — 在 TEST_MODE 下跳过，防止主机测试环境挂死 */
     while (g_ctx.running) {
         /* 平台相关的主循环:
          * - 处理 BLE 事件
@@ -159,6 +160,7 @@ int32_t iccoa_dk_run(void)
         extern void platform_main_loop_step(void);
         platform_main_loop_step();
     }
+#endif /* TEST_MODE */
 
     return ICCOA_OK;
 }

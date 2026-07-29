@@ -78,15 +78,64 @@ void delay_ms(uint32_t ms) { (void)ms; }
 /* ========================================================================
  *  CCC SE050 I2C — security.c
  * ======================================================================== */
+/* Mock SE050 transparent storage for testing */
+#define MOCK_SE050_OBJ_MAX 32
+static struct {
+    uint32_t obj_id;
+    uint8_t  data[576];
+    uint16_t len;
+} g_mock_se050_objs[MOCK_SE050_OBJ_MAX];
+static int g_mock_se050_obj_count = 0;
+
 int32_t i2c_transfer(uint8_t d, uint8_t a, const uint8_t *tx, uint16_t txl, uint8_t *rx, uint16_t rxl)
 { (void)d;(void)a;(void)tx;(void)txl;(void)rx;(void)rxl; return 0; }
 int se05x_open_session(void) { return 0; }
 void se05x_close_session(void) {}
 int se05x_write_transparent(uint32_t oid, const uint8_t *d, uint16_t l)
-{ (void)oid;(void)d;(void)l; return 0; }
+{
+    /* Find existing or free slot */
+    for (int i = 0; i < MOCK_SE050_OBJ_MAX; i++) {
+        if (i < g_mock_se050_obj_count && g_mock_se050_objs[i].obj_id == oid) {
+            memcpy(g_mock_se050_objs[i].data, d, l);
+            g_mock_se050_objs[i].len = l;
+            return 0;
+        }
+    }
+    if (g_mock_se050_obj_count < MOCK_SE050_OBJ_MAX) {
+        int idx = g_mock_se050_obj_count++;
+        g_mock_se050_objs[idx].obj_id = oid;
+        memcpy(g_mock_se050_objs[idx].data, d, l);
+        g_mock_se050_objs[idx].len = l;
+        return 0;
+    }
+    return -1;
+}
 int se05x_read_transparent(uint32_t oid, uint8_t *d, uint16_t *l)
-{ (void)oid;(void)d;*l=0; return 0; }
-int se05x_delete_object(uint32_t oid) { (void)oid; return 0; }
+{
+    for (int i = 0; i < g_mock_se050_obj_count; i++) {
+        if (g_mock_se050_objs[i].obj_id == oid) {
+            uint16_t copy_len = (*l < g_mock_se050_objs[i].len) ? *l : g_mock_se050_objs[i].len;
+            memcpy(d, g_mock_se050_objs[i].data, copy_len);
+            *l = g_mock_se050_objs[i].len;
+            return 0;
+        }
+    }
+    *l = 0;
+    return -1; /* Not found */
+}
+int se05x_delete_object(uint32_t oid) {
+    for (int i = 0; i < g_mock_se050_obj_count; i++) {
+        if (g_mock_se050_objs[i].obj_id == oid) {
+            /* Shift remaining objects */
+            for (int j = i; j < g_mock_se050_obj_count - 1; j++) {
+                g_mock_se050_objs[j] = g_mock_se050_objs[j + 1];
+            }
+            g_mock_se050_obj_count--;
+            return 0;
+        }
+    }
+    return -1;
+}
 int se05x_get_free_memory(uint32_t *f) { *f=4096; return 0; }
 
 /* ========================================================================
@@ -119,6 +168,11 @@ int uwb_ncj29d6_start_ranging(uint8_t ch, uint8_t md) { (void)ch;(void)md; retur
 int uwb_ncj29d6_set_threshold(int16_t mn, int16_t mx) { (void)mn;(void)mx; return 0; }
 int uwb_ncj29d6_stop_ranging(uint32_t sid) { (void)sid; return 0; }
 int uwb_ncj29d6_get_distance(uint32_t sid, uint16_t *d) { (void)sid; *d=300; return 0; }
+int se050_sha256(const uint8_t *in, uint16_t ilen, uint8_t *out) { (void)in;(void)ilen; if(out)memset(out,0xAB,32); return 0; }
+int se050_verify_share_token(const uint8_t *token, uint16_t tlen, const uint8_t *pubkey, uint16_t pklen) { (void)token;(void)tlen;(void)pubkey;(void)pklen; return 0; }
+int se050_ecdsa_sign(const uint8_t *key, const uint8_t *hash, uint8_t *sig) { (void)key;(void)hash;(void)sig; return 0; }
+int se050_key_derive_shared(const uint8_t *priv, uint16_t privlen, const uint8_t *pub, uint16_t publen, uint8_t *out, uint16_t *outlen) { (void)priv;(void)privlen;(void)pub;(void)publen; if(outlen)*outlen=32; if(out)memset(out,0x42,32); return 0; }
+int se050_key_get_public_key(const uint8_t *key, uint8_t *pub, uint16_t *publen) { (void)key; if(publen)*publen=64; if(pub)memset(pub,0xAA,64); return 0; }
 
 /* ========================================================================
  *  ICCE BLE stubs — icce_digital_key.h API

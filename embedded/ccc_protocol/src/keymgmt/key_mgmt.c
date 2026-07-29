@@ -384,6 +384,9 @@ ccc_status_t key_share(const uint8_t *key_id, key_type_e type, uint32_t duration
     shared.valid_until = shared.valid_from + duration_s;
     shared.version++;
 
+    /* Generate unique key_id for the shared key: original_id + version byte */
+    shared.key_id[KEY_ID_LEN - 1] = shared.version;
+
     return key_create(&shared);
 }
 

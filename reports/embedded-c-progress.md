@@ -1,6 +1,6 @@
 # Embedded C 安全基线报告
 
-> 日期: 2026-07-18  
+> 日期: 2026-07-30  
 > 统计基线: 13,997 行 C + 4,146 行 H = **18,143 行** 嵌入式 C 代码
 
 ## 1. 测试框架
@@ -18,7 +18,7 @@ Unity (http://www.throwtheswitch.org) 已集成到 `embedded/tests/vendor/unity/
 |------|--------|--------|------|------|
 | `tests/test/test_iccoa_dk_core.c` | ICCOA (DK 3.0/4.0) | 12 | 12 | 0 |
 | `tests/test/test_iccoa_ble.c` | ICCOA BLE | 3 | 3 | 0 |
-| `tests/test/test_ccc_dk_core.c` | CCC (BLE/NFC/UWB/Security) | 18 | 16 | 2 |
+| `tests/test/test_ccc_dk_core.c` | CCC (BLE/NFC/UWB/Security) | 28 | 28 | 0 |
 | `tests/test/test_icce.c` | ICCE (Security/Vehicle/UWB/Edge) | 24 | 24 | 0 |
 | `tests/test/test_unified.c` | Unified Protocol | 12 | **阻塞** | — |
 
@@ -29,10 +29,18 @@ Unity (http://www.throwtheswitch.org) 已集成到 `embedded/tests/vendor/unity/
 - DK 3.0 校验和/响应、车辆控制/状态
 - DK 4.0 初始化、服务初始化
 
-**CCC** `make test_ccc` — ⚠️ 16/18 通过，2 个已知失败
-- ❌ `test_se_key_store_load`: 安全模块 key store 加载返回 -1（预期 0）
-- ❌ `test_key_sharing`: key sharing 返回 -8（预期 0）
-- 均有 `RUN_TEST` + `TEST_ASSERT_EQUAL_INT32` 保护，失败后继续执行后续测试
+**CCC** `make test_ccc` — ✅ 28/28 通过（已修复 2 个 P0 失败）
+- 初始化/反初始化/运行循环/全生命周期
+- UWB 初始化/会话管理/区域分类/阈值设置
+- NFC 初始化/场检测/监听模式/LPCD 低功耗模式/数据收发/非法参数
+- BLE 初始化/GATT 注册/连接管理/低功耗模式/深度睡眠/UWB数据桥接
+- 安全模块初始化/密钥存储和加载/签名验证/边界条件
+- 密钥管理 CRUD/密钥分享/密钥验证/边界条件/重复创建/不存在密钥
+- GATT 回调注册和通知
+
+**修复说明：**
+1. `test_se_key_store_load` — 缓冲区从 16 字节扩展到 32 字节，满足 `sec_load_key` 的最小缓冲区要求；Mock SE050 存储实现支持透明对象读写
+2. `test_key_sharing` — 使用 16 字节 `uint8_t` 数组替代 C 字符串字面量，解决 `memcmp` 比较 16 字节时字节 15 不匹配的问题；同时修复 `key_share` 实现，为共享密钥生成唯一的 `key_id`（添加版本字节后缀）
 
 **ICCE** `make test_icce` — ✅ 24/24 通过
 - 初始化/反初始化、运行循环、全生命周期
@@ -53,8 +61,8 @@ Unity (http://www.throwtheswitch.org) 已集成到 `embedded/tests/vendor/unity/
 `embedded/tests/Makefile` 结构清晰，支持 5 个目标：
 
 ```
-make test_iccoa     → ICCOA 独立测试（12 断言）
-make test_ccc       → CCC 独立测试（18 断言）
+make test_iccoa     → ICCOA 独立测试（15 断言）
+make test_ccc       → CCC 独立测试（28 断言）
 make test_icce      → ICCE 独立测试（24 断言）
 make test_unified   → 统一协议测试（阻塞，不用于 CI）
 make test_all       → 全量运行（含 unified，不用于 CI）
@@ -82,16 +90,15 @@ make clean          → 清理 build 目录
 
 重要决策：
 - CI 仅执行 `make test_iccoa test_ccc test_icce`，跳过 Unified（阻塞）和 `test_all`（含 Unified）
-- `make test_ccc` 的 2 个失败会造成 `exit 1`，阻断 L2 流水线
+- **所有测试已全部通过**，CI 流水线不再被阻断 ✅
 
-## 5. 发现问题
+## 5. 问题状态
 
-### P0 — CCC 两个测试失败
-- `test_se_key_store_load`: key_mgmt.c 的 `key_store_load()` 实现不匹配测试预期
-- `test_key_sharing`: 跨协议 key sharing 返回 -8（ICCOA_ERR_NOT_FOUND 或类似）
-- **建议**: 在 key_mgmt.c 添加 stub 实现或修正测试预期值
+### P0 — ❌ → ✅ 已修复：CCC 两个测试失败
+- `test_se_key_store_load`: 缓冲区不足(16B→32B) + SE050 模拟存储实现不完整 → **已修复**
+- `test_key_sharing`: C 字符串字面量无法与 16 字节 key_id 正确比较 + `key_share` 重复 key_id 冲突 → **已修复**
 
-### P1 — Unified test 运行时阻塞
+### P1 — ⚠️ Unified test 运行时阻塞
 - `iccoa_dk_run()` 的 `while (g_ctx.running)` 循环在无 BLE 中断的测试环境无法退出
 - **当前**: CI 已排除此测试
 - **建议**: 为测试环境添加 `-DTEST_MODE` 编译宏，在测试模式下跳过阻塞循环，使用 tick-based 执行
@@ -104,27 +111,29 @@ make clean          → 清理 build 目录
 
 ## 6. 改进建议
 
-### 短期（本轮已基本覆盖）
+### 短期（本轮完成）
 
 | # | 项目 | 状态 |
 |---|------|------|
 | 1 | Unity 框架集成 | ✅ Done |
-| 2 | ICCOA 测试文件 | ✅ Done (12 tests) |
-| 3 | CCC 测试文件 | ✅ Done (18 tests, 2 known fails) |
+| 2 | ICCOA 测试文件 | ✅ Done (15 tests) |
+| 3 | CCC 测试文件 | ✅ Done (28 tests, 0 fails) |
 | 4 | ICCE 测试文件 | ✅ Done (24 tests) |
 | 5 | Unified 测试文件 | ✅ Done (blocking, TBD) |
 | 6 | Makefile 自动化 | ✅ Done |
 | 7 | CI L2 集成 | ✅ Done |
+| 8 | 修复 CCC 2 个 P0 测试失败 | ✅ Done |
+| 9 | 增加关键模块测试覆盖（NFC LPCD, BLE LP/休眠, GATT, 密钥验证/边界） | ✅ Done (+10 tests) |
+| 10 | 补齐 ICCOA stubs (se050_sha256, se050_ecdsa_sign 等) | ✅ Done |
 
 ### 中期
 
 | # | 项目 | 优先级 |
 |---|------|--------|
-| 1 | 修复 CCC 2 个测试失败 | P0 |
-| 2 | 修复 Unified test 阻塞 | P1 |
-| 3 | 修复编译警告 | P2 |
-| 4 | 添加 ICCE crypto(sm2/sm3/sm4) 单元测试 | P3 |
-| 5 | 添加协议栈边界/负面测试 | P3 |
+| 1 | 修复 Unified test 阻塞 | P1 |
+| 2 | 修复编译警告 | P2 |
+| 3 | 添加 ICCE crypto(sm2/sm3/sm4) 单元测试 | P3 |
+| 4 | 添加协议栈边界/负面测试 | P3 |
 
 ### 长期
 
@@ -138,16 +147,16 @@ make clean          → 清理 build 目录
 ## 7. 验证清单
 
 ```bash
-# ICCOA: 12/12 pass
+# ICCOA: 15/15 pass
 cd embedded/tests && make clean && make test_iccoa
 
-# CCC: 16/18 pass (2 known fails)
+# CCC: 28/28 pass (0 known fails)
 cd embedded/tests && make clean && make test_ccc
 
 # ICCE: 24/24 pass
 cd embedded/tests && make clean && make test_icce
 
-# CI 等价命令
+# CI 等价命令 (全部通过 ✅)
 cd embedded/tests && make clean && make test_iccoa test_ccc test_icce
 ```
 
@@ -155,9 +164,10 @@ cd embedded/tests && make clean && make test_iccoa test_ccc test_icce
 
 测试基础设施已完整就绪：
 - **测试框架**: Unity ✅
-- **测试覆盖**: 54 个测试用例（ICCOA 12 + CCC 18 + ICCE 24），覆盖所有 4 个协议栈 ✅
-- **CI 集成**: L2 自动运行 ✅
-- **代码质量门禁**: 2 个 P0 失败需修复后 CI 才能全绿 ⚠️
+- **测试覆盖**: 64 个测试用例（ICCOA 15 + CCC 28 + ICCE 24），覆盖所有 4 个协议栈 ✅
+- **P0 失败**: 已全部修复，CCC 测试从 16/18 → 28/28 ✅
+- **新增覆盖**: NFC LPCD 低功耗模式、BLE 低功耗/深度睡眠、GATT 通知、密钥验证/边界条件、安全边界测试
+- **新增 Stubs**: se050_sha256, se050_ecdsa_sign, se050_key_derive_shared, se050_key_get_public_key, se050_verify_share_token, SE050 透明对象模拟存储
+- **CI 集成**: L2 自动运行，所有测试通过 ✅
+- **代码质量门禁**: 无 P0 失败，CI 可全绿 ✅
 - **已知风险**: Unified test 阻塞需架构级修复
-
-从 "零单元测试" 到 "54 个测试用例 + CI 自动编译运行" 的状态跃迁完成。
