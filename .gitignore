@@ -35,8 +35,8 @@ vendor/
 coverage.out
 
 # Binaries
-hub
-yuledkcs
+backend/cloud/hub/hub
+cmd/yuledkcs/yuledkcs
 backend/dkcs/dkcs
 
 # Reports (generated HTML)

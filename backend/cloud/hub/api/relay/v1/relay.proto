@@ -1,0 +1,162 @@
+syntax = "proto3";
+
+package digitalkey.relay.v1;
+
+option go_package = "github.com/digitalkey/relay/api/v1";
+
+// ============================================================
+// CCC Digital Key v4.0 Relay Server Service
+// Based on CCC-TS-101 §11.3.4 — Mailbox API
+// ============================================================
+
+service RelayService {
+  // 11.3.4.1: CreateMailbox — 发送方创建分享邮箱
+  rpc CreateMailbox(CreateMailboxRequest) returns (CreateMailboxResponse);
+
+  // 11.3.4.2: UpdateMailbox — 任一方更新邮箱内容
+  rpc UpdateMailbox(UpdateMailboxRequest) returns (UpdateMailboxResponse);
+
+  // 11.3.4.3: DeleteMailbox — 删除邮箱
+  rpc DeleteMailbox(DeleteMailboxRequest) returns (DeleteMailboxResponse);
+
+  // 11.3.4.4: ReadDisplayInformation — 读取展示信息
+  rpc ReadDisplayInformation(ReadDisplayInformationRequest) returns (ReadDisplayInformationResponse);
+
+  // 11.3.4.5: ReadSecureContent — 读取加密内容
+  rpc ReadSecureContent(ReadSecureContentRequest) returns (ReadSecureContentResponse);
+
+  // 11.3.4.6: RelinquishMailbox — 转移邮箱到另一设备
+  rpc RelinquishMailbox(RelinquishMailboxRequest) returns (RelinquishMailboxResponse);
+}
+
+// ─── Enums ───────────────────────────────────────────────────
+
+enum MailboxStatus {
+  MAILBOX_STATUS_UNSPECIFIED = 0;
+  CREATED                    = 1;  // 已创建
+  UPDATED_BY_SENDER         = 2;  // 发送方更新
+  UPDATED_BY_RECEIVER       = 3;  // 接收方更新
+  COMPLETED                 = 4;  // 完成
+  CANCELLED                 = 5;  // 任一方取消
+  EXPIRED                   = 6;  // TTL 超时
+}
+
+enum AccessRights {
+  ACCESS_RIGHTS_UNSPECIFIED = 0;
+  READ                      = 1;  // R
+  WRITE                     = 2;  // W
+  READ_WRITE                = 3;  // R
+  READ_WRITE_DELETE         = 4;  // RWD — CCC 规范要求
+}
+
+// ─── Messages ────────────────────────────────────────────────
+
+message MailboxConfig {
+  AccessRights access_rights       = 1;  // 应设为 RWD
+  int64        expiration_seconds  = 2;  // 邮箱过期时间
+  int32        max_updates         = 3;  // 最大更新次数 (默认 10)
+}
+
+message CreateMailboxRequest {
+  bytes         payload             = 1;  // 加密的 provisioning info (JSON format per §11.3)
+  bytes         display_info        = 2;  // 展示信息（车品牌、型号等）
+  string        notification_token  = 3;  // 发送方 Push 通知 token
+  string        sender_device_id    = 4;
+  string        sender_vendor       = 5;  // e.g. "apple", "samsung"
+  MailboxConfig config              = 6;
+  string        trace_id            = 7;
+}
+
+message CreateMailboxResponse {
+  string mailbox_id       = 1;
+  string sharing_url      = 2;  // 完整分享 URL（含 Secret fragment）
+  int64  expires_at       = 3;  // unix millis
+  string error_code       = 4;
+  string error_msg        = 5;
+}
+
+message UpdateMailboxRequest {
+  string mailbox_id       = 1;
+  bytes  payload          = 2;  // 更新内容（KeySigningRequest / ImportRequest / Cancellation）
+  int32  sharing_data_type = 3; // 1=KeyCreation, 2=KeySigning, 3=Import, 4=SenderCancel, 5=ReceiverCancel
+  string notification_token = 4; // 更新方的 Push token
+  string updater_device_id = 5;
+  string trace_id          = 6;
+}
+
+message UpdateMailboxResponse {
+  MailboxStatus status     = 1;
+  int64         version    = 2;  // 乐观锁版本号
+  string        error_code = 3;
+  string        error_msg  = 4;
+}
+
+message DeleteMailboxRequest {
+  string mailbox_id       = 1;
+  string reason           = 2;  // "completed" / "cancelled" / "expired"
+  string deleter_device_id = 3;
+  string trace_id          = 4;
+}
+
+message DeleteMailboxResponse {
+  bool   success    = 1;
+  string error_code = 2;
+}
+
+message ReadDisplayInformationRequest {
+  string mailbox_id  = 1;
+  string device_id   = 2;
+  string trace_id    = 3;
+}
+
+message ReadDisplayInformationResponse {
+  bytes  display_info = 1;
+  int64  version      = 2;
+  string error_code   = 3;
+}
+
+message ReadSecureContentRequest {
+  string mailbox_id  = 1;
+  string device_id   = 2;
+  string trace_id    = 3;
+}
+
+message ReadSecureContentResponse {
+  bytes  payload    = 1;  // 加密内容
+  int64  version    = 2;
+  string error_code = 3;
+  string error_msg  = 4;
+}
+
+message RelinquishMailboxRequest {
+  string mailbox_id     = 1;
+  string from_device_id = 2;  // 当前持有设备
+  string to_device_id   = 3;  // 目标设备
+  string trace_id       = 4;
+}
+
+message RelinquishMailboxResponse {
+  bool   success    = 1;
+  string error_code = 2;
+  string error_msg  = 3;
+}
+
+// ─── 邮箱元数据 ──────────────────────────────────────────────
+
+message Mailbox {
+  string        mailbox_id          = 1;
+  MailboxStatus status              = 2;
+  string        sender_device_id    = 3;
+  string        sender_vendor       = 4;
+  string        notification_token  = 5;  // 发送方 push token
+  bytes         display_info        = 6;
+  int64         created_at          = 7;  // unix millis
+  int64         expires_at          = 8;
+  int64         updated_at          = 9;
+  int64         version             = 10;
+  string        sharing_url         = 11;
+  string        receiver_device_id  = 12;  // 接收方设备 ID（Relinquish 后更新）
+  string        receiver_vendor     = 13;  // 接收方厂商
+  int32         update_count        = 14;  // 当前更新次数
+  int32         max_updates         = 15;  // 最大更新次数
+}
