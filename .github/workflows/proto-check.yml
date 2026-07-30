@@ -1,0 +1,75 @@
+# yuleDKCS Proto 编译校验
+# 每次 api/ 下 proto 文件变更时，验证 proto 能正常编译并通过代码生成
+
+name: proto-check
+
+on:
+  pull_request:
+    paths:
+      - 'api/**/*.proto'
+  push:
+    branches: [master]
+    paths:
+      - 'api/**/*.proto'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "28.3"
+
+      - name: Install protoc-gen-swift
+        run: |
+          SWIFT_VERSION=1.28.2
+          wget -q "https://github.com/apple/swift-protobuf/releases/download/${SWIFT_VERSION}/protoc-gen-swift-${SWIFT_VERSION}-linux-x86_64.tar.gz"
+          tar xzf protoc-gen-swift-*.tar.gz
+          sudo mv protoc-gen-swift /usr/local/bin/
+
+      - name: Install protoc-gen-grpc-swift
+        run: |
+          GRPC_SWIFT_VERSION=2.0.0
+          wget -q "https://github.com/grpc/grpc-swift/releases/download/${GRPC_SWIFT_VERSION}/protoc-gen-grpc-swift-${GRPC_SWIFT_VERSION}-linux-x86_64.tar.gz"
+          tar xzf protoc-gen-grpc-swift-*.tar.gz
+          sudo mv protoc-gen-grpc-swift /usr/local/bin/
+
+      - name: Verify proto compilation
+        run: |
+          # 验证所有 proto 文件编译通过（不真正生成代码）
+          protoc \
+            --proto_path=api \
+            --proto_path=api/v1 \
+            --proto_path=api/relay/v1 \
+            --proto_path=api/sdk/v1 \
+            --include_imports \
+            --descriptor_set_out=/dev/null \
+            api/v1/hub.proto \
+            api/relay/v1/relay.proto \
+            api/sdk/v1/sdk.proto
+          echo "✓ All proto files compile"
+
+      - name: Verify code generation
+        run: |
+          mkdir -p /tmp/proto-gen-check
+          # Swift
+          protoc \
+            --swift_out=/tmp/proto-gen-check \
+            --grpc-swift_out=/tmp/proto-gen-check \
+            -I=api \
+            api/v1/hub.proto api/relay/v1/relay.proto api/sdk/v1/sdk.proto
+          echo "✓ Swift code generation OK"
+
+          # Kotlin
+          protoc \
+            --kotlin_out=/tmp/proto-gen-check \
+            --grpc-kotlin_out=/tmp/proto-gen-check \
+            -I=api \
+            api/v1/hub.proto api/relay/v1/relay.proto api/sdk/v1/sdk.proto
+          echo "✓ Kotlin code generation OK"
+
+          echo "Generated files:"
+          ls /tmp/proto-gen-check/
