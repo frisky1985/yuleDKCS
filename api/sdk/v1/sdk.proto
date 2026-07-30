@@ -1,18 +1,16 @@
 // yuleDKCS Mobile SDK 接口定义
 //
-// 本文件定义 yuleDKCS SDK 对外暴露的全部接口。
-// SDK 本身不是 gRPC 服务器，而是以原生库（Swift/Kotlin）形式嵌入车厂 App。
-// proto 用于三件事：
-//   1. 作为跨平台接口合约（代码生成 Swift/Kotlin stub）
-//   2. SDK 内部通过 gRPC 与 yuleDKCS Hub 通信
-//   3. 文档化 BLE/UWB 本地协议（不走 gRPC，但 proto 定义接口形状）
+// 核心原则:
+//   1. HubService 的 RPC 签名与 hub.proto 保持一致（SDK 内部填充手机端字段）
+//   2. BLE/Mailbox/Callback 等 Hub 管不到的本地接口在此定义
+//   3. proto 仅作为接口合约文档 + 跨平台代码生成依据
 //
-// 分层:
-//   HubService     — 通过 gRPC 与 yuleDKCS Hub 通信（云端操作）
-//   BLEService     — BLE/UWB 本地直连车辆 TCU（不经过任何服务器）
-//   MailboxClient  — CCC 协议分享时与 Relay Server 通信
-//   KeyManager     — 钥匙状态管理（本地缓存 + 云端同步）
-//   Callbacks      — SDK → App 的通知回调
+// SDK 架构:
+//   App → SDK.HubClient (此文件定义的接口) → gRPC → yuleDKCS Hub
+//   App → SDK.BLEManager (此文件定义的接口) → BLE/UWB → 车辆TCU
+//   App → SDK.KeyManager (此文件定义的接口) → 本地缓存 + 定时同步
+//
+// Hub proto 参考: api/v1/hub.proto (service KeyManagementService / KeyShareService / VehicleControlService)
 
 syntax = "proto3";
 
@@ -23,147 +21,128 @@ option java_multiple_files = true;
 option swift_prefix = "YDK";
 
 // ============================================================
-// 通用类型
-// ============================================================
-
-// 平台枚举 — SDK 内部判断逻辑用
-enum Platform {
-    PLATFORM_UNSPECIFIED = 0;
-    IOS                  = 1;  // Apple iPhone
-    ANDROID              = 2;  // 通用 Android
-    HUAWEI               = 3;  // 华为 HMS (无 GMS)
-}
-
-// 协议类型 — SDK 根据此自动选择通信路径
-enum Protocol {
-    PROTOCOL_UNSPECIFIED = 0;
-    CCC_DK3             = 1;  // Apple Wallet / Samsung Wallet
-    ICCOA_DK40          = 2;  // 小米/OPPO/vivo 钱包
-    ICCE                = 3;  // 华为钱包
-}
-
-// 连接状态
-enum BLEConnectionState {
-    DISCONNECTED = 0;
-    SCANNING     = 1;
-    CONNECTING   = 2;
-    CONNECTED    = 3;
-}
-
-// ============================================================
-// SDK 初始化
-// ============================================================
-
-message SDKConfig {
-    string hub_endpoint       = 1;  // Hub gRPC 地址 (host:port)
-    string relay_endpoint     = 2;  // Relay Server 地址 (可选, CCC 使用)
-    Platform platform         = 3;
-    int32  ble_scan_timeout_ms = 4;  // BLE 扫描超时 (默认 10000)
-    bool   enable_logging     = 5;
-}
-
-// ============================================================
-// HubService — 云端操作 (gRPC → yuleDKCS Hub)
-// 所有接口都需要 App 先调用 setToken() 传入 session token
+// 1. HubService — SDK 通过 gRPC 调 yuleDKCS Hub
+//
+//    RPC 签名与 hub.proto 完全一致。
+//    以下字段由 SDK 自动填充（App 不需要传）：
+//     - device_id:  SDK 自动读取设备标识
+//     - user_id:    SDK 从 session token claims 中提取
+//     - device_pubkey: SDK 从手机 SE 读取
+//     - protocol:   SDK 根据手机型号自动检测
+//     - trace_id:   SDK 自动生成
+//     - source:     远程控车固定为 4 (Remote)
 // ============================================================
 
 service HubService {
 
-    // ─── 钥匙生命周期 ──────────────────────────────────────
+    // ── 钥匙生命周期（映射 Hub KeyManagementService）──
 
-    // 绑定钥匙到手机
-    // App 应先从车厂 Server 确认用户对车辆有权限，再调用此接口
+    // 绑钥匙 — App 只需传 token + VIN，SDK 填充其余字段
     rpc BindKey(BindKeyRequest) returns (BindKeyResponse);
 
-    // 解绑钥匙
-    rpc UnbindKey(UnbindKeyRequest) returns (UnbindKeyResponse);
+    rpc UnbindKey(UnbindKeyRequest) returns (BindKeyResponse);
 
-    // 查询钥匙列表（所有已绑定的车辆钥匙）
+    // 挂起钥匙（临时冻结）
+    rpc SuspendKey(SuspendKeyRequest) returns (SuspendKeyResponse);
+
+    // 恢复钥匙
+    rpc ResumeKey(ResumeKeyRequest) returns (ResumeKeyResponse);
+
+    // 撤销钥匙（永久）
+    rpc RevokeKey(RevokeKeyRequest) returns (RevokeKeyResponse);
+
+    // 续期
+    rpc RenewKey(RenewKeyRequest) returns (RenewKeyResponse);
+
+    // 查询钥匙
+    rpc GetKey(GetKeyRequest) returns (GetKeyResponse);
     rpc ListKeys(ListKeysRequest) returns (ListKeysResponse);
 
-    // 查询单把钥匙详情
-    rpc GetKey(GetKeyRequest) returns (GetKeyResponse);
+    // ── 钥匙分享（映射 Hub KeyShareService）──
 
-    // ─── 钥匙分享 ──────────────────────────────────────────
-
-    // 创建分享（返回 6位分享码，可发给好友）
+    // 创建分享 — App 需告知好友的手机厂商（to_vendor）
     rpc CreateShare(CreateShareRequest) returns (CreateShareResponse);
 
-    // 接受分享（输入好友给的分享码）
     rpc AcceptShare(AcceptShareRequest) returns (AcceptShareResponse);
-
-    // 取消分享
     rpc CancelShare(CancelShareRequest) returns (CancelShareResponse);
+    rpc GetShare(GetShareRequest) returns (GetShareResponse);
 
-    // ─── 远程控车 ──────────────────────────────────────────
+    // ── 远程控车（映射 Hub VehicleControlService）──
 
-    // 远程锁车
-    rpc RemoteLock(RemoteControlRequest) returns (RemoteControlResponse);
+    rpc SendCommand(ControlCommandRequest) returns (ControlCommandResponse);
 
-    // 远程解锁
-    rpc RemoteUnlock(RemoteControlRequest) returns (RemoteControlResponse);
-
-    // 远程启动/熄火
-    rpc RemoteStart(RemoteControlRequest) returns (RemoteControlResponse);
-    rpc RemoteStop(RemoteControlRequest) returns (RemoteControlResponse);
-
-    // ─── 通知回调注册 ──────────────────────────────────────
-
-    // App 将 Push 通知的 payload 传给 SDK，SDK 解析后触发回调
-    rpc HandlePushNotification(PushPayload) returns (PushAck);
+    // 实时车辆状态 (Server-Sent Stream)
+    rpc StreamStatus(VehicleStatusRequest) returns (stream VehicleStatusUpdate);
 }
 
-// ─── 消息定义 ───────────────────────────────────────────
+// ─── 请求/响应消息（与 hub.proto 保持字段编号一致） ────────
 
+// ⚠️ 注意: SDK 自动填充以下字段
+//   device_id, user_id, vendor, protocol, key_type, device_pubkey, trace_id
+// App 只需传 vehicle_id + 业务参数
 message BindKeyRequest {
-    string session_token  = 1;  // 车厂 Server 签发的 token
-    string vehicle_id     = 2;  // VIN
-    // 以下字段由 SDK 自动填充，App 无需提供
-    // - device_id: SDK 自动生成
-    // - device_pubkey: 从手机 SE 读取
-    // - protocol: SDK 根据手机型号自动检测
+    string    vehicle_id     = 1;
+    string    trace_id       = 11;   // SDK 自动生成
+    // 以下由 SDK 自动填充（不需要 App 传）
+    // string    device_id      = 2;
+    // PhoneVendor vendor       = 4;
+    // Protocol   protocol      = 5;
+    // KeyType    key_type      = 6;
+    // AccessLevel access_level = 7;
+    // bytes      device_pubkey = 8;
+    // int64      valid_from    = 9;
+    // int64      valid_until   = 10;
 }
 
 message BindKeyResponse {
-    string key_id     = 1;
-    string vehicle_id = 2;
-    string vehicle_name = 3;  // 车辆显示名称（从车厂 Server 获取）
-    int64  valid_from = 4;
-    int64  valid_until = 5;
-    // ⚠️ 绑钥匙成功后，App 需要调用钱包层 API 将钥匙添加到手机钱包
-    //   iOS:     PKPassLibrary.addCarKeyPass(...)
-    //   Samsung: SamsungWallet.addDigitalKey(...)
-    //   小米:     MiWallet.registerKey(...)
-    //   华为:     HuaweiWallet.addKey(...)
-    // SDK 不负责此步骤，但可提供 `keyData` 给 App 传递给钱包 SDK
-    bytes  wallet_key_data = 10;  // 钱包 SDK 所需数据 (协议相关)
+    string key_id       = 1;
+    string vehicle_id   = 2;
+    string error_code   = 4;
+    string error_msg    = 5;
+    // SDK 增强字段（非 Hub 返回，SDK 本地构建）:
+    string vehicle_name = 20;   // 车辆显示名称（SDK 在绑定时缓存）
 }
 
+// 解绑/挂起/恢复/撤销 共用 KeyId 模式
 message UnbindKeyRequest {
-    string key_id = 1;
+    string key_id   = 1;
+    string trace_id = 2;
 }
 
-message UnbindKeyResponse {
-    bool success = 1;
+message SuspendKeyRequest {
+    string key_id   = 1;
+    string reason   = 2;
+    string trace_id = 3;
 }
 
-message ListKeysRequest {
-    // 空请求返回全部钥匙
+message ResumeKeyRequest {
+    string key_id   = 1;
+    string trace_id = 2;
 }
 
-message KeyItem {
+message RevokeKeyRequest {
+    string key_id   = 1;
+    string reason   = 2;
+    string trace_id = 3;
+}
+
+message RenewKeyRequest {
     string key_id      = 1;
-    string vehicle_id  = 2;
-    string vehicle_name = 3;
-    Protocol protocol  = 4;
-    string status      = 5;  // ACTIVE / SUSPENDED / REVOKED / EXPIRED
-    string key_type    = 6;  // OWNER / FRIEND / SERVICE / TEMPORARY
-    int64  valid_from  = 7;
-    int64  valid_until = 8;
+    int64  valid_until = 2;
+    string trace_id    = 3;
 }
 
-message ListKeysResponse {
-    repeated KeyItem keys = 1;
+message SuspendKeyResponse {
+    string error_code = 1;
+}
+message ResumeKeyResponse {
+    string error_code = 1;
+}
+message RevokeKeyResponse {
+    string error_code = 1;
+}
+message RenewKeyResponse {
+    string error_code = 1;
 }
 
 message GetKeyRequest {
@@ -171,83 +150,157 @@ message GetKeyRequest {
 }
 
 message GetKeyResponse {
-    KeyItem key = 1;
+    // SDK 返回 KeyItem（本地增强版，见下方）
+    KeyItem key        = 1;
+    string  error_code = 2;
 }
 
+message ListKeysRequest {
+    string vehicle_id   = 1;  // 可选筛选
+    KeyFilter status    = 2;  // 可选筛选
+}
+
+enum KeyFilter {
+    KEY_FILTER_UNSPECIFIED = 0;
+    KEY_FILTER_ACTIVE      = 1;
+    KEY_FILTER_ALL         = 2;
+}
+
+message ListKeysResponse {
+    repeated KeyItem keys = 1;
+}
+
+// SDK 增强的钥匙视图（基于 Hub DigitalKey + 本地缓存）
+message KeyItem {
+    string   key_id       = 1;
+    string   vehicle_id   = 2;
+    string   device_id    = 3;
+    string   vehicle_name = 4;  // SDK 本地缓存（绑定时保存）
+    KeyType  key_type     = 5;  // OWNER / FRIEND / SERVICE / TEMPORARY
+    Protocol protocol     = 6;  // CCC / ICCOA / ICCE
+    string   status       = 7;  // ACTIVE / SUSPENDED / REVOKED / EXPIRED
+    // AccessLevel access_level = 8; (后续加)
+    int64    valid_from   = 9;
+    int64    valid_until  = 10;
+    int64    created_at   = 11;
+}
+
+// ── 分享 ──────────────────────────────────────────────────
+
 message CreateShareRequest {
-    string key_id      = 1;
-    string to_user_id  = 2;  // 指定用户（可选）
-    int32  max_uses    = 3;  // 最大使用次数 (0=无限制)
-    int64  valid_from  = 4;
-    int64  valid_until = 5;
+    string      key_id        = 1;
+    PhoneVendor to_vendor     = 3;  // ⚠️ App 需指定好友的手机厂商
+    string      to_user_id    = 4;  // 好友用户 ID（可选，为空则生成分享码）
+    AccessLevel access_level  = 5;
+    int64       valid_from    = 6;
+    int64       valid_until   = 7;
+    int32       max_uses      = 8;
+    string      trace_id      = 9;
+    // from_user_id SDK 从 token 自动填充
 }
 
 message CreateShareResponse {
-    string share_id   = 1;
-    string share_code = 2;  // 6 位分享码
-    string sharing_url = 3;  // CCC Mailbox URL (仅 CCC 协议时返回)
+    string share_id     = 1;
+    string share_code   = 2;  // 6位数字分享码
+    string sharing_url  = 3;  // CCC Mailbox URL（仅 CCC 协议返回）
+    string error_code   = 4;
 }
 
 message AcceptShareRequest {
-    string share_code = 1;  // 6 位分享码
+    string      share_code    = 1;
+    string      trace_id      = 6;
+    // 以下由 SDK 自动填充
+    // string      device_id     = 2;
+    // string      user_id       = 3;
+    // PhoneVendor vendor        = 4;
+    // bytes       device_pubkey = 5;
 }
 
 message AcceptShareResponse {
-    KeyItem key = 1;
+    KeyItem key        = 1;
+    string  error_code = 3;
 }
 
 message CancelShareRequest {
-    string share_id = 1;
+    string share_id  = 1;
+    string trace_id  = 2;
 }
 
 message CancelShareResponse {
-    bool success = 1;
+    string error_code = 1;
 }
 
-message RemoteControlRequest {
+message GetShareRequest {
+    string share_id = 1;
+}
+
+message GetShareResponse {
+    string share_id       = 1;
+    string key_id         = 2;
+    string from_user_id   = 3;
+    // AccessLevel access_level = 4;
+    int64  valid_from     = 5;
+    int64  valid_until    = 6;
+    string error_code     = 7;
+}
+
+// ── 远程控车 ──────────────────────────────────────────────
+
+message ControlCommandRequest {
+    string  vehicle_id = 1;
+    string  action     = 4;  // "lock" / "unlock" / "engine_on" / "engine_off"
+    // 以下由 SDK 自动填充
+    // string  user_id  = 2;
+    // string  key_id   = 3;
+    // bytes   params   = 5;
+    // int32   source   = 6;  // 4=Remote
+    // string  trace_id = 7;
+}
+
+message ControlCommandResponse {
+    string  cmd_id      = 1;
+    int32   result_code = 2;
+    string  error_msg   = 3;
+}
+
+message VehicleStatusRequest {
     string vehicle_id = 1;
-    string key_id     = 2;
 }
 
-message RemoteControlResponse {
-    string cmd_id     = 1;
-    int32  result     = 2;  // 0=成功, 非0=错误码
-    string error_msg  = 3;
-}
-
-// Push 通知 payload — App 收到 Push 后传给 SDK
-message PushPayload {
-    string type    = 1;  // key_revoked / key_suspended / share_received / vehicle_alert
-    string key_id  = 2;
-    string message = 3;
-    bytes  data    = 4;
-}
-
-message PushAck {
-    bool handled = 1;
+message VehicleStatusUpdate {
+    string vehicle_id    = 1;
+    int32  lock_status   = 2;
+    int32  engine_status = 3;
+    int32  battery_pct   = 6;
+    double latitude      = 9;
+    double longitude     = 10;
+    int64  timestamp     = 11;
 }
 
 // ============================================================
-// BLEService — BLE/UWB 本地直连车辆 (不经过任何服务器)
-// iOS 上的 BLE 操作受 Core Bluetooth 后台限制
+// 2. BLEManager — 本地 BLE/UWB 通信（不经过任何服务器）
+//
+//    不走 gRPC。proto 仅用于文档化接口形状。
+//    iOS: CoreBluetooth + CoreNFC 原生实现
+//    Android: android.bluetooth + NFC 原生实现
 // ============================================================
 
-service BLEService {
+service BLEManager {
 
-    // 扫描周围车辆（返回 BLE 广告包信息）
+    // 扫描周围车辆
     rpc ScanVehicles(ScanRequest) returns (stream VehicleAdvertise);
 
-    // 连接到车辆（建立 BLE 安全通道）
+    // 连接车辆（建立 BLE 安全通道）
     rpc ConnectVehicle(ConnectRequest) returns (ConnectResponse);
 
     // 解锁（需要先 Connect）
-    rpc Unlock(ControlRequest) returns (ControlResponse);
+    rpc Unlock(LocalControlRequest) returns (LocalControlResponse);
 
-    // 锁车（需要先 Connect）
-    rpc Lock(ControlRequest) returns (ControlResponse);
+    // 锁车
+    rpc Lock(LocalControlRequest) returns (LocalControlResponse);
 
-    // 启动引擎（需要先 Connect）
-    rpc StartEngine(ControlRequest) returns (ControlResponse);
+    // 启动引擎
+    rpc StartEngine(LocalControlRequest) returns (LocalControlResponse);
 
     // 读取车辆状态
     rpc ReadVehicleStatus(StatusRequest) returns (VehicleStatus);
@@ -257,16 +310,15 @@ service BLEService {
 }
 
 message ScanRequest {
-    int32 timeout_ms = 1;  // 扫描超时 (默认 10000ms)
+    int32 timeout_ms = 1;
 }
 
 message VehicleAdvertise {
-    string vehicle_id     = 1;  // 从 BLE 广告包解析
-    string vehicle_name   = 2;
-    int32  rssi           = 3;  // 信号强度
-    int32  protocol       = 4;  // CCC / ICCOA / ICCE (从广告包识别)
-    bool   supports_uwb   = 5;  // 是否支持 UWB 精确测距
-    bytes  manufacturer_data = 6;  // 厂商自定义数据
+    string  vehicle_id       = 1;
+    int32   rssi             = 2;
+    int32   protocol         = 3;  // CCC / ICCOA / ICCE
+    bool    supports_uwb     = 4;
+    bytes   manufacturer_data = 5;
 }
 
 message ConnectRequest {
@@ -274,17 +326,15 @@ message ConnectRequest {
 }
 
 message ConnectResponse {
-    bool   success       = 1;
-    BLEConnectionState state = 2;
-    int32  max_payload_size = 3;  // BLE MTU
+    bool   success = 1;
+    string error   = 2;
 }
 
-message ControlRequest {
+message LocalControlRequest {
     string vehicle_id = 1;
-    // SDK 自动从本地缓存获取当前钥匙
 }
 
-message ControlResponse {
+message LocalControlResponse {
     bool   success = 1;
     string error   = 2;
 }
@@ -296,8 +346,7 @@ message StatusRequest {
 message VehicleStatus {
     bool   locked      = 1;
     bool   engine_on   = 2;
-    int32  battery_pct = 3;  // 0-100
-    int32  range_km    = 4;  // 续航 (纯电/混动)
+    int32  battery_pct = 3;
     string error       = 5;
 }
 
@@ -310,94 +359,165 @@ message DisconnectResponse {
 }
 
 // ============================================================
-// MailboxClient — CCC 协议分享专用
-// 仅 CCC-DK3 协议使用，ICCOA/ICCE 不走此路径
-// Secret 在 URL fragment (#) 中，SDK 负责确保不发送到 Relay Server
+// 3. KeyManager — 钥匙状态管理（本地缓存 + 云端同步）
+//
+//    不走 gRPC。
+//    SDK 内部定时调 Hub 的 ListKeys，对比本地缓存触发回调。
 // ============================================================
 
-service MailboxClient {
-    // 读取分享邮箱中的展示信息（接收方使用）
-    rpc ReadDisplayInfo(ReadDisplayInfoRequest) returns (ReadDisplayInfoResponse);
+service KeyManager {
+    // 手动触发同步
+    rpc SyncFromHub(SyncRequest) returns (SyncResponse);
 
-    // 更新邮箱内容（KeySigning / Import / Cancel）
-    rpc UpdateMailbox(UpdateMailboxRequest) returns (UpdateMailboxResponse);
+    // 获取本地缓存的钥匙列表（无网可用）
+    rpc GetLocalKeys(LocalKeysRequest) returns (LocalKeysResponse);
 
-    // 删除邮箱（完成分享后）
-    rpc DeleteMailbox(DeleteMailboxRequest) returns (DeleteMailboxResponse);
+    // 清除本地缓存
+    rpc ClearLocalCache(ClearRequest) returns (ClearResponse);
 }
 
-message ReadDisplayInfoRequest {
-    string mailbox_url = 1;  // 从 shareInfo 获取的完整 URL（含 #secret）
+message SyncRequest {}
+message SyncResponse {
+    int32 updated_count = 1;
+    repeated string changed_key_ids = 2;
 }
-
-message ReadDisplayInfoResponse {
-    bytes  display_info = 1;
-    int64  version      = 2;
+message LocalKeysRequest {}
+message LocalKeysResponse {
+    repeated KeyItem keys = 1;
 }
-
-message UpdateMailboxRequest {
-    string mailbox_id    = 1;
-    int32  data_type     = 2;  // 2=KeySigning 3=Import 4=Cancel
-    bytes  payload       = 3;  // 端到端加密 (Secret 在 fragment 中)
-}
-
-message UpdateMailboxResponse {
-    int32  status  = 1;
-    int64  version = 2;
-}
-
-message DeleteMailboxRequest {
-    string mailbox_id = 1;
-}
-
-message DeleteMailboxResponse {
+message ClearRequest {}
+message ClearResponse {
     bool success = 1;
 }
 
 // ============================================================
-// SDK 回调接口 — SDK → App
-// App 通过实现此接口接收 SDK 事件
+// 4. MailboxClient — CCC 协议分享专用
+//
+//    Relay Server 通过 REST gateway (:8080) 暴露 HTTP/JSON 接口。
+//    SDK 对 Sharing URL 发起 HTTP 请求（不经过 Hub）。
+//    Secret 在 URL fragment (#) 中，SDK 确保不发送到 Relay Server。
 // ============================================================
 
-service SDKCallback {
-    // 钥匙状态变更
-    rpc OnKeyStatusChanged(KeyStatusChange) returns (CallbackAck);
+service MailboxClient {
+    // 读取展示信息（接收方使用 Sharing URL 调用）
+    rpc ReadDisplayInfo(MailboxReadRequest) returns (MailboxReadResponse);
 
-    // 收到新的钥匙分享
-    rpc OnShareReceived(ShareNotification) returns (CallbackAck);
+    // 更新邮箱（KeySigning / Import / Cancel）
+    rpc UpdateMailbox(MailboxUpdateRequest) returns (MailboxUpdateResponse);
 
-    // 车辆告警
-    rpc OnVehicleAlert(VehicleAlert) returns (CallbackAck);
-
-    // BLE 连接状态变化
-    rpc OnBLEConnectionStateChanged(BLEConnectionChange) returns (CallbackAck);
+    // 删除邮箱（完成分享后）
+    rpc DeleteMailbox(MailboxDeleteRequest) returns (MailboxDeleteResponse);
 }
 
+message MailboxReadRequest {
+    string mailbox_url = 1;  // 完整 URL（含 #secret，SDK 在 fragment 中提取 mailbox_id）
+}
+
+message MailboxReadResponse {
+    bytes  display_info = 1;
+    int64  version      = 2;
+}
+
+message MailboxUpdateRequest {
+    string mailbox_id = 1;
+    int32  data_type  = 2;  // 2=KeySigning 3=Import 4=Cancel
+    bytes  payload    = 3;  // 端到端加密
+}
+
+message MailboxUpdateResponse {
+    int32  status  = 1;
+    int64  version = 2;
+}
+
+message MailboxDeleteRequest {
+    string mailbox_id = 1;
+}
+
+message MailboxDeleteResponse {
+    bool success = 1;
+}
+
+// ============================================================
+// 5. Callbacks — SDK → App 的事件通知
+//
+//    不走 gRPC。App 实现 native 接口接收回调。
+//    iOS:  protocol YDKHubDelegate : AnyObject
+//    Android: interface HubCallback
+// ============================================================
+
+// 钥匙状态变更
 message KeyStatusChange {
-    string key_id  = 1;
-    string old_status = 2;
-    string new_status = 3;  // REVOKED / SUSPENDED / EXPIRED / ACTIVE
-    string reason  = 4;
+    string key_id      = 1;
+    string old_status  = 2;
+    string new_status  = 3;  // REVOKED / SUSPENDED / EXPIRED / ACTIVE
+    string reason      = 4;
 }
 
+// 收到新分享
 message ShareNotification {
-    string share_code    = 1;
-    string from_user_id  = 2;
-    string vehicle_id    = 3;
-    string sharing_url   = 4;  // CCC 协议时可用
+    string share_code   = 1;
+    string from_user_id = 2;
+    string vehicle_id   = 3;
+    string sharing_url  = 4;  // CCC 协议时可用
 }
 
+// 车辆告警
 message VehicleAlert {
     string vehicle_id = 1;
     string alert_type = 2;  // alarm / tow / crash / battery_low
     string message    = 3;
 }
 
+// BLE 连接状态变化
 message BLEConnectionChange {
     string vehicle_id = 1;
-    BLEConnectionState new_state = 2;
+    int32  new_state  = 2;  // 0=disconnected 1=scanning 2=connecting 3=connected
 }
 
-message CallbackAck {
-    bool handled = 1;
+// ============================================================
+// 6. 通用枚举
+// ============================================================
+
+enum Platform {
+    PLATFORM_UNSPECIFIED = 0;
+    IOS                  = 1;
+    ANDROID              = 2;
+    HUAWEI               = 3;  // HMS (无 GMS)
+}
+
+enum Protocol {
+    PROTOCOL_UNSPECIFIED = 0;
+    CCC_DK3             = 1;
+    ICCOA_DK40          = 2;
+    ICCE                = 3;
+}
+
+// 以下枚举与 hub.proto 保持一致
+enum PhoneVendor {
+    VENDOR_UNSPECIFIED = 0;
+    APPLE              = 1;
+    SAMSUNG            = 2;
+    XIAOMI             = 3;
+    OPPO               = 4;
+    VIVO               = 5;
+    HUAWEI             = 6;
+}
+
+enum KeyType {
+    KEY_TYPE_UNSPECIFIED = 0;
+    OWNER                = 1;
+    FRIEND               = 2;
+    SERVICE              = 3;
+    TEMPORARY            = 4;
+}
+
+message AccessLevel {
+    bool lock     = 1;
+    bool unlock   = 2;
+    bool engine   = 3;
+    bool trunk    = 4;
+    bool window   = 5;
+    bool climate  = 6;
+    bool find     = 7;
+    bool seat     = 8;
 }
