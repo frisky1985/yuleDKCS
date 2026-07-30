@@ -42,6 +42,7 @@ func TestSetupHubGRPCServer_ServicesRegistered(t *testing.T) {
 		"digitalkey.hub.v1.KeyShareService",
 		"digitalkey.hub.v1.VehicleControlService",
 		"digitalkey.hub.v1.HubTransportService",
+		"digitalkey.relay.v1.RelayService",
 	}
 
 	registered := 0
@@ -53,24 +54,24 @@ func TestSetupHubGRPCServer_ServicesRegistered(t *testing.T) {
 		}
 	}
 
-	if registered < 4 {
+	if registered < 5 {
 		// Print all registered services for debugging
-		t.Logf("Expected 4 hub services, found %d. Registered services:", len(serviceInfo))
+		t.Logf("Expected 5 hub services, found %d. Registered services:", len(serviceInfo))
 		for name := range serviceInfo {
 			t.Logf("  - %s", name)
 		}
 	}
 }
 
-func TestSetupHubGRPCServer_AtLeast4Services(t *testing.T) {
+func TestSetupHubGRPCServer_AtLeast5Services(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
 	grpcSrv, _ := setupHubGRPCServer(logger)
 	si := grpcSrv.GetServiceInfo()
 
-	if len(si) < 4 {
-		t.Errorf("expected at least 4 services registered, got %d", len(si))
+	if len(si) < 5 {
+		t.Errorf("expected at least 5 services registered, got %d", len(si))
 		for name := range si {
 			t.Logf("  registered: %s", name)
 		}

@@ -9,10 +9,10 @@
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| B1 | 注册 RelayService 到 Hub gRPC 服务器 | 🔜 | `hub/main.go` 中注册 gRPC + REST gateway |
-| B2 | 集成 KeyShareService | 🔜 | 密钥分享流程中使用 Mailbox 传输 |
-| B3 | 真实分享 URL 生成 | 🔜 | 含 domain、secret fragment |
-| C1 | 基础 E2E 测试 | 🔜 | Create → Update → Read → Delete |
+| B1 | 注册 RelayService 到 Hub gRPC 服务器 | ✅ | `hub/main.go` 中注册 gRPC + REST gateway |
+| B2 | 集成 KeyShareService | ✅ | 密钥分享流程中使用 Mailbox 传输 |
+| B3 | 真实分享 URL 生成 | ✅ | 格式：`https://dk-relay.yuletech.com/mailbox/{id}#{secret}` |
+| C1 | 基础 E2E 测试 | ✅ | E2E-11（7步生命周期）+ E2E-12（TTL过期）— 8/8 绿 |
 
 ## Phase A（已完成）
 

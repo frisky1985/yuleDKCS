@@ -8,12 +8,14 @@ import (
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 )
 
 func TestNewKeyShareService(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	s := NewKeyShareService(reg, logger)
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(reg, mbc, logger)
 	if s == nil {
 		t.Fatal("NewKeyShareService returned nil")
 	}
@@ -22,7 +24,8 @@ func TestNewKeyShareService(t *testing.T) {
 func TestKeyShareService_CreateShare_NoAdapter(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	s := NewKeyShareService(reg, logger)
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(reg, mbc, logger)
 
 	req := &pb.CreateShareRequest{
 		KeyId:      "key-001",
@@ -41,9 +44,9 @@ func TestKeyShareService_CreateShare_NoAdapter(t *testing.T) {
 func TestKeyShareService_CreateShare_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	// Register with uppercase vendor name matching proto enum String()
 	reg.Register("XIAOMI", "iccoa_dk40", adapter.NewICCOAAdapter("XIAOMI", logger))
-	s := NewKeyShareService(reg, logger)
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(reg, mbc, logger)
 
 	req := &pb.CreateShareRequest{
 		KeyId:      "key-001",
@@ -62,7 +65,8 @@ func TestKeyShareService_CreateShare_Success(t *testing.T) {
 func TestKeyShareService_AcceptShare_NoAdapter(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	s := NewKeyShareService(reg, logger)
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(reg, mbc, logger)
 
 	resp, err := s.AcceptShare(context.Background(), &pb.AcceptShareRequest{
 		Vendor: pb.PhoneVendor_VENDOR_UNSPECIFIED,
@@ -79,7 +83,8 @@ func TestKeyShareService_AcceptShare_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
 	reg.Register("XIAOMI", "iccoa_dk40", adapter.NewICCOAAdapter("XIAOMI", logger))
-	s := NewKeyShareService(reg, logger)
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(reg, mbc, logger)
 
 	resp, err := s.AcceptShare(context.Background(), &pb.AcceptShareRequest{
 		Vendor: pb.PhoneVendor_XIAOMI,
@@ -93,7 +98,9 @@ func TestKeyShareService_AcceptShare_Success(t *testing.T) {
 }
 
 func TestKeyShareService_CancelShare(t *testing.T) {
-	s := NewKeyShareService(adapter.NewRegistry(zap.NewNop()), zap.NewNop())
+	logger := zap.NewNop()
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(adapter.NewRegistry(logger), mbc, logger)
 	resp, err := s.CancelShare(context.Background(), &pb.CancelShareRequest{ShareId: "share-001"})
 	if err != nil {
 		t.Fatalf("CancelShare failed: %v", err)
@@ -104,7 +111,9 @@ func TestKeyShareService_CancelShare(t *testing.T) {
 }
 
 func TestKeyShareService_GetShare(t *testing.T) {
-	s := NewKeyShareService(adapter.NewRegistry(zap.NewNop()), zap.NewNop())
+	logger := zap.NewNop()
+	mbc := relay.NewMailboxController(logger)
+	s := NewKeyShareService(adapter.NewRegistry(logger), mbc, logger)
 	resp, err := s.GetShare(context.Background(), &pb.GetShareRequest{ShareId: "share-001"})
 	if err != nil {
 		t.Fatalf("GetShare failed: %v", err)

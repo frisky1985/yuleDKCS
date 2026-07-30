@@ -16,8 +16,10 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	pb_relay "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 )
 
@@ -87,7 +89,8 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 
 	// ── Services ──
 	keySvc := service.NewKeyManagementService(adapterRegistry, logger)
-	shareSvc := service.NewKeyShareService(adapterRegistry, logger)
+	mailboxCtrl := relay.NewMailboxController(logger)
+	shareSvc := service.NewKeyShareService(adapterRegistry, mailboxCtrl, logger)
 	vehicleSvc := service.NewVehicleControlService(logger)
 	transportSvc := service.NewHubTransportService(adapterRegistry, logger)
 
@@ -95,6 +98,10 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 	pb.RegisterKeyShareServiceServer(grpcSrv, shareSvc)
 	pb.RegisterVehicleControlServiceServer(grpcSrv, vehicleSvc)
 	pb.RegisterHubTransportServiceServer(grpcSrv, transportSvc)
+
+	// ── Relay Server (CCC Mailbox API) ──
+	relaySvc := relay.NewRelayService(logger)
+	pb_relay.RegisterRelayServiceServer(grpcSrv, relaySvc)
 
 	// ── Gateway (REST -> gRPC) ──
 	gw := gateway.NewRESTGateway(grpcSrv, logger)
