@@ -18,6 +18,7 @@ import (
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	pb_relay "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
@@ -82,7 +83,6 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 	adapterRegistry := adapter.NewRegistry(logger)
 
 	// CCC Adapter + Mailbox middleware
-	// mailboxCreatorBridge wraps relay.MailboxController to implement adapter.MailboxCreator
 	mailboxCtrl := relay.NewMailboxController(logger)
 	mailboxBridge := &mailboxCreatorBridge{ctrl: mailboxCtrl}
 
@@ -92,10 +92,13 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 	cccSamsung := adapter.NewCCCAdapter("samsung", logger).WithMailboxCreator(mailboxBridge)
 	adapterRegistry.Register("samsung", "ccc_dk3", cccSamsung)
 
-	adapterRegistry.Register("xiaomi", "iccoa_dk40", adapter.NewICCOAAdapter("xiaomi", logger))
-	adapterRegistry.Register("oppo", "iccoa_dk40", adapter.NewICCOAAdapter("oppo", logger))
-	adapterRegistry.Register("vivo", "iccoa_dk40", adapter.NewICCOAAdapter("vivo", logger))
-	adapterRegistry.Register("huawei", "icce", adapter.NewICCEAdapter("huawei", logger))
+	// ICCOA Adapter (小米/OPPO/vivo) — S2S by env, stub otherwise
+	registerICCOAAdapter(adapterRegistry, "xiaomi", logger)
+	registerICCOAAdapter(adapterRegistry, "oppo", logger)
+	registerICCOAAdapter(adapterRegistry, "vivo", logger)
+
+	// ICCE Adapter (华为) — S2S by env, stub otherwise
+	registerICCEAdapter(adapterRegistry, "huawei", logger)
 
 	// ── Services ──
 	keySvc := service.NewKeyManagementService(adapterRegistry, logger)
@@ -170,4 +173,73 @@ func (b *mailboxCreatorBridge) CreateMailbox(ctx context.Context, keyID, senderV
 		return "", "", err
 	}
 	return mb.MailboxId, mb.SharingUrl, nil
+}
+
+// ─── S2S Adapter 注册辅助函数 ──────────────────────────────
+
+// registerICCOAAdapter 注册 ICCOA 适配器，环境变量配置 S2S 客户端时启用
+// 环境变量: ICCOA_{VENDOR}_BASE_URL, ICCOA_{VENDOR}_VEHICLE_OEM, ICCOA_{VENDOR}_DEVICE_OEM
+func registerICCOAAdapter(reg *adapter.Registry, vendor string, logger *zap.Logger) {
+	envPrefix := "ICCOA_" + vendorUpper(vendor)
+
+	baseURL := os.Getenv(envPrefix + "_BASE_URL")
+	if baseURL == "" {
+		logger.Info("ICCOA S2S not configured, using stub",
+			zap.String("vendor", vendor),
+			zap.String("env", envPrefix+"_BASE_URL"),
+		)
+		reg.Register(vendor, "iccoa_dk40", adapter.NewICCOAAdapter(vendor, logger))
+		return
+	}
+
+	config := s2s.NewDefaultICCOAConfig(
+		vendor,
+		baseURL,
+		os.Getenv(envPrefix+"_VEHICLE_OEM"),
+		os.Getenv(envPrefix+"_DEVICE_OEM"),
+	)
+	client := s2s.NewICCOAClient(vendor, config, logger)
+
+	reg.Register(vendor, "iccoa_dk40", adapter.NewICCOAAdapterWithClient(vendor, logger, client))
+	logger.Info("ICCOA S2S client enabled",
+		zap.String("vendor", vendor),
+		zap.String("base_url", baseURL),
+	)
+}
+
+// registerICCEAdapter 注册 ICCE 适配器，环境变量配置 S2S 客户端时启用
+// 环境变量: ICCE_{VENDOR}_BASE_URL
+func registerICCEAdapter(reg *adapter.Registry, vendor string, logger *zap.Logger) {
+	envPrefix := "ICCE_" + vendorUpper(vendor)
+
+	baseURL := os.Getenv(envPrefix + "_BASE_URL")
+	if baseURL == "" {
+		logger.Info("ICCE S2S not configured, using stub",
+			zap.String("vendor", vendor),
+			zap.String("env", envPrefix+"_BASE_URL"),
+		)
+		reg.Register(vendor, "icce", adapter.NewICCEAdapter(vendor, logger))
+		return
+	}
+
+	endpoint := s2s.DefaultICCEConfig()
+	endpoint.BaseURL = baseURL
+	client := s2s.NewICCEClient(vendor, endpoint, logger)
+
+	reg.Register(vendor, "icce", adapter.NewICCEAdapterWithClient(vendor, logger, client))
+	logger.Info("ICCE S2S client enabled",
+		zap.String("vendor", vendor),
+		zap.String("base_url", baseURL),
+	)
+}
+
+// vendorUpper 将厂商名转为环境变量格式（xiaomi → XIAOMI）
+func vendorUpper(v string) string {
+	b := []byte(v)
+	for i := range b {
+		if b[i] >= 'a' && b[i] <= 'z' {
+			b[i] -= 32
+		}
+	}
+	return string(b)
 }
