@@ -3,11 +3,14 @@ package relay
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
+	apiv1 "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 )
 
 // ─── 状态机 ──────────────────────────────────────────────────
@@ -66,16 +69,18 @@ type Mailbox struct {
 	Version           int64
 	UpdateCount       int32
 	MaxUpdates        int32
+	DeviceAttestation []byte // §11.3.5: sender device attestation for cross-OEM auth
 }
 
 // ─── MailboxController ───────────────────────────────────────
 
 type MailboxController struct {
-	mu       sync.RWMutex
-	mailboxes map[string]*Mailbox
-	logger   *zap.Logger
-	now      func() time.Time // 可注入，方便测试
-	notifier PushNotifier     // 推送通知接口，默认 NoopPusher
+	mu              sync.RWMutex
+	mailboxes       map[string]*Mailbox
+	logger          *zap.Logger
+	now             func() time.Time // 可注入，方便测试
+	notifier        PushNotifier     // 推送通知接口，默认 NoopPusher
+	adapterRegistry *adapter.Registry // 厂商适配器注册中心，可选
 }
 
 func NewMailboxController(logger *zap.Logger) *MailboxController {
@@ -91,6 +96,13 @@ func NewMailboxController(logger *zap.Logger) *MailboxController {
 // 默认使用 NoopPusher（不发送任何通知）
 func (c *MailboxController) WithNotifier(n PushNotifier) *MailboxController {
 	c.notifier = n
+	return c
+}
+
+// WithAdapterRegistry 注入厂商适配器注册中心
+// 设置后在关键状态转移时自动通知对应厂商适配器
+func (c *MailboxController) WithAdapterRegistry(reg *adapter.Registry) *MailboxController {
+	c.adapterRegistry = reg
 	return c
 }
 
@@ -134,6 +146,7 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 		Version:           1,
 		UpdateCount:       1,
 		MaxUpdates:        maxUpdates,
+		DeviceAttestation: req.DeviceAttestation,
 	}
 
 	c.mailboxes[id] = mb
@@ -240,6 +253,29 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 		})
 	}
 
+	// 通知厂商适配器（非阻塞：忽略错误，不打断业务流程）
+	switch req.SharingDataType {
+	case 2: // KeySigningRequest — 接收方已签名，通知发送方适配器
+		if a := c.getSenderAdapter(mb); a != nil {
+			_, _ = a.AcceptShare(ctx, &apiv1.AcceptShareRequest{
+				ShareCode: mb.ID,
+				DeviceId:  mb.ReceiverDeviceID,
+				Vendor:    apiv1.PhoneVendor(apiv1.PhoneVendor_value[strings.ToUpper(mb.ReceiverVendor)]),
+			})
+		}
+	case 3: // ImportRequest — 发送方已完成导入，通知发送方适配器
+		if a := c.getSenderAdapter(mb); a != nil {
+			_, _ = a.ShareKey(ctx, &apiv1.CreateShareRequest{
+				FromUserId: mb.SenderDeviceID,
+				ToUserId:   mb.ReceiverDeviceID,
+			})
+		}
+	case 4, 5: // SenderCancel / ReceiverCancel — 通知发送方适配器撤销
+		if a := c.getSenderAdapter(mb); a != nil {
+			_ = a.RevokeNotify(ctx, mb.ID, "share_cancelled")
+		}
+	}
+
 	return toProtoMailbox(mb), nil
 }
 
@@ -259,6 +295,8 @@ func (c *MailboxController) Delete(ctx context.Context, req *pb.DeleteMailboxReq
 		return nil, fmt.Errorf(ErrCodeInvalidTransition)
 	}
 
+	wasCancelled := mb.Status == StatusCancelled
+
 	mb.Status = StatusCompleted
 	mb.UpdatedAt = c.now()
 	mb.Version++
@@ -270,6 +308,13 @@ func (c *MailboxController) Delete(ctx context.Context, req *pb.DeleteMailboxReq
 		zap.String("mailbox_id", req.MailboxId),
 		zap.String("reason", req.Reason),
 	)
+
+	// 如果还未完成（已取消），通知厂商适配器撤销密钥
+	if wasCancelled {
+		if a := c.getSenderAdapter(mb); a != nil {
+			_ = a.RevokeNotify(ctx, mb.ID, req.Reason)
+		}
+	}
 
 	return toProtoMailbox(mb), nil
 }
@@ -345,6 +390,22 @@ func (c *MailboxController) Get(mailboxID string) (*Mailbox, bool) {
 	return mb, ok
 }
 
+// getSenderAdapter 获取发送方对应的厂商适配器
+func (c *MailboxController) getSenderAdapter(mb *Mailbox) adapter.Adapter {
+	if c.adapterRegistry == nil {
+		return nil
+	}
+	a, ok := c.adapterRegistry.GetByVendor(mb.SenderVendor)
+	if !ok {
+		c.logger.Warn("sender vendor adapter not found",
+			zap.String("mailbox_id", mb.ID),
+			zap.String("vendor", mb.SenderVendor),
+		)
+		return nil
+	}
+	return a
+}
+
 // checkExpired 检查邮箱是否过期，过期则标记并返回错误
 func (c *MailboxController) checkExpired(mb *Mailbox) error {
 	if c.now().After(mb.ExpiresAt) && mb.Status != StatusExpired {
@@ -403,5 +464,6 @@ func toProtoMailbox(mb *Mailbox) *pb.Mailbox {
 		ReceiverVendor:    mb.ReceiverVendor,
 		UpdateCount:       mb.UpdateCount,
 		MaxUpdates:        mb.MaxUpdates,
+		DeviceAttestation: mb.DeviceAttestation,
 	}
 }

@@ -206,6 +206,7 @@ type CreateMailboxRequest struct {
 	SenderVendor      string                 `protobuf:"bytes,5,opt,name=sender_vendor,json=senderVendor,proto3" json:"sender_vendor,omitempty"` // e.g. "apple", "samsung"
 	Config            *MailboxConfig         `protobuf:"bytes,6,opt,name=config,proto3" json:"config,omitempty"`
 	TraceId           string                 `protobuf:"bytes,7,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	DeviceAttestation []byte                 `protobuf:"bytes,8,opt,name=device_attestation,json=deviceAttestation,proto3" json:"device_attestation,omitempty"` // §11.3.5: sender device attestation for cross-OEM auth
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -287,6 +288,13 @@ func (x *CreateMailboxRequest) GetTraceId() string {
 		return x.TraceId
 	}
 	return ""
+}
+
+func (x *CreateMailboxRequest) GetDeviceAttestation() []byte {
+	if x != nil {
+		return x.DeviceAttestation
+	}
+	return nil
 }
 
 type CreateMailboxResponse struct {
@@ -1030,10 +1038,11 @@ type Mailbox struct {
 	UpdatedAt         int64                  `protobuf:"varint,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Version           int64                  `protobuf:"varint,10,opt,name=version,proto3" json:"version,omitempty"`
 	SharingUrl        string                 `protobuf:"bytes,11,opt,name=sharing_url,json=sharingUrl,proto3" json:"sharing_url,omitempty"`
-	ReceiverDeviceId  string                 `protobuf:"bytes,12,opt,name=receiver_device_id,json=receiverDeviceId,proto3" json:"receiver_device_id,omitempty"` // 接收方设备 ID（Relinquish 后更新）
-	ReceiverVendor    string                 `protobuf:"bytes,13,opt,name=receiver_vendor,json=receiverVendor,proto3" json:"receiver_vendor,omitempty"`         // 接收方厂商
-	UpdateCount       int32                  `protobuf:"varint,14,opt,name=update_count,json=updateCount,proto3" json:"update_count,omitempty"`                 // 当前更新次数
-	MaxUpdates        int32                  `protobuf:"varint,15,opt,name=max_updates,json=maxUpdates,proto3" json:"max_updates,omitempty"`                    // 最大更新次数
+	ReceiverDeviceId  string                 `protobuf:"bytes,12,opt,name=receiver_device_id,json=receiverDeviceId,proto3" json:"receiver_device_id,omitempty"`  // 接收方设备 ID（Relinquish 后更新）
+	ReceiverVendor    string                 `protobuf:"bytes,13,opt,name=receiver_vendor,json=receiverVendor,proto3" json:"receiver_vendor,omitempty"`          // 接收方厂商
+	UpdateCount       int32                  `protobuf:"varint,14,opt,name=update_count,json=updateCount,proto3" json:"update_count,omitempty"`                  // 当前更新次数
+	MaxUpdates        int32                  `protobuf:"varint,15,opt,name=max_updates,json=maxUpdates,proto3" json:"max_updates,omitempty"`                     // 最大更新次数
+	DeviceAttestation []byte                 `protobuf:"bytes,16,opt,name=device_attestation,json=deviceAttestation,proto3" json:"device_attestation,omitempty"` // §11.3.5: sender device attestation (persisted)
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1173,6 +1182,13 @@ func (x *Mailbox) GetMaxUpdates() int32 {
 	return 0
 }
 
+func (x *Mailbox) GetDeviceAttestation() []byte {
+	if x != nil {
+		return x.DeviceAttestation
+	}
+	return nil
+}
+
 var File_api_relay_v1_relay_proto protoreflect.FileDescriptor
 
 const file_api_relay_v1_relay_proto_rawDesc = "" +
@@ -1182,7 +1198,7 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\raccess_rights\x18\x01 \x01(\x0e2!.digitalkey.relay.v1.AccessRightsR\faccessRights\x12-\n" +
 	"\x12expiration_seconds\x18\x02 \x01(\x03R\x11expirationSeconds\x12\x1f\n" +
 	"\vmax_updates\x18\x03 \x01(\x05R\n" +
-	"maxUpdates\"\xa8\x02\n" +
+	"maxUpdates\"\xd7\x02\n" +
 	"\x14CreateMailboxRequest\x12\x18\n" +
 	"\apayload\x18\x01 \x01(\fR\apayload\x12!\n" +
 	"\fdisplay_info\x18\x02 \x01(\fR\vdisplayInfo\x12-\n" +
@@ -1190,7 +1206,8 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x10sender_device_id\x18\x04 \x01(\tR\x0esenderDeviceId\x12#\n" +
 	"\rsender_vendor\x18\x05 \x01(\tR\fsenderVendor\x12:\n" +
 	"\x06config\x18\x06 \x01(\v2\".digitalkey.relay.v1.MailboxConfigR\x06config\x12\x19\n" +
-	"\btrace_id\x18\a \x01(\tR\atraceId\"\xb2\x01\n" +
+	"\btrace_id\x18\a \x01(\tR\atraceId\x12-\n" +
+	"\x12device_attestation\x18\b \x01(\fR\x11deviceAttestation\"\xb2\x01\n" +
 	"\x15CreateMailboxResponse\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x1f\n" +
@@ -1257,7 +1274,7 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x02 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x03 \x01(\tR\berrorMsg\"\xb8\x04\n" +
+	"\terror_msg\x18\x03 \x01(\tR\berrorMsg\"\xe7\x04\n" +
 	"\aMailbox\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12:\n" +
@@ -1280,7 +1297,8 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x0freceiver_vendor\x18\r \x01(\tR\x0ereceiverVendor\x12!\n" +
 	"\fupdate_count\x18\x0e \x01(\x05R\vupdateCount\x12\x1f\n" +
 	"\vmax_updates\x18\x0f \x01(\x05R\n" +
-	"maxUpdates*\x97\x01\n" +
+	"maxUpdates\x12-\n" +
+	"\x12device_attestation\x18\x10 \x01(\fR\x11deviceAttestation*\x97\x01\n" +
 	"\rMailboxStatus\x12\x1e\n" +
 	"\x1aMAILBOX_STATUS_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aCREATED\x10\x01\x12\x15\n" +

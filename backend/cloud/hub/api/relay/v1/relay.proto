@@ -65,6 +65,7 @@ message CreateMailboxRequest {
   string        sender_vendor       = 5;  // e.g. "apple", "samsung"
   MailboxConfig config              = 6;
   string        trace_id            = 7;
+  bytes         device_attestation  = 8;  // §11.3.5: sender device attestation for cross-OEM auth
 }
 
 message CreateMailboxResponse {
@@ -163,4 +164,5 @@ message Mailbox {
   string        receiver_vendor     = 13;  // 接收方厂商
   int32         update_count        = 14;  // 当前更新次数
   int32         max_updates         = 15;  // 最大更新次数
+  bytes         device_attestation  = 16;  // §11.3.5: sender device attestation (persisted)
 }

@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 )
 
 // RelayService 实现 CCC Digital Key v4.0 Relay Server 的 Mailbox API
@@ -17,6 +18,19 @@ type RelayService struct {
 
 func NewRelayService(logger *zap.Logger, notifier ...PushNotifier) *RelayService {
 	ctrl := NewMailboxController(logger)
+	if len(notifier) > 0 && notifier[0] != nil {
+		ctrl.WithNotifier(notifier[0])
+	}
+	return &RelayService{
+		controller: ctrl,
+		logger:     logger.With(zap.String("service", "relay")),
+	}
+}
+
+// NewRelayServiceWithAdapter 创建 RelayService 并注入适配器注册中心
+func NewRelayServiceWithAdapter(logger *zap.Logger, reg *adapter.Registry, notifier ...PushNotifier) *RelayService {
+	ctrl := NewMailboxController(logger)
+	ctrl.WithAdapterRegistry(reg)
 	if len(notifier) > 0 && notifier[0] != nil {
 		ctrl.WithNotifier(notifier[0])
 	}
