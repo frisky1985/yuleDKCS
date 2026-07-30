@@ -100,7 +100,40 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 	pb.RegisterHubTransportServiceServer(grpcSrv, transportSvc)
 
 	// ── Relay Server (CCC Mailbox API) ──
-	relaySvc := relay.NewRelayService(logger)
+	// 构建 Push 通知链（环境变量配置，无配置则走 NoopPusher）
+	var pushNotifiers []relay.PushNotifier
+	if projectID := os.Getenv("FCM_PROJECT_ID"); projectID != "" {
+		fcmPusher := relay.NewFCMPusher(relay.FCMConfig{ProjectID: projectID})
+		pushNotifiers = append(pushNotifiers, fcmPusher)
+		logger.Info("FCM push enabled", zap.String("project", projectID))
+	}
+	if apnsKeyID := os.Getenv("APNS_KEY_ID"); apnsKeyID != "" {
+		apnsPusher, err := relay.NewAPNsPusher(relay.APNsConfig{
+			KeyID:      apnsKeyID,
+			TeamID:     os.Getenv("APNS_TEAM_ID"),
+			BundleID:   os.Getenv("APNS_BUNDLE_ID"),
+			AuthKey:    os.Getenv("APNS_AUTH_KEY"),
+			Production: os.Getenv("APNS_ENV") == "production",
+		})
+		if err != nil {
+			logger.Warn("APNs pusher init failed, skipping", zap.Error(err))
+		} else {
+			pushNotifiers = append(pushNotifiers, apnsPusher)
+			logger.Info("APNs push enabled", zap.String("key_id", apnsKeyID))
+		}
+	}
+
+	var pushNotifier relay.PushNotifier
+	switch len(pushNotifiers) {
+	case 0:
+		pushNotifier = &relay.NoopPusher{}
+	case 1:
+		pushNotifier = pushNotifiers[0]
+	default:
+		pushNotifier = relay.NewCompositePusher(pushNotifiers...)
+	}
+
+	relaySvc := relay.NewRelayService(logger, pushNotifier)
 	pb_relay.RegisterRelayServiceServer(grpcSrv, relaySvc)
 
 	// ── Gateway (REST -> gRPC) ──

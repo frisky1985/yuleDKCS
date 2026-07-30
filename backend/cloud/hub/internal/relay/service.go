@@ -15,9 +15,14 @@ type RelayService struct {
 	logger     *zap.Logger
 }
 
-func NewRelayService(logger *zap.Logger) *RelayService {
+func NewRelayService(logger *zap.Logger, notifier ...PushNotifier) *RelayService {
+	ctrl := NewMailboxController(logger)
+	// 如果传入了 PushNotifier，注入到 Controller
+	if len(notifier) > 0 && notifier[0] != nil {
+		ctrl.WithNotifier(notifier[0])
+	}
 	return &RelayService{
-		controller: NewMailboxController(logger),
+		controller: ctrl,
 		logger:     logger.With(zap.String("service", "relay")),
 	}
 }

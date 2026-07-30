@@ -51,7 +51,9 @@ type Mailbox struct {
 	Status            MailboxStatus
 	SenderDeviceID    string
 	SenderVendor      string
-	NotificationToken string
+	NotificationToken string          // 当前最新 notification token
+	SenderToken       string          // 发送方 push token（用于通知发送方）
+	ReceiverToken     string          // 接收方 push token（用于通知接收方）
 	DisplayInfo       []byte
 	Payload           []byte          // 当前加密载荷
 	SharingDataType   int32           // 1=KeyCreation, 2=KeySigning, 3=Import
@@ -74,6 +76,7 @@ type MailboxController struct {
 	mailboxes map[string]*Mailbox
 	logger   *zap.Logger
 	now      func() time.Time // 可注入，方便测试
+	notifier PushNotifier     // 推送通知接口，默认 NoopPusher
 }
 
 func NewMailboxController(logger *zap.Logger) *MailboxController {
@@ -81,7 +84,15 @@ func NewMailboxController(logger *zap.Logger) *MailboxController {
 		mailboxes: make(map[string]*Mailbox),
 		logger:    logger.With(zap.String("component", "mailbox-controller")),
 		now:       time.Now,
+		notifier:  &NoopPusher{},
 	}
+}
+
+// WithNotifier 注入推送通知实现
+// 默认使用 NoopPusher（不发送任何通知）
+func (c *MailboxController) WithNotifier(n PushNotifier) *MailboxController {
+	c.notifier = n
+	return c
 }
 
 // ─── CRUD ────────────────────────────────────────────────────
@@ -114,6 +125,7 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 		SenderDeviceID:    req.SenderDeviceId,
 		SenderVendor:      req.SenderVendor,
 		NotificationToken: req.NotificationToken,
+		SenderToken:       req.NotificationToken,  // 保存发送方 token
 		DisplayInfo:       req.DisplayInfo,
 		Payload:           req.Payload,
 		SharingDataType:   1, // KeyCreationRequest
@@ -123,6 +135,7 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 		ExpiresAt:         now.Add(expiry),
 		UpdatedAt:         now,
 		Version:           1,
+		UpdateCount:       1,
 		MaxUpdates:        maxUpdates,
 	}
 
@@ -153,16 +166,35 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 
 	// 根据分享数据类型决定状态转移
 	var newStatus MailboxStatus
+	var notifyTitle, notifyBody string        // 推送通知内容
+	var notifyToken string                    // 通知目标 token
 	switch req.SharingDataType {
 	case 2: // KeySigningRequest — 接收方操作
 		newStatus = StatusUpdatedByReceiver
 		mb.ReceiverDeviceID = req.UpdaterDeviceId
+		if req.NotificationToken != "" {
+			mb.ReceiverToken = req.NotificationToken
+		}
+		// 通知发送方
+		notifyTitle = "数字钥匙分享已更新"
+		notifyBody = "对方已签名，请完成钥匙导入"
+		notifyToken = mb.SenderToken
 	case 3: // ImportRequest — 发送方操作
 		newStatus = StatusUpdatedBySender
+		// 通知接收方
+		notifyTitle = "钥匙导入成功 🎉"
+		notifyBody = "你已收到数字钥匙，快去使用吧"
+		notifyToken = mb.ReceiverToken
 	case 4: // SenderCancel
 		newStatus = StatusCancelled
+		notifyTitle = "钥匙分享已取消"
+		notifyBody = "发送方取消了钥匙分享"
+		notifyToken = mb.ReceiverToken
 	case 5: // ReceiverCancel
 		newStatus = StatusCancelled
+		notifyTitle = "钥匙分享已取消"
+		notifyBody = "接收方取消了钥匙分享"
+		notifyToken = mb.SenderToken
 	default:
 		return nil, fmt.Errorf("invalid sharing_data_type: %d", req.SharingDataType)
 	}
@@ -180,6 +212,22 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 
 	if req.NotificationToken != "" {
 		mb.NotificationToken = req.NotificationToken
+	}
+
+	// 发送推送通知（非阻塞：忽略错误，不打断业务流程）
+	if notifyToken != "" && notifyTitle != "" {
+		_ = c.notifier.Notify(ctx, PushMessage{
+			Title:     notifyTitle,
+			Body:      notifyBody,
+			MailboxID: mb.ID,
+			Token:     notifyToken,
+			Vendor:    mb.SenderVendor,
+			Data: map[string]string{
+				"mailbox_id": mb.ID,
+				"event":      "mailbox_updated",
+				"status":     fmt.Sprintf("%d", newStatus),
+			},
+		})
 	}
 
 	return toProtoMailbox(mb), nil
