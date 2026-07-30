@@ -126,20 +126,21 @@ Relay Server 的具体 API 定义在引用的 [38] — "Stateful Workflow" 规�
 |----------|----------|------|
 | secret 不在 server 验证 | 规范说 secret 不在 relay 验证 | ✅ **正确！** |
 | 6 个 API 命名带 FromMailbox 后缀 | CCC 命名有 FromMailbox 后缀 | ✅ **已对齐** |
-| Push 通知 | "shall be implemented" | ✅ 已实现 |
+| Push 通知 + 轮询降级 | "shall be implemented" | ✅ FCM + APNs + 4 阶段轮询 |
 | payload 透传 | relay 不解密 | ✅ |
 | notificationToken | sender 提供, receiver 也应提供 | ✅ 已支持 |
 | accessRights RWD | 要求 RWD | ✅ |
 | 错误码 | 自有枚举（非 TLV） | ✅ 标准化错误码 |
-| 状态机 | 包含 PinReEntry(6)/PinReEntryValue(7) | ✅ 已补齐 |
+| 状态机 | 包含 SharingDataType 1-7 | ✅ 含 PinReEntry(6)/PinReEntryValue(7) |
+| 发送方认证 | deviceAttestation (跨 OEM) | ✅ proto + controller 已支持 |
+| 厂商适配器集成 | 关键事件通知厂商 | ✅ KeySigning→AcceptShare, Import→ShareKey |
 | 并发安全 | 无要求（实现保证） | ✅ Race detector 通过 |
-| 测试覆盖 | 14 单元 + 5 新测试 + 2 E2E | ✅ 19+2 测试通过 |
+| 测试覆盖 | 单元 + E2E | ✅ 31 单元 + 2 E2E = 1260 全量通过 |
 
-## 10. 当前差距（非阻塞，量产前修复）
+## 10. 当前差距（量产前修复）
 
-| 差距 | 优先级 | 阶段 | 说明 |
-|:----|:------:|:----:|:-----|
-| `deviceAttestation` 发送方认证 | 🟠 P1 | Phase C | 跨 OEM 场景，CreateMailbox 缺少 sender attestation 字段 |
-| 厂商适配器集成 | 🟠 P1 | Phase C | Mailbox 创建时通知 adapter |
-| Push 真实证书 | 🟡 P2 | Phase C | FCM/APNs 需配置证书/密钥 |
-| Polling 降级策略 | 🟢 P3 | Phase C | 规范定义了轮询间隔（5s/10s/30s...），作为 Push 降级 |
+| 差距 | 优先级 | 说明 |
+|:----|:------:|:-----|
+| Push 真实证书/密钥 | 🟡 P2 | FCM 服务账号 JSON、APNs 密钥文件、TeamID/KeyID 需配置 |
+| 设备端集成测试 | 🟢 P3 | 与真实手机端 Mailbox 客户端对接验证 |
+| PICS/PIXIT 认证文档补全 | 🟢 P3 | Relay Server 部分的认证文档 |
