@@ -189,7 +189,7 @@ svg { width: 100%; height: auto; }
 
       <!-- S2S Client area -->
       <rect x="610" y="250" width="580" height="60" rx="6" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
-      <text x="900" y="270" fill="#94a3b8" font-size="8" text-anchor="middle">S2S HTTP Clients (双向 TLS · REST/JSON)</text>
+      <text x="900" y="270" fill="#94a3b8" font-size="8" text-anchor="middle">S2S HTTPS Clients (双向 mTLS · REST/JSON)</text>
       <text x="900" y="296" fill="#64748b" font-size="7" text-anchor="middle">ICCOA: genSession · getMidCsr · putMidCert · sign · trackKey · manageKey · notifyKeyEvent · healthCheck</text>
 
       <!-- ============================================================ -->
@@ -390,7 +390,7 @@ svg { width: 100%; height: auto; }
       <div class="card-header"><div class="card-dot emerald"></div><h3>ICCOA S2S Protocol</h3></div>
       <ul>
         <li>• 架构: Hub ↔ 车服务器 ↔ 设备服务器 (无 Relay)</li>
-        <li>• 传输: 双向 TLS · REST/JSON · HTTP</li>
+        <li>• 传输: 双向 TLS (mTLS) · HTTPS · REST/JSON</li>
         <li>• 车服务器 API (§13.5): 14 个端点</li>
         <li>• 设备服务器 API (§13.6): 4 个端点</li>
         <li>• 分享流程: 16 步 (CA模式) / 24 步 (手机账号)</li>
