@@ -19,6 +19,9 @@ func NewVehicleControlService(logger *zap.Logger) *VehicleControlService {
 	}
 }
 
+// SendCommand 远程控车指令（source=Remote 场景）
+// 通过 MQTT 发送指令到车端 TCU，适用于 App 远程控车
+// BLE/NFC 本地控车请走 UnifiedKeyService (source=1/2/3)
 func (s *VehicleControlService) SendCommand(ctx context.Context, req *pb.ControlCommandRequest) (*pb.ControlCommandResponse, error) {
 	s.logger.Info("SendCommand",
 		zap.String("vehicle_id", req.VehicleId),

@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/proto"
+
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 )
@@ -22,6 +25,8 @@ func NewHubTransportService(registry *adapter.Registry, logger *zap.Logger) *Hub
 }
 
 // ForwardToVendor DKCS调用HUB → 转发到手机厂商云端
+// 根据 operation 分发到对应 adapter 方法
+// payload 使用 protobuf 序列化，由各 forwardXxx 方法解析
 func (s *HubTransportService) ForwardToVendor(ctx context.Context, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
 	s.logger.Info("ForwardToVendor",
 		zap.String("vendor", req.Vendor.String()),
@@ -37,24 +42,88 @@ func (s *HubTransportService) ForwardToVendor(ctx context.Context, req *pb.Forwa
 		}, nil
 	}
 
-	// 根据operation分发
 	switch req.Operation {
 	case "bind":
-		// 解析payload → 调用适配器BindKey
+		return s.forwardBind(ctx, a, req)
 	case "unbind":
-		// 解析payload → 调用适配器UnbindKey
+		return s.forwardUnbind(ctx, a, req)
 	case "share":
-		// 解析payload → 调用适配器ShareKey
+		return s.forwardShare(ctx, a, req)
+	case "revoke":
+		return s.forwardRevoke(ctx, a, req)
 	case "notify":
-		// 解析payload → 调用适配器Notify
+		return s.forwardNotify(ctx, a, req)
 	default:
 		return &pb.ForwardResponse{
 			ErrorCode: "UNSUPPORTED_OPERATION",
+			ErrorMsg:  fmt.Sprintf("unsupported operation: %s", req.Operation),
 		}, nil
 	}
+}
 
-	_ = a
+// forwardBind 解析 payload → 调用适配器 BindKey
+func (s *HubTransportService) forwardBind(ctx context.Context, a adapter.Adapter, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
+	bindReq := &pb.BindKeyRequest{}
+	if err := proto.Unmarshal(req.Payload, bindReq); err != nil {
+		s.logger.Warn("forwardBind: payload unmarshal failed", zap.Error(err))
+		return &pb.ForwardResponse{ErrorCode: "PAYLOAD_PARSE_ERROR", ErrorMsg: err.Error()}, nil
+	}
+
+	resp, err := a.BindKey(ctx, bindReq)
+	if err != nil {
+		return &pb.ForwardResponse{ErrorCode: "ADAPTER_ERROR", ErrorMsg: err.Error()}, nil
+	}
+
+	respPayload, _ := proto.Marshal(resp)
+	return &pb.ForwardResponse{Payload: respPayload}, nil
+}
+
+// forwardUnbind 解析 payload → 调用适配器 UnbindKey
+func (s *HubTransportService) forwardUnbind(ctx context.Context, a adapter.Adapter, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
+	unbindReq := &pb.UnbindKeyRequest{}
+	if err := proto.Unmarshal(req.Payload, unbindReq); err != nil {
+		s.logger.Warn("forwardUnbind: payload unmarshal failed", zap.Error(err))
+		return &pb.ForwardResponse{ErrorCode: "PAYLOAD_PARSE_ERROR", ErrorMsg: err.Error()}, nil
+	}
+
+	if err := a.UnbindKey(ctx, unbindReq.KeyId); err != nil {
+		return &pb.ForwardResponse{ErrorCode: "ADAPTER_ERROR", ErrorMsg: err.Error()}, nil
+	}
 	return &pb.ForwardResponse{}, nil
+}
+
+// forwardShare 解析 payload → 调用适配器 ShareKey
+func (s *HubTransportService) forwardShare(ctx context.Context, a adapter.Adapter, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
+	shareReq := &pb.CreateShareRequest{}
+	if err := proto.Unmarshal(req.Payload, shareReq); err != nil {
+		s.logger.Warn("forwardShare: payload unmarshal failed", zap.Error(err))
+		return &pb.ForwardResponse{ErrorCode: "PAYLOAD_PARSE_ERROR", ErrorMsg: err.Error()}, nil
+	}
+
+	resp, err := a.ShareKey(ctx, shareReq)
+	if err != nil {
+		return &pb.ForwardResponse{ErrorCode: "ADAPTER_ERROR", ErrorMsg: err.Error()}, nil
+	}
+
+	respPayload, _ := proto.Marshal(resp)
+	return &pb.ForwardResponse{Payload: respPayload}, nil
+}
+
+// forwardRevoke 调用适配器 RevokeNotify
+// payload 作为 keyID
+func (s *HubTransportService) forwardRevoke(ctx context.Context, a adapter.Adapter, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
+	if err := a.RevokeNotify(ctx, string(req.Payload), ""); err != nil {
+		return &pb.ForwardResponse{ErrorCode: "ADAPTER_ERROR", ErrorMsg: err.Error()}, nil
+	}
+	return &pb.ForwardResponse{}, nil
+}
+
+// forwardNotify 调用适配器 Notify
+func (s *HubTransportService) forwardNotify(ctx context.Context, a adapter.Adapter, req *pb.ForwardRequest) (*pb.ForwardResponse, error) {
+	s.logger.Warn("forwardNotify: vendor notification not implemented",
+		zap.String("vendor", req.Vendor.String()),
+	)
+	return &pb.ForwardResponse{ErrorCode: "NOT_IMPLEMENTED"}, nil
 }
 
 // VendorCallback 手机厂商回调HUB
