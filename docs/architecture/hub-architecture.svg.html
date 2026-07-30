@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>yuleDKCS Hub — 数字钥匙系统架构图</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #020617;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40px 20px;
+}
+.container { max-width: 1300px; width: 100%; }
+h1 {
+  font-size: 24px; font-weight: 600; color: #f1f5f9;
+  display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
+}
+.subtitle { color: #64748b; font-size: 12px; margin-bottom: 30px; }
+.dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #34d399;
+  animation: pulse 2s infinite; display: inline-block;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(52,211,153,0); }
+}
+.diagram-card {
+  background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+  padding: 30px; overflow-x: auto; margin-bottom: 30px;
+}
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+.card {
+  background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 18px;
+}
+.card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.card-dot { width: 8px; height: 8px; border-radius: 50%; }
+.card-dot.cyan { background: #22d3ee; }
+.card-dot.emerald { background: #34d399; }
+.card-dot.amber { background: #fbbf24; }
+.card h3 { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.card ul { list-style: none; }
+.card li { font-size: 10px; color: #94a3b8; line-height: 1.8; }
+svg { width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1><span class="dot"></span> yuleDKCS Hub — 数字钥匙系统架构图</h1>
+  <p class="subtitle">CCC Digital Key 3.0 · ICCOA DK 3.0 · ICCE · Protocol Mapping</p>
+
+  <div class="diagram-card">
+    <svg viewBox="0 0 1240 860" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Grid Pattern -->
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+        </pattern>
+
+        <!-- Protocol Zone Backgrounds -->
+        <linearGradient id="cccGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(8,51,68,0.08)"/>
+          <stop offset="100%" stop-color="rgba(8,51,68,0.02)"/>
+        </linearGradient>
+        <linearGradient id="iccoaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(6,78,59,0.08)"/>
+          <stop offset="100%" stop-color="rgba(6,78,59,0.02)"/>
+        </linearGradient>
+        <linearGradient id="icceGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(120,53,15,0.08)"/>
+          <stop offset="100%" stop-color="rgba(120,53,15,0.02)"/>
+        </linearGradient>
+
+        <!-- Arrowheads -->
+        <marker id="arrowCyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399"/>
+        </marker>
+        <marker id="arrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#fbbf24"/>
+        </marker>
+        <marker id="arrowSlate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+        </marker>
+        <marker id="arrowViolet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#a78bfa"/>
+        </marker>
+        <marker id="arrowRose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#fb7185"/>
+        </marker>
+      </defs>
+
+      <!-- Background Grid -->
+      <rect width="1240" height="860" fill="url(#grid)"/>
+
+      <!-- ============================================================ -->
+      <!-- Protocol Zone Boundaries                                    -->
+      <!-- ============================================================ -->
+
+      <!-- CCC Zone -->
+      <rect x="15" y="10" width="400" height="840" rx="8" fill="url(#cccGrad)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4" opacity="0.3"/>
+      <text x="25" y="32" fill="#22d3ee" font-size="10" font-weight="600" opacity="0.7">CCC DIGITAL KEY 3.0</text>
+
+      <!-- ICCOA Zone -->
+      <rect x="420" y="10" width="400" height="840" rx="8" fill="url(#iccoaGrad)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4" opacity="0.3"/>
+      <text x="430" y="32" fill="#34d399" font-size="10" font-weight="600" opacity="0.7">ICCOA DK 3.0 / 4.0</text>
+
+      <!-- ICCE Zone -->
+      <rect x="825" y="10" width="400" height="840" rx="8" fill="url(#icceGrad)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="8,4" opacity="0.3"/>
+      <text x="835" y="32" fill="#fbbf24" font-size="10" font-weight="600" opacity="0.7">ICCE</text>
+
+      <!-- ============================================================ -->
+      <!-- COMPONENT: yuleDKCS Hub                                     -->
+      <!-- ============================================================ -->
+
+      <!-- Hub background box -->
+      <rect x="30" y="55" width="1180" height="145" rx="10" fill="rgba(6,78,59,0.12)" stroke="#34d399" stroke-width="1.5"/>
+
+      <!-- Hub Title -->
+      <rect x="50" y="65" width="160" height="28" rx="4" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1"/>
+      <text x="130" y="83" fill="#34d399" font-size="11" font-weight="600" text-anchor="middle">yuleDKCS HUB</text>
+
+      <!-- Hub Sub-components -->
+      <!-- KeyManagement -->
+      <rect x="60" y="105" width="130" height="42" rx="5" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="125" y="125" fill="#d1fae5" font-size="9" font-weight="500" text-anchor="middle">KeyManagement</text>
+      <text x="125" y="137" fill="#6ee7b7" font-size="7" text-anchor="middle">op/sign · manageKey</text>
+
+      <!-- KeyShareService -->
+      <rect x="210" y="105" width="130" height="42" rx="5" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="275" y="125" fill="#d1fae5" font-size="9" font-weight="500" text-anchor="middle">KeyShareService</text>
+      <text x="275" y="137" fill="#6ee7b7" font-size="7" text-anchor="middle">share / accept / cancel</text>
+
+      <!-- VehicleControl -->
+      <rect x="360" y="105" width="130" height="42" rx="5" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="425" y="125" fill="#d1fae5" font-size="9" font-weight="500" text-anchor="middle">VehicleControl</text>
+      <text x="425" y="137" fill="#6ee7b7" font-size="7" text-anchor="middle">RKE · remote control</text>
+
+      <!-- HubTransport -->
+      <rect x="510" y="105" width="130" height="42" rx="5" fill="rgba(6,78,59,0.3)" stroke="#34d399" stroke-width="1"/>
+      <text x="575" y="125" fill="#d1fae5" font-size="9" font-weight="500" text-anchor="middle">HubTransport</text>
+      <text x="575" y="137" fill="#6ee7b7" font-size="7" text-anchor="middle">BLE · NFC · UWB proxy</text>
+
+      <!-- Adapter Registry -->
+      <rect x="660" y="105" width="170" height="42" rx="5" fill="rgba(251,146,60,0.2)" stroke="#fb923c" stroke-width="1"/>
+      <text x="745" y="125" fill="#fde68a" font-size="9" font-weight="500" text-anchor="middle">Adapter Registry</text>
+      <text x="745" y="137" fill="#fbbf24" font-size="7" text-anchor="middle">CCC · ICCOA · ICCE</text>
+
+      <!-- Unified Router -->
+      <rect x="850" y="105" width="140" height="42" rx="5" fill="rgba(76,29,149,0.3)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="920" y="125" fill="#e9d5ff" font-size="9" font-weight="500" text-anchor="middle">Unified Router</text>
+      <text x="920" y="137" fill="#a78bfa" font-size="7" text-anchor="middle">协议协商 · 路由</text>
+
+      <!-- gRPC API -->
+      <rect x="1010" y="105" width="180" height="42" rx="5" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="1100" y="125" fill="#cffafe" font-size="9" font-weight="500" text-anchor="middle">gRPC / REST API</text>
+      <text x="1100" y="137" fill="#22d3ee" font-size="7" text-anchor="middle">:9090 (gRPC) · :8080 (REST)</text>
+
+      <!-- ============================================================ -->
+      <!-- COMPONENT: Adapter Layer                                     -->
+      <!-- ============================================================ -->
+
+      <rect x="30" y="215" width="1180" height="108" rx="10" fill="rgba(8,51,68,0.08)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <text x="50" y="238" fill="#22d3ee" font-size="9" font-weight="600">Adapter Layer — 编排层统一 (adapter.ShareKey / adapter.BindKey / ...)</text>
+
+      <!-- CCC Adapter -->
+      <rect x="50" y="250" width="155" height="60" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="127" y="272" fill="#cffafe" font-size="9" font-weight="600" text-anchor="middle">CCC Adapter</text>
+      <text x="127" y="284" fill="#22d3ee" font-size="7" text-anchor="middle">apple / samsung</text>
+      <text x="127" y="296" fill="#67e8f9" font-size="7" text-anchor="middle">ccc_dk3</text>
+
+      <!-- ICCOA Adapter -->
+      <rect x="235" y="250" width="155" height="60" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="312" y="272" fill="#d1fae5" font-size="9" font-weight="600" text-anchor="middle">ICCOA Adapter</text>
+      <text x="312" y="284" fill="#34d399" font-size="7" text-anchor="middle">xiaomi / oppo / vivo</text>
+      <text x="312" y="296" fill="#6ee7b7" font-size="7" text-anchor="middle">iccoa_dk40</text>
+
+      <!-- ICCE Adapter -->
+      <rect x="420" y="250" width="155" height="60" rx="6" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="1.5"/>
+      <text x="497" y="272" fill="#fef3c7" font-size="9" font-weight="600" text-anchor="middle">ICCE Adapter</text>
+      <text x="497" y="284" fill="#fbbf24" font-size="7" text-anchor="middle">huawei</text>
+      <text x="497" y="296" fill="#fde68a" font-size="7" text-anchor="middle">icce</text>
+
+      <!-- S2S Client area -->
+      <rect x="610" y="250" width="580" height="60" rx="6" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="900" y="270" fill="#94a3b8" font-size="8" text-anchor="middle">S2S HTTP Clients (双向 TLS · REST/JSON)</text>
+      <text x="900" y="296" fill="#64748b" font-size="7" text-anchor="middle">ICCOA: genSession · getMidCsr · putMidCert · sign · trackKey · manageKey · notifyKeyEvent · healthCheck</text>
+
+      <!-- ============================================================ -->
+      <!-- COMPONENT: CCC Relay Server                                 -->
+      <!-- ============================================================ -->
+
+      <rect x="30" y="340" width="370" height="150" rx="10" fill="rgba(8,51,68,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="215" y="362" fill="#22d3ee" font-size="10" font-weight="600" text-anchor="middle">CCC RELAY SERVER (Mailbox)</text>
+
+      <!-- Mailbox APIs -->
+      <rect x="45" y="375" width="340" height="40" rx="4" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="215" y="392" fill="#cffafe" font-size="8" text-anchor="middle">6 × Mailbox API (§11.3.4)</text>
+      <text x="215" y="405" fill="#67e8f9" font-size="7" text-anchor="middle">Create · Update · Delete · ReadDisplayFromMailbox · ReadSecureFromMailbox · Relinquish</text>
+
+      <!-- MailboxController -->
+      <rect x="45" y="422" width="155" height="55" rx="4" fill="rgba(8,51,68,0.3)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="122" y="440" fill="#67e8f9" font-size="8" font-weight="500" text-anchor="middle">MailboxController</text>
+      <text x="122" y="452" fill="#22d3ee" font-size="7" text-anchor="middle">状态机 · CRUD · TTL</text>
+      <text x="122" y="464" fill="#22d3ee" font-size="7" text-anchor="middle">Adaper通知 · 并发安全</text>
+
+      <!-- Push Notifier -->
+      <rect x="215" y="422" width="170" height="55" rx="4" fill="rgba(136,19,55,0.3)" stroke="#fb7185" stroke-width="1"/>
+      <text x="300" y="440" fill="#fda4af" font-size="8" font-weight="500" text-anchor="middle">PushNotifier</text>
+      <text x="300" y="452" fill="#fb7185" font-size="7" text-anchor="middle">FCM · APNs · Composite</text>
+      <text x="300" y="464" fill="#fb7185" font-size="7" text-anchor="middle">Polling Fallback (4 阶段)</text>
+
+      <!-- ============================================================ -->
+      <!-- COMPONENT: External Servers                                 -->
+      <!-- ============================================================ -->
+
+      <!-- Device OEM Server -->
+      <rect x="430" y="340" width="390" height="105" rx="10" fill="rgba(30,41,59,0.4)" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="625" y="362" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">DEVICE OEM SERVER (设备服务器)</text>
+
+      <rect x="445" y="375" width="110" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="500" y="395" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">Apple</text>
+      <text x="500" y="408" fill="#94a3b8" font-size="7" text-anchor="middle">Apple Wallet</text>
+      <text x="500" y="420" fill="#64748b" font-size="7" text-anchor="middle">APNs</text>
+
+      <rect x="565" y="375" width="110" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="620" y="395" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">Samsung</text>
+      <text x="620" y="408" fill="#94a3b8" font-size="7" text-anchor="middle">Samsung Pass</text>
+      <text x="620" y="420" fill="#64748b" font-size="7" text-anchor="middle">FCM</text>
+
+      <rect x="685" y="375" width="120" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="745" y="395" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">小米/OPPO/vivo</text>
+      <text x="745" y="408" fill="#94a3b8" font-size="7" text-anchor="middle">设备钱包服务器</text>
+      <text x="745" y="420" fill="#64748b" font-size="7" text-anchor="middle">S2S ↔ 车服务器</text>
+
+      <!-- Vehicle OEM Server -->
+      <rect x="430" y="458" width="390" height="105" rx="10" fill="rgba(30,41,59,0.4)" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="625" y="480" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">VEHICLE OEM SERVER (车服务器)</text>
+
+      <rect x="445" y="493" width="110" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="500" y="513" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">BMW</text>
+      <text x="500" y="526" fill="#94a3b8" font-size="7" text-anchor="middle">CCC 车企</text>
+
+      <rect x="565" y="493" width="110" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="620" y="513" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">BYD/蔚来/小鹏</text>
+      <text x="620" y="526" fill="#94a3b8" font-size="7" text-anchor="middle">ICCOA 车企</text>
+      <text x="620" y="538" fill="#64748b" font-size="7" text-anchor="middle">签发证书 · 管理钥匙</text>
+
+      <rect x="685" y="493" width="120" height="55" rx="5" fill="rgba(30,41,59,0.3)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="745" y="513" fill="#cbd5e1" font-size="8" font-weight="500" text-anchor="middle">华为系车企</text>
+      <text x="745" y="526" fill="#94a3b8" font-size="7" text-anchor="middle">ICCE 车企</text>
+      <text x="745" y="538" fill="#64748b" font-size="7" text-anchor="middle">边缘计算 · 国密</text>
+
+      <!-- ============================================================ -->
+      <!-- CONNECTIONS: Arrows                                         -->
+      <!-- ============================================================ -->
+
+      <!-- Hub → Relay: Mailbox API (gRPC) -->
+      <path d="M 275 147 L 275 180 L 215 180 L 215 340" fill="none" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+      <rect x="230" y="242" width="110" height="14" rx="3" fill="#0f172a" stroke="#22d3ee" stroke-width="0.5"/>
+      <text x="285" y="252" fill="#22d3ee" font-size="7" text-anchor="middle">gRPC Mailbox</text>
+
+      <!-- Hub → CCC Adapter (internal) -->
+      <path d="M 275 147 L 275 180 L 127 180 L 127 250" fill="none" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowCyan)"/>
+
+      <!-- Hub → ICCOA Adapter (internal) -->
+      <path d="M 275 147 L 275 180 L 312 180 L 312 250" fill="none" stroke="#34d399" stroke-width="1" marker-end="url(#arrowGreen)"/>
+
+      <!-- Hub → ICCE Adapter (internal) -->
+      <path d="M 275 147 L 275 180 L 497 180 L 497 250" fill="none" stroke="#fbbf24" stroke-width="1" marker-end="url(#arrowAmber)"/>
+
+      <!-- CCC Adapter → Relay: Mailbox Create -->
+      <path d="M 127 310 L 127 340" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arrowCyan)"/>
+      <text x="135" y="328" fill="#67e8f9" font-size="6">CreateMailbox</text>
+
+      <!-- CCC Adapter → Device OEM (Apple/Samsung) -->
+      <path d="M 127 310 L 127 325 L 550 325 L 550 375" fill="none" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowSlate)"/>
+      <rect x="240" y="316" width="200" height="14" rx="3" fill="#0f172a" stroke="#94a3b8" stroke-width="0.5"/>
+      <text x="340" y="326" fill="#94a3b8" font-size="7" text-anchor="middle">Vendor REST API (Apple/Samsung 私有)</text>
+
+      <!-- ICCOA Adapter → Vehicle OEM Server: S2S -->
+      <path d="M 312 310 L 620 310 L 620 458" fill="none" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+      <rect x="400" y="300" width="195" height="14" rx="3" fill="#0f172a" stroke="#34d399" stroke-width="0.5"/>
+      <text x="497" y="310" fill="#34d399" font-size="7" text-anchor="middle">ICCOA S2S (§13.5): genSession · trackKey · sign</text>
+
+      <!-- ICCE Adapter → Vehicle OEM Server -->
+      <path d="M 497 310 L 745 310 L 745 458" fill="none" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowAmber)"/>
+      <rect x="530" y="438" width="180" height="14" rx="3" fill="#0f172a" stroke="#fbbf24" stroke-width="0.5"/>
+      <text x="620" y="448" fill="#fbbf24" font-size="7" text-anchor="middle">ICCE S2S (TBD)</text>
+
+      <!-- Vehicle OEM → Device OEM: S2S (ICCOA §13.6) -->
+      <path d="M 685 525 L 750 525 L 750 430 L 745 430" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowSlate)"/>
+      <rect x="530" y="466" width="190" height="14" rx="3" fill="#0f172a" stroke="#94a3b8" stroke-width="0.5"/>
+      <text x="625" y="476" fill="#94a3b8" font-size="7" text-anchor="middle">S2S: manageKey · syncKeyInfo · notifyKeyEvent</text>
+
+      <!-- ICCOA S2S Client internal -->
+      <path d="M 312 310 L 900 310" fill="none" stroke="#64748b" stroke-width="0.8" stroke-dasharray="3,3"/>
+
+      <!-- ============================================================ -->
+      <!-- BOTTOM: Push + Mailbox Flow                                 -->
+      <!-- ============================================================ -->
+
+      <!-- Relay → Push (FCM/APNs) to device -->
+      <rect x="100" y="580" width="280" height="55" rx="8" fill="rgba(136,19,55,0.1)" stroke="#fb7185" stroke-width="1.5"/>
+      <text x="240" y="600" fill="#fda4af" font-size="9" font-weight="600" text-anchor="middle">Push Notification</text>
+      <text x="240" y="614" fill="#fb7185" font-size="7" text-anchor="middle">FCM (Android) · APNs (iOS)</text>
+      <text x="240" y="626" fill="#fb7185" font-size="7" text-anchor="middle">4 阶段轮询降级 (5s → 10s → 30s → 60s)</text>
+
+      <path d="M 215 477 L 215 520 L 240 520 L 240 580" fill="none" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowRose)"/>
+
+      <!-- Mailbox data flow: Sender → Relay → Receiver -->
+      <rect x="100" y="650" width="280" height="65" rx="8" fill="rgba(8,51,68,0.1)" stroke="#22d3ee" stroke-width="1.5"/>
+      <text x="240" y="670" fill="#cffafe" font-size="9" font-weight="600" text-anchor="middle">Mailbox 数据流 (CCC Only)</text>
+      <text x="240" y="684" fill="#67e8f9" font-size="7" text-anchor="middle">Sender → CreateMailbox (加密 payload)</text>
+      <text x="240" y="696" fill="#67e8f9" font-size="7" text-anchor="middle">Receiver → ReadSecureContentFromMailbox</text>
+      <text x="240" y="708" fill="#67e8f9" font-size="7" text-anchor="middle">Secret 在 URL fragment， server 不解密</text>
+
+      <!-- ============================================================ -->
+      <!-- ICCOA Sharing Flow                                          -->
+      <!-- ============================================================ -->
+      <rect x="430" y="580" width="390" height="135" rx="8" fill="rgba(6,78,59,0.08)" stroke="#34d399" stroke-width="1.5"/>
+      <text x="625" y="600" fill="#34d399" font-size="9" font-weight="600" text-anchor="middle">ICCOA 分享流程 (车账号体系 · §7.6.1)</text>
+
+      <text x="445" y="620" fill="#6ee7b7" font-size="7">1. 车App → 车服务器: 分享请求</text>
+      <text x="445" y="634" fill="#6ee7b7" font-size="7">2. 车服务器: 生成 ownerSessionId</text>
+      <text x="445" y="648" fill="#6ee7b7" font-size="7">3. DKF → 设备服务器 → 车服务器: getMidCsr</text>
+      <text x="445" y="662" fill="#6ee7b7" font-size="7">4. 车主 DKF 签发中间分享证书 → putMidCert</text>
+      <text x="445" y="676" fill="#6ee7b7" font-size="7">5. 好友设备: share/sign → 获取好友证书</text>
+      <text x="445" y="690" fill="#6ee7b7" font-size="7">6. 注册: trackKey → 车辆激活 → notifyKeyEvent</text>
+      <text x="445" y="706" fill="#34d399" font-size="7">注: 16 步全部通过车服务器 ↔ 设备服务器 S2S 完成</text>
+
+      <!-- ============================================================ -->
+      <!-- LEGEND                                                      -->
+      <!-- ============================================================ -->
+      <rect x="30" y="740" width="1180" height="95" rx="8" fill="rgba(30,41,59,0.2)" stroke="#1e293b" stroke-width="1"/>
+
+      <text x="50" y="762" fill="#e2e8f0" font-size="10" font-weight="600">图例</text>
+
+      <!-- Protocol colors -->
+      <rect x="50" y="772" width="12" height="12" rx="2" fill="rgba(8,51,68,0.5)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="68" y="782" fill="#94a3b8" font-size="8">CCC Digital Key 3.0</text>
+
+      <rect x="230" y="772" width="12" height="12" rx="2" fill="rgba(6,78,59,0.5)" stroke="#34d399" stroke-width="1"/>
+      <text x="248" y="782" fill="#94a3b8" font-size="8">ICCOA DK 3.0/4.0</text>
+
+      <rect x="420" y="772" width="12" height="12" rx="2" fill="rgba(120,53,15,0.4)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="438" y="782" fill="#94a3b8" font-size="8">ICCE</text>
+
+      <!-- Arrow types -->
+      <line x1="610" y1="778" x2="650" y2="778" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowSlate)"/>
+      <text x="656" y="782" fill="#94a3b8" font-size="8">Vendor API / S2S</text>
+
+      <line x1="820" y1="778" x2="860" y2="778" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowCyan)"/>
+      <text x="866" y="782" fill="#94a3b8" font-size="8">gRPC (Mailbox)</text>
+
+      <line x1="1020" y1="778" x2="1060" y2="778" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowRose)"/>
+      <text x="1066" y="782" fill="#94a3b8" font-size="8">Push (FCM/APNs)</text>
+
+      <line x1="50" y1="798" x2="90" y2="798" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6,3"/>
+      <text x="96" y="802" fill="#94a3b8" font-size="8">Vehicle ↔ Device S2S</text>
+
+      <line x1="280" y1="798" x2="320" y2="798" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="326" y="802" fill="#94a3b8" font-size="8">Adapter → Mailbox</text>
+
+      <!-- Key info at bottom -->
+      <text x="50" y="822" fill="#64748b" font-size="7">Hub 地址: :9090 (gRPC) · :8080 (REST) · BLE/NFC/UWB 设备直连 | 测试: 1336 passed · 19 packages</text>
+    </svg>
+  </div>
+
+  <!-- Info Cards -->
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-header"><div class="card-dot cyan"></div><h3>CCC Mailbox Protocol</h3></div>
+      <ul>
+        <li>• 6 × gRPC API: Create · Update · Delete · ReadDisplayFrom · ReadSecureFrom · Relinquish</li>
+        <li>• 传输层: CCC Adapter → MailboxController → Push (FCM/APNs)</li>
+        <li>• 零知识: Secret 在 URL fragment，server 不解密</li>
+        <li>• 轮询降级: 5s → 10s → 30s → 60s</li>
+        <li>• 状态机: 7 种状态 (含 PinReEntry)</li>
+        <li>• 测试: 31 单元 + 2 E2E</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-dot emerald"></div><h3>ICCOA S2S Protocol</h3></div>
+      <ul>
+        <li>• 架构: Hub ↔ 车服务器 ↔ 设备服务器 (无 Relay)</li>
+        <li>• 传输: 双向 TLS · REST/JSON · HTTP</li>
+        <li>• 车服务器 API (§13.5): 14 个端点</li>
+        <li>• 设备服务器 API (§13.6): 4 个端点</li>
+        <li>• 分享流程: 16 步 (CA模式) / 24 步 (手机账号)</li>
+        <li>• 错误码: 40000~50001 共 14 个</li>
+        <li>• S2S 客户端: 12 API 已实现 + 34 mock 测试</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-dot amber"></div><h3>ICCE Protocol</h3></div>
+      <ul>
+        <li>• 架构: 与 ICCOA 相同 (车服务器中心)</li>
+        <li>• 华为主导，中国车企生态</li>
+        <li>• 支持国密 SM2/SM3/SM4</li>
+        <li>• 边缘计算 + UWB FiRa</li>
+        <li>• S2S 客户端基础框架就绪</li>
+        <li>• 需 ICCE 规范 PDF 完善类型定义</li>
+        <li>• 当前: stub 模式，等待对接</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>
