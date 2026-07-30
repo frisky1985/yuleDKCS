@@ -15,9 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// ICCOAClient ICCOA 车服务器 S2S HTTP 客户端
+// ICCOAClient ICCOA 车服务器 S2S HTTPS 客户端 (双向 mTLS)
 // ICCOA 没有 Relay Server，分享通过车服务器 S2S 完成
-// 使用双向 TLS (mTLS) + REST/JSON
+// 传输层: HTTPS (HTTP/1.1 over TLS) + mutual TLS
+// 数据格式: REST/JSON
 type ICCOAClient struct {
 	config   ICCOAConfig
 	client   *http.Client

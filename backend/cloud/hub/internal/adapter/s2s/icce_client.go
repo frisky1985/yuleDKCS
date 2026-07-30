@@ -15,9 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// ICCEClient ICCE 厂商 S2S HTTP 客户端
-// 与 ICCOA 架构相同：Hub 直连车厂 OEM S2S 端点，无 Relay Server
-// 使用双向 TLS (mTLS) + REST/JSON
+// ICCEClient ICCE 厂商 S2S HTTPS 客户端 (双向 mTLS)
+// 传输层: HTTPS (HTTP/1.1 over TLS) + mutual TLS
+// 数据格式: REST/JSON
 type ICCEClient struct {
 	config   ICCEEndpoint
 	client   *http.Client
