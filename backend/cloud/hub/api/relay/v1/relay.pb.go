@@ -373,7 +373,6 @@ type UpdateMailboxRequest struct {
 	NotificationToken string                 `protobuf:"bytes,4,opt,name=notification_token,json=notificationToken,proto3" json:"notification_token,omitempty"` // 更新方的 Push token
 	UpdaterDeviceId   string                 `protobuf:"bytes,5,opt,name=updater_device_id,json=updaterDeviceId,proto3" json:"updater_device_id,omitempty"`
 	TraceId           string                 `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	Secret            string                 `protobuf:"bytes,7,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -446,13 +445,6 @@ func (x *UpdateMailboxRequest) GetUpdaterDeviceId() string {
 func (x *UpdateMailboxRequest) GetTraceId() string {
 	if x != nil {
 		return x.TraceId
-	}
-	return ""
-}
-
-func (x *UpdateMailboxRequest) GetSecret() string {
-	if x != nil {
-		return x.Secret
 	}
 	return ""
 }
@@ -531,7 +523,6 @@ type DeleteMailboxRequest struct {
 	Reason          string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // "completed" / "cancelled" / "expired"
 	DeleterDeviceId string                 `protobuf:"bytes,3,opt,name=deleter_device_id,json=deleterDeviceId,proto3" json:"deleter_device_id,omitempty"`
 	TraceId         string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	Secret          string                 `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -594,13 +585,6 @@ func (x *DeleteMailboxRequest) GetTraceId() string {
 	return ""
 }
 
-func (x *DeleteMailboxRequest) GetSecret() string {
-	if x != nil {
-		return x.Secret
-	}
-	return ""
-}
-
 type DeleteMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -653,7 +637,8 @@ func (x *DeleteMailboxResponse) GetErrorCode() string {
 	return ""
 }
 
-type ReadDisplayInformationRequest struct {
+// ReadDisplayInformationFromMailboxRequest
+type ReadDisplayInformationFromMailboxRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MailboxId     string                 `protobuf:"bytes,1,opt,name=mailbox_id,json=mailboxId,proto3" json:"mailbox_id,omitempty"`
 	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
@@ -662,20 +647,20 @@ type ReadDisplayInformationRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadDisplayInformationRequest) Reset() {
-	*x = ReadDisplayInformationRequest{}
+func (x *ReadDisplayInformationFromMailboxRequest) Reset() {
+	*x = ReadDisplayInformationFromMailboxRequest{}
 	mi := &file_api_relay_v1_relay_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadDisplayInformationRequest) String() string {
+func (x *ReadDisplayInformationFromMailboxRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadDisplayInformationRequest) ProtoMessage() {}
+func (*ReadDisplayInformationFromMailboxRequest) ProtoMessage() {}
 
-func (x *ReadDisplayInformationRequest) ProtoReflect() protoreflect.Message {
+func (x *ReadDisplayInformationFromMailboxRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_relay_v1_relay_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -687,33 +672,34 @@ func (x *ReadDisplayInformationRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadDisplayInformationRequest.ProtoReflect.Descriptor instead.
-func (*ReadDisplayInformationRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReadDisplayInformationFromMailboxRequest.ProtoReflect.Descriptor instead.
+func (*ReadDisplayInformationFromMailboxRequest) Descriptor() ([]byte, []int) {
 	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *ReadDisplayInformationRequest) GetMailboxId() string {
+func (x *ReadDisplayInformationFromMailboxRequest) GetMailboxId() string {
 	if x != nil {
 		return x.MailboxId
 	}
 	return ""
 }
 
-func (x *ReadDisplayInformationRequest) GetDeviceId() string {
+func (x *ReadDisplayInformationFromMailboxRequest) GetDeviceId() string {
 	if x != nil {
 		return x.DeviceId
 	}
 	return ""
 }
 
-func (x *ReadDisplayInformationRequest) GetTraceId() string {
+func (x *ReadDisplayInformationFromMailboxRequest) GetTraceId() string {
 	if x != nil {
 		return x.TraceId
 	}
 	return ""
 }
 
-type ReadDisplayInformationResponse struct {
+// ReadDisplayInformationFromMailboxResponse
+type ReadDisplayInformationFromMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DisplayInfo   []byte                 `protobuf:"bytes,1,opt,name=display_info,json=displayInfo,proto3" json:"display_info,omitempty"`
 	Version       int64                  `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
@@ -722,20 +708,20 @@ type ReadDisplayInformationResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadDisplayInformationResponse) Reset() {
-	*x = ReadDisplayInformationResponse{}
+func (x *ReadDisplayInformationFromMailboxResponse) Reset() {
+	*x = ReadDisplayInformationFromMailboxResponse{}
 	mi := &file_api_relay_v1_relay_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadDisplayInformationResponse) String() string {
+func (x *ReadDisplayInformationFromMailboxResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadDisplayInformationResponse) ProtoMessage() {}
+func (*ReadDisplayInformationFromMailboxResponse) ProtoMessage() {}
 
-func (x *ReadDisplayInformationResponse) ProtoReflect() protoreflect.Message {
+func (x *ReadDisplayInformationFromMailboxResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_relay_v1_relay_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -747,56 +733,56 @@ func (x *ReadDisplayInformationResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadDisplayInformationResponse.ProtoReflect.Descriptor instead.
-func (*ReadDisplayInformationResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReadDisplayInformationFromMailboxResponse.ProtoReflect.Descriptor instead.
+func (*ReadDisplayInformationFromMailboxResponse) Descriptor() ([]byte, []int) {
 	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ReadDisplayInformationResponse) GetDisplayInfo() []byte {
+func (x *ReadDisplayInformationFromMailboxResponse) GetDisplayInfo() []byte {
 	if x != nil {
 		return x.DisplayInfo
 	}
 	return nil
 }
 
-func (x *ReadDisplayInformationResponse) GetVersion() int64 {
+func (x *ReadDisplayInformationFromMailboxResponse) GetVersion() int64 {
 	if x != nil {
 		return x.Version
 	}
 	return 0
 }
 
-func (x *ReadDisplayInformationResponse) GetErrorCode() string {
+func (x *ReadDisplayInformationFromMailboxResponse) GetErrorCode() string {
 	if x != nil {
 		return x.ErrorCode
 	}
 	return ""
 }
 
-type ReadSecureContentRequest struct {
+// ReadSecureContentFromMailboxRequest
+type ReadSecureContentFromMailboxRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MailboxId     string                 `protobuf:"bytes,1,opt,name=mailbox_id,json=mailboxId,proto3" json:"mailbox_id,omitempty"`
 	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	TraceId       string                 `protobuf:"bytes,3,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	Secret        string                 `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadSecureContentRequest) Reset() {
-	*x = ReadSecureContentRequest{}
+func (x *ReadSecureContentFromMailboxRequest) Reset() {
+	*x = ReadSecureContentFromMailboxRequest{}
 	mi := &file_api_relay_v1_relay_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadSecureContentRequest) String() string {
+func (x *ReadSecureContentFromMailboxRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadSecureContentRequest) ProtoMessage() {}
+func (*ReadSecureContentFromMailboxRequest) ProtoMessage() {}
 
-func (x *ReadSecureContentRequest) ProtoReflect() protoreflect.Message {
+func (x *ReadSecureContentFromMailboxRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_relay_v1_relay_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -808,40 +794,34 @@ func (x *ReadSecureContentRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadSecureContentRequest.ProtoReflect.Descriptor instead.
-func (*ReadSecureContentRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReadSecureContentFromMailboxRequest.ProtoReflect.Descriptor instead.
+func (*ReadSecureContentFromMailboxRequest) Descriptor() ([]byte, []int) {
 	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ReadSecureContentRequest) GetMailboxId() string {
+func (x *ReadSecureContentFromMailboxRequest) GetMailboxId() string {
 	if x != nil {
 		return x.MailboxId
 	}
 	return ""
 }
 
-func (x *ReadSecureContentRequest) GetDeviceId() string {
+func (x *ReadSecureContentFromMailboxRequest) GetDeviceId() string {
 	if x != nil {
 		return x.DeviceId
 	}
 	return ""
 }
 
-func (x *ReadSecureContentRequest) GetTraceId() string {
+func (x *ReadSecureContentFromMailboxRequest) GetTraceId() string {
 	if x != nil {
 		return x.TraceId
 	}
 	return ""
 }
 
-func (x *ReadSecureContentRequest) GetSecret() string {
-	if x != nil {
-		return x.Secret
-	}
-	return ""
-}
-
-type ReadSecureContentResponse struct {
+// ReadSecureContentFromMailboxResponse
+type ReadSecureContentFromMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"` // 加密内容
 	Version       int64                  `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
@@ -851,20 +831,20 @@ type ReadSecureContentResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReadSecureContentResponse) Reset() {
-	*x = ReadSecureContentResponse{}
+func (x *ReadSecureContentFromMailboxResponse) Reset() {
+	*x = ReadSecureContentFromMailboxResponse{}
 	mi := &file_api_relay_v1_relay_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReadSecureContentResponse) String() string {
+func (x *ReadSecureContentFromMailboxResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReadSecureContentResponse) ProtoMessage() {}
+func (*ReadSecureContentFromMailboxResponse) ProtoMessage() {}
 
-func (x *ReadSecureContentResponse) ProtoReflect() protoreflect.Message {
+func (x *ReadSecureContentFromMailboxResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_relay_v1_relay_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -876,33 +856,33 @@ func (x *ReadSecureContentResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReadSecureContentResponse.ProtoReflect.Descriptor instead.
-func (*ReadSecureContentResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ReadSecureContentFromMailboxResponse.ProtoReflect.Descriptor instead.
+func (*ReadSecureContentFromMailboxResponse) Descriptor() ([]byte, []int) {
 	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *ReadSecureContentResponse) GetPayload() []byte {
+func (x *ReadSecureContentFromMailboxResponse) GetPayload() []byte {
 	if x != nil {
 		return x.Payload
 	}
 	return nil
 }
 
-func (x *ReadSecureContentResponse) GetVersion() int64 {
+func (x *ReadSecureContentFromMailboxResponse) GetVersion() int64 {
 	if x != nil {
 		return x.Version
 	}
 	return 0
 }
 
-func (x *ReadSecureContentResponse) GetErrorCode() string {
+func (x *ReadSecureContentFromMailboxResponse) GetErrorCode() string {
 	if x != nil {
 		return x.ErrorCode
 	}
 	return ""
 }
 
-func (x *ReadSecureContentResponse) GetErrorMsg() string {
+func (x *ReadSecureContentFromMailboxResponse) GetErrorMsg() string {
 	if x != nil {
 		return x.ErrorMsg
 	}
@@ -915,7 +895,6 @@ type RelinquishMailboxRequest struct {
 	FromDeviceId  string                 `protobuf:"bytes,2,opt,name=from_device_id,json=fromDeviceId,proto3" json:"from_device_id,omitempty"` // 当前持有设备
 	ToDeviceId    string                 `protobuf:"bytes,3,opt,name=to_device_id,json=toDeviceId,proto3" json:"to_device_id,omitempty"`       // 目标设备
 	TraceId       string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
-	Secret        string                 `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -974,13 +953,6 @@ func (x *RelinquishMailboxRequest) GetToDeviceId() string {
 func (x *RelinquishMailboxRequest) GetTraceId() string {
 	if x != nil {
 		return x.TraceId
-	}
-	return ""
-}
-
-func (x *RelinquishMailboxRequest) GetSecret() string {
-	if x != nil {
-		return x.Secret
 	}
 	return ""
 }
@@ -1228,7 +1200,7 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"expires_at\x18\x03 \x01(\x03R\texpiresAt\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x04 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x05 \x01(\tR\berrorMsg\"\x89\x02\n" +
+	"\terror_msg\x18\x05 \x01(\tR\berrorMsg\"\xf1\x01\n" +
 	"\x14UpdateMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x18\n" +
@@ -1236,55 +1208,51 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x11sharing_data_type\x18\x03 \x01(\x05R\x0fsharingDataType\x12-\n" +
 	"\x12notification_token\x18\x04 \x01(\tR\x11notificationToken\x12*\n" +
 	"\x11updater_device_id\x18\x05 \x01(\tR\x0fupdaterDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x06 \x01(\tR\atraceId\x12\x16\n" +
-	"\x06secret\x18\a \x01(\tR\x06secret\"\xa9\x01\n" +
+	"\btrace_id\x18\x06 \x01(\tR\atraceId\"\xa9\x01\n" +
 	"\x15UpdateMailboxResponse\x12:\n" +
 	"\x06status\x18\x01 \x01(\x0e2\".digitalkey.relay.v1.MailboxStatusR\x06status\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\xac\x01\n" +
+	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\x94\x01\n" +
 	"\x14DeleteMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12*\n" +
 	"\x11deleter_device_id\x18\x03 \x01(\tR\x0fdeleterDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x16\n" +
-	"\x06secret\x18\x05 \x01(\tR\x06secret\"P\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\"P\n" +
 	"\x15DeleteMailboxResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
 	"\n" +
-	"error_code\x18\x02 \x01(\tR\terrorCode\"v\n" +
-	"\x1dReadDisplayInformationRequest\x12\x1d\n" +
+	"error_code\x18\x02 \x01(\tR\terrorCode\"\x81\x01\n" +
+	"(ReadDisplayInformationFromMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x19\n" +
-	"\btrace_id\x18\x03 \x01(\tR\atraceId\"|\n" +
-	"\x1eReadDisplayInformationResponse\x12!\n" +
+	"\btrace_id\x18\x03 \x01(\tR\atraceId\"\x87\x01\n" +
+	")ReadDisplayInformationFromMailboxResponse\x12!\n" +
 	"\fdisplay_info\x18\x01 \x01(\fR\vdisplayInfo\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
-	"error_code\x18\x03 \x01(\tR\terrorCode\"\x89\x01\n" +
-	"\x18ReadSecureContentRequest\x12\x1d\n" +
+	"error_code\x18\x03 \x01(\tR\terrorCode\"|\n" +
+	"#ReadSecureContentFromMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x19\n" +
-	"\btrace_id\x18\x03 \x01(\tR\atraceId\x12\x16\n" +
-	"\x06secret\x18\x04 \x01(\tR\x06secret\"\x8b\x01\n" +
-	"\x19ReadSecureContentResponse\x12\x18\n" +
+	"\btrace_id\x18\x03 \x01(\tR\atraceId\"\x96\x01\n" +
+	"$ReadSecureContentFromMailboxResponse\x12\x18\n" +
 	"\apayload\x18\x01 \x01(\fR\apayload\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\xb4\x01\n" +
+	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\x9c\x01\n" +
 	"\x18RelinquishMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12$\n" +
 	"\x0efrom_device_id\x18\x02 \x01(\tR\ffromDeviceId\x12 \n" +
 	"\fto_device_id\x18\x03 \x01(\tR\n" +
 	"toDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x16\n" +
-	"\x06secret\x18\x05 \x01(\tR\x06secret\"q\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\"q\n" +
 	"\x19RelinquishMailboxResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
 	"\n" +
@@ -1327,13 +1295,13 @@ const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x05WRITE\x10\x02\x12\x0e\n" +
 	"\n" +
 	"READ_WRITE\x10\x03\x12\x15\n" +
-	"\x11READ_WRITE_DELETE\x10\x042\xb2\x05\n" +
+	"\x11READ_WRITE_DELETE\x10\x042\xf5\x05\n" +
 	"\fRelayService\x12f\n" +
 	"\rCreateMailbox\x12).digitalkey.relay.v1.CreateMailboxRequest\x1a*.digitalkey.relay.v1.CreateMailboxResponse\x12f\n" +
 	"\rUpdateMailbox\x12).digitalkey.relay.v1.UpdateMailboxRequest\x1a*.digitalkey.relay.v1.UpdateMailboxResponse\x12f\n" +
-	"\rDeleteMailbox\x12).digitalkey.relay.v1.DeleteMailboxRequest\x1a*.digitalkey.relay.v1.DeleteMailboxResponse\x12\x81\x01\n" +
-	"\x16ReadDisplayInformation\x122.digitalkey.relay.v1.ReadDisplayInformationRequest\x1a3.digitalkey.relay.v1.ReadDisplayInformationResponse\x12r\n" +
-	"\x11ReadSecureContent\x12-.digitalkey.relay.v1.ReadSecureContentRequest\x1a..digitalkey.relay.v1.ReadSecureContentResponse\x12r\n" +
+	"\rDeleteMailbox\x12).digitalkey.relay.v1.DeleteMailboxRequest\x1a*.digitalkey.relay.v1.DeleteMailboxResponse\x12\xa2\x01\n" +
+	"!ReadDisplayInformationFromMailbox\x12=.digitalkey.relay.v1.ReadDisplayInformationFromMailboxRequest\x1a>.digitalkey.relay.v1.ReadDisplayInformationFromMailboxResponse\x12\x93\x01\n" +
+	"\x1cReadSecureContentFromMailbox\x128.digitalkey.relay.v1.ReadSecureContentFromMailboxRequest\x1a9.digitalkey.relay.v1.ReadSecureContentFromMailboxResponse\x12r\n" +
 	"\x11RelinquishMailbox\x12-.digitalkey.relay.v1.RelinquishMailboxRequest\x1a..digitalkey.relay.v1.RelinquishMailboxResponseB$Z\"github.com/digitalkey/relay/api/v1b\x06proto3"
 
 var (
@@ -1351,22 +1319,22 @@ func file_api_relay_v1_relay_proto_rawDescGZIP() []byte {
 var file_api_relay_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_api_relay_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_api_relay_v1_relay_proto_goTypes = []any{
-	(MailboxStatus)(0),                     // 0: digitalkey.relay.v1.MailboxStatus
-	(AccessRights)(0),                      // 1: digitalkey.relay.v1.AccessRights
-	(*MailboxConfig)(nil),                  // 2: digitalkey.relay.v1.MailboxConfig
-	(*CreateMailboxRequest)(nil),           // 3: digitalkey.relay.v1.CreateMailboxRequest
-	(*CreateMailboxResponse)(nil),          // 4: digitalkey.relay.v1.CreateMailboxResponse
-	(*UpdateMailboxRequest)(nil),           // 5: digitalkey.relay.v1.UpdateMailboxRequest
-	(*UpdateMailboxResponse)(nil),          // 6: digitalkey.relay.v1.UpdateMailboxResponse
-	(*DeleteMailboxRequest)(nil),           // 7: digitalkey.relay.v1.DeleteMailboxRequest
-	(*DeleteMailboxResponse)(nil),          // 8: digitalkey.relay.v1.DeleteMailboxResponse
-	(*ReadDisplayInformationRequest)(nil),  // 9: digitalkey.relay.v1.ReadDisplayInformationRequest
-	(*ReadDisplayInformationResponse)(nil), // 10: digitalkey.relay.v1.ReadDisplayInformationResponse
-	(*ReadSecureContentRequest)(nil),       // 11: digitalkey.relay.v1.ReadSecureContentRequest
-	(*ReadSecureContentResponse)(nil),      // 12: digitalkey.relay.v1.ReadSecureContentResponse
-	(*RelinquishMailboxRequest)(nil),       // 13: digitalkey.relay.v1.RelinquishMailboxRequest
-	(*RelinquishMailboxResponse)(nil),      // 14: digitalkey.relay.v1.RelinquishMailboxResponse
-	(*Mailbox)(nil),                        // 15: digitalkey.relay.v1.Mailbox
+	(MailboxStatus)(0),                                // 0: digitalkey.relay.v1.MailboxStatus
+	(AccessRights)(0),                                 // 1: digitalkey.relay.v1.AccessRights
+	(*MailboxConfig)(nil),                             // 2: digitalkey.relay.v1.MailboxConfig
+	(*CreateMailboxRequest)(nil),                      // 3: digitalkey.relay.v1.CreateMailboxRequest
+	(*CreateMailboxResponse)(nil),                     // 4: digitalkey.relay.v1.CreateMailboxResponse
+	(*UpdateMailboxRequest)(nil),                      // 5: digitalkey.relay.v1.UpdateMailboxRequest
+	(*UpdateMailboxResponse)(nil),                     // 6: digitalkey.relay.v1.UpdateMailboxResponse
+	(*DeleteMailboxRequest)(nil),                      // 7: digitalkey.relay.v1.DeleteMailboxRequest
+	(*DeleteMailboxResponse)(nil),                     // 8: digitalkey.relay.v1.DeleteMailboxResponse
+	(*ReadDisplayInformationFromMailboxRequest)(nil),  // 9: digitalkey.relay.v1.ReadDisplayInformationFromMailboxRequest
+	(*ReadDisplayInformationFromMailboxResponse)(nil), // 10: digitalkey.relay.v1.ReadDisplayInformationFromMailboxResponse
+	(*ReadSecureContentFromMailboxRequest)(nil),       // 11: digitalkey.relay.v1.ReadSecureContentFromMailboxRequest
+	(*ReadSecureContentFromMailboxResponse)(nil),      // 12: digitalkey.relay.v1.ReadSecureContentFromMailboxResponse
+	(*RelinquishMailboxRequest)(nil),                  // 13: digitalkey.relay.v1.RelinquishMailboxRequest
+	(*RelinquishMailboxResponse)(nil),                 // 14: digitalkey.relay.v1.RelinquishMailboxResponse
+	(*Mailbox)(nil),                                   // 15: digitalkey.relay.v1.Mailbox
 }
 var file_api_relay_v1_relay_proto_depIdxs = []int32{
 	1,  // 0: digitalkey.relay.v1.MailboxConfig.access_rights:type_name -> digitalkey.relay.v1.AccessRights
@@ -1376,14 +1344,14 @@ var file_api_relay_v1_relay_proto_depIdxs = []int32{
 	3,  // 4: digitalkey.relay.v1.RelayService.CreateMailbox:input_type -> digitalkey.relay.v1.CreateMailboxRequest
 	5,  // 5: digitalkey.relay.v1.RelayService.UpdateMailbox:input_type -> digitalkey.relay.v1.UpdateMailboxRequest
 	7,  // 6: digitalkey.relay.v1.RelayService.DeleteMailbox:input_type -> digitalkey.relay.v1.DeleteMailboxRequest
-	9,  // 7: digitalkey.relay.v1.RelayService.ReadDisplayInformation:input_type -> digitalkey.relay.v1.ReadDisplayInformationRequest
-	11, // 8: digitalkey.relay.v1.RelayService.ReadSecureContent:input_type -> digitalkey.relay.v1.ReadSecureContentRequest
+	9,  // 7: digitalkey.relay.v1.RelayService.ReadDisplayInformationFromMailbox:input_type -> digitalkey.relay.v1.ReadDisplayInformationFromMailboxRequest
+	11, // 8: digitalkey.relay.v1.RelayService.ReadSecureContentFromMailbox:input_type -> digitalkey.relay.v1.ReadSecureContentFromMailboxRequest
 	13, // 9: digitalkey.relay.v1.RelayService.RelinquishMailbox:input_type -> digitalkey.relay.v1.RelinquishMailboxRequest
 	4,  // 10: digitalkey.relay.v1.RelayService.CreateMailbox:output_type -> digitalkey.relay.v1.CreateMailboxResponse
 	6,  // 11: digitalkey.relay.v1.RelayService.UpdateMailbox:output_type -> digitalkey.relay.v1.UpdateMailboxResponse
 	8,  // 12: digitalkey.relay.v1.RelayService.DeleteMailbox:output_type -> digitalkey.relay.v1.DeleteMailboxResponse
-	10, // 13: digitalkey.relay.v1.RelayService.ReadDisplayInformation:output_type -> digitalkey.relay.v1.ReadDisplayInformationResponse
-	12, // 14: digitalkey.relay.v1.RelayService.ReadSecureContent:output_type -> digitalkey.relay.v1.ReadSecureContentResponse
+	10, // 13: digitalkey.relay.v1.RelayService.ReadDisplayInformationFromMailbox:output_type -> digitalkey.relay.v1.ReadDisplayInformationFromMailboxResponse
+	12, // 14: digitalkey.relay.v1.RelayService.ReadSecureContentFromMailbox:output_type -> digitalkey.relay.v1.ReadSecureContentFromMailboxResponse
 	14, // 15: digitalkey.relay.v1.RelayService.RelinquishMailbox:output_type -> digitalkey.relay.v1.RelinquishMailboxResponse
 	10, // [10:16] is the sub-list for method output_type
 	4,  // [4:10] is the sub-list for method input_type

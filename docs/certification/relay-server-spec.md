@@ -124,11 +124,22 @@ Relay Server 的具体 API 定义在引用的 [38] — "Stateful Workflow" 规�
 
 | 我的实现 | 规范要求 | 结论 |
 |----------|----------|------|
-| secret 在 server 生成 | Secret 由 sender device 生成 | ✅ 不矛盾（relay 生成占位符也可） |
-| secret 不校验 | 规范说 secret 不在 relay 验证 | ✅ **正确！我之前判断错了** |
-| 6 个 API | 6 个 API | ✅ 对齐，但命名应加 FromMailbox 后缀 |
+| secret 不在 server 验证 | 规范说 secret 不在 relay 验证 | ✅ **正确！** |
+| 6 个 API 命名带 FromMailbox 后缀 | CCC 命名有 FromMailbox 后缀 | ✅ **已对齐** |
 | Push 通知 | "shall be implemented" | ✅ 已实现 |
 | payload 透传 | relay 不解密 | ✅ |
 | notificationToken | sender 提供, receiver 也应提供 | ✅ 已支持 |
 | accessRights RWD | 要求 RWD | ✅ |
-| 错误码 | TLV 设备间错误码，非 server API | ✅ Server 用自有错误码 |
+| 错误码 | 自有枚举（非 TLV） | ✅ 标准化错误码 |
+| 状态机 | 包含 PinReEntry(6)/PinReEntryValue(7) | ✅ 已补齐 |
+| 并发安全 | 无要求（实现保证） | ✅ Race detector 通过 |
+| 测试覆盖 | 14 单元 + 5 新测试 + 2 E2E | ✅ 19+2 测试通过 |
+
+## 10. 当前差距（非阻塞，量产前修复）
+
+| 差距 | 优先级 | 阶段 | 说明 |
+|:----|:------:|:----:|:-----|
+| `deviceAttestation` 发送方认证 | 🟠 P1 | Phase C | 跨 OEM 场景，CreateMailbox 缺少 sender attestation 字段 |
+| 厂商适配器集成 | 🟠 P1 | Phase C | Mailbox 创建时通知 adapter |
+| Push 真实证书 | 🟡 P2 | Phase C | FCM/APNs 需配置证书/密钥 |
+| Polling 降级策略 | 🟢 P3 | Phase C | 规范定义了轮询间隔（5s/10s/30s...），作为 Push 降级 |

@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	RelayService_CreateMailbox_FullMethodName          = "/digitalkey.relay.v1.RelayService/CreateMailbox"
-	RelayService_UpdateMailbox_FullMethodName          = "/digitalkey.relay.v1.RelayService/UpdateMailbox"
-	RelayService_DeleteMailbox_FullMethodName          = "/digitalkey.relay.v1.RelayService/DeleteMailbox"
-	RelayService_ReadDisplayInformation_FullMethodName = "/digitalkey.relay.v1.RelayService/ReadDisplayInformation"
-	RelayService_ReadSecureContent_FullMethodName      = "/digitalkey.relay.v1.RelayService/ReadSecureContent"
-	RelayService_RelinquishMailbox_FullMethodName      = "/digitalkey.relay.v1.RelayService/RelinquishMailbox"
+	RelayService_CreateMailbox_FullMethodName                     = "/digitalkey.relay.v1.RelayService/CreateMailbox"
+	RelayService_UpdateMailbox_FullMethodName                     = "/digitalkey.relay.v1.RelayService/UpdateMailbox"
+	RelayService_DeleteMailbox_FullMethodName                     = "/digitalkey.relay.v1.RelayService/DeleteMailbox"
+	RelayService_ReadDisplayInformationFromMailbox_FullMethodName = "/digitalkey.relay.v1.RelayService/ReadDisplayInformationFromMailbox"
+	RelayService_ReadSecureContentFromMailbox_FullMethodName      = "/digitalkey.relay.v1.RelayService/ReadSecureContentFromMailbox"
+	RelayService_RelinquishMailbox_FullMethodName                 = "/digitalkey.relay.v1.RelayService/RelinquishMailbox"
 )
 
 // RelayServiceClient is the client API for RelayService service.
@@ -37,10 +37,10 @@ type RelayServiceClient interface {
 	UpdateMailbox(ctx context.Context, in *UpdateMailboxRequest, opts ...grpc.CallOption) (*UpdateMailboxResponse, error)
 	// 11.3.4.3: DeleteMailbox — 删除邮箱
 	DeleteMailbox(ctx context.Context, in *DeleteMailboxRequest, opts ...grpc.CallOption) (*DeleteMailboxResponse, error)
-	// 11.3.4.4: ReadDisplayInformation — 读取展示信息
-	ReadDisplayInformation(ctx context.Context, in *ReadDisplayInformationRequest, opts ...grpc.CallOption) (*ReadDisplayInformationResponse, error)
-	// 11.3.4.5: ReadSecureContent — 读取加密内容
-	ReadSecureContent(ctx context.Context, in *ReadSecureContentRequest, opts ...grpc.CallOption) (*ReadSecureContentResponse, error)
+	// 11.3.4.4: ReadDisplayInformationFromMailbox — 读取展示信息
+	ReadDisplayInformationFromMailbox(ctx context.Context, in *ReadDisplayInformationFromMailboxRequest, opts ...grpc.CallOption) (*ReadDisplayInformationFromMailboxResponse, error)
+	// 11.3.4.5: ReadSecureContentFromMailbox — 读取加密内容
+	ReadSecureContentFromMailbox(ctx context.Context, in *ReadSecureContentFromMailboxRequest, opts ...grpc.CallOption) (*ReadSecureContentFromMailboxResponse, error)
 	// 11.3.4.6: RelinquishMailbox — 转移邮箱到另一设备
 	RelinquishMailbox(ctx context.Context, in *RelinquishMailboxRequest, opts ...grpc.CallOption) (*RelinquishMailboxResponse, error)
 }
@@ -83,20 +83,20 @@ func (c *relayServiceClient) DeleteMailbox(ctx context.Context, in *DeleteMailbo
 	return out, nil
 }
 
-func (c *relayServiceClient) ReadDisplayInformation(ctx context.Context, in *ReadDisplayInformationRequest, opts ...grpc.CallOption) (*ReadDisplayInformationResponse, error) {
+func (c *relayServiceClient) ReadDisplayInformationFromMailbox(ctx context.Context, in *ReadDisplayInformationFromMailboxRequest, opts ...grpc.CallOption) (*ReadDisplayInformationFromMailboxResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadDisplayInformationResponse)
-	err := c.cc.Invoke(ctx, RelayService_ReadDisplayInformation_FullMethodName, in, out, cOpts...)
+	out := new(ReadDisplayInformationFromMailboxResponse)
+	err := c.cc.Invoke(ctx, RelayService_ReadDisplayInformationFromMailbox_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *relayServiceClient) ReadSecureContent(ctx context.Context, in *ReadSecureContentRequest, opts ...grpc.CallOption) (*ReadSecureContentResponse, error) {
+func (c *relayServiceClient) ReadSecureContentFromMailbox(ctx context.Context, in *ReadSecureContentFromMailboxRequest, opts ...grpc.CallOption) (*ReadSecureContentFromMailboxResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReadSecureContentResponse)
-	err := c.cc.Invoke(ctx, RelayService_ReadSecureContent_FullMethodName, in, out, cOpts...)
+	out := new(ReadSecureContentFromMailboxResponse)
+	err := c.cc.Invoke(ctx, RelayService_ReadSecureContentFromMailbox_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +123,10 @@ type RelayServiceServer interface {
 	UpdateMailbox(context.Context, *UpdateMailboxRequest) (*UpdateMailboxResponse, error)
 	// 11.3.4.3: DeleteMailbox — 删除邮箱
 	DeleteMailbox(context.Context, *DeleteMailboxRequest) (*DeleteMailboxResponse, error)
-	// 11.3.4.4: ReadDisplayInformation — 读取展示信息
-	ReadDisplayInformation(context.Context, *ReadDisplayInformationRequest) (*ReadDisplayInformationResponse, error)
-	// 11.3.4.5: ReadSecureContent — 读取加密内容
-	ReadSecureContent(context.Context, *ReadSecureContentRequest) (*ReadSecureContentResponse, error)
+	// 11.3.4.4: ReadDisplayInformationFromMailbox — 读取展示信息
+	ReadDisplayInformationFromMailbox(context.Context, *ReadDisplayInformationFromMailboxRequest) (*ReadDisplayInformationFromMailboxResponse, error)
+	// 11.3.4.5: ReadSecureContentFromMailbox — 读取加密内容
+	ReadSecureContentFromMailbox(context.Context, *ReadSecureContentFromMailboxRequest) (*ReadSecureContentFromMailboxResponse, error)
 	// 11.3.4.6: RelinquishMailbox — 转移邮箱到另一设备
 	RelinquishMailbox(context.Context, *RelinquishMailboxRequest) (*RelinquishMailboxResponse, error)
 	mustEmbedUnimplementedRelayServiceServer()
@@ -148,11 +148,11 @@ func (UnimplementedRelayServiceServer) UpdateMailbox(context.Context, *UpdateMai
 func (UnimplementedRelayServiceServer) DeleteMailbox(context.Context, *DeleteMailboxRequest) (*DeleteMailboxResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMailbox not implemented")
 }
-func (UnimplementedRelayServiceServer) ReadDisplayInformation(context.Context, *ReadDisplayInformationRequest) (*ReadDisplayInformationResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReadDisplayInformation not implemented")
+func (UnimplementedRelayServiceServer) ReadDisplayInformationFromMailbox(context.Context, *ReadDisplayInformationFromMailboxRequest) (*ReadDisplayInformationFromMailboxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadDisplayInformationFromMailbox not implemented")
 }
-func (UnimplementedRelayServiceServer) ReadSecureContent(context.Context, *ReadSecureContentRequest) (*ReadSecureContentResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReadSecureContent not implemented")
+func (UnimplementedRelayServiceServer) ReadSecureContentFromMailbox(context.Context, *ReadSecureContentFromMailboxRequest) (*ReadSecureContentFromMailboxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadSecureContentFromMailbox not implemented")
 }
 func (UnimplementedRelayServiceServer) RelinquishMailbox(context.Context, *RelinquishMailboxRequest) (*RelinquishMailboxResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RelinquishMailbox not implemented")
@@ -232,38 +232,38 @@ func _RelayService_DeleteMailbox_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RelayService_ReadDisplayInformation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadDisplayInformationRequest)
+func _RelayService_ReadDisplayInformationFromMailbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadDisplayInformationFromMailboxRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RelayServiceServer).ReadDisplayInformation(ctx, in)
+		return srv.(RelayServiceServer).ReadDisplayInformationFromMailbox(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RelayService_ReadDisplayInformation_FullMethodName,
+		FullMethod: RelayService_ReadDisplayInformationFromMailbox_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RelayServiceServer).ReadDisplayInformation(ctx, req.(*ReadDisplayInformationRequest))
+		return srv.(RelayServiceServer).ReadDisplayInformationFromMailbox(ctx, req.(*ReadDisplayInformationFromMailboxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RelayService_ReadSecureContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadSecureContentRequest)
+func _RelayService_ReadSecureContentFromMailbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadSecureContentFromMailboxRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RelayServiceServer).ReadSecureContent(ctx, in)
+		return srv.(RelayServiceServer).ReadSecureContentFromMailbox(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: RelayService_ReadSecureContent_FullMethodName,
+		FullMethod: RelayService_ReadSecureContentFromMailbox_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RelayServiceServer).ReadSecureContent(ctx, req.(*ReadSecureContentRequest))
+		return srv.(RelayServiceServer).ReadSecureContentFromMailbox(ctx, req.(*ReadSecureContentFromMailboxRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -306,12 +306,12 @@ var RelayService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RelayService_DeleteMailbox_Handler,
 		},
 		{
-			MethodName: "ReadDisplayInformation",
-			Handler:    _RelayService_ReadDisplayInformation_Handler,
+			MethodName: "ReadDisplayInformationFromMailbox",
+			Handler:    _RelayService_ReadDisplayInformationFromMailbox_Handler,
 		},
 		{
-			MethodName: "ReadSecureContent",
-			Handler:    _RelayService_ReadSecureContent_Handler,
+			MethodName: "ReadSecureContentFromMailbox",
+			Handler:    _RelayService_ReadSecureContentFromMailbox_Handler,
 		},
 		{
 			MethodName: "RelinquishMailbox",

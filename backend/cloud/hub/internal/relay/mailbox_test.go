@@ -41,6 +41,12 @@ func TestCreateMailbox(t *testing.T) {
 	if mb.SharingUrl == "" {
 		t.Error("expected non-empty sharing URL")
 	}
+	// URL 不应包含 fragment (#secret)
+	for i := 0; i < len(mb.SharingUrl); i++ {
+		if mb.SharingUrl[i] == '#' {
+			t.Error("sharing URL must not contain fragment (secret)")
+		}
+	}
 	if mb.ExpiresAt <= mb.CreatedAt {
 		t.Error("expires_at should be after created_at")
 	}
@@ -126,17 +132,15 @@ func TestMailboxExpiry(t *testing.T) {
 	// Advance time by 2 hours
 	ctrl.now = func() time.Time { return now.Add(2 * time.Hour) }
 
-	// 读取已过期，所以 ExpireScan 不再重复标记
-	// 直接创建另一个邮箱来测试 ExpireScan
-	mb, _ := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+	// Create another mailbox
+	_, _ = ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
 		SenderDeviceId: "sender-002",
 		SenderVendor:   "samsung",
 		Payload:        []byte("data2"),
 		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
 	})
-	_ = mb
 
-	// 过期扫描应找到 mb2（读取过 mb 已过期）
+	// ExpireScan should find the first mailbox expired (the second one was just created)
 	expired := ctrl.ExpireScan()
 	if expired != 1 {
 		t.Errorf("expected 1 expired, got %d", expired)
@@ -249,6 +253,16 @@ func TestDeleteMailbox(t *testing.T) {
 		t.Fatalf("Create failed: %v", err)
 	}
 
+	// Must cancel first before delete
+	_, err = ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		SharingDataType: 4, // SenderCancel
+		UpdaterDeviceId: "sender-001",
+	})
+	if err != nil {
+		t.Fatalf("Cancel before delete failed: %v", err)
+	}
+
 	_, err = ctrl.Delete(context.Background(), &pb.DeleteMailboxRequest{
 		MailboxId:       mb.MailboxId,
 		Reason:          "completed",
@@ -262,5 +276,180 @@ func TestDeleteMailbox(t *testing.T) {
 	_, _, err = ctrl.ReadSecureContent(context.Background(), mb.MailboxId)
 	if err == nil {
 		t.Error("expected error after delete, got nil")
+	}
+}
+
+// ─── 新增测试 ──────────────────────────────────────────────
+
+// TestPinReEntry 测试 PinReEntry 不改变状态
+func TestPinReEntry(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// PinReEntryRequest (6) — 不改变状态
+	_, err = ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Payload:         []byte(`{"pinReEntryRequest":true}`),
+		SharingDataType: 6,
+		UpdaterDeviceId: "sender-001",
+	})
+	if err != nil {
+		t.Fatalf("PinReEntry should succeed: %v", err)
+	}
+	if mb2, ok := ctrl.Get(mb.MailboxId); ok {
+		if mb2.Status != StatusCreated {
+			t.Errorf("PinReEntry should not change status, got %v", mb2.Status)
+		}
+	}
+
+	// PinReEntryValue (7) — 不改变状态
+	_, err = ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Payload:         []byte(`{"pinReEntryValue":"1234"}`),
+		SharingDataType: 7,
+		UpdaterDeviceId: "receiver-001",
+	})
+	if err != nil {
+		t.Fatalf("PinReEntryValue should succeed: %v", err)
+	}
+	if mb3, ok := ctrl.Get(mb.MailboxId); ok {
+		if mb3.Status != StatusCreated {
+			t.Errorf("PinReEntryValue should not change status, got %v", mb3.Status)
+		}
+	}
+}
+
+// TestRelinquishAfterCancel 验证取消后不可 Relinquish
+func TestRelinquishAfterCancel(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Cancel first
+	_, err = ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		SharingDataType: 4, // SenderCancel
+		UpdaterDeviceId: "sender-001",
+	})
+	if err != nil {
+		t.Fatalf("Cancel failed: %v", err)
+	}
+
+	// Relinquish after cancel should fail
+	_, err = ctrl.Relinquish(context.Background(), &pb.RelinquishMailboxRequest{
+		MailboxId:     mb.MailboxId,
+		FromDeviceId:  "sender-001",
+		ToDeviceId:    "other-device",
+	})
+	if err == nil {
+		t.Error("Relinquish after cancel should fail")
+	}
+}
+
+// TestDeleteBeforeTerminal 验证活跃状态下不可 Delete
+func TestDeleteBeforeTerminal(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// Delete while active should fail
+	_, err = ctrl.Delete(context.Background(), &pb.DeleteMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Reason:          "cancelled",
+		DeleterDeviceId: "sender-001",
+	})
+	if err == nil {
+		t.Error("Delete while active should fail")
+	}
+}
+
+// TestConcurrentAccess 并发安全测试
+func TestConcurrentAccess(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// 并发更新
+	done := make(chan bool, 10)
+	for i := 0; i < 10; i++ {
+		go func(id int) {
+			_, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+				MailboxId:       mb.MailboxId,
+				Payload:         []byte("concurrent-data"),
+				SharingDataType: 2,
+				UpdaterDeviceId: "receiver-001",
+			})
+			// 第一次应该成功，之后可能因为状态转移失败（已到 UPDATED_BY_RECEIVER）
+			_ = err
+			done <- true
+		}(i)
+	}
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+}
+
+// TestURLNoFragment 确保 URL 不含 #secret
+func TestURLNoFragment(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "device-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	if mb.SharingUrl == "" {
+		t.Fatal("expected non-empty sharing URL")
+	}
+	for i := 0; i < len(mb.SharingUrl); i++ {
+		if mb.SharingUrl[i] == '#' {
+			t.Error("sharing URL must not contain fragment (#)")
+		}
+	}
+	if mb.SharingUrl != "https://dk-relay.yuletech.com/mailbox/"+mb.MailboxId {
+		t.Errorf("unexpected URL format: %s", mb.SharingUrl)
 	}
 }

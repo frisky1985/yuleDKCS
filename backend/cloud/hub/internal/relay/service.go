@@ -8,7 +8,7 @@ import (
 )
 
 // RelayService 实现 CCC Digital Key v4.0 Relay Server 的 Mailbox API
-// 作为 Hub 的内部服务，支持跨厂商密钥分享
+// 基于 CCC-TS-101 §11.3.4 — Mailbox API
 type RelayService struct {
 	pb.UnimplementedRelayServiceServer
 	controller *MailboxController
@@ -17,7 +17,6 @@ type RelayService struct {
 
 func NewRelayService(logger *zap.Logger, notifier ...PushNotifier) *RelayService {
 	ctrl := NewMailboxController(logger)
-	// 如果传入了 PushNotifier，注入到 Controller
 	if len(notifier) > 0 && notifier[0] != nil {
 		ctrl.WithNotifier(notifier[0])
 	}
@@ -27,7 +26,7 @@ func NewRelayService(logger *zap.Logger, notifier ...PushNotifier) *RelayService
 	}
 }
 
-// ─── Mailbox API 实现 ────────────────────────────────────────
+// ─── Mailbox API ──────────────────────────────────────────────
 
 // CreateMailbox §11.3.4.1: 发送方创建分享邮箱
 func (s *RelayService) CreateMailbox(ctx context.Context, req *pb.CreateMailboxRequest) (*pb.CreateMailboxResponse, error) {
@@ -40,7 +39,7 @@ func (s *RelayService) CreateMailbox(ctx context.Context, req *pb.CreateMailboxR
 	if err != nil {
 		s.logger.Error("CreateMailbox failed", zap.Error(err))
 		return &pb.CreateMailboxResponse{
-			ErrorCode: "CREATE_FAILED",
+			ErrorCode: ErrCodeCreateFailed,
 			ErrorMsg:  err.Error(),
 		}, nil
 	}
@@ -63,7 +62,7 @@ func (s *RelayService) UpdateMailbox(ctx context.Context, req *pb.UpdateMailboxR
 	if err != nil {
 		s.logger.Error("UpdateMailbox failed", zap.Error(err))
 		return &pb.UpdateMailboxResponse{
-			ErrorCode: "UPDATE_FAILED",
+			ErrorCode: ErrCodeUpdateFailed,
 			ErrorMsg:  err.Error(),
 		}, nil
 	}
@@ -85,7 +84,7 @@ func (s *RelayService) DeleteMailbox(ctx context.Context, req *pb.DeleteMailboxR
 	if err != nil {
 		return &pb.DeleteMailboxResponse{
 			Success:   false,
-			ErrorCode: "DELETE_FAILED",
+			ErrorCode: ErrCodeDeleteFailed,
 		}, nil
 	}
 
@@ -94,32 +93,32 @@ func (s *RelayService) DeleteMailbox(ctx context.Context, req *pb.DeleteMailboxR
 	}, nil
 }
 
-// ReadDisplayInformation §11.3.4.4: 读取展示信息
-func (s *RelayService) ReadDisplayInformation(ctx context.Context, req *pb.ReadDisplayInformationRequest) (*pb.ReadDisplayInformationResponse, error) {
+// ReadDisplayInformationFromMailbox §11.3.4.4: 读取展示信息
+func (s *RelayService) ReadDisplayInformationFromMailbox(ctx context.Context, req *pb.ReadDisplayInformationFromMailboxRequest) (*pb.ReadDisplayInformationFromMailboxResponse, error) {
 	info, version, err := s.controller.ReadDisplayInfo(ctx, req.MailboxId)
 	if err != nil {
-		return &pb.ReadDisplayInformationResponse{
-			ErrorCode: "READ_FAILED",
+		return &pb.ReadDisplayInformationFromMailboxResponse{
+			ErrorCode: ErrCodeReadFailed,
 		}, nil
 	}
 
-	return &pb.ReadDisplayInformationResponse{
+	return &pb.ReadDisplayInformationFromMailboxResponse{
 		DisplayInfo: info,
 		Version:     version,
 	}, nil
 }
 
-// ReadSecureContent §11.3.4.5: 读取加密内容
-// 注意: payload 已由设备端用 Secret 端到端加密，relay server 不解密
-func (s *RelayService) ReadSecureContent(ctx context.Context, req *pb.ReadSecureContentRequest) (*pb.ReadSecureContentResponse, error) {
+// ReadSecureContentFromMailbox §11.3.4.5: 读取加密内容
+// payload 已由设备端 Secret 端到端加密，relay server 不解密
+func (s *RelayService) ReadSecureContentFromMailbox(ctx context.Context, req *pb.ReadSecureContentFromMailboxRequest) (*pb.ReadSecureContentFromMailboxResponse, error) {
 	payload, version, err := s.controller.ReadSecureContent(ctx, req.MailboxId)
 	if err != nil {
-		return &pb.ReadSecureContentResponse{
-			ErrorCode: err.Error(),
+		return &pb.ReadSecureContentFromMailboxResponse{
+			ErrorCode: ErrCodeReadFailed,
 		}, nil
 	}
 
-	return &pb.ReadSecureContentResponse{
+	return &pb.ReadSecureContentFromMailboxResponse{
 		Payload: payload,
 		Version: version,
 	}, nil
@@ -131,7 +130,7 @@ func (s *RelayService) RelinquishMailbox(ctx context.Context, req *pb.Relinquish
 	if err != nil {
 		return &pb.RelinquishMailboxResponse{
 			Success:   false,
-			ErrorCode: "RELINQUISH_FAILED",
+			ErrorCode: ErrCodeRelinquishFailed,
 			ErrorMsg:  err.Error(),
 		}, nil
 	}

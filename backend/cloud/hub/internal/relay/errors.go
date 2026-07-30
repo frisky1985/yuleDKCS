@@ -16,4 +16,11 @@ const (
 	// 更新错误
 	ErrCodeInvalidTransition = "INVALID_TRANSITION"
 	ErrCodeUpdateLimitExceeded = "UPDATE_LIMIT_EXCEEDED"
+
+	// Service 层错误（由 RelayService gRPC handlers 返回）
+	ErrCodeCreateFailed      = "CREATE_FAILED"
+	ErrCodeUpdateFailed      = "UPDATE_FAILED"
+	ErrCodeDeleteFailed      = "DELETE_FAILED"
+	ErrCodeReadFailed        = "READ_FAILED"
+	ErrCodeRelinquishFailed  = "RELINQUISH_FAILED"
 )

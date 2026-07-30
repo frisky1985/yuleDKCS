@@ -2,8 +2,6 @@ package relay
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -57,12 +55,11 @@ type Mailbox struct {
 	SenderToken       string          // 发送方 push token（用于通知发送方）
 	ReceiverToken     string          // 接收方 push token（用于通知接收方）
 	DisplayInfo       []byte
-	Payload           []byte          // 当前加密载荷
-	SharingDataType   int32           // 1=KeyCreation, 2=KeySigning, 3=Import
+	Payload           []byte          // 当前加密载荷（已由 sender Secret 加密）
+	SharingDataType   int32           // 1=KeyCreation, 2=KeySigning, 3=Import, 6=PinReEntryReq, 7=PinReEntryVal
 	ReceiverDeviceID  string
 	ReceiverVendor    string
-	SharingURL        string
-	Secret            string          // URL secret fragment (hex string, 用于授权校验)
+	SharingURL        string          // base URL (不含 secret fragment — secret 由 sender 生成并加到 fragment)
 	CreatedAt         time.Time
 	ExpiresAt         time.Time
 	UpdatedAt         time.Time
@@ -107,9 +104,8 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 	now := c.now()
 	id := generateMailboxID()
 
-	// 生成 Secret + URL
-	secret := generateSecret()
-	url := buildSharingURL(id, secret)
+	// 生成 mailbox base URL（不含 secret fragment — secret 由 sender 设备生成并附加到 URL 中）
+	url := buildSharingURL(id)
 
 	expiry := 24 * time.Hour // 默认 24h
 	if req.Config != nil && req.Config.ExpirationSeconds > 0 {
@@ -132,7 +128,6 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 		Payload:           req.Payload,
 		SharingDataType:   1, // KeyCreationRequest
 		SharingURL:        url,
-		Secret:            secret,
 		CreatedAt:         now,
 		ExpiresAt:         now.Add(expiry),
 		UpdatedAt:         now,
@@ -197,12 +192,25 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 		notifyTitle = "钥匙分享已取消"
 		notifyBody = "接收方取消了钥匙分享"
 		notifyToken = mb.SenderToken
+	case 6: // PinReEntryRequest — 发送方请求重新输入 PIN
+		// PinReEntry: 不改变邮箱状态，只更新 payload
+		newStatus = mb.Status
+		notifyTitle = "需要重新输入 PIN"
+		notifyBody = "发送方要求重新输入设备 PIN"
+		notifyToken = mb.ReceiverToken
+	case 7: // PinReEntryValue — 接收方提供新的 PIN 值
+		// PinReEntryValue: 不改变邮箱状态，只更新 payload
+		newStatus = mb.Status
+		notifyTitle = "PIN 已更新"
+		notifyBody = "接收方已提供新的 PIN 值"
+		notifyToken = mb.SenderToken
 	default:
 		return nil, fmt.Errorf("invalid sharing_data_type: %d", req.SharingDataType)
 	}
 
-	if !isValidTransition(mb.Status, newStatus) {
-		return nil, fmt.Errorf("invalid transition from %v to %v", mb.Status, newStatus)
+	// 检查状态转移合法性（PinReEntry 不改变状态，跳过校验）
+	if newStatus != mb.Status && !isValidTransition(mb.Status, newStatus) {
+		return nil, fmt.Errorf(ErrCodeInvalidTransition)
 	}
 
 	mb.Status = newStatus
@@ -236,13 +244,19 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 }
 
 // Delete 删除邮箱 — §11.3.4.3
+// 只允许在已完成/已取消状态下删除
 func (c *MailboxController) Delete(ctx context.Context, req *pb.DeleteMailboxRequest) (*pb.Mailbox, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mb, ok := c.mailboxes[req.MailboxId]
 	if !ok {
-		return nil, fmt.Errorf("mailbox %s not found", req.MailboxId)
+		return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+	}
+
+	// 只允许在终态删除
+	if mb.Status != StatusCompleted && mb.Status != StatusCancelled {
+		return nil, fmt.Errorf(ErrCodeInvalidTransition)
 	}
 
 	mb.Status = StatusCompleted
@@ -296,13 +310,23 @@ func (c *MailboxController) ReadSecureContent(ctx context.Context, mailboxID str
 }
 
 // Relinquish 转移邮箱 — §11.3.4.6
+// 只允许在活跃状态下转移（不可在已取消/已过期/已完成后操作）
 func (c *MailboxController) Relinquish(ctx context.Context, req *pb.RelinquishMailboxRequest) (*pb.Mailbox, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	mb, ok := c.mailboxes[req.MailboxId]
 	if !ok {
-		return nil, fmt.Errorf("mailbox %s not found", req.MailboxId)
+		return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+	}
+
+	if err := c.checkExpired(mb); err != nil {
+		return nil, err
+	}
+
+	// 只允许在活跃状态下 relinquish
+	if mb.Status == StatusCompleted || mb.Status == StatusCancelled || mb.Status == StatusExpired {
+		return nil, fmt.Errorf(ErrCodeInvalidTransition)
 	}
 
 	mb.ReceiverDeviceID = req.ToDeviceId
@@ -356,21 +380,9 @@ func generateMailboxID() string {
 	return fmt.Sprintf("mb-%d-%06d", time.Now().UnixMilli(), time.Now().Nanosecond()%1000000)
 }
 
-func generateSecret() string {
-	// 16 字节随机数 → 32 字符 hex 字符串（crypto/rand 真随机）
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		// 极端情况 fallback到时间戳+纳秒
-		for i := range b {
-			b[i] = byte(time.Now().UnixNano()%256) ^ byte(i*37)
-		}
-	}
-	return hex.EncodeToString(b)
-}
-
-func buildSharingURL(mailboxID string, secret string) string {
-	// URL 格式: https://relay.example.com/mailbox/{id}#{secret_hex}
-	return fmt.Sprintf("https://dk-relay.yuletech.com/mailbox/%s#%s", mailboxID, secret)
+func buildSharingURL(mailboxID string) string {
+	// base URL（不含 secret fragment — secret 由 sender 生成并附加到 URL fragment 中）
+	return fmt.Sprintf("https://dk-relay.yuletech.com/mailbox/%s", mailboxID)
 }
 
 // toProtoMailbox 将内部模型转成 proto message

@@ -5,9 +5,9 @@
 //
 //   测试 Relay Server 的 Mailbox 完整生命周期:
 //   1. CreateMailbox — 发送方创建邮箱
-//   2. ReadDisplayInformation — 接收方读取展示信息
+//   2. ReadDisplayInformationFromMailbox — 接收方读取展示信息
 //   3. UpdateMailbox — 接收方更新邮箱（KeySigning）
-//   4. ReadSecureContent — 发送方读取加密内容
+//   4. ReadSecureContentFromMailbox — 发送方读取加密内容
 //   5. UpdateMailbox — 发送方最终更新（Import）
 //   6. DeleteMailbox — 完成删除
 
@@ -73,7 +73,7 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 
 	// ── Step 1: CreateMailbox — 发送方创建邮箱 ──
 	var mailboxID string
-	var secretURL string
+	var baseURL string
 	t.Run("E2E-11-01: CreateMailbox", func(t *testing.T) {
 		req := &pb.CreateMailboxRequest{
 			Payload:          []byte(`{"encryptedKey":"AES256_BASE64_DATA"}`),
@@ -104,26 +104,32 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 		if resp.ExpiresAt == 0 {
 			t.Fatal("expected non-zero expires_at")
 		}
+		// URL must not contain fragment (#secret)
+		for i := 0; i < len(resp.SharingUrl); i++ {
+			if resp.SharingUrl[i] == '#' {
+				t.Fatal("sharing URL must not contain fragment (#)")
+			}
+		}
 
 		mailboxID = resp.MailboxId
-		secretURL = resp.SharingUrl
+		baseURL = resp.SharingUrl
 		t.Logf("Created mailbox: %s", mailboxID)
-		t.Logf("Sharing URL: %s", secretURL)
+		t.Logf("Base URL: %s", baseURL)
 	})
 
-	// ── Step 2: ReadDisplayInformation — 接收方读取展示信息 ──
-	t.Run("E2E-11-02: ReadDisplayInformation", func(t *testing.T) {
-		req := &pb.ReadDisplayInformationRequest{
+	// ── Step 2: ReadDisplayInformationFromMailbox — 接收方读取展示信息 ──
+	t.Run("E2E-11-02: ReadDisplayInformationFromMailbox", func(t *testing.T) {
+		req := &pb.ReadDisplayInformationFromMailboxRequest{
 			MailboxId: mailboxID,
 			DeviceId:  "galaxy-s25-001",
 		}
 
-		resp, err := client.ReadDisplayInformation(ctx, req)
+		resp, err := client.ReadDisplayInformationFromMailbox(ctx, req)
 		if err != nil {
-			t.Fatalf("ReadDisplayInformation failed: %v", err)
+			t.Fatalf("ReadDisplayInformationFromMailbox failed: %v", err)
 		}
 		if resp.ErrorCode != "" {
-			t.Fatalf("ReadDisplayInformation error: %s", resp.ErrorCode)
+			t.Fatalf("ReadDisplayInformationFromMailbox error: %s", resp.ErrorCode)
 		}
 		if len(resp.DisplayInfo) == 0 {
 			t.Fatal("expected non-empty display_info")
@@ -157,19 +163,19 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 		t.Logf("Update status: %v, version: %d", resp.Status, resp.Version)
 	})
 
-	// ── Step 4: ReadSecureContent — 发送方读取加密内容 ──
-	t.Run("E2E-11-04: ReadSecureContent", func(t *testing.T) {
-		req := &pb.ReadSecureContentRequest{
+	// ── Step 4: ReadSecureContentFromMailbox — 发送方读取加密内容 ──
+	t.Run("E2E-11-04: ReadSecureContentFromMailbox", func(t *testing.T) {
+		req := &pb.ReadSecureContentFromMailboxRequest{
 			MailboxId: mailboxID,
 			DeviceId:  "iphone-15-pro-001",
 		}
 
-		resp, err := client.ReadSecureContent(ctx, req)
+		resp, err := client.ReadSecureContentFromMailbox(ctx, req)
 		if err != nil {
-			t.Fatalf("ReadSecureContent failed: %v", err)
+			t.Fatalf("ReadSecureContentFromMailbox failed: %v", err)
 		}
 		if resp.ErrorCode != "" {
-			t.Fatalf("ReadSecureContent error: %s", resp.ErrorCode)
+			t.Fatalf("ReadSecureContentFromMailbox error: %s", resp.ErrorCode)
 		}
 		if len(resp.Payload) == 0 {
 			t.Fatal("expected non-empty payload")
@@ -220,19 +226,19 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 
 	// ── Step 7: 删除后读取 → 应失败 ──
 	t.Run("E2E-11-07: Read after delete (should fail)", func(t *testing.T) {
-		req := &pb.ReadSecureContentRequest{
+		req := &pb.ReadSecureContentFromMailboxRequest{
 			MailboxId: mailboxID,
 			DeviceId:  "iphone-15-pro-001",
 		}
 
-		resp, err := client.ReadSecureContent(ctx, req)
+		resp, err := client.ReadSecureContentFromMailbox(ctx, req)
 		if err != nil {
-			t.Fatalf("ReadSecureContent failed: %v", err)
+			t.Fatalf("ReadSecureContentFromMailbox failed: %v", err)
 		}
 		if resp.ErrorCode == "" {
 			t.Fatal("expected error after delete, got success")
 		}
-		t.Logf("Expected error: %s: %s", resp.ErrorCode, resp.ErrorMsg)
+		t.Logf("Expected error: %s", resp.ErrorCode)
 	})
 }
 
@@ -267,15 +273,15 @@ func TestE2E12_RelayMailboxExpiry(t *testing.T) {
 	time.Sleep(1500 * time.Millisecond)
 
 	// 过期后读取 → 应失败
-	readResp, err := client.ReadSecureContent(ctx, &pb.ReadSecureContentRequest{
+	readResp, err := client.ReadSecureContentFromMailbox(ctx, &pb.ReadSecureContentFromMailboxRequest{
 		MailboxId: mailboxID,
 		DeviceId:  "device-expiry-test",
 	})
 	if err != nil {
-		t.Fatalf("ReadSecureContent failed: %v", err)
+		t.Fatalf("ReadSecureContentFromMailbox failed: %v", err)
 	}
 	if readResp.ErrorCode == "" {
 		t.Fatal("expected error after expiry")
 	}
-	t.Logf("Expiry verified: %s: %s", readResp.ErrorCode, readResp.ErrorMsg)
+	t.Logf("Expiry verified: %s", readResp.ErrorCode)
 }

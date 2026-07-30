@@ -19,11 +19,11 @@ service RelayService {
   // 11.3.4.3: DeleteMailbox — 删除邮箱
   rpc DeleteMailbox(DeleteMailboxRequest) returns (DeleteMailboxResponse);
 
-  // 11.3.4.4: ReadDisplayInformation — 读取展示信息
-  rpc ReadDisplayInformation(ReadDisplayInformationRequest) returns (ReadDisplayInformationResponse);
+  // 11.3.4.4: ReadDisplayInformationFromMailbox — 读取展示信息
+  rpc ReadDisplayInformationFromMailbox(ReadDisplayInformationFromMailboxRequest) returns (ReadDisplayInformationFromMailboxResponse);
 
-  // 11.3.4.5: ReadSecureContent — 读取加密内容
-  rpc ReadSecureContent(ReadSecureContentRequest) returns (ReadSecureContentResponse);
+  // 11.3.4.5: ReadSecureContentFromMailbox — 读取加密内容
+  rpc ReadSecureContentFromMailbox(ReadSecureContentFromMailboxRequest) returns (ReadSecureContentFromMailboxResponse);
 
   // 11.3.4.6: RelinquishMailbox — 转移邮箱到另一设备
   rpc RelinquishMailbox(RelinquishMailboxRequest) returns (RelinquishMailboxResponse);
@@ -76,13 +76,12 @@ message CreateMailboxResponse {
 }
 
 message UpdateMailboxRequest {
-  string mailbox_id       = 1;
-  bytes  payload          = 2;  // 更新内容（KeySigningRequest / ImportRequest / Cancellation）
-  int32  sharing_data_type = 3; // 1=KeyCreation, 2=KeySigning, 3=Import, 4=SenderCancel, 5=ReceiverCancel
+  string mailbox_id        = 1;
+  bytes  payload           = 2;  // 更新内容（KeySigningRequest / ImportRequest / Cancellation）
+  int32  sharing_data_type  = 3; // 1=KeyCreation, 2=KeySigning, 3=Import, 4=SenderCancel, 5=ReceiverCancel
   string notification_token = 4; // 更新方的 Push token
   string updater_device_id = 5;
   string trace_id          = 6;
-  string secret            = 7; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message UpdateMailboxResponse {
@@ -97,7 +96,6 @@ message DeleteMailboxRequest {
   string reason           = 2;  // "completed" / "cancelled" / "expired"
   string deleter_device_id = 3;
   string trace_id          = 4;
-  string secret            = 5; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message DeleteMailboxResponse {
@@ -105,26 +103,29 @@ message DeleteMailboxResponse {
   string error_code = 2;
 }
 
-message ReadDisplayInformationRequest {
+// ReadDisplayInformationFromMailboxRequest
+message ReadDisplayInformationFromMailboxRequest {
   string mailbox_id  = 1;
   string device_id   = 2;
   string trace_id    = 3;
 }
 
-message ReadDisplayInformationResponse {
+// ReadDisplayInformationFromMailboxResponse
+message ReadDisplayInformationFromMailboxResponse {
   bytes  display_info = 1;
   int64  version      = 2;
   string error_code   = 3;
 }
 
-message ReadSecureContentRequest {
+// ReadSecureContentFromMailboxRequest
+message ReadSecureContentFromMailboxRequest {
   string mailbox_id  = 1;
   string device_id   = 2;
   string trace_id    = 3;
-  string secret      = 4; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
-message ReadSecureContentResponse {
+// ReadSecureContentFromMailboxResponse
+message ReadSecureContentFromMailboxResponse {
   bytes  payload    = 1;  // 加密内容
   int64  version    = 2;
   string error_code = 3;
@@ -136,7 +137,6 @@ message RelinquishMailboxRequest {
   string from_device_id = 2;  // 当前持有设备
   string to_device_id   = 3;  // 目标设备
   string trace_id       = 4;
-  string secret         = 5;  // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message RelinquishMailboxResponse {
