@@ -82,6 +82,7 @@ message UpdateMailboxRequest {
   string notification_token = 4; // 更新方的 Push token
   string updater_device_id = 5;
   string trace_id          = 6;
+  string secret            = 7; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message UpdateMailboxResponse {
@@ -96,6 +97,7 @@ message DeleteMailboxRequest {
   string reason           = 2;  // "completed" / "cancelled" / "expired"
   string deleter_device_id = 3;
   string trace_id          = 4;
+  string secret            = 5; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message DeleteMailboxResponse {
@@ -119,6 +121,7 @@ message ReadSecureContentRequest {
   string mailbox_id  = 1;
   string device_id   = 2;
   string trace_id    = 3;
+  string secret      = 4; // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message ReadSecureContentResponse {
@@ -133,6 +136,7 @@ message RelinquishMailboxRequest {
   string from_device_id = 2;  // 当前持有设备
   string to_device_id   = 3;  // 目标设备
   string trace_id       = 4;
+  string secret         = 5;  // 分享 URL 中的 secret fragment（用于授权校验）
 }
 
 message RelinquishMailboxResponse {

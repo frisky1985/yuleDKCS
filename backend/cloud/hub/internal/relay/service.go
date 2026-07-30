@@ -110,12 +110,12 @@ func (s *RelayService) ReadDisplayInformation(ctx context.Context, req *pb.ReadD
 }
 
 // ReadSecureContent §11.3.4.5: 读取加密内容
+// 注意: payload 已由设备端用 Secret 端到端加密，relay server 不解密
 func (s *RelayService) ReadSecureContent(ctx context.Context, req *pb.ReadSecureContentRequest) (*pb.ReadSecureContentResponse, error) {
 	payload, version, err := s.controller.ReadSecureContent(ctx, req.MailboxId)
 	if err != nil {
 		return &pb.ReadSecureContentResponse{
-			ErrorCode: "READ_FAILED",
-			ErrorMsg:  err.Error(),
+			ErrorCode: err.Error(),
 		}, nil
 	}
 

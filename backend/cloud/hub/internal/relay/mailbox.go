@@ -2,6 +2,8 @@ package relay
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
@@ -60,7 +62,7 @@ type Mailbox struct {
 	ReceiverDeviceID  string
 	ReceiverVendor    string
 	SharingURL        string
-	Secret            []byte          // URL fragment secret (仅发送方知道)
+	Secret            string          // URL secret fragment (hex string, 用于授权校验)
 	CreatedAt         time.Time
 	ExpiresAt         time.Time
 	UpdatedAt         time.Time
@@ -276,13 +278,14 @@ func (c *MailboxController) ReadDisplayInfo(ctx context.Context, mailboxID strin
 }
 
 // ReadSecureContent 读取加密内容 — §11.3.4.5
+// 注意: CCC 规范规定 payload 已由设备端 Secret 加密，relay server 不解密
 func (c *MailboxController) ReadSecureContent(ctx context.Context, mailboxID string) ([]byte, int64, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	mb, ok := c.mailboxes[mailboxID]
 	if !ok {
-		return nil, 0, fmt.Errorf("mailbox %s not found", mailboxID)
+		return nil, 0, fmt.Errorf(ErrCodeMailboxNotFound)
 	}
 
 	if err := c.checkExpired(mb); err != nil {
@@ -322,10 +325,10 @@ func (c *MailboxController) Get(mailboxID string) (*Mailbox, bool) {
 func (c *MailboxController) checkExpired(mb *Mailbox) error {
 	if c.now().After(mb.ExpiresAt) && mb.Status != StatusExpired {
 		mb.Status = StatusExpired
-		return fmt.Errorf("mailbox %s expired at %v", mb.ID, mb.ExpiresAt)
+		return fmt.Errorf(ErrCodeMailboxExpired)
 	}
 	if mb.Status == StatusExpired {
-		return fmt.Errorf("mailbox %s already expired", mb.ID)
+		return fmt.Errorf(ErrCodeMailboxExpired)
 	}
 	return nil
 }
@@ -353,19 +356,21 @@ func generateMailboxID() string {
 	return fmt.Sprintf("mb-%d-%06d", time.Now().UnixMilli(), time.Now().Nanosecond()%1000000)
 }
 
-func generateSecret() []byte {
-	// 16 字节随机 secret → URL fragment
+func generateSecret() string {
+	// 16 字节随机数 → 32 字符 hex 字符串（crypto/rand 真随机）
 	b := make([]byte, 16)
-	// 使用 crypto/rand 生成真随机数
-	for i := range b {
-		b[i] = byte(time.Now().UnixNano()%256) ^ byte(i*37)
+	if _, err := rand.Read(b); err != nil {
+		// 极端情况 fallback到时间戳+纳秒
+		for i := range b {
+			b[i] = byte(time.Now().UnixNano()%256) ^ byte(i*37)
+		}
 	}
-	return b
+	return hex.EncodeToString(b)
 }
 
-func buildSharingURL(mailboxID string, secret []byte) string {
+func buildSharingURL(mailboxID string, secret string) string {
 	// URL 格式: https://relay.example.com/mailbox/{id}#{secret_hex}
-	return fmt.Sprintf("https://dk-relay.yuletech.com/mailbox/%s#%x", mailboxID, secret)
+	return fmt.Sprintf("https://dk-relay.yuletech.com/mailbox/%s#%s", mailboxID, secret)
 }
 
 // toProtoMailbox 将内部模型转成 proto message

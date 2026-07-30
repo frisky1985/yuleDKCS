@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.35.0
-// source: backend/cloud/hub/api/relay/v1/relay.proto
+// source: api/relay/v1/relay.proto
 
 package v1
 
@@ -66,11 +66,11 @@ func (x MailboxStatus) String() string {
 }
 
 func (MailboxStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes[0].Descriptor()
+	return file_api_relay_v1_relay_proto_enumTypes[0].Descriptor()
 }
 
 func (MailboxStatus) Type() protoreflect.EnumType {
-	return &file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes[0]
+	return &file_api_relay_v1_relay_proto_enumTypes[0]
 }
 
 func (x MailboxStatus) Number() protoreflect.EnumNumber {
@@ -79,7 +79,7 @@ func (x MailboxStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MailboxStatus.Descriptor instead.
 func (MailboxStatus) EnumDescriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{0}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{0}
 }
 
 type AccessRights int32
@@ -121,11 +121,11 @@ func (x AccessRights) String() string {
 }
 
 func (AccessRights) Descriptor() protoreflect.EnumDescriptor {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes[1].Descriptor()
+	return file_api_relay_v1_relay_proto_enumTypes[1].Descriptor()
 }
 
 func (AccessRights) Type() protoreflect.EnumType {
-	return &file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes[1]
+	return &file_api_relay_v1_relay_proto_enumTypes[1]
 }
 
 func (x AccessRights) Number() protoreflect.EnumNumber {
@@ -134,7 +134,7 @@ func (x AccessRights) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AccessRights.Descriptor instead.
 func (AccessRights) EnumDescriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{1}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{1}
 }
 
 type MailboxConfig struct {
@@ -148,7 +148,7 @@ type MailboxConfig struct {
 
 func (x *MailboxConfig) Reset() {
 	*x = MailboxConfig{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[0]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -160,7 +160,7 @@ func (x *MailboxConfig) String() string {
 func (*MailboxConfig) ProtoMessage() {}
 
 func (x *MailboxConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[0]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -173,7 +173,7 @@ func (x *MailboxConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MailboxConfig.ProtoReflect.Descriptor instead.
 func (*MailboxConfig) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{0}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *MailboxConfig) GetAccessRights() AccessRights {
@@ -212,7 +212,7 @@ type CreateMailboxRequest struct {
 
 func (x *CreateMailboxRequest) Reset() {
 	*x = CreateMailboxRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[1]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -224,7 +224,7 @@ func (x *CreateMailboxRequest) String() string {
 func (*CreateMailboxRequest) ProtoMessage() {}
 
 func (x *CreateMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[1]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -237,7 +237,7 @@ func (x *CreateMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMailboxRequest.ProtoReflect.Descriptor instead.
 func (*CreateMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{1}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateMailboxRequest) GetPayload() []byte {
@@ -302,7 +302,7 @@ type CreateMailboxResponse struct {
 
 func (x *CreateMailboxResponse) Reset() {
 	*x = CreateMailboxResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[2]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -314,7 +314,7 @@ func (x *CreateMailboxResponse) String() string {
 func (*CreateMailboxResponse) ProtoMessage() {}
 
 func (x *CreateMailboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[2]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -327,7 +327,7 @@ func (x *CreateMailboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateMailboxResponse.ProtoReflect.Descriptor instead.
 func (*CreateMailboxResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{2}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateMailboxResponse) GetMailboxId() string {
@@ -373,13 +373,14 @@ type UpdateMailboxRequest struct {
 	NotificationToken string                 `protobuf:"bytes,4,opt,name=notification_token,json=notificationToken,proto3" json:"notification_token,omitempty"` // 更新方的 Push token
 	UpdaterDeviceId   string                 `protobuf:"bytes,5,opt,name=updater_device_id,json=updaterDeviceId,proto3" json:"updater_device_id,omitempty"`
 	TraceId           string                 `protobuf:"bytes,6,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Secret            string                 `protobuf:"bytes,7,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateMailboxRequest) Reset() {
 	*x = UpdateMailboxRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[3]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -391,7 +392,7 @@ func (x *UpdateMailboxRequest) String() string {
 func (*UpdateMailboxRequest) ProtoMessage() {}
 
 func (x *UpdateMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[3]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -404,7 +405,7 @@ func (x *UpdateMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMailboxRequest.ProtoReflect.Descriptor instead.
 func (*UpdateMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{3}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UpdateMailboxRequest) GetMailboxId() string {
@@ -449,6 +450,13 @@ func (x *UpdateMailboxRequest) GetTraceId() string {
 	return ""
 }
 
+func (x *UpdateMailboxRequest) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
 type UpdateMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        MailboxStatus          `protobuf:"varint,1,opt,name=status,proto3,enum=digitalkey.relay.v1.MailboxStatus" json:"status,omitempty"`
@@ -461,7 +469,7 @@ type UpdateMailboxResponse struct {
 
 func (x *UpdateMailboxResponse) Reset() {
 	*x = UpdateMailboxResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[4]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -473,7 +481,7 @@ func (x *UpdateMailboxResponse) String() string {
 func (*UpdateMailboxResponse) ProtoMessage() {}
 
 func (x *UpdateMailboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[4]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -486,7 +494,7 @@ func (x *UpdateMailboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateMailboxResponse.ProtoReflect.Descriptor instead.
 func (*UpdateMailboxResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{4}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpdateMailboxResponse) GetStatus() MailboxStatus {
@@ -523,13 +531,14 @@ type DeleteMailboxRequest struct {
 	Reason          string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"` // "completed" / "cancelled" / "expired"
 	DeleterDeviceId string                 `protobuf:"bytes,3,opt,name=deleter_device_id,json=deleterDeviceId,proto3" json:"deleter_device_id,omitempty"`
 	TraceId         string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Secret          string                 `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *DeleteMailboxRequest) Reset() {
 	*x = DeleteMailboxRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[5]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -541,7 +550,7 @@ func (x *DeleteMailboxRequest) String() string {
 func (*DeleteMailboxRequest) ProtoMessage() {}
 
 func (x *DeleteMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[5]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -554,7 +563,7 @@ func (x *DeleteMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMailboxRequest.ProtoReflect.Descriptor instead.
 func (*DeleteMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{5}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteMailboxRequest) GetMailboxId() string {
@@ -585,6 +594,13 @@ func (x *DeleteMailboxRequest) GetTraceId() string {
 	return ""
 }
 
+func (x *DeleteMailboxRequest) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
 type DeleteMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -595,7 +611,7 @@ type DeleteMailboxResponse struct {
 
 func (x *DeleteMailboxResponse) Reset() {
 	*x = DeleteMailboxResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[6]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -607,7 +623,7 @@ func (x *DeleteMailboxResponse) String() string {
 func (*DeleteMailboxResponse) ProtoMessage() {}
 
 func (x *DeleteMailboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[6]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -620,7 +636,7 @@ func (x *DeleteMailboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteMailboxResponse.ProtoReflect.Descriptor instead.
 func (*DeleteMailboxResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{6}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteMailboxResponse) GetSuccess() bool {
@@ -648,7 +664,7 @@ type ReadDisplayInformationRequest struct {
 
 func (x *ReadDisplayInformationRequest) Reset() {
 	*x = ReadDisplayInformationRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[7]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -660,7 +676,7 @@ func (x *ReadDisplayInformationRequest) String() string {
 func (*ReadDisplayInformationRequest) ProtoMessage() {}
 
 func (x *ReadDisplayInformationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[7]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -673,7 +689,7 @@ func (x *ReadDisplayInformationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadDisplayInformationRequest.ProtoReflect.Descriptor instead.
 func (*ReadDisplayInformationRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{7}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ReadDisplayInformationRequest) GetMailboxId() string {
@@ -708,7 +724,7 @@ type ReadDisplayInformationResponse struct {
 
 func (x *ReadDisplayInformationResponse) Reset() {
 	*x = ReadDisplayInformationResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[8]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -720,7 +736,7 @@ func (x *ReadDisplayInformationResponse) String() string {
 func (*ReadDisplayInformationResponse) ProtoMessage() {}
 
 func (x *ReadDisplayInformationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[8]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +749,7 @@ func (x *ReadDisplayInformationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadDisplayInformationResponse.ProtoReflect.Descriptor instead.
 func (*ReadDisplayInformationResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{8}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ReadDisplayInformationResponse) GetDisplayInfo() []byte {
@@ -762,13 +778,14 @@ type ReadSecureContentRequest struct {
 	MailboxId     string                 `protobuf:"bytes,1,opt,name=mailbox_id,json=mailboxId,proto3" json:"mailbox_id,omitempty"`
 	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	TraceId       string                 `protobuf:"bytes,3,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Secret        string                 `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ReadSecureContentRequest) Reset() {
 	*x = ReadSecureContentRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[9]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -780,7 +797,7 @@ func (x *ReadSecureContentRequest) String() string {
 func (*ReadSecureContentRequest) ProtoMessage() {}
 
 func (x *ReadSecureContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[9]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -793,7 +810,7 @@ func (x *ReadSecureContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadSecureContentRequest.ProtoReflect.Descriptor instead.
 func (*ReadSecureContentRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{9}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ReadSecureContentRequest) GetMailboxId() string {
@@ -817,6 +834,13 @@ func (x *ReadSecureContentRequest) GetTraceId() string {
 	return ""
 }
 
+func (x *ReadSecureContentRequest) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
 type ReadSecureContentResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Payload       []byte                 `protobuf:"bytes,1,opt,name=payload,proto3" json:"payload,omitempty"` // 加密内容
@@ -829,7 +853,7 @@ type ReadSecureContentResponse struct {
 
 func (x *ReadSecureContentResponse) Reset() {
 	*x = ReadSecureContentResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[10]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -841,7 +865,7 @@ func (x *ReadSecureContentResponse) String() string {
 func (*ReadSecureContentResponse) ProtoMessage() {}
 
 func (x *ReadSecureContentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[10]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +878,7 @@ func (x *ReadSecureContentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadSecureContentResponse.ProtoReflect.Descriptor instead.
 func (*ReadSecureContentResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{10}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReadSecureContentResponse) GetPayload() []byte {
@@ -891,13 +915,14 @@ type RelinquishMailboxRequest struct {
 	FromDeviceId  string                 `protobuf:"bytes,2,opt,name=from_device_id,json=fromDeviceId,proto3" json:"from_device_id,omitempty"` // 当前持有设备
 	ToDeviceId    string                 `protobuf:"bytes,3,opt,name=to_device_id,json=toDeviceId,proto3" json:"to_device_id,omitempty"`       // 目标设备
 	TraceId       string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	Secret        string                 `protobuf:"bytes,5,opt,name=secret,proto3" json:"secret,omitempty"` // 分享 URL 中的 secret fragment（用于授权校验）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RelinquishMailboxRequest) Reset() {
 	*x = RelinquishMailboxRequest{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[11]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -909,7 +934,7 @@ func (x *RelinquishMailboxRequest) String() string {
 func (*RelinquishMailboxRequest) ProtoMessage() {}
 
 func (x *RelinquishMailboxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[11]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -922,7 +947,7 @@ func (x *RelinquishMailboxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RelinquishMailboxRequest.ProtoReflect.Descriptor instead.
 func (*RelinquishMailboxRequest) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{11}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *RelinquishMailboxRequest) GetMailboxId() string {
@@ -953,6 +978,13 @@ func (x *RelinquishMailboxRequest) GetTraceId() string {
 	return ""
 }
 
+func (x *RelinquishMailboxRequest) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
 type RelinquishMailboxResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -964,7 +996,7 @@ type RelinquishMailboxResponse struct {
 
 func (x *RelinquishMailboxResponse) Reset() {
 	*x = RelinquishMailboxResponse{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[12]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -976,7 +1008,7 @@ func (x *RelinquishMailboxResponse) String() string {
 func (*RelinquishMailboxResponse) ProtoMessage() {}
 
 func (x *RelinquishMailboxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[12]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -989,7 +1021,7 @@ func (x *RelinquishMailboxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RelinquishMailboxResponse.ProtoReflect.Descriptor instead.
 func (*RelinquishMailboxResponse) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{12}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RelinquishMailboxResponse) GetSuccess() bool {
@@ -1036,7 +1068,7 @@ type Mailbox struct {
 
 func (x *Mailbox) Reset() {
 	*x = Mailbox{}
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[13]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +1080,7 @@ func (x *Mailbox) String() string {
 func (*Mailbox) ProtoMessage() {}
 
 func (x *Mailbox) ProtoReflect() protoreflect.Message {
-	mi := &file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes[13]
+	mi := &file_api_relay_v1_relay_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +1093,7 @@ func (x *Mailbox) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mailbox.ProtoReflect.Descriptor instead.
 func (*Mailbox) Descriptor() ([]byte, []int) {
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP(), []int{13}
+	return file_api_relay_v1_relay_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Mailbox) GetMailboxId() string {
@@ -1169,11 +1201,11 @@ func (x *Mailbox) GetMaxUpdates() int32 {
 	return 0
 }
 
-var File_backend_cloud_hub_api_relay_v1_relay_proto protoreflect.FileDescriptor
+var File_api_relay_v1_relay_proto protoreflect.FileDescriptor
 
-const file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc = "" +
+const file_api_relay_v1_relay_proto_rawDesc = "" +
 	"\n" +
-	"*backend/cloud/hub/api/relay/v1/relay.proto\x12\x13digitalkey.relay.v1\"\xa7\x01\n" +
+	"\x18api/relay/v1/relay.proto\x12\x13digitalkey.relay.v1\"\xa7\x01\n" +
 	"\rMailboxConfig\x12F\n" +
 	"\raccess_rights\x18\x01 \x01(\x0e2!.digitalkey.relay.v1.AccessRightsR\faccessRights\x12-\n" +
 	"\x12expiration_seconds\x18\x02 \x01(\x03R\x11expirationSeconds\x12\x1f\n" +
@@ -1196,7 +1228,7 @@ const file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc = "" +
 	"expires_at\x18\x03 \x01(\x03R\texpiresAt\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x04 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x05 \x01(\tR\berrorMsg\"\xf1\x01\n" +
+	"\terror_msg\x18\x05 \x01(\tR\berrorMsg\"\x89\x02\n" +
 	"\x14UpdateMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x18\n" +
@@ -1204,19 +1236,21 @@ const file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x11sharing_data_type\x18\x03 \x01(\x05R\x0fsharingDataType\x12-\n" +
 	"\x12notification_token\x18\x04 \x01(\tR\x11notificationToken\x12*\n" +
 	"\x11updater_device_id\x18\x05 \x01(\tR\x0fupdaterDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x06 \x01(\tR\atraceId\"\xa9\x01\n" +
+	"\btrace_id\x18\x06 \x01(\tR\atraceId\x12\x16\n" +
+	"\x06secret\x18\a \x01(\tR\x06secret\"\xa9\x01\n" +
 	"\x15UpdateMailboxResponse\x12:\n" +
 	"\x06status\x18\x01 \x01(\x0e2\".digitalkey.relay.v1.MailboxStatusR\x06status\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\x94\x01\n" +
+	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\xac\x01\n" +
 	"\x14DeleteMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12*\n" +
 	"\x11deleter_device_id\x18\x03 \x01(\tR\x0fdeleterDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\tR\atraceId\"P\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x16\n" +
+	"\x06secret\x18\x05 \x01(\tR\x06secret\"P\n" +
 	"\x15DeleteMailboxResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
 	"\n" +
@@ -1230,25 +1264,27 @@ const file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc = "" +
 	"\fdisplay_info\x18\x01 \x01(\fR\vdisplayInfo\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
-	"error_code\x18\x03 \x01(\tR\terrorCode\"q\n" +
+	"error_code\x18\x03 \x01(\tR\terrorCode\"\x89\x01\n" +
 	"\x18ReadSecureContentRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x19\n" +
-	"\btrace_id\x18\x03 \x01(\tR\atraceId\"\x8b\x01\n" +
+	"\btrace_id\x18\x03 \x01(\tR\atraceId\x12\x16\n" +
+	"\x06secret\x18\x04 \x01(\tR\x06secret\"\x8b\x01\n" +
 	"\x19ReadSecureContentResponse\x12\x18\n" +
 	"\apayload\x18\x01 \x01(\fR\apayload\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x03R\aversion\x12\x1d\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\tR\terrorCode\x12\x1b\n" +
-	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\x9c\x01\n" +
+	"\terror_msg\x18\x04 \x01(\tR\berrorMsg\"\xb4\x01\n" +
 	"\x18RelinquishMailboxRequest\x12\x1d\n" +
 	"\n" +
 	"mailbox_id\x18\x01 \x01(\tR\tmailboxId\x12$\n" +
 	"\x0efrom_device_id\x18\x02 \x01(\tR\ffromDeviceId\x12 \n" +
 	"\fto_device_id\x18\x03 \x01(\tR\n" +
 	"toDeviceId\x12\x19\n" +
-	"\btrace_id\x18\x04 \x01(\tR\atraceId\"q\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x16\n" +
+	"\x06secret\x18\x05 \x01(\tR\x06secret\"q\n" +
 	"\x19RelinquishMailboxResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
 	"\n" +
@@ -1301,20 +1337,20 @@ const file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc = "" +
 	"\x11RelinquishMailbox\x12-.digitalkey.relay.v1.RelinquishMailboxRequest\x1a..digitalkey.relay.v1.RelinquishMailboxResponseB$Z\"github.com/digitalkey/relay/api/v1b\x06proto3"
 
 var (
-	file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescOnce sync.Once
-	file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescData []byte
+	file_api_relay_v1_relay_proto_rawDescOnce sync.Once
+	file_api_relay_v1_relay_proto_rawDescData []byte
 )
 
-func file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescGZIP() []byte {
-	file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescOnce.Do(func() {
-		file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc), len(file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc)))
+func file_api_relay_v1_relay_proto_rawDescGZIP() []byte {
+	file_api_relay_v1_relay_proto_rawDescOnce.Do(func() {
+		file_api_relay_v1_relay_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_api_relay_v1_relay_proto_rawDesc), len(file_api_relay_v1_relay_proto_rawDesc)))
 	})
-	return file_backend_cloud_hub_api_relay_v1_relay_proto_rawDescData
+	return file_api_relay_v1_relay_proto_rawDescData
 }
 
-var file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_backend_cloud_hub_api_relay_v1_relay_proto_goTypes = []any{
+var file_api_relay_v1_relay_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_api_relay_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_api_relay_v1_relay_proto_goTypes = []any{
 	(MailboxStatus)(0),                     // 0: digitalkey.relay.v1.MailboxStatus
 	(AccessRights)(0),                      // 1: digitalkey.relay.v1.AccessRights
 	(*MailboxConfig)(nil),                  // 2: digitalkey.relay.v1.MailboxConfig
@@ -1332,7 +1368,7 @@ var file_backend_cloud_hub_api_relay_v1_relay_proto_goTypes = []any{
 	(*RelinquishMailboxResponse)(nil),      // 14: digitalkey.relay.v1.RelinquishMailboxResponse
 	(*Mailbox)(nil),                        // 15: digitalkey.relay.v1.Mailbox
 }
-var file_backend_cloud_hub_api_relay_v1_relay_proto_depIdxs = []int32{
+var file_api_relay_v1_relay_proto_depIdxs = []int32{
 	1,  // 0: digitalkey.relay.v1.MailboxConfig.access_rights:type_name -> digitalkey.relay.v1.AccessRights
 	2,  // 1: digitalkey.relay.v1.CreateMailboxRequest.config:type_name -> digitalkey.relay.v1.MailboxConfig
 	0,  // 2: digitalkey.relay.v1.UpdateMailboxResponse.status:type_name -> digitalkey.relay.v1.MailboxStatus
@@ -1356,27 +1392,27 @@ var file_backend_cloud_hub_api_relay_v1_relay_proto_depIdxs = []int32{
 	0,  // [0:4] is the sub-list for field type_name
 }
 
-func init() { file_backend_cloud_hub_api_relay_v1_relay_proto_init() }
-func file_backend_cloud_hub_api_relay_v1_relay_proto_init() {
-	if File_backend_cloud_hub_api_relay_v1_relay_proto != nil {
+func init() { file_api_relay_v1_relay_proto_init() }
+func file_api_relay_v1_relay_proto_init() {
+	if File_api_relay_v1_relay_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc), len(file_backend_cloud_hub_api_relay_v1_relay_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_relay_v1_relay_proto_rawDesc), len(file_api_relay_v1_relay_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_backend_cloud_hub_api_relay_v1_relay_proto_goTypes,
-		DependencyIndexes: file_backend_cloud_hub_api_relay_v1_relay_proto_depIdxs,
-		EnumInfos:         file_backend_cloud_hub_api_relay_v1_relay_proto_enumTypes,
-		MessageInfos:      file_backend_cloud_hub_api_relay_v1_relay_proto_msgTypes,
+		GoTypes:           file_api_relay_v1_relay_proto_goTypes,
+		DependencyIndexes: file_api_relay_v1_relay_proto_depIdxs,
+		EnumInfos:         file_api_relay_v1_relay_proto_enumTypes,
+		MessageInfos:      file_api_relay_v1_relay_proto_msgTypes,
 	}.Build()
-	File_backend_cloud_hub_api_relay_v1_relay_proto = out.File
-	file_backend_cloud_hub_api_relay_v1_relay_proto_goTypes = nil
-	file_backend_cloud_hub_api_relay_v1_relay_proto_depIdxs = nil
+	File_api_relay_v1_relay_proto = out.File
+	file_api_relay_v1_relay_proto_goTypes = nil
+	file_api_relay_v1_relay_proto_depIdxs = nil
 }

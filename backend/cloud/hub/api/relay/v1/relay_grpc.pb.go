@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.35.0
-// source: backend/cloud/hub/api/relay/v1/relay.proto
+// source: api/relay/v1/relay.proto
 
 package v1
 
@@ -319,5 +319,5 @@ var RelayService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "backend/cloud/hub/api/relay/v1/relay.proto",
+	Metadata: "api/relay/v1/relay.proto",
 }
