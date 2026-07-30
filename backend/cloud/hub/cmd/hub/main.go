@@ -80,8 +80,18 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 
 	// ── Adapters ──
 	adapterRegistry := adapter.NewRegistry(logger)
-	adapterRegistry.Register("apple", "ccc_dk3", adapter.NewCCCAdapter("apple", logger))
-	adapterRegistry.Register("samsung", "ccc_dk3", adapter.NewCCCAdapter("samsung", logger))
+
+	// CCC Adapter + Mailbox middleware
+	// mailboxCreatorBridge wraps relay.MailboxController to implement adapter.MailboxCreator
+	mailboxCtrl := relay.NewMailboxController(logger)
+	mailboxBridge := &mailboxCreatorBridge{ctrl: mailboxCtrl}
+
+	cccApple := adapter.NewCCCAdapter("apple", logger).WithMailboxCreator(mailboxBridge)
+	adapterRegistry.Register("apple", "ccc_dk3", cccApple)
+
+	cccSamsung := adapter.NewCCCAdapter("samsung", logger).WithMailboxCreator(mailboxBridge)
+	adapterRegistry.Register("samsung", "ccc_dk3", cccSamsung)
+
 	adapterRegistry.Register("xiaomi", "iccoa_dk40", adapter.NewICCOAAdapter("xiaomi", logger))
 	adapterRegistry.Register("oppo", "iccoa_dk40", adapter.NewICCOAAdapter("oppo", logger))
 	adapterRegistry.Register("vivo", "iccoa_dk40", adapter.NewICCOAAdapter("vivo", logger))
@@ -89,8 +99,7 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 
 	// ── Services ──
 	keySvc := service.NewKeyManagementService(adapterRegistry, logger)
-	mailboxCtrl := relay.NewMailboxController(logger)
-	shareSvc := service.NewKeyShareService(adapterRegistry, mailboxCtrl, logger)
+	shareSvc := service.NewKeyShareService(adapterRegistry, logger)
 	vehicleSvc := service.NewVehicleControlService(logger)
 	transportSvc := service.NewHubTransportService(adapterRegistry, logger)
 
@@ -142,4 +151,23 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 	reflection.Register(grpcSrv)
 
 	return grpcSrv, gw
+}
+
+// mailboxCreatorBridge wraps relay.MailboxController to implement adapter.MailboxCreator.
+// Used by CCCAdapter to create Mailboxes during ShareKey.
+type mailboxCreatorBridge struct {
+	ctrl *relay.MailboxController
+}
+
+func (b *mailboxCreatorBridge) CreateMailbox(ctx context.Context, keyID, senderVendor, senderDeviceID, traceID string) (string, string, error) {
+	req := &pb_relay.CreateMailboxRequest{
+		SenderVendor:   senderVendor,
+		SenderDeviceId: senderDeviceID,
+		TraceId:        traceID,
+	}
+	mb, err := b.ctrl.Create(ctx, req)
+	if err != nil {
+		return "", "", err
+	}
+	return mb.MailboxId, mb.SharingUrl, nil
 }

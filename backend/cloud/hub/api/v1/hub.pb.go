@@ -1632,8 +1632,9 @@ func (x *CreateShareRequest) GetTraceId() string {
 type CreateShareResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ShareId       string                 `protobuf:"bytes,1,opt,name=share_id,json=shareId,proto3" json:"share_id,omitempty"`
-	ShareCode     string                 `protobuf:"bytes,2,opt,name=share_code,json=shareCode,proto3" json:"share_code,omitempty"` // 6位数字分享码 (为空to_user_id时生成)
-	ErrorCode     string                 `protobuf:"bytes,3,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	ShareCode     string                 `protobuf:"bytes,2,opt,name=share_code,json=shareCode,proto3" json:"share_code,omitempty"`    // 6位数字分享码 (为空to_user_id时生成)
+	SharingUrl    string                 `protobuf:"bytes,3,opt,name=sharing_url,json=sharingUrl,proto3" json:"sharing_url,omitempty"` // CCC Mailbox sharing URL (仅CCC协议使用)
+	ErrorCode     string                 `protobuf:"bytes,4,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1678,6 +1679,13 @@ func (x *CreateShareResponse) GetShareId() string {
 func (x *CreateShareResponse) GetShareCode() string {
 	if x != nil {
 		return x.ShareCode
+	}
+	return ""
+}
+
+func (x *CreateShareResponse) GetSharingUrl() string {
+	if x != nil {
+		return x.SharingUrl
 	}
 	return ""
 }
@@ -2939,13 +2947,15 @@ const file_api_v1_hub_proto_rawDesc = "" +
 	"\vvalid_until\x18\a \x01(\x03R\n" +
 	"validUntil\x12\x19\n" +
 	"\bmax_uses\x18\b \x01(\x05R\amaxUses\x12\x19\n" +
-	"\btrace_id\x18\t \x01(\tR\atraceId\"n\n" +
+	"\btrace_id\x18\t \x01(\tR\atraceId\"\x8f\x01\n" +
 	"\x13CreateShareResponse\x12\x19\n" +
 	"\bshare_id\x18\x01 \x01(\tR\ashareId\x12\x1d\n" +
 	"\n" +
-	"share_code\x18\x02 \x01(\tR\tshareCode\x12\x1d\n" +
+	"share_code\x18\x02 \x01(\tR\tshareCode\x12\x1f\n" +
+	"\vsharing_url\x18\x03 \x01(\tR\n" +
+	"sharingUrl\x12\x1d\n" +
 	"\n" +
-	"error_code\x18\x03 \x01(\tR\terrorCode\"\xe1\x01\n" +
+	"error_code\x18\x04 \x01(\tR\terrorCode\"\xe1\x01\n" +
 	"\x12AcceptShareRequest\x12\x1d\n" +
 	"\n" +
 	"share_code\x18\x01 \x01(\tR\tshareCode\x12\x1b\n" +

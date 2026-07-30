@@ -223,9 +223,10 @@ message CreateShareRequest {
 }
 
 message CreateShareResponse {
-    string share_id   = 1;
-    string share_code = 2;  // 6位数字分享码 (为空to_user_id时生成)
-    string error_code = 3;
+    string share_id     = 1;
+    string share_code   = 2;  // 6位数字分享码 (为空to_user_id时生成)
+    string sharing_url  = 3;  // CCC Mailbox sharing URL (仅CCC协议使用)
+    string error_code   = 4;
 }
 
 message AcceptShareRequest {

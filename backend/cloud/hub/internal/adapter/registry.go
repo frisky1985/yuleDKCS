@@ -31,6 +31,13 @@ type Adapter interface {
 	HealthCheck(ctx context.Context) (*pb.AdapterStatus, error)
 }
 
+// MailboxCreator CCC 协议创建 Mailbox 的接口
+// CCCAdapter 通过此接口创建 Mailbox 用于 payload 中继
+// ICCOA/ICCE 不需要此接口（走 S2S 直连车服务器）
+type MailboxCreator interface {
+	CreateMailbox(ctx context.Context, keyID, senderVendor, senderDeviceID, traceID string) (mailboxID, sharingURL string, err error)
+}
+
 // Registry 适配器注册中心
 type Registry struct {
 	mu        sync.RWMutex

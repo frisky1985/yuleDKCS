@@ -12,8 +12,9 @@ import (
 // CCCAdapter CCC协议适配器 (Apple/Samsung)
 // 对接Apple Wallet / Samsung Pass数字钥匙服务
 type CCCAdapter struct {
-	vendor string
-	logger *zap.Logger
+	vendor         string
+	logger         *zap.Logger
+	mailboxCreator MailboxCreator // 可选：用于创建 Mailbox 做 payload 中继
 	// httpClient *http.Client  // 各厂商API客户端
 	// hsm        hsm.Client    // HSM密钥操作
 }
@@ -23,6 +24,11 @@ func NewCCCAdapter(vendor string, logger *zap.Logger) *CCCAdapter {
 		vendor: vendor,
 		logger: logger.With(zap.String("vendor", vendor), zap.String("protocol", "ccc_dk3")),
 	}
+}
+
+func (a *CCCAdapter) WithMailboxCreator(mc MailboxCreator) *CCCAdapter {
+	a.mailboxCreator = mc
+	return a
 }
 
 func (a *CCCAdapter) Vendor() string   { return a.vendor }
@@ -103,9 +109,32 @@ func (a *CCCAdapter) ShareKey(ctx context.Context, req *pb.CreateShareRequest) (
 	// Apple:  POST /v1/passkeys/{key_id}/share
 	// Samsung: POST /api/v2/digitalkeys/{key_id}/share
 
+	// 生成 share ID
+	shareID := fmt.Sprintf("share-ccc-%d", time.Now().UnixMilli())
+
+	// 创建 Mailbox（如果配置了 Creator）
+	var sharingURL string
+	if a.mailboxCreator != nil {
+		mailboxID, url, err := a.mailboxCreator.CreateMailbox(ctx, req.KeyId, "apple", req.FromUserId, shareID)
+		if err != nil {
+			a.logger.Warn("CreateMailbox failed, sharing continues without mailbox",
+				zap.String("share_id", shareID),
+				zap.Error(err),
+			)
+		} else {
+			sharingURL = url
+			a.logger.Info("Mailbox created for CCC share",
+				zap.String("share_id", shareID),
+				zap.String("mailbox_id", mailboxID),
+				zap.String("sharing_url", sharingURL),
+			)
+		}
+	}
+
 	return &pb.CreateShareResponse{
-		ShareId:   fmt.Sprintf("share-ccc-%d", time.Now().UnixMilli()),
-		ShareCode: fmt.Sprintf("%06d", time.Now().UnixNano()%1000000),
+		ShareId:    shareID,
+		ShareCode:  fmt.Sprintf("%06d", time.Now().UnixNano()%1000000),
+		SharingUrl: sharingURL,
 	}, nil
 }
 

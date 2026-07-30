@@ -19,14 +19,12 @@ type ICCEAdapter struct {
 	client *s2s.ICCEClient // S2S 厂商通信客户端
 }
 
+// NewICCEAdapter 创建 ICCE 适配器（stub 模式，无 S2S 客户端）
+// S2S 功能需通过 NewICCEAdapterWithClient 注入客户端后启用
 func NewICCEAdapter(vendor string, logger *zap.Logger) *ICCEAdapter {
-	cfg := s2s.DefaultICCEConfig()
-	client := s2s.NewICCEClient(vendor, cfg, logger)
-
 	return &ICCEAdapter{
 		vendor: vendor,
 		logger: logger.With(zap.String("vendor", vendor), zap.String("protocol", "icce")),
-		client: client,
 	}
 }
 
