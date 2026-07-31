@@ -1,8 +1,13 @@
 package com.yuledkcs.sdk.mailbox
 
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
 import com.yuledkcs.sdk.hub.YDKError
+import java.lang.reflect.Type
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -84,14 +89,17 @@ data class MailboxRelinquishResult(
  */
 class MailboxClient(
     hubEndpoint: String,
-    port: Int = 8080
-) {
-    private val baseURL = "https://$hubEndpoint:$port/api/v1/mailbox"
-    private val client = OkHttpClient.Builder()
+    port: Int = 8080,
+    // 测试缝: 可注入 OkHttpClient（MockWebServer wire 级测试用）；默认行为与原来一致
+    private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
-    private val gson = Gson()
+) {
+    private val baseURL = "https://$hubEndpoint:$port/api/v1/mailbox"
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(ByteArray::class.java, MailboxByteArrayDeserializer)
+        .create()
 
     companion object {
         /**
@@ -228,3 +236,30 @@ data class MailboxErrorResponse(
     val message: String? = null,
     val code: String? = null
 )
+
+/**
+ * ByteArray 反序列化器 — 对齐 wire 契约（B4.2）
+ *
+ * Hub REST Gateway 用 gin/encoding-json 序列化 proto 的 bytes 字段为 **base64 字符串**，
+ * 而 Gson 默认把 byte[] 当 JSON 数字数组解析，会导致 readDisplayInfo/readSecureContent
+ * 在服务端返回非空 payload 时解析失败。此处兼容三种形态:
+ *   - base64 字符串（服务端实际形态）: `"payload":"5L2g5aW9"`
+ *   - JSON 数字数组（Gson 默认形态）:  `"payload":[1,2,3]`
+ *   - null → null
+ */
+private object MailboxByteArrayDeserializer : JsonDeserializer<ByteArray> {
+    override fun deserialize(
+        json: JsonElement,
+        typeOfT: Type,
+        context: JsonDeserializationContext
+    ): ByteArray? = when {
+        json.isJsonNull -> null
+        json.isJsonPrimitive && json.asJsonPrimitive.isString ->
+            Base64.getDecoder().decode(json.asString)
+        json.isJsonArray -> {
+            val arr = json.asJsonArray
+            ByteArray(arr.size()) { arr[it].asInt.toByte() }
+        }
+        else -> null
+    }
+}

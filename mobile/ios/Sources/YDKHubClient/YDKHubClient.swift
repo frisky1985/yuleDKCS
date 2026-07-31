@@ -161,7 +161,62 @@ struct AnyEncodable: Encodable {
     init(_ wrapped: Encodable) {
         _encode = { try wrapped.encode(to: $0) }
     }
+    /// 从 JSON 兼容字典构造 — `[String: Any]` 不满足 Encodable, 需递归包装
+    static func json(_ object: [String: Any]) -> AnyEncodable {
+        AnyEncodable(JSONAny.object(object.mapValues(JSONAny.init)))
+    }
     func encode(to encoder: Encoder) throws {
         try _encode(encoder)
     }
+}
+
+/// JSON 兼容值的递归包装 (String/Number/Bool/Object/Array/Null)
+private enum JSONAny: Encodable {
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case object([String: JSONAny])
+    case array([JSONAny])
+    case null
+
+    init(_ value: Any) {
+        switch value {
+        case let s as String: self = .string(s)
+        case let n as Int: self = .number(Double(n))
+        case let n as Int32: self = .number(Double(n))
+        case let n as Int64: self = .number(Double(n))
+        case let n as UInt: self = .number(Double(n))
+        case let n as Double: self = .number(n)
+        case let n as Float: self = .number(Double(n))
+        case let b as Bool: self = .bool(b)
+        case let arr as [Any]: self = .array(arr.map(JSONAny.init))
+        case let dict as [String: Any]: self = .object(dict.mapValues(JSONAny.init))
+        case is NSNull: self = .null
+        default: self = .string(String(describing: value))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try container.encode(s)
+        case .number(let n): try container.encode(n)
+        case .bool(let b): try container.encode(b)
+        case .object(let dict):
+            var keyed = encoder.container(keyedBy: JSONCodingKey.self)
+            for (key, value) in dict {
+                try keyed.encode(value, forKey: JSONCodingKey(stringValue: key))
+            }
+        case .array(let arr): try container.encode(arr)
+        case .null: try container.encodeNil()
+        }
+    }
+}
+
+/// 动态 JSON 键
+private struct JSONCodingKey: CodingKey {
+    var stringValue: String
+    var intValue: Int? { nil }
+    init(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { nil }
 }

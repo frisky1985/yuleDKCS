@@ -40,7 +40,7 @@ public extension YDKHubClient {
         return try await request(
             method: "POST",
             path: "/vehicles/\(vehicleId)/command",
-            body: AnyEncodable(body as Encodable)
+            body: AnyEncodable.json(body)
         )
     }
 }

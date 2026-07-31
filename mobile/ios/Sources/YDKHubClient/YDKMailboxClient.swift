@@ -157,7 +157,7 @@ public final class YDKMailboxClient {
             "deviceAttestation": deviceAttestation?.base64EncodedString() ?? "",
             "traceId": UUID().uuidString,
         ]
-        return try await request(method: "POST", path: "", body: AnyEncodable(body as Encodable))
+        return try await request(method: "POST", path: "", body: AnyEncodable.json(body))
     }
 
     /// 读取展示信息（接收方）
@@ -186,7 +186,7 @@ public final class YDKMailboxClient {
             "updaterDeviceId": updaterDeviceId ?? "",
             "traceId": UUID().uuidString,
         ]
-        return try await request(method: "PUT", path: "/\(mailboxId)", body: AnyEncodable(body as Encodable))
+        return try await request(method: "PUT", path: "/\(mailboxId)", body: AnyEncodable.json(body))
     }
 
     /// 删除邮箱
@@ -201,7 +201,7 @@ public final class YDKMailboxClient {
             "deleterDeviceId": deleterDeviceId ?? "",
             "traceId": UUID().uuidString,
         ]
-        return try await request(method: "DELETE", path: "/\(mailboxId)", body: AnyEncodable(body as Encodable))
+        return try await request(method: "DELETE", path: "/\(mailboxId)", body: AnyEncodable.json(body))
     }
 
     /// 转移邮箱到另一设备
@@ -216,7 +216,7 @@ public final class YDKMailboxClient {
             "toDeviceId": toDeviceId,
             "traceId": UUID().uuidString,
         ]
-        return try await request(method: "POST", path: "/\(mailboxId)/relinquish", body: AnyEncodable(body as Encodable))
+        return try await request(method: "POST", path: "/\(mailboxId)/relinquish", body: AnyEncodable.json(body))
     }
 }
 

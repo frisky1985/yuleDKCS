@@ -29,7 +29,7 @@ public extension YDKHubClient {
             "maxUses": maxUses,
             "traceId": UUID().uuidString,
         ]
-        return try await request(method: "POST", path: "/shares", body: AnyEncodable(body as Encodable))
+        return try await request(method: "POST", path: "/shares", body: AnyEncodable.json(body))
     }
 
     /// 接受分享

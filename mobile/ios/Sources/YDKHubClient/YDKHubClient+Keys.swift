@@ -121,7 +121,7 @@ public extension YDKHubClient {
             "validUntil": validUntil,
             "traceId": UUID().uuidString,
         ]
-        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/renew", body: AnyEncodable(body as Encodable))
+        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/renew", body: AnyEncodable.json(body))
     }
 
     /// 查询单把钥匙
