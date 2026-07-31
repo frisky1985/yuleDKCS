@@ -7,12 +7,14 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
@@ -93,6 +95,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	// [SDK-E2E] REST gateway 转发依赖到自身 gRPC 服务器的客户端连接。
+	// 缺失时所有 /api/v1 管理端点 (keys/devices/shares/mailbox) 返回 503 GRPC_UNAVAILABLE。
+	// grpc.NewClient 为惰性连接, 可在 Serve 之前创建; 与服务端监听地址保持一致。
+	grpcTarget := net.JoinHostPort("localhost", strconv.Itoa(lis.Addr().(*net.TCPAddr).Port))
+	grpcConn, err := grpc.NewClient(grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal("failed to create gRPC client connection", zap.String("target", grpcTarget), zap.Error(err))
+	}
+	defer grpcConn.Close()
+	gw.WithGRPCConn(grpcConn)
+	logger.Info("REST gateway gRPC forwarding wired", zap.String("target", grpcTarget))
 
 	go func() {
 		logger.Info("HUB gRPC server starting", zap.String("addr", ":9090"))

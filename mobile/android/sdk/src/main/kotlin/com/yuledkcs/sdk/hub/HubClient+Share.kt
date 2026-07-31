@@ -31,7 +31,7 @@ suspend fun HubClient.acceptShare(shareCode: String): YDKKey {
         "shareCode" to shareCode,
         "deviceId" to device.getDeviceId(),
         "devicePubkey" to pubkey,
-        "vendor" to device.detectVendor().protoValue.toString(),
+        "vendor" to device.detectVendor().protoName,
         "traceId" to UUID.randomUUID().toString()
     )
     return request("POST", "/shares/accept", body)

@@ -32,12 +32,12 @@ type PushService interface {
 
 // KeyRecord holds the persisted metadata for a single digital key.
 type KeyRecord struct {
-	KeyID        string
-	OwnerUserID  string
-	VehicleID    string
-	Vendor       string
-	Status       string // "active", "suspended", "revoked", "pending"
-	CreatedAt    int64  // unix millis
+	KeyID       string
+	OwnerUserID string
+	VehicleID   string
+	Vendor      string
+	Status      string // "active", "suspended", "revoked", "pending"
+	CreatedAt   int64  // unix millis
 }
 
 // KeyStore provides persistent storage for key metadata.
@@ -146,9 +146,9 @@ type KeyManagementService struct {
 
 func NewKeyManagementService(registry *adapter.Registry, logger *zap.Logger) *KeyManagementService {
 	return &KeyManagementService{
-		registry:    registry,
-		logger:      logger.With(zap.String("service", "KeyManagement")),
-		keyStore:    NewInMemoryKeyStore(),
+		registry: registry,
+		logger:   logger.With(zap.String("service", "KeyManagement")),
+		keyStore: NewInMemoryKeyStore(),
 	}
 }
 
@@ -527,7 +527,7 @@ func (s *KeyManagementService) RenewKey(ctx context.Context, req *pb.RenewKeyReq
 	}
 
 	// 车端 TSP 续期（依赖 MQTT 通道就绪后启用）
-		// 当前日志记录续期事件，实际 TSP 调用在适配器层
+	// 当前日志记录续期事件，实际 TSP 调用在适配器层
 	// 当前阶段仅记录操作状态，由外部调度层负责实际续期流程
 	s.auditLog(ctx, "renew_key", userID, "", req.KeyId, "success")
 	return &pb.RenewKeyResponse{}, nil
@@ -544,7 +544,17 @@ func (s *KeyManagementService) GetKey(ctx context.Context, req *pb.GetKeyRequest
 			hub_error.GetErrorMessage(hub_error.ERR_ACCESS_DENIED))
 	}
 
-	return &pb.GetKeyResponse{}, nil
+	// 从存储层加载完整密钥记录并映射为统一模型
+	rec, err := s.keyStore.GetKeyRecord(ctx, req.KeyId)
+	if err != nil {
+		s.logger.Error("GetKey: key record lookup failed",
+			zap.String("key_id", req.KeyId),
+			zap.Error(err),
+		)
+		return nil, status.Error(codes.NotFound, "key not found")
+	}
+
+	return &pb.GetKeyResponse{Key: keyRecordToDigitalKey(rec)}, nil
 }
 
 func (s *KeyManagementService) ListKeys(ctx context.Context, req *pb.ListKeysRequest) (*pb.ListKeysResponse, error) {
@@ -570,11 +580,59 @@ func (s *KeyManagementService) ListKeys(ctx context.Context, req *pb.ListKeysReq
 		return nil, status.Error(codes.Internal, "failed to list keys")
 	}
 
-	// 使用已有记录构建响应（密钥元数据需从存储层完整加载）
-		for _, r := range records {
-			_ = r.KeyID
-		}
-	return &pb.ListKeysResponse{}, nil
+	// 使用存储层记录构建响应（密钥元数据从存储层完整加载）
+	keys := make([]*pb.DigitalKey, 0, len(records))
+	for _, r := range records {
+		keys = append(keys, keyRecordToDigitalKey(r))
+	}
+	return &pb.ListKeysResponse{Keys: keys, Total: int32(len(keys))}, nil
+}
+
+// keyRecordToDigitalKey maps a persisted KeyRecord onto the public DigitalKey
+// model. Fields the store schema doesn't track yet (device_id, key_type,
+// protocol, access_level, ...) remain zero values.
+//
+// NOTE: the DigitalKey proto message (api/v1/hub.proto) does not expose a
+// vendor field yet, so the record's Vendor string is not part of the response;
+// phoneVendorFromString keeps the mapping ready for when the model grows one.
+func keyRecordToDigitalKey(rec *KeyRecord) *pb.DigitalKey {
+	if rec == nil {
+		return nil
+	}
+	return &pb.DigitalKey{
+		KeyId:     rec.KeyID,
+		VehicleId: rec.VehicleID,
+		UserId:    rec.OwnerUserID,
+		Status:    keyStatusFromString(rec.Status),
+		CreatedAt: rec.CreatedAt,
+	}
+}
+
+// keyStatusFromString maps the store's lowercase status strings onto the
+// pb.KeyStatus enum. "pending" has no matching KeyStatus value in hub.proto
+// (only UNSPECIFIED/ACTIVE/SUSPENDED/REVOKED/EXPIRED), so it — like any
+// unknown status — maps to KEY_STATUS_UNSPECIFIED.
+func keyStatusFromString(s string) pb.KeyStatus {
+	switch s {
+	case "active":
+		return pb.KeyStatus_ACTIVE
+	case "suspended":
+		return pb.KeyStatus_SUSPENDED
+	case "revoked":
+		return pb.KeyStatus_REVOKED
+	default:
+		return pb.KeyStatus_KEY_STATUS_UNSPECIFIED
+	}
+}
+
+// phoneVendorFromString maps a store vendor name (e.g. "APPLE") onto the
+// pb.PhoneVendor enum by name via pb.PhoneVendor_value. Unknown names map to
+// VENDOR_UNSPECIFIED instead of panicking.
+func phoneVendorFromString(s string) pb.PhoneVendor {
+	if v, ok := pb.PhoneVendor_value[s]; ok {
+		return pb.PhoneVendor(v)
+	}
+	return pb.PhoneVendor_VENDOR_UNSPECIFIED
 }
 
 // auditLog writes a structured audit log entry in JSON format.

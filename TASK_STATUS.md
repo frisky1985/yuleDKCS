@@ -5,11 +5,12 @@
 
 ---
 
-## 当前阶段：P1-2 — 用户体系对接（已完成）
+## 当前阶段：P1-2 — 用户体系对接（已完成）+ SDK↔Hub 打通验证（已完成）
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
 | P1-2 | 用户体系对接（车厂后端鉴权） | ✅ | 双轨令牌: admin HS256 (iss=dkcs-admin) + OEM RS256/ES256 (JWKS, iss=<oem>); fail-closed 管理员; 修复 main.go 缺 WithJWTSecret 的 DOA bug; 1365 测试通过 |
+| SDK-1 | SDK↔Hub 全链路打通（E2E 实测） | ✅ | login→bindKey→getKey→listKeys→mailbox 全通; 修复: ① main.go 缺 WithGRPCConn (管理 API 全 503) ② SDK 枚举数字字符串→枚举名 (iOS+Android) ③ GetKey/ListKeys service 空壳返回空 |
 
 ---
 
@@ -31,6 +32,7 @@
 - ✅ P0: SDK DeviceManager（iOS SE / Android Keystore + vendor/protocol 检测 + bindKey/acceptShare 自动填充）
 - ✅ P1-1: TLS + K8s 部署编排（Gateway HTTPS + postgres StatefulSet + kustomize base/overlay 拆分）
 - ✅ P1-2: 用户体系对接（JWKS 双轨令牌 + fail-closed 管理员 + DOA bug 修复）
+- ✅ SDK↔Hub 打通: 枚举名契约 + GetKey/ListKeys 实现 + gRPC 转发接线（E2E 实测全通）
 
 ---
 

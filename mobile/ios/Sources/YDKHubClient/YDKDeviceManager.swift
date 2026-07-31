@@ -12,6 +12,18 @@ public enum PhoneVendor: String, Codable {
     case vivo = "vivo"
     case huawei = "huawei"
 
+    /// 对应 hub.proto PhoneVendor 枚举名（protojson 反序列化要求传枚举名字符串）
+    public var protoName: String {
+        switch self {
+        case .apple: return "APPLE"
+        case .samsung: return "SAMSUNG"
+        case .xiaomi: return "XIAOMI"
+        case .oppo: return "OPPO"
+        case .vivo: return "VIVO"
+        case .huawei: return "HUAWEI"
+        }
+    }
+
     /// 对应 sdk.proto PhoneVendor 枚举值
     public var protoValue: Int {
         switch self {
@@ -31,6 +43,16 @@ public enum DigitalKeyProtocol: String, Codable {
     case ccc = "ccc_dk3"
     case iccoa = "iccoa_dk40"
     case icce = "icce"
+
+    /// 对应 hub.proto Protocol 枚举名（protojson 反序列化要求传枚举名字符串；
+    /// sdk.proto 与 hub.proto 的数字值有漂移，但枚举名一致且稳定）
+    public var protoName: String {
+        switch self {
+        case .ccc: return "CCC_DK3"
+        case .iccoa: return "ICCOA_DK40"
+        case .icce: return "ICCE"
+        }
+    }
 
     /// 对应 sdk.proto Protocol 枚举值
     public var protoValue: Int {

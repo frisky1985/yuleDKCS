@@ -63,8 +63,8 @@ suspend fun HubClient.bindKey(
         "vehicleId" to vehicleId,
         "deviceId" to (deviceId ?: device.getDeviceId()),
         "devicePubkey" to (devicePubkey ?: pubkey),
-        "vendor" to device.detectVendor().protoValue.toString(),
-        "protocol" to device.detectProtocol().protoValue.toString(),
+        "vendor" to device.detectVendor().protoName,
+        "protocol" to device.detectProtocol().protoName,
         "keyType" to "OWNER",
         "traceId" to UUID.randomUUID().toString()
     )

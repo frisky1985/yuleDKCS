@@ -43,7 +43,7 @@ public extension YDKHubClient {
             "shareCode": shareCode,
             "deviceId": deviceManager.getDeviceId(),
             "devicePubkey": pubkey ?? "",
-            "vendor": deviceManager.detectVendor().protoValue.description,
+            "vendor": deviceManager.detectVendor().protoName,
             "traceId": UUID().uuidString,
         ]
         return try await request(method: "POST", path: "/shares/accept", body: body)

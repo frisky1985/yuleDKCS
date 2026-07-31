@@ -12,21 +12,21 @@ import java.util.UUID
 
 // ─── 手机厂商枚举（与 sdk.proto PhoneVendor 对齐） ──────────
 
-enum class PhoneVendor(val protoValue: Int) {
-    APPLE(1),
-    SAMSUNG(2),
-    XIAOMI(3),
-    OPPO(4),
-    VIVO(5),
-    HUAWEI(6)
+enum class PhoneVendor(val protoValue: Int, val protoName: String) {
+    APPLE(1, "APPLE"),
+    SAMSUNG(2, "SAMSUNG"),
+    XIAOMI(3, "XIAOMI"),
+    OPPO(4, "OPPO"),
+    VIVO(5, "VIVO"),
+    HUAWEI(6, "HUAWEI")
 }
 
 // ─── 协议类型（与 sdk.proto Protocol 对齐） ────────────────
 
-enum class DigitalKeyProtocol(val protoValue: Int) {
-    CCC_DK3(1),
-    ICCOA_DK40(2),
-    ICCE(3)
+enum class DigitalKeyProtocol(val protoValue: Int, val protoName: String) {
+    CCC_DK3(1, "CCC_DK3"),
+    ICCOA_DK40(2, "ICCOA_DK40"),
+    ICCE(3, "ICCE")
 }
 
 // ─── DeviceManager ─────────────────────────────────────────

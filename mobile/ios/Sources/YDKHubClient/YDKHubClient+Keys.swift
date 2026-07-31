@@ -76,8 +76,8 @@ public extension YDKHubClient {
             "vehicleId": vehicleId,
             "deviceId": deviceId ?? deviceManager.getDeviceId(),
             "devicePubkey": devicePubkey ?? pubkey ?? "",
-            "vendor": deviceManager.detectVendor().protoValue.description,
-            "protocol": deviceManager.detectProtocol().protoValue.description,
+            "vendor": deviceManager.detectVendor().protoName,
+            "protocol": deviceManager.detectProtocol().protoName,
             "keyType": "OWNER",
             "traceId": UUID().uuidString,
         ]

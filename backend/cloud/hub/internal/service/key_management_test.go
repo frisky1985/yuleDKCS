@@ -264,7 +264,7 @@ func TestKeyManagementService_WithPushService(t *testing.T) {
 
 func TestExtractUserFromContext_WithMetadata(t *testing.T) {
 	md := metadata.New(map[string]string{
-		"user_id": "user-1",
+		"user_id":   "user-1",
 		"user_role": "admin",
 	})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
@@ -399,11 +399,11 @@ func TestKeyManagementService_BindKey_Success(t *testing.T) {
 	ctx := context.Background()
 
 	req := &pb.BindKeyRequest{
-		VehicleId: "VH001",
-		DeviceId:  "DEV001",
-		UserId:    "U001",
-		Vendor:    pb.PhoneVendor_XIAOMI,
-		KeyType:   pb.KeyType_OWNER,
+		VehicleId:   "VH001",
+		DeviceId:    "DEV001",
+		UserId:      "U001",
+		Vendor:      pb.PhoneVendor_XIAOMI,
+		KeyType:     pb.KeyType_OWNER,
 		AccessLevel: &pb.AccessLevel{Lock: true, Unlock: true, Engine: true},
 	}
 
@@ -759,7 +759,7 @@ func TestKeyManagementService_RenewKey_Success(t *testing.T) {
 	md := metadata.New(map[string]string{"user_id": "user-1"})
 	ctx2 := metadata.NewIncomingContext(ctx, md)
 
-	resp, err := s.RenewKey(ctx2, &pb.RenewKeyRequest{KeyId: "key-001", ValidUntil: time.Now().Add(365*24*time.Hour).UnixMilli()})
+	resp, err := s.RenewKey(ctx2, &pb.RenewKeyRequest{KeyId: "key-001", ValidUntil: time.Now().Add(365 * 24 * time.Hour).UnixMilli()})
 	if err != nil {
 		t.Fatalf("RenewKey failed: %v", err)
 	}
@@ -855,4 +855,260 @@ func TestKeyManagementService_ListKeys_OwnKeys(t *testing.T) {
 
 func TestInMemoryKeyStore_ImplementsKeyStore(t *testing.T) {
 	var _ KeyStore = (*InMemoryKeyStore)(nil)
+}
+
+// ── GetKey / ListKeys real-data population ──
+
+// failingRecordStore wraps InMemoryKeyStore and forces GetKeyRecord to fail,
+// simulating a store where ownership lookup succeeds but the record load
+// fails (exercises the GetKey NotFound path).
+type failingRecordStore struct {
+	*InMemoryKeyStore
+}
+
+func (f *failingRecordStore) GetKeyRecord(_ context.Context, _ string) (*KeyRecord, error) {
+	return nil, fmt.Errorf("simulated record load failure")
+}
+
+func TestKeyManagementService_GetKey_ReturnsStoredRecord(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+	createdAt := time.Now().UnixMilli()
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID:       "key-001",
+		OwnerUserID: "user-1",
+		VehicleID:   "VH001",
+		Vendor:      "APPLE",
+		Status:      "active",
+		CreatedAt:   createdAt,
+	})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	resp, err := s.GetKey(ctx2, &pb.GetKeyRequest{KeyId: "key-001"})
+	if err != nil {
+		t.Fatalf("GetKey failed: %v", err)
+	}
+	if resp.GetKey() == nil {
+		t.Fatal("expected non-nil key in response")
+	}
+	got := resp.GetKey()
+	if got.KeyId != "key-001" {
+		t.Errorf("expected KeyId key-001, got %s", got.KeyId)
+	}
+	if got.UserId != "user-1" {
+		t.Errorf("expected UserId user-1, got %s", got.UserId)
+	}
+	if got.VehicleId != "VH001" {
+		t.Errorf("expected VehicleId VH001, got %s", got.VehicleId)
+	}
+	if got.Status != pb.KeyStatus_ACTIVE {
+		t.Errorf("expected Status ACTIVE, got %s", got.Status)
+	}
+	if got.CreatedAt != createdAt {
+		t.Errorf("expected CreatedAt %d, got %d", createdAt, got.CreatedAt)
+	}
+}
+
+func TestKeyManagementService_GetKey_RecordLoadFailure(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+	// Ownership check succeeds (key exists, user owns it)…
+	s.keyStore.SetKey(ctx, &KeyRecord{KeyID: "key-001", OwnerUserID: "user-1"})
+	// …but the record load fails.
+	s.keyStore = &failingRecordStore{InMemoryKeyStore: NewInMemoryKeyStore()}
+	s.keyStore.SetKey(ctx, &KeyRecord{KeyID: "key-001", OwnerUserID: "user-1"})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	_, err := s.GetKey(ctx2, &pb.GetKeyRequest{KeyId: "key-001"})
+	if err == nil {
+		t.Fatal("expected NotFound error")
+	}
+	if status.Code(err) != codes.NotFound {
+		t.Errorf("expected codes.NotFound, got %v", status.Code(err))
+	}
+}
+
+func TestKeyManagementService_GetKey_UnknownVendorNoPanic(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-001", OwnerUserID: "user-1",
+		Vendor: "MEGACORP", // not in PhoneVendor enum
+		Status: "pending",  // no KeyStatus enum value
+	})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	resp, err := s.GetKey(ctx2, &pb.GetKeyRequest{KeyId: "key-001"})
+	if err != nil {
+		t.Fatalf("GetKey failed: %v", err)
+	}
+	if resp.GetKey() == nil || resp.GetKey().KeyId != "key-001" {
+		t.Fatal("expected populated key despite unknown vendor/status")
+	}
+	if resp.GetKey().Status != pb.KeyStatus_KEY_STATUS_UNSPECIFIED {
+		t.Errorf("expected UNSPECIFIED status for 'pending', got %s", resp.GetKey().Status)
+	}
+}
+
+func TestKeyManagementService_ListKeys_ReturnsRecords(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-001", OwnerUserID: "user-1", VehicleID: "VH001",
+		Vendor: "XIAOMI", Status: "active",
+	})
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-002", OwnerUserID: "user-1", VehicleID: "VH002",
+		Vendor: "APPLE", Status: "suspended",
+	})
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-003", OwnerUserID: "user-2", VehicleID: "VH003",
+		Vendor: "APPLE", Status: "revoked",
+	})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	resp, err := s.ListKeys(ctx2, &pb.ListKeysRequest{UserId: "user-1"})
+	if err != nil {
+		t.Fatalf("ListKeys failed: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if len(resp.Keys) != 2 {
+		t.Fatalf("expected 2 keys, got %d", len(resp.Keys))
+	}
+	if resp.Total != 2 {
+		t.Errorf("expected Total 2, got %d", resp.Total)
+	}
+
+	// Verify mapped fields on each returned key
+	byID := map[string]*pb.DigitalKey{}
+	for _, k := range resp.Keys {
+		byID[k.KeyId] = k
+	}
+	k1, ok := byID["key-001"]
+	if !ok {
+		t.Fatal("expected key-001 in response")
+	}
+	if k1.UserId != "user-1" || k1.VehicleId != "VH001" || k1.Status != pb.KeyStatus_ACTIVE {
+		t.Errorf("key-001 mapping wrong: %+v", k1)
+	}
+	k2, ok := byID["key-002"]
+	if !ok {
+		t.Fatal("expected key-002 in response")
+	}
+	if k2.VehicleId != "VH002" || k2.Status != pb.KeyStatus_SUSPENDED {
+		t.Errorf("key-002 mapping wrong: %+v", k2)
+	}
+	// Other user's key must not leak into the list
+	if _, leak := byID["key-003"]; leak {
+		t.Error("key-003 owned by user-2 leaked into user-1's list")
+	}
+}
+
+func TestKeyManagementService_ListKeys_AdminRespectsUserFilter(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+	s.keyStore.SetKey(ctx, &KeyRecord{KeyID: "key-001", OwnerUserID: "user-1"})
+	s.keyStore.SetKey(ctx, &KeyRecord{KeyID: "key-002", OwnerUserID: "user-2"})
+	s.keyStore.SetKey(ctx, &KeyRecord{KeyID: "key-003", OwnerUserID: "user-2"})
+
+	md := metadata.New(map[string]string{"user_id": "admin-user", "user_role": "admin"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	resp, err := s.ListKeys(ctx2, &pb.ListKeysRequest{UserId: "user-2"})
+	if err != nil {
+		t.Fatalf("ListKeys failed: %v", err)
+	}
+	if len(resp.Keys) != 2 {
+		t.Fatalf("expected 2 keys for user-2, got %d", len(resp.Keys))
+	}
+	if resp.Total != 2 {
+		t.Errorf("expected Total 2, got %d", resp.Total)
+	}
+	for _, k := range resp.Keys {
+		if k.UserId != "user-2" {
+			t.Errorf("expected only user-2 keys, got %s", k.UserId)
+		}
+	}
+}
+
+func TestKeyManagementService_ListKeys_Empty(t *testing.T) {
+	s := newTestKeyMgmtService()
+	ctx := context.Background()
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	resp, err := s.ListKeys(ctx2, &pb.ListKeysRequest{})
+	if err != nil {
+		t.Fatalf("ListKeys failed: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if len(resp.Keys) != 0 {
+		t.Errorf("expected 0 keys, got %d", len(resp.Keys))
+	}
+	if resp.Total != 0 {
+		t.Errorf("expected Total 0, got %d", resp.Total)
+	}
+}
+
+// ── mapping helpers ──
+
+func TestKeyStatusFromString(t *testing.T) {
+	cases := []struct {
+		in   string
+		want pb.KeyStatus
+	}{
+		{"active", pb.KeyStatus_ACTIVE},
+		{"suspended", pb.KeyStatus_SUSPENDED},
+		{"revoked", pb.KeyStatus_REVOKED},
+		// "pending" has no KeyStatus enum value in hub.proto → UNSPECIFIED
+		{"pending", pb.KeyStatus_KEY_STATUS_UNSPECIFIED},
+		{"", pb.KeyStatus_KEY_STATUS_UNSPECIFIED},
+		{"bogus", pb.KeyStatus_KEY_STATUS_UNSPECIFIED},
+	}
+	for _, c := range cases {
+		if got := keyStatusFromString(c.in); got != c.want {
+			t.Errorf("keyStatusFromString(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestPhoneVendorFromString(t *testing.T) {
+	cases := []struct {
+		in   string
+		want pb.PhoneVendor
+	}{
+		{"APPLE", pb.PhoneVendor_APPLE},
+		{"SAMSUNG", pb.PhoneVendor_SAMSUNG},
+		{"XIAOMI", pb.PhoneVendor_XIAOMI},
+		{"OPPO", pb.PhoneVendor_OPPO},
+		{"VIVO", pb.PhoneVendor_VIVO},
+		{"HUAWEI", pb.PhoneVendor_HUAWEI},
+		// Unknown names must not panic; map to UNSPECIFIED
+		{"MEGACORP", pb.PhoneVendor_VENDOR_UNSPECIFIED},
+		{"", pb.PhoneVendor_VENDOR_UNSPECIFIED},
+	}
+	for _, c := range cases {
+		if got := phoneVendorFromString(c.in); got != c.want {
+			t.Errorf("phoneVendorFromString(%q) = %v, want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestKeyRecordToDigitalKey_Nil(t *testing.T) {
+	if got := keyRecordToDigitalKey(nil); got != nil {
+		t.Errorf("expected nil for nil record, got %+v", got)
+	}
 }
