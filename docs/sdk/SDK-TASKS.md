@@ -45,14 +45,30 @@ SDK 以原生库形式嵌入车厂 App，**不是一个独立服务**。
 
 这是最复杂的模块。需要实现 BLE/UWB 通信协议栈。
 
-| # | 任务 | 说明 | 工时 |
-|:-:|:-----|:-----|:----:|
-| 2.10 | BLE 扫描模块（解析车辆广告包） | iOS CoreBluetooth + Android BLE | 1.5天 |
-| 2.11 | BLE 安全通道建立（配对 + 加密） | 按协议不同（CCC/ICCOA/ICCE 各有差异） | 2天 |
-| 2.12 | BLE 解锁/锁车指令发送 + 响应解析 | CCC Reader Protocol / ICCOA BLE 指令 | 1.5天 |
-| 2.13 | UWB 精确测距集成（FiRa 标准） | iOS U1/U2 + 部分 Android | 2天 |
-| 2.14 | NFC 备用解锁（手机没电时） | iOS Wallet NFC + Android HCE | 1.5天 |
-| 2.15 | 后台 BLE 模式（App 在后台时保持连接） | iOS background mode + Android foreground service | 1天 |
+**现状核对（2026-07-31）**: 骨架完整（iOS 903 行 + Android 649 行），但实现大量为占位——
+广告解析占位（`CCCBleAdapter.swift:29,43`）、扫描占位（`YDKBLEManager.swift:120`）、
+CCC 指令加密占位（`CCCBleAdapter.swift:66`）、SM4 加密占位（`ICCOABleAdapter.swift:51`、
+Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
+
+**拆解表（W1=iOS worker / W2=Android worker / 独立=硬件项）**:
+
+| # | 任务 | 现状证据 | 完成标准 | Worker |
+|:-:|:-----|:-----|:-----|:---:|
+| 2b-A | 广告包解析 iOS | `CCCBleAdapter.swift:29,43` 占位 | 真实解析 manufacturer data → vehicleId/协议；构造字节单测 | W1 |
+| 2b-B | 广告包解析 Android | `BleProtocolAdapter.kt` 占位 | 同上（Kotlin）| W2 |
+| 2b-C | BLE 扫描 iOS | `YDKBLEManager.swift:120` 占位 | CoreBluetooth 扫描/过滤 + mock 测试 | W1 |
+| 2b-D | BLE 扫描 Android | `BleManager.kt` | BluetoothLeScanner + mock 测试 | W2 |
+| 2b-E | **CCC 指令帧 + 加密签名** | `CCCBleAdapter.swift:66` 占位 | **先研读 embedded/ccc_protocol + CCC 知识库再写**（防幻觉红线）| W1 |
+| 2b-F | ICCOA/ICCE 指令帧 SM4 | `ICCOABleAdapter.swift:51`、`BleProtocolAdapter.kt:74` | 按 ICCOA 知识库 + SM4 实现 | W2 |
+| 2b-G | UWB 测距 | iOS/Android 60 行骨架 | ⚠️ 真机依赖: 代码+接口+模拟测，真机联调单列 | 独立 |
+| 2b-H | NFC 备用解锁 | iOS/Android 34 行骨架 | ⚠️ 真机依赖: 同上 | 独立 |
+| 2b-I | 后台 BLE | 未开始 | iOS background mode + Android foreground service | W1/W2 尾 |
+
+**防幻觉原则**:
+1. 协议指令真实化（2b-E/F）必须先研读规范/参考实现再写，禁止凭印象编帧格式
+2. 硬件项（2b-G/H）无真机不许标 ✅——完成标准只到"代码 + 模拟测试"，真机联调单独列项
+3. 任务间文件隔离（iOS/Android 目录分离），并行 worker 零冲突
+4. 每个任务完成标准 = 编译/语法检查通过 + 单测代码就位（本环境无完整移动端工具链时，测试文件写出、由 CI/真机构建执行）
 
 ### 2c: KeyManager
 
@@ -96,13 +112,13 @@ SDK 以原生库形式嵌入车厂 App，**不是一个独立服务**。
 
 ## Phase 4: 集成测试
 
-| # | 任务 | 说明 | 工时 |
-|:-:|:-----|:-----|:----:|
-| 4.1 | SDK 单元测试（Mock Hub、Mock TCU） | iOS XCTest + Android JUnit | 2天 |
-| 4.2 | SDK × Hub 集成测试（真实 gRPC 调用） | 复用现有 E2E 测试框架 | 1天 |
-| 4.3 | BLE 桩测试（模拟车辆广播） | iOS + Android 模拟器 | 1天 |
-| 4.4 | CCC 分享全链路 E2E（两台手机 ↔ Hub ↔ Relay） | 物理机测试 | 2天 |
-| 4.5 | ICCOA/ICCE S2S 分享全链路 E2E | 通过 Hub mock S2S | 2天 |
+| # | 任务 | 说明 | 依赖 | 并行性 |
+|:-:|:-----|:-----|:----:|:----:|
+| 4.1 | SDK 单元测试（Mock Hub、Mock TCU） | iOS XCTest + Android JUnit | 无 | ✅ 可与 2b 并行 |
+| 4.2 | SDK × Hub 集成测试（真实 gRPC 调用） | 复用现有 E2E 测试框架；REST 层已实测打通（2026-07-31） | 无 | ✅ 可与 2b 并行 |
+| 4.3 | BLE 桩测试（模拟车辆广播） | iOS + Android 模拟器 | **2b-A/B/C/D** | ❌ 依赖 2b 真实化 |
+| 4.4 | CCC 分享全链路 E2E（两台手机 ↔ Hub ↔ Relay） | 物理机测试 | 分享链路: 无；BLE 解锁: 2b | ⚠️ 分享部分先行 |
+| 4.5 | ICCOA/ICCE S2S 分享全链路 E2E | 通过 Hub mock S2S | 无 | ✅ 可与 2b 并行 |
 
 ---
 

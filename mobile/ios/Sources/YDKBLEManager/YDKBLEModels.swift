@@ -109,7 +109,7 @@ public struct SessionContext {
 // MARK: - BLE 协议类型
 
 /// 数字钥匙 BLE 协议类型
-public enum YDKBleProtocolType: Int {
+public enum YDKBleProtocolType: Int, CaseIterable {
     case ccc = 1    // CCC Digital Key (0xFFD1)
     case iccoa = 2  // ICCOA Digital Key (0xFEF5)
     case icce = 3   // ICCE Digital Key (0xFEFA)

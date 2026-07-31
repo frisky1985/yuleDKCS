@@ -62,7 +62,13 @@ data class SessionContext(
     val keyId: String,
     val vehicleId: String,
     var sessionHandle: Short = 0,
-    var counter: Long = 0
+    var counter: Long = 0,
+    /** 用户 ID (ICCE control_command_t.user_id, 大端 u32) */
+    var userId: Int = 0,
+    /** SM4 会话密钥 (16 字节) — 由绑定/认证流程的密钥协商产生; null 表示未协商(仅调试/预绑定明文帧) */
+    var sessionKey: ByteArray? = null,
+    /** SM4-CBC 初始向量 (16 字节); null 时使用全零 IV */
+    var sessionIv: ByteArray? = null
 )
 
 // ─── 指令类型 ─────────────────────────────────────────────

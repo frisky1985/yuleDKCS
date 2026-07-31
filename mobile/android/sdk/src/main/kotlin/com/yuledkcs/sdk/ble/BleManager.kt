@@ -27,7 +27,14 @@ import java.util.concurrent.atomic.AtomicReference
  * 多协议支持: 通过 BleProtocolAdapter 工厂创建适配器。
  */
 @SuppressLint("MissingPermission")
-class BleManager(private val context: Context) {
+class BleManager(
+    private val context: Context,
+    /**
+     * 扫描引擎 — 默认使用 BluetoothLeScanner 实现;
+     * 测试可注入 fake 引擎驱动扫描回调。
+     */
+    private val scanEngine: BleScanEngine? = null
+) {
 
     private val bluetoothManager: BluetoothManager =
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -61,56 +68,65 @@ class BleManager(private val context: Context) {
     /**
      * 扫描车辆
      * @param timeoutMs 扫描超时（毫秒）
+     * @param vehicleIds 可选过滤: 仅保留 vehicleId (或设备 MAC) 在此集合内的结果
      */
-    suspend fun scanVehicles(timeoutMs: Long = 10000): List<VehicleAdvertise> = withContext(Dispatchers.Main) {
-        val bleAdapter = bluetoothAdapter ?: throw YDKError.Internal("bluetooth not available")
-        if (!bleAdapter.isEnabled) throw YDKError.Internal("bluetooth not enabled")
+    suspend fun scanVehicles(timeoutMs: Long = 10000, vehicleIds: Set<String>? = null): List<VehicleAdvertise> =
+        withContext(Dispatchers.Main) {
+            val bleAdapter = bluetoothAdapter ?: throw YDKError.Internal("bluetooth not available")
+            if (!bleAdapter.isEnabled) throw YDKError.Internal("bluetooth not enabled")
 
-        discoveredDevices.clear()
-        connectionState = ConnectionState.SCANNING
-        connectionChangeHandler?.invoke(1)
+            discoveredDevices.clear()
+            connectionState = ConnectionState.SCANNING
+            connectionChangeHandler?.invoke(1)
 
-        val deferred = CompletableDeferred<List<VehicleAdvertise>>()
-        scanCompleter.set(deferred)
+            val deferred = CompletableDeferred<List<VehicleAdvertise>>()
+            scanCompleter.set(deferred)
 
-        val scanCallback = object : ScanCallback() {
-            override fun onScanResult(callbackType: Int, result: ScanResult) {
-                val device = result.device
-                val scanRecord = result.scanRecord?.bytes
-                // 尝试按各协议解析
-                for (type in BleProtocolType.entries) {
-                    val a = BleProtocolAdapterFactory.makeAdapter(type)
-                    val vehicle = a.parseAdvertisement(scanRecord, result.rssi)
-                    if (vehicle != null) {
-                        discoveredDevices[device.address] = vehicle
-                        break
+            // 真实扫描: BluetoothLeScanner + service UUID 过滤器 + 2b-B 解析
+            val engine = scanEngine ?: LeScannerBleScanEngine(bleAdapter.bluetoothLeScanner)
+            val processor = ScanResultProcessor()
+            val filters = BleScanFilterFactory.filtersForProtocols(BleProtocolType.entries.toList())
+
+            val scanCallback = object : ScanCallback() {
+                override fun onScanResult(callbackType: Int, result: ScanResult) {
+                    val vehicle = processor.process(result.scanRecord?.bytes, result.rssi) ?: return
+                    // vehicleId 匹配: 支持按解析出的 vehicleId 或设备 MAC 过滤
+                    if (vehicleIds != null &&
+                        vehicle.vehicleId !in vehicleIds &&
+                        result.device.address !in vehicleIds
+                    ) {
+                        return
                     }
+                    discoveredDevices[result.device.address] = vehicle
+                }
+
+                override fun onScanFailed(errorCode: Int) {
+                    scanCompleter.get()?.completeExceptionally(
+                        YDKError.Internal("scan failed: code=$errorCode")
+                    )
+                    scanCompleter.set(null)
                 }
             }
 
-            override fun onScanFailed(errorCode: Int) {
-                scanCompleter.get()?.completeExceptionally(
-                    YDKError.Internal("scan failed: code=$errorCode")
-                )
+            val started = engine.startScan(filters, scanCallback)
+            if (!started) {
                 scanCompleter.set(null)
+                throw YDKError.Internal("failed to start BLE scan")
             }
-        }
 
-        bleAdapter.bluetoothLeScanner.startScan(scanCallback)
-
-        try {
-            withTimeout(timeoutMs) {
-                deferred.await()
+            try {
+                withTimeout(timeoutMs) {
+                    deferred.await()
+                }
+            } catch (_: TimeoutCancellationException) {
+                // 超时正常返回已发现设备
+            } finally {
+                engine.stopScan(scanCallback)
+                connectionState = ConnectionState.DISCONNECTED
             }
-        } catch (_: TimeoutCancellationException) {
-            // 超时正常返回已发现设备
-        } finally {
-            bleAdapter.bluetoothLeScanner.stopScan(scanCallback)
-            connectionState = ConnectionState.DISCONNECTED
-        }
 
-        discoveredDevices.values.toList()
-    }
+            discoveredDevices.values.toList()
+        }
 
     // MARK: 连接
 
