@@ -1,48 +1,44 @@
 import Foundation
 
-// MARK: - CCC BLE 消息类型
+// MARK: - CCC BLE 消息类型 (CCC-TS-101 v4.0.0 Table 19-21)
 
-/// CCC BLE 消息类型 — 与参考实现一致
-/// 参考: `embedded/ccc_protocol/include/ccc_digital_key.h` `ble_msg_type_e`
+/// DK Message Message Type (Message Header Bit[5:0])
 public enum CCCMessageType: UInt8, CaseIterable {
-    case pairRequest = 0x01
-    case pairResponse = 0x02
-    case keyCreate = 0x10
-    case keyDelete = 0x11
-    case keyShare = 0x12
-    case authRequest = 0x20
-    case authResponse = 0x21
-    case uwbConfig = 0x30
-    case stateNotify = 0x40
-    case error = 0xFF
+    case framework = 0
+    case se = 1
+    case uwbRangingService = 2
+    case dkEventNotification = 3
+    case vehicleOemApp = 4
+    case supplementaryService = 5
+    case headUnitPairing = 6
 }
 
 // MARK: - CCC 帧错误
 
 /// CCC 帧解析错误
 public enum CCCFrameError: Error, Equatable {
-    /// 数据不足 5 字节帧头
+    /// 数据不足 4 字节帧头
     case tooShort(Int)
-    /// payload_len 字段与实际负载长度不一致 (防截断/粘包)
+    /// Length 字段与实际负载长度不一致 (防截断/粘包)
     case payloadLengthMismatch(declared: Int, actual: Int)
 }
 
 // MARK: - CCC BLE 指令帧
 
-/// CCC BLE 指令帧 — 帧格式来自参考实现, 见同目录 `CCC_FRAME_ANALYSIS.md`
+/// CCC BLE 指令帧 — 帧格式按 CCC-TS-101 v4.0.0 Table 19-19
 ///
-/// 线格式 (5 字节帧头 + 负载):
+/// 线格式 (4 字节帧头 + 负载):
 /// ```
-///   [0]     msg_type    消息类型 (ble_msg_type_e)
-///   [1]     msg_id      消息 ID (递增, 防重放辅助)
-///   [2-3]   payload_len 负载长度 (大端)
-///   [4]     reserved    预留 (置 0)
-///   [5...]  payload
+///   [0]     message_header  Bit[5:0]=Message Type, Bit[7:6]=RFU(置0)
+///   [1]     payload_header  Message ID (DK_APDU_RQ=0x0B / DK_APDU_RS=0x0C)
+///   [2-3]   length          负载长度 (大端)
+///   [4...]  payload
 /// ```
-/// 参考: `ccc_digital_key.h:119-124` `ble_frame_header_t` (packed)
+/// 参考: `docs/certification/ccc-ts101-ble-secure-channel.md` §4 (Table 19-19)
+/// 规范示例: SELECT APDU → `0x010B0013 00A404000DA000000809434343444B41763100`
 public struct CCCCommandFrame: Equatable {
-    /// 帧头长度 (字节)
-    public static let headerLength = 5
+    /// 帧头长度 (字节) — 规范 4 字节 (参考实现 5 字节含 reserved 已废弃)
+    public static let headerLength = 4
 
     public let messageType: UInt8
     public let messageID: UInt8
@@ -57,16 +53,15 @@ public struct CCCCommandFrame: Equatable {
     /// 编码为线格式字节
     public var data: Data {
         var bytes = Data()
-        bytes.append(messageType)
+        bytes.append(messageType & 0x3F) // Bit[7:6] RFU 置 0
         bytes.append(messageID)
         bytes.append(UInt8((payload.count >> 8) & 0xFF))
         bytes.append(UInt8(payload.count & 0xFF))
-        bytes.append(0x00) // reserved
         bytes.append(payload)
         return bytes
     }
 
-    /// 严格解析: 帧头 + payload_len 精确匹配, 不匹配返回 nil
+    /// 严格解析: 帧头 + length 精确匹配, 不匹配返回 nil
     public init?(data: Data) {
         guard data.count >= CCCCommandFrame.headerLength else { return nil }
         let declared = (Int(data[2]) << 8) | Int(data[3])
@@ -92,6 +87,14 @@ public struct CCCCommandFrame: Equatable {
             payload: data.subdata(in: CCCCommandFrame.headerLength..<data.count)
         )
     }
+}
+
+// MARK: - CCC APDU 封装 (§19.3.2)
+
+/// SE/Framework APDU 消息 ID
+public enum CCCApduMessageID: UInt8 {
+    case dkApduRq = 0x0B
+    case dkApduRs = 0x0C
 }
 
 // MARK: - CCC 控制指令载荷 (会话层封装)
@@ -139,12 +142,8 @@ public enum CCCControlPayload {
 
 /// CCC 消息安全提供者 — 控制指令载荷的加密/签名接缝。
 ///
-/// ⚠️ TODO(防幻觉): 参考实现与仓库知识库均未给出 CCC Reader Protocol 指令消息的
-/// 加密/签名算法细节, 且存在冲突:
-/// - `docs/sdk/PHASE2B-BLEPROTOCOL-PLAN.md` 安全通道表: CCC = ECDH + **AES-CCM**
-/// - `embedded/ccc_protocol/src/security/security.c` 注释: **AES-256-GCM** (IV 12 + 密文 + Tag 16) + ECDSA P-256 (64B)
-/// 两者算法不同, 必须取得 CCC-TS-101 规范原文 (Reader Protocol 章节) 后才能实现真实加密。
-/// 当前仅提供接口 + 测试透传实现, 禁止在未确认算法前实现"看起来像加密"的假加密。
+/// 真实实现: `CCCSecureChannel` (GPC_SPE_014 SCP03: AES-128 + CMAC-AES-128)。
+/// 依据: `docs/certification/ccc-ts101-ble-secure-channel.md` §5 (2026-07-31 规范裁决)。
 public protocol CCCMessageSecurityProviding: AnyObject {
     /// 加密控制载荷 (含完整性保护)
     func encrypt(_ plaintext: Data) throws -> Data

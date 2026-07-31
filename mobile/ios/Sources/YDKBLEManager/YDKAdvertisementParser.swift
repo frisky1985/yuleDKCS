@@ -89,9 +89,41 @@ public enum YDKAdvertisementParser {
         return YDKManufacturerPayload(companyID: companyID, vendorData: vendorData)
     }
 
-    // MARK: CCC 车辆标识 (iBeacon 风格广播)
+    // MARK: CCC 车辆标识
 
-    /// 从 CCC 厂商数据中提取 vehicleId。
+    /// 从 CCC 广告包提取车辆标识 (CCC-TS-101 v4.0.0 §19.2.1.3, Table 19-2)。
+    ///
+    /// 规范 Owner Pairing Advertising (ADV_IND, Legacy LE 1M PHY):
+    /// ```text
+    /// AD1: Length=0x03, Type=0x03 (16-bit Service UUID), Data=0xFFF5 (CCC_DK_UUID)
+    /// AD2: Length=0x14, Type=0x21 (Service Data - 128bit UUID),
+    ///      Data[0..16]  = CCCServiceDataIntent UUID (0x5810bbc0-b499-11e9-a2a3-2a2ae2dbcce4)
+    ///      Data[16]     = IntentConfiguration (bit0: 0=车端发起配对, 1=无意图)
+    ///      Data[17..19] = Vehicle Brand Identifier (2B)
+    /// ```
+    ///
+    /// 注意: 规范广告仅含 Brand Identifier, **不含** 20 字节 vehicleId UUID。
+    /// 参考实现 (`ble_kw47a.c ble_enter_lp_mode`) 的 iBeacon 风格广播 (0x004C + 20B UUID)
+    /// 是 R3.0 车端低功耗广播, 与 v4.0.0 规范不一致。生产车辆按规范走 0x21 Service Data;
+    /// 解析函数保留 iBeacon 回退以兼容存量联调设备。
+    public static func cccServiceData(from structures: [YDKADStructure]) -> (intentConfig: UInt8, brandIdentifier: Data)? {
+        for ad in structures where ad.type == YDKADType.serviceData128BitUUID {
+            // Service Data 128bit: [UUID(16)][data...]
+            guard ad.data.count >= 18 else { continue }
+            let uuid = ad.data.prefix(16)
+            guard uuid == cccServiceDataIntentUUIDBytes else { continue }
+            return (ad.data[16], ad.data.subdata(in: 17..<19))
+        }
+        return nil
+    }
+
+    /// CCCServiceDataIntent UUID 的原始字节 (Table 19-2: 0x5810bbc0-b499-11e9-a2a3-2a2ae2dbcce4)
+    static let cccServiceDataIntentUUIDBytes = Data([
+        0x58, 0x10, 0xbb, 0xc0, 0xb4, 0x99, 0x11, 0xe9,
+        0xa2, 0xa3, 0x2a, 0x2a, 0xe2, 0xdb, 0xcc, 0xe4
+    ])
+
+    /// 从 CCC 厂商数据中提取 vehicleId (iBeacon 风格广播, R3.0 参考实现回退)。
     ///
     /// 参考实现 (`ble_kw47a.c ble_enter_lp_mode`) 的低功耗广播为 iBeacon 风格:
     /// ```
@@ -101,8 +133,8 @@ public enum YDKAdvertisementParser {
     ///   [2...22]  20 字节 proximity UUID — 由 keymgmt 模块按车辆填充 → vehicleId
     /// ```
     ///
-    /// TODO-verify: 生产 CCC 车辆的 connectable 广播结构以 CCC-TS-101 §4.3 (Advertising) 为准;
-    /// 当前解析基于仓库内车端参考实现 (LP 模式), 若规范使用其他 subtype/长度需同步调整。
+    /// ⚠️ v4.0.0 规范生产广播不含该结构 (见 `cccServiceData`), 此函数仅用于兼容
+    /// R3.0 存量联调设备; 新设备接入应优先走规范 Service Data 解析。
     public static func cccVehicleID(from payload: YDKManufacturerPayload) -> String? {
         let vendor = payload.vendorData
         guard vendor.count >= 22 else { return nil }
@@ -111,7 +143,7 @@ public enum YDKAdvertisementParser {
         return uuidString(from: vendor.subdata(in: 2..<22))
     }
 
-    /// 便捷入口: 直接从 manufacturer data 字节解析 CCC vehicleId
+    /// 便捷入口: 直接从 manufacturer data 字节解析 CCC vehicleId (R3.0 兼容)
     public static func cccVehicleID(fromManufacturerData data: Data?) -> String? {
         guard let data = data, let mfr = parseManufacturerData(data) else { return nil }
         return cccVehicleID(from: mfr)

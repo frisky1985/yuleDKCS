@@ -85,20 +85,56 @@ typedef struct __attribute__((packed)) {
 **TODO-verify**: 上述为车端低功耗 (iBeacon 风格) 广播; 生产 connectable 广播
 结构需对照 CCC-TS-101 §4.3 (Advertising) 确认。
 
-## 5. 加密/签名 — 参考实现存在冲突, 未实现 (防幻觉)
+## 5. 加密/签名 — 规范原文已裁决 (2026-07-31)
 
-| 来源 | 算法 |
-|:-----|:-----|
-| PHASE2B-BLEPROTOCOL-PLAN.md 安全通道表 | CCC = OOB/数字配对 (FFD2) + **ECDH + AES-CCM** |
-| embedded security.c `sec_encrypt` 注释 | **AES-256-GCM** (IV 12B + 密文 + Tag 16B); 签名 ECDSA P-256 (r‖s, 64B) |
+**依据**: `docs/certification/ccc-ts101-ble-secure-channel.md` (CCC-TS-101 v4.0.0 APPROVED PDF §18.4.9/12/13, §19.3)
 
-两种算法不同, **不能凭印象二选一**。控制指令载荷加密/签名需取得
-CCC-TS-101 Reader Protocol (Vehicle Access) 章节原文后实现。
+### 5.1 算法裁决 — 既不是 AES-CCM 也不是 AES-256-GCM
 
-当前实现:
-- 提供 `CCCMessageSecurityProviding` 接口 (encrypt/decrypt/sign/verify);
-- 默认 `CCCNullMessageSecurity` 明文透传, **仅用于单测/联调, 禁止生产**;
-- 代码中标注 `TODO(防幻觉): 真实加密需 CCC-TS-101 原文确认算法`。
+| 来源 | 算法 | 裁决 |
+|:-----|:-----|:-----|
+| PHASE2B-BLEPROTOCOL-PLAN.md 安全通道表 | ECDH + AES-CCM | ❌ 错误 |
+| embedded security.c `sec_encrypt` 注释 | AES-256-GCM | ❌ 错误 |
+| **CCC-TS-101 v4.0.0 §18.4.12/13** | **GPC_SPE_014 (SCP03): AES-128 + CMAC-AES-128 (RFC4493)** | ✅ **规范为准** |
+
+### 5.2 密钥派生 (§18.4.9, Listing 18-9)
+
+```
+HKDF-SHA256 (RFC5869):
+  IKM=SK (SPAKE2+ 共享密钥), Salt=NULL, Info="SystemKeys", L=64 (或 96)
+  OKM: [0:128]=Kenc, [128:128]=Kmac, [256:128]=Krmac, [384:128]=LONG_TERM_SHARED_SECRET
+```
+
+### 5.3 命令加密 (§18.4.12, Listing 18-10, GPC_SPE_014 §6.2.6)
+
+- S-ENC=Kenc (AES-128), Padded Counter Block = `0000...00h || 1-byte counter` (01h 起)
+- MAC Chaining Value 16B (首命令全零), S-MAC=Kmac, C-MAC=8B (CMAC-AES-128 截断)
+
+### 5.4 响应加密 (§18.4.13, Listing 18-11, GPC_SPE_014 §6.2.7)
+
+- Padded Counter Block = `8000...00h || counter_value used in command`
+- MAC Chaining Value 取命令的 16B, S-RMAC=Krmac, R-MAC=8B
+
+### 5.5 帧头 — 参考实现 5 字节有误, 按规范改 4 字节
+
+| 字段 | 位置 | 说明 |
+|:-----|:-----|:-----|
+| Message Header | Byte 0 | Bit[5:0]=Message Type, Bit[7:6]=RFU |
+| Payload Header | Byte 1 | Message ID (DK_APDU_RQ=0x0B / RS=0x0C) |
+| Length | Byte [3:2] | 2 字节大端 |
+| Data | N | — |
+
+**规范示例**: SELECT APDU → `0x010B0013 00A404000DA000000809434343444B41763100`
+(Message Type=0x01 SE, ID=0x0B DK_APDU_RQ, Len=0x0013=19, Data=19B APDU)
+
+### 5.6 实现计划 (2b-E)
+
+1. `CCCSystemKeyDerivation`: HKDF-SHA256 Info="SystemKeys" → Kenc/Kmac/Krmac/LTSS
+2. `CCCCommandEncryptor`: AES-128-CBC(ICV=counter block) + CMAC-AES-128 8B, MAC chaining
+3. `CCCAuthResponseVerifier`: R-MAC 验证 (Krmac)
+4. 帧头 4 字节改造 (Message Header + Payload Header + Length BE)
+5. 控制指令: Message Type=0x01 (SE), DK_APDU_RQ=0x0B, class byte=0x84 (secure messaging)
+6. Wire 级测试用规范 §19.3 示例
 
 ## 6. 控制指令载荷 (session 层) — SDK 自定义, 需 TODO-verify
 

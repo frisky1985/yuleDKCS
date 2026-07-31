@@ -5,7 +5,7 @@ import java.util.UUID
 // ─── BLE 协议类型 ─────────────────────────────────────────
 
 enum class BleProtocolType(val serviceUuid: UUID) {
-    CCC(UUID.fromString("0000FFD1-0000-1000-8000-00805F9B34FB")),
+    CCC(UUID.fromString("0000FFF5-0000-1000-8000-00805F9B34FB")), // CCC-TS-101 v4.0.0 Table 19-6
     ICCOA(UUID.fromString("0000FEF5-0000-1000-8000-00805F9B34FB")),
     ICCE(UUID.fromString("0000FEFA-0000-1000-8000-00805F9B34FB"))
 }

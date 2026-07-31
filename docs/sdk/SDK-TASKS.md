@@ -58,7 +58,7 @@ Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
 | 2b-B | 广告包解析 Android | `BleProtocolAdapter.kt` 占位 | 同上（Kotlin）| W2 |
 | 2b-C | BLE 扫描 iOS | `YDKBLEManager.swift:120` 占位 | CoreBluetooth 扫描/过滤 + mock 测试 | W1 |
 | 2b-D | BLE 扫描 Android | `BleManager.kt` | BluetoothLeScanner + mock 测试 | W2 |
-| 2b-E | **CCC 指令帧 + 加密签名** | `CCCBleAdapter.swift:66` 占位 | **先研读 embedded/ccc_protocol + CCC 知识库再写**（防幻觉红线）| W1 |
+| 2b-E | **CCC 指令帧 + 加密签名** | `CCCSecureChannel.swift/kt` + `CccFrame.kt` + `CCCCommandFrame.swift` | ✅ **完成 (2026-07-31)**: 规范 v4.0.0 原文裁决 (AES-128+CMAC-AES-128/SCP03), 见 `docs/certification/ccc-ts101-ble-secure-channel.md`; iOS 16/16 测试通过, Android 测试就位 | W1 |
 | 2b-F | ICCOA/ICCE 指令帧 SM4 | `ICCOABleAdapter.swift:51`、`BleProtocolAdapter.kt:74` | 按 ICCOA 知识库 + SM4 实现 | W2 |
 | 2b-G | UWB 测距 | iOS/Android 60 行骨架 | ⚠️ 真机依赖: 代码+接口+模拟测，真机联调单列 | 独立 |
 | 2b-H | NFC 备用解锁 | iOS/Android 34 行骨架 | ⚠️ 真机依赖: 同上 | 独立 |

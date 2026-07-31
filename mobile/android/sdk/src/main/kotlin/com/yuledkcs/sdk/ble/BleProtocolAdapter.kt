@@ -41,17 +41,20 @@ private fun mfrRawBytes(mfr: BleAdvertiseParser.ManufacturerData?): ByteArray? =
 /**
  * CCC Digital Key v4.0 BLE 协议适配器 (CCC-TS-101)
  *
- * 指令帧格式:
- *   [0]     = command type
- *   [1-2]   = session handle (big endian u16)
- *   [3-6]   = message counter (big endian u32)
- *   [7]     = payload length
- *   [8...]  = payload (keyId, UTF-8)
+ * 指令帧格式 (Table 19-19, 规范 4 字节帧头):
+ *   [0]     = message header (Bit[5:0]=Message Type, Bit[7:6]=RFU)
+ *   [1]     = payload header (Message ID: DK_APDU_RQ=0x0B / DK_APDU_RS=0x0C)
+ *   [2-3]   = length (big endian u16)
+ *   [4...]  = payload
  *
- * TODO(security): CCC 规范要求 ECDH + AES-CCM 加密通道 (CCC-TS-101 Reader Protocol),
- * 需在密钥协商完成后对 payload 加密 — 当前为明文帧结构。
+ * 控制指令: SE 消息 (Message Type=0x01) + DK_APDU_RQ (0x0B),
+ * 载荷经安全提供者封装 (生产: [CccSecureChannel] SCP03 加密: AES-128 + CMAC-AES-128,
+ * 依据 docs/certification/ccc-ts101-ble-secure-channel.md, 2026-07-31 规范裁决)。
+ * 当前默认透传实现仅用于单测/联调, 生产接入前必须替换。
  */
-class CCCBleAdapter : BleProtocolAdapter {
+class CCCBleAdapter(
+    private val security: CccMessageSecurity = CccNullMessageSecurity
+) : BleProtocolAdapter {
 
     override val protocolType = BleProtocolType.CCC
 
@@ -88,16 +91,26 @@ class CCCBleAdapter : BleProtocolAdapter {
         val keyIdBytes = keyId.toByteArray(StandardCharsets.UTF_8)
         require(keyIdBytes.size <= 0xFF) { "keyId too long: ${keyIdBytes.size} bytes" }
 
-        val buf = ByteBuffer.allocate(8 + keyIdBytes.size)
-        buf.put(type.value)
-        buf.putShort(session.sessionHandle)
-        buf.putInt(session.counter.toInt())
-        buf.put(keyIdBytes.size.toByte())
-        buf.put(keyIdBytes)
-        return buf.array()
+        val plain = ByteBuffer.allocate(8 + keyIdBytes.size)
+            .put(type.value)
+            .putShort(session.sessionHandle)
+            .putInt(session.counter.toInt())
+            .put(keyIdBytes.size.toByte())
+            .put(keyIdBytes)
+            .array()
+        val protected = security.encrypt(plain)
+        return CccFrame.build(CccFrame.MSG_TYPE_SE, CccFrame.MSG_ID_DK_APDU_RQ, protected)
     }
 
     override fun parseCommandResponse(data: ByteArray): CommandResult {
+        // 规范响应: SE 消息 + DK_APDU_RS (0x0C), payload 首字节为 APDU SW1 (0x90=成功)
+        val frame = CccFrame.parse(data)
+        if (frame != null && frame.messageType == CccFrame.MSG_TYPE_SE) {
+            val sw1 = frame.payload.firstOrNull()?.toUInt8() ?: 0x00
+            return if (sw1 == 0x90 || sw1 == 0x00) CommandResult(true)
+            else CommandResult(false, sw1, "CCC APDU failed: SW=0x%02X".format(sw1))
+        }
+        // 回退: 裸 status 字节 (旧联调格式)
         if (data.isEmpty()) return CommandResult(false, -1, "empty response")
         val status = data[0].toUInt8()
         return if (status == 0x00) {

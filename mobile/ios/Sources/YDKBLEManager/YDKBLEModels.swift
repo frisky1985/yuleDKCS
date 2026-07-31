@@ -110,13 +110,13 @@ public struct SessionContext {
 
 /// 数字钥匙 BLE 协议类型
 public enum YDKBleProtocolType: Int, CaseIterable {
-    case ccc = 1    // CCC Digital Key (0xFFD1)
+    case ccc = 1    // CCC Digital Key v4.0 (0xFFF5)
     case iccoa = 2  // ICCOA Digital Key (0xFEF5)
     case icce = 3   // ICCE Digital Key (0xFEFA)
 
     public var serviceUUID: CBUUID {
         switch self {
-        case .ccc:   return CBUUID(string: "FFD1")
+        case .ccc:   return CBUUID(string: "FFF5")
         case .iccoa: return CBUUID(string: "FEF5")
         case .icce:  return CBUUID(string: "FEFA")
         }
