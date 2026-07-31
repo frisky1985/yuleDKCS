@@ -5,11 +5,11 @@
 
 ---
 
-## 当前阶段：P1-2 — 用户体系对接方案
+## 当前阶段：P1-2 — 用户体系对接（已完成）
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| P1-2 | 用户体系对接（车厂后端鉴权） | 📋 | 需车厂后端配合，出方案对比 |
+| P1-2 | 用户体系对接（车厂后端鉴权） | ✅ | 双轨令牌: admin HS256 (iss=dkcs-admin) + OEM RS256/ES256 (JWKS, iss=<oem>); fail-closed 管理员; 修复 main.go 缺 WithJWTSecret 的 DOA bug; 1365 测试通过 |
 
 ---
 
@@ -30,6 +30,7 @@
 - ✅ P0: PostgreSQL 持久化存储（KeyStore + MailboxStore 落盘）
 - ✅ P0: SDK DeviceManager（iOS SE / Android Keystore + vendor/protocol 检测 + bindKey/acceptShare 自动填充）
 - ✅ P1-1: TLS + K8s 部署编排（Gateway HTTPS + postgres StatefulSet + kustomize base/overlay 拆分）
+- ✅ P1-2: 用户体系对接（JWKS 双轨令牌 + fail-closed 管理员 + DOA bug 修复）
 
 ---
 
@@ -63,6 +64,8 @@
 | 🟡 | 插件 SDK 文档（面向第三方开发者）| 📋 |
 | 🟡 | 性能测试（大配置加载/保存）| 📋 |
 | 🟡 | postgres-exporter 部署 | 📋 | Prometheus 采集已指向 `postgres-exporter:9187`，需部署 exporter（可用 postgres_exporter sidecar 或独立 Deployment） |
+| 🟡 | JWKS kid 未命中防放大 | 📋 | 恶意令牌随机 kid 会触发重复拉取；建议 kid miss 负缓存或 30s 冷却后再刷新（评审 MINOR #4） |
+| 🟡 | tests/integration 预存 vet 错误 | 📋 | `scenarios/e2e_14_cross_vendor_mailbox_share_test.go` relay API 签名漂移（与本次改动无关，预存） |
 
 ---
 

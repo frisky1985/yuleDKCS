@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,13 +30,16 @@ import (
 
 var errAuthFailed = fmt.Errorf("authentication required")
 
+// adminIssuer 管理端令牌的 iss 声明值 (HS256 + JWT_SECRET 轨道)
+const adminIssuer = "dkcs-admin"
+
 // ── Configuration Defaults ──
 
 const (
-	DefaultRateLimit      = 100    // max requests per second per IP
-	DefaultRateLimitBurst = 200    // max burst size
-	RateLimitCleanupSec   = 300    // clean up stale entries every 5 min
-	RateLimitEntryTTL     = 10     // evict IP entries idle for >10 min
+	DefaultRateLimit      = 100 // max requests per second per IP
+	DefaultRateLimitBurst = 200 // max burst size
+	RateLimitCleanupSec   = 300 // clean up stale entries every 5 min
+	RateLimitEntryTTL     = 10  // evict IP entries idle for >10 min
 )
 
 // ── Rate Limiter ──
@@ -56,8 +60,9 @@ type tokenBucket struct {
 }
 
 // newRateLimiter creates a token-bucket rate limiter.
-//   rate:  tokens replenished per second
-//   burst: maximum accumulated tokens (prevents abuse via burst)
+//
+//	rate:  tokens replenished per second
+//	burst: maximum accumulated tokens (prevents abuse via burst)
 func newRateLimiter(rate float64, burst int) *rateLimiter {
 	rl := &rateLimiter{
 		visitors: make(map[string]*tokenBucket),
@@ -128,32 +133,44 @@ func (rl *rateLimiter) cleanupLoop(interval time.Duration) {
 // RESTGateway REST API → gRPC 转换网关
 // 手机App通过HTTPS访问，网关转为gRPC调用HUB内部服务
 type RESTGateway struct {
-	grpcSrv      *grpc.Server
-	logger       *zap.Logger
-	httpSrv      *http.Server
-	jwtSecret    string
-	grpcConn     *grpc.ClientConn
-	rateLimiter  *rateLimiter
+	grpcSrv       *grpc.Server
+	logger        *zap.Logger
+	httpSrv       *http.Server
+	jwtSecret     string
+	oemJWKS       *oemJWKSVerifier // OEM 令牌 (RS256/ES256 + JWKS) 验证器, nil 时拒绝 OEM 令牌
+	grpcConn      *grpc.ClientConn
+	rateLimiter   *rateLimiter
 	deviceService *service.DeviceService
-	tokenSvc     *token.Service
-	dkServer     service.DKServer
-	tlsCertFile  string
-	tlsKeyFile   string
+	tokenSvc      *token.Service
+	dkServer      service.DKServer
+	tlsCertFile   string
+	tlsKeyFile    string
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
 	return &RESTGateway{
-		grpcSrv: grpcSrv,
-		logger:  logger,
+		grpcSrv:       grpcSrv,
+		logger:        logger,
 		deviceService: service.NewDeviceService(logger),
-		tokenSvc:     token.NewService(""),
-		dkServer:     service.NewLocalDKServer(),
+		tokenSvc:      token.NewService(""),
+		dkServer:      service.NewLocalDKServer(),
 	}
 }
 
 // WithJWTSecret sets the JWT secret for auth middleware
 func (g *RESTGateway) WithJWTSecret(secret string) *RESTGateway {
 	g.jwtSecret = secret
+	return g
+}
+
+// WithOEMJWKS 配置 OEM JWKS 验证器 (oem_id -> JWKS URL 映射)。
+// 未配置时 (nil/空 map) OEM 令牌将被拒绝 (失败即关闭)。
+func (g *RESTGateway) WithOEMJWKS(urls map[string]string) *RESTGateway {
+	if len(urls) > 0 {
+		g.oemJWKS = newOEMJWKSVerifier(g.logger, urls)
+	} else {
+		g.oemJWKS = nil
+	}
 	return g
 }
 
@@ -270,7 +287,6 @@ func (g *RESTGateway) Serve(addr string) error {
 			hub.GET("/health", g.hubHealthCheck)
 		}
 
-
 		// Token 管理（统一授权）
 		tokens := v1.Group("/tokens")
 		{
@@ -282,12 +298,12 @@ func (g *RESTGateway) Serve(addr string) error {
 		// 多设备管理
 		devices := v1.Group("/devices")
 		{
-			devices.POST("", g.registerDevice)         // 注册设备+上报能力
-			devices.GET("", g.listDevices)              // 列出我的设备
-			devices.GET("/:deviceId", g.getDevice)      // 查看设备详情
+			devices.POST("", g.registerDevice)                      // 注册设备+上报能力
+			devices.GET("", g.listDevices)                          // 列出我的设备
+			devices.GET("/:deviceId", g.getDevice)                  // 查看设备详情
 			devices.POST("/:deviceId/provision", g.provisionDevice) // 给设备配钥
-			devices.POST("/:deviceId/revoke", g.revokeDevice)      // 吊销设备钥匙
-			devices.DELETE("/:deviceId", g.deleteDevice) // 删除设备
+			devices.POST("/:deviceId/revoke", g.revokeDevice)       // 吊销设备钥匙
+			devices.DELETE("/:deviceId", g.deleteDevice)            // 删除设备
 		}
 	}
 
@@ -400,13 +416,42 @@ func (g *RESTGateway) authMiddleware() gin.HandlerFunc {
 }
 
 // validateToken validates a JWT bearer token and returns (userID, role, error).
-// It parses the token, verifies HMAC-SHA256 signature with jwtSecret, and extracts claims.
+// 双轨验证 [P1-2]:
+//   - iss == "dkcs-admin" → HS256 + JWT_SECRET (管理端令牌)
+//   - iss 为已配置的 OEM id → RS256/ES256 + 该 OEM 的 JWKS 公钥 (设备厂令牌)
+//   - 其他/缺失 iss → 拒绝 (Unauthenticated)
 func (g *RESTGateway) validateToken(tokenString string) (string, string, error) {
 	if tokenString == "" {
 		return "", "", status.Error(codes.Unauthenticated, "empty token")
 	}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	// 第一遍: 不验证签名, 仅解析 claims 以获取 iss, 决定验证轨道
+	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+	parsed, _, err := parser.ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		return "", "", status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+	}
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", "", status.Error(codes.Unauthenticated, "invalid token claims")
+	}
+	iss, _ := claims["iss"].(string)
+
+	switch {
+	case iss == adminIssuer:
+		return g.validateAdminToken(tokenString)
+	case iss != "":
+		return g.validateOEMToken(tokenString, iss)
+	default:
+		return "", "", status.Error(codes.Unauthenticated, "token missing iss claim")
+	}
+}
+
+// validateAdminToken 验证管理端令牌: HS256 + jwtSecret。
+// 校验签名、过期时间 (exp 必填) 与 user_id 声明。
+func (g *RESTGateway) validateAdminToken(tokenString string) (string, string, error) {
+	parser := jwt.NewParser(jwt.WithExpirationRequired())
+	token, err := parser.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -421,12 +466,6 @@ func (g *RESTGateway) validateToken(tokenString string) (string, string, error) 
 		return "", "", status.Error(codes.Unauthenticated, "invalid token claims")
 	}
 
-	// Verify expiration
-	exp, ok := claims["exp"].(float64)
-	if !ok || time.Now().Unix() > int64(exp) {
-		return "", "", status.Error(codes.Unauthenticated, "token expired")
-	}
-
 	userID, _ := claims["user_id"].(string)
 	role, _ := claims["role"].(string)
 
@@ -438,6 +477,39 @@ func (g *RESTGateway) validateToken(tokenString string) (string, string, error) 
 	}
 
 	return userID, role, nil
+}
+
+// validateOEMToken 验证设备厂 (OEM) 令牌: RS256/ES256 + 该 OEM 的 JWKS 公钥。
+// 未配置该 OEM 的 JWKS 时直接拒绝 (失败即关闭)。
+// user_id 命名空间: "oem:<oem_id>:<sub>" (sub 缺失时回退 "unknown"), role 固定为 "user"。
+func (g *RESTGateway) validateOEMToken(tokenString, iss string) (string, string, error) {
+	if g.oemJWKS == nil {
+		return "", "", status.Errorf(codes.Unauthenticated, "OEM issuer %q not configured", iss)
+	}
+	if _, ok := g.oemJWKS.urls[iss]; !ok {
+		return "", "", status.Errorf(codes.Unauthenticated, "unknown OEM issuer %q", iss)
+	}
+
+	// [P1-2] OEM 令牌同样要求 exp 必填 — 无过期时间的令牌永不过期, 拒绝
+	parser := jwt.NewParser(jwt.WithExpirationRequired())
+	token, err := parser.Parse(tokenString, g.oemJWKS.keyfunc(iss))
+	if err != nil {
+		return "", "", status.Errorf(codes.Unauthenticated, "invalid OEM token: %v", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return "", "", status.Error(codes.Unauthenticated, "invalid OEM token claims")
+	}
+
+	// [P1-2] sub 必填 — 缺失 sub 会退化为 oem:<iss>:unknown, 造成跨设备身份碰撞
+	sub, _ := claims["sub"].(string)
+	if sub == "" {
+		return "", "", status.Error(codes.Unauthenticated, "OEM token missing sub claim")
+	}
+	userID := "oem:" + iss + ":" + sub
+	// role 固定为 "user" — OEM 令牌无特权提升通道
+	return userID, "user", nil
 }
 
 // login handles user authentication and issues real JWT tokens.
@@ -460,17 +532,24 @@ func (g *RESTGateway) login(c *gin.Context) {
 	}
 
 	// Validate credentials against admin account from environment variables.
-	// In production, replace with a proper user service/database lookup.
+	// [P1-2] 失败即关闭: 未配置 ADMIN_USERNAME/ADMIN_PASSWORD 时拒绝一切登录。
 	adminUser := os.Getenv("ADMIN_USERNAME")
-	if adminUser == "" {
-		adminUser = "admin"
-	}
 	adminPass := os.Getenv("ADMIN_PASSWORD")
-	if adminPass == "" {
-		adminPass = "admin123"
+	if adminUser == "" || adminPass == "" {
+		g.logger.Warn("Admin auth not configured — login rejected (set ADMIN_USERNAME/ADMIN_PASSWORD)")
+		// [M-06] 统一错误格式
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "SERVICE_UNAVAILABLE",
+			"message": "admin auth not configured",
+			"detail":  "",
+		})
+		return
 	}
 
-	if req.UserID != adminUser || req.Password != adminPass {
+	// [P1-2] 常量时间比较, 防时序侧信道 (user_id + password)
+	userMatch := subtle.ConstantTimeCompare([]byte(req.UserID), []byte(adminUser)) == 1
+	passMatch := subtle.ConstantTimeCompare([]byte(req.Password), []byte(adminPass)) == 1
+	if !userMatch || !passMatch {
 		g.logger.Warn("Login failed", zap.String("user_id", req.UserID))
 		// [M-06] 统一错误格式
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "AUTH_INVALID_CREDENTIALS", "message": "invalid credentials", "detail": ""})
@@ -482,6 +561,7 @@ func (g *RESTGateway) login(c *gin.Context) {
 	claims := jwt.MapClaims{
 		"user_id": req.UserID,
 		"role":    "admin",
+		"iss":     adminIssuer,
 		"iat":     now.Unix(),
 		"exp":     now.Add(1 * time.Hour).Unix(),
 	}

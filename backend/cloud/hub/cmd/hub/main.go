@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,8 +16,8 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	pb_relay "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
+	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
@@ -35,6 +36,24 @@ func main() {
 		logger.Fatal("DATABASE_URL must be set — refusing to start without persistence")
 	}
 
+	// [P1-2] 失败即关闭: 管理端凭据与 OEM JWKS 至少配置其一, 否则拒绝启动。
+	// OEM_JWKS_URLS 先解析再判断 — 裸字符串非空但格式全错时不通过。
+	adminConfigured := os.Getenv("ADMIN_USERNAME") != "" && os.Getenv("ADMIN_PASSWORD") != ""
+	oemURLs := parseOEMJWKSURLs(os.Getenv("OEM_JWKS_URLS"))
+	oemConfigured := len(oemURLs) > 0
+	if !adminConfigured && !oemConfigured {
+		logger.Fatal("neither ADMIN_USERNAME/ADMIN_PASSWORD nor valid OEM_JWKS_URLS is set — refusing to start without any auth configuration (JWT_SECRET is always required)")
+	}
+	// [P1-2] 管理员占位密码防御 — 与 JWT_SECRET 弱密钥检查同思路, 拒绝已知占位值
+	if adminConfigured {
+		adminPass := os.Getenv("ADMIN_PASSWORD")
+		for _, dk := range []string{"change-me-admin-password-at-least-16-chars", "admin", "password", "changeme", "admin123"} {
+			if adminPass == dk {
+				logger.Fatal("ADMIN_PASSWORD must not be a default/placeholder value — refusing to start")
+			}
+		}
+	}
+
 	ctx := context.Background()
 	pgStore, err := store.NewPostgresStore(ctx, dsn)
 	if err != nil {
@@ -43,6 +62,15 @@ func main() {
 	defer pgStore.Close()
 
 	grpcSrv, gw := setupHubGRPCServerWithStores(logger, pgStore, pgStore)
+
+	// [P1-2] JWT_SECRET: 管理端 HS256 令牌签名密钥 (Serve() 中还有空值/弱密钥检查)
+	gw.WithJWTSecret(os.Getenv("JWT_SECRET"))
+
+	// [P1-2] OEM_JWKS_URLS: 逗号分隔 key=value, 例如 "oemA=https://a.example.com/jwks,oemB=..."
+	if len(oemURLs) > 0 {
+		gw.WithOEMJWKS(oemURLs)
+		logger.Info("OEM JWKS configured", zap.Int("oem_count", len(oemURLs)))
+	}
 
 	// ── TLS (可选) ──
 	// K8s 部署中 hub-tls secret 为 optional: 证书未就绪时回退 HTTP 并打 WARN
@@ -295,4 +323,27 @@ func vendorUpper(v string) string {
 		}
 	}
 	return string(b)
+}
+
+// parseOEMJWKSURLs 解析 OEM_JWKS_URLS 环境变量。
+// 格式: 逗号分隔的 key=value 对, 例如 "oemA=https://a.example.com/jwks,oemB=https://b.example.com/jwks"。
+// 返回 oem_id -> JWKS URL 映射; 格式错误的条目会被跳过。
+func parseOEMJWKSURLs(raw string) map[string]string {
+	result := make(map[string]string)
+	for _, pair := range strings.Split(raw, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) != 2 {
+			continue // 跳过格式错误的条目
+		}
+		key := strings.TrimSpace(kv[0])
+		val := strings.TrimSpace(kv[1])
+		if key != "" && val != "" {
+			result[key] = val
+		}
+	}
+	return result
 }

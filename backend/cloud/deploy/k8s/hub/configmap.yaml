@@ -21,3 +21,6 @@ data:
   GRPC_MAX_MSG_SIZE: "4194304"
   REST_PORT: "8080"
   GRPC_PORT: "9090"
+  # P1-2 管理 API 设备厂 token 验签 JWKS 源（逗号分隔 oemId=url 对，如 oemA=https://a.example.com/jwks；
+  # 为空时仅管理员令牌可用；管理员凭据经 dkcs-secrets 注入，勿放 configmap）
+  OEM_JWKS_URLS: ""

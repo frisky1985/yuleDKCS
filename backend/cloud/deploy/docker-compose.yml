@@ -92,6 +92,12 @@ services:
     environment:
       # Hub 必需: 持久化连接串 (未设置拒绝启动; 表结构由内置迁移自动创建)
       - DATABASE_URL=postgres://yuledkcs:${POSTGRES_PASSWORD:-yuledkcs}@postgres:5432/yuledkcs?sslmode=disable
+      # Hub 必需: 管理端 HS256 令牌签名密钥 (弱/空值拒绝启动)
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      # Hub 必需: 至少配置一种认证源 — 管理端凭据 或 OEM JWKS (均未配置拒绝启动)
+      # - ADMIN_USERNAME=change-me
+      # - ADMIN_PASSWORD=change-me-strong-password
+      # - OEM_JWKS_URLS=oemA=https://a.example.com/jwks,oemB=https://b.example.com/jwks
       - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:?}
       - KAFKA_BROKERS=kafka:9092
@@ -100,6 +106,12 @@ services:
       - METRICS_ENABLED=true
       - METRICS_PORT=9093
       - METRICS_PATH=/metrics
+      # P1-2 管理 API 鉴权（fail-closed：至少配置一个来源，否则 Hub 拒绝启动）：
+      # - OEM_JWKS_URLS: 逗号分隔 oemId=url 对，如 oemA=https://a.example.com/jwks（为空则仅管理员令牌可用）
+      # - ADMIN_USERNAME/ADMIN_PASSWORD: 管理员登录凭据（生产用强随机值）
+      # - OEM_JWKS_URLS=${OEM_JWKS_URLS:-}
+      # - ADMIN_USERNAME=${ADMIN_USERNAME:-}
+      # - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     restart: unless-stopped
     networks:
       - dk-net

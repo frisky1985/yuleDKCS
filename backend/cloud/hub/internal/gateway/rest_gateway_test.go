@@ -40,6 +40,7 @@ func issueTestToken(g *RESTGateway, userID, role string) string {
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"role":    role,
+		"iss":     adminIssuer,
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -142,6 +143,7 @@ func TestValidateToken_Expired(t *testing.T) {
 	claims := jwt.MapClaims{
 		"user_id": "user-1",
 		"role":    "user",
+		"iss":     adminIssuer,
 		"exp":     time.Now().Add(-time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -157,6 +159,7 @@ func TestValidateToken_WrongSecret(t *testing.T) {
 	claims := jwt.MapClaims{
 		"user_id": "user-1",
 		"role":    "user",
+		"iss":     adminIssuer,
 		"exp":     time.Now().Add(time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -171,6 +174,7 @@ func TestValidateToken_MissingUserID(t *testing.T) {
 	g := newTestGateway()
 	claims := jwt.MapClaims{
 		"role": "user",
+		"iss":  adminIssuer,
 		"exp":  time.Now().Add(time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -341,6 +345,42 @@ func TestLogin_Success(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp["token"] == nil {
 		t.Fatal("expected token in response")
+	}
+	// [P1-2] 登录签发的令牌必须带 iss = dkcs-admin
+	tokenStr, _ := resp["token"].(string)
+	parsed, _, err := jwt.NewParser(jwt.WithoutClaimsValidation()).ParseUnverified(tokenStr, jwt.MapClaims{})
+	if err != nil {
+		t.Fatalf("failed to parse issued token: %v", err)
+	}
+	if iss, _ := parsed.Claims.(jwt.MapClaims)["iss"].(string); iss != adminIssuer {
+		t.Fatalf("expected iss=%q in issued token, got %q", adminIssuer, iss)
+	}
+}
+
+// TestLogin_NotConfigured 验证失败即关闭: 未配置 ADMIN_USERNAME/ADMIN_PASSWORD 时登录返回 503
+func TestLogin_NotConfigured(t *testing.T) {
+	t.Setenv("ADMIN_USERNAME", "")
+	t.Setenv("ADMIN_PASSWORD", "")
+	g := newTestGateway()
+	r := gin.New()
+	r.POST("/api/v1/auth/login", g.login)
+
+	body := `{"user_id":"admin","password":"admin123"}`
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/v1/auth/login", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp["error"] != "SERVICE_UNAVAILABLE" {
+		t.Fatalf("expected SERVICE_UNAVAILABLE, got %s", resp["error"])
+	}
+	if resp["message"] != "admin auth not configured" {
+		t.Fatalf("expected 'admin auth not configured', got %s", resp["message"])
 	}
 }
 
@@ -889,7 +929,8 @@ func TestValidateToken_DefaultRole(t *testing.T) {
 	g := newTestGateway()
 	claims := jwt.MapClaims{
 		"user_id": "user-no-role",
-		"exp":    time.Now().Add(time.Hour).Unix(),
+		"iss":     adminIssuer,
+		"exp":     time.Now().Add(time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	s, _ := tok.SignedString([]byte(g.jwtSecret))
@@ -910,6 +951,7 @@ func TestValidateToken_UnregisteredClaims(t *testing.T) {
 	g := newTestGateway()
 	// Create a token with a non-standard claims type
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    adminIssuer,
 		Subject:   "test",
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	})
@@ -917,7 +959,7 @@ func TestValidateToken_UnregisteredClaims(t *testing.T) {
 
 	_, _, err := g.validateToken(s)
 	if err == nil {
-		t.Fatal("expected error for non-MapClaims token")
+		t.Fatal("expected error for token without user_id claim")
 	}
 }
 
@@ -1057,6 +1099,7 @@ func TestAuthMiddleware_ExpiredToken(t *testing.T) {
 	claims := jwt.MapClaims{
 		"user_id": "user-1",
 		"role":    "user",
+		"iss":     adminIssuer,
 		"exp":     time.Now().Add(-1 * time.Hour).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

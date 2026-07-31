@@ -52,6 +52,17 @@ spec:
                 secretKeyRef:
                   name: dkcs-secrets
                   key: jwt-secret
+            # P1-2 管理 API 管理员凭据（fail-closed：未配置时 Hub 拒绝启动）
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: admin-username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: admin-password
             - name: TLS_CERT_FILE
               value: "/etc/hub-tls/tls.crt"
             - name: TLS_KEY_FILE

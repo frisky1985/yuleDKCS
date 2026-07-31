@@ -159,3 +159,47 @@ func TestSetupHubGRPCServer_ServiceInfoNotEmpty(t *testing.T) {
 		t.Error("GetServiceInfo returned empty — no services registered")
 	}
 }
+
+// ── parseOEMJWKSURLs [P1-2] ─────────────────────────────────────────────────
+
+func TestParseOEMJWKSURLs_Valid(t *testing.T) {
+	raw := "oemA=https://a.example.com/jwks,oemB=https://b.example.com/jwks"
+	got := parseOEMJWKSURLs(raw)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 entries, got %d: %v", len(got), got)
+	}
+	if got["oemA"] != "https://a.example.com/jwks" {
+		t.Fatalf("unexpected oemA URL: %q", got["oemA"])
+	}
+	if got["oemB"] != "https://b.example.com/jwks" {
+		t.Fatalf("unexpected oemB URL: %q", got["oemB"])
+	}
+}
+
+func TestParseOEMJWKSURLs_Empty(t *testing.T) {
+	got := parseOEMJWKSURLs("")
+	if len(got) != 0 {
+		t.Fatalf("expected empty map, got %v", got)
+	}
+}
+
+func TestParseOEMJWKSURLs_SkipsMalformed(t *testing.T) {
+	raw := "oemA=https://a.example.com/jwks,no-equals-here,oemB=,=https://nokey.example.com/jwks"
+	got := parseOEMJWKSURLs(raw)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 valid entry, got %d: %v", len(got), got)
+	}
+	if _, ok := got["oemA"]; !ok {
+		t.Fatalf("expected oemA entry, got %v", got)
+	}
+}
+
+func TestParseOEMJWKSURLs_TrimsWhitespace(t *testing.T) {
+	got := parseOEMJWKSURLs(" oemA = https://a.example.com/jwks , oemB = https://b.example.com/jwks ")
+	if len(got) != 2 {
+		t.Fatalf("expected 2 entries after trimming, got %d: %v", len(got), got)
+	}
+	if got["oemA"] != "https://a.example.com/jwks" {
+		t.Fatalf("unexpected trimmed oemA URL: %q", got["oemA"])
+	}
+}

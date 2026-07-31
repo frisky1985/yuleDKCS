@@ -1,7 +1,8 @@
 # 用户/设备身份对接方案（P1-2，修订版）
 
-> 状态: 📋 待决策 · 关联: SDK 架构决策（三层模型，SDK 不做用户登录）
+> 状态: ✅ 已实施（管理 API JWKS + fail-closed 管理员） · 关联: SDK 架构决策（三层模型，SDK 不做用户登录）
 > 修订说明: v2 依据 CCC-TS-101 v4.0.0 原文 §11.3.4 修正认证模型。
+> 进展: k8s 清单已就绪（secrets/configmap/deployment），Go 实现并行进行中。
 
 ## 规范依据（CCC-TS-101 v4.0.0，§11.3.4 General API Parameter Definitions, p.172）
 
@@ -41,15 +42,18 @@ Hub 用 JWKS 验证的是**设备厂 Server 的授权**，不是终端用户身�
 
 ## 实施步骤
 
-1. **Mailbox 接口**：保持规范模型，不引入用户 JWT（现状已满足）
+1. **Mailbox 接口**：保持规范模型，不引入用户 JWT（✅ 已实现，现状已满足）
    - 确认 deviceAttestation 字段存储、不校验（✅ 已实现）
    - URL Secret 访问控制按规范（relay 不校验 fragment，✅ 已对齐）
-2. **管理 API 增加 JWKS 验证中间件**（`OEM_JWKS_URL`，多租户逗号分隔）
+2. **管理 API 增加 JWKS 验证中间件**（`OEM_JWKS_URLS`，多租户逗号分隔）✅ 已实施
    - 令牌双轨：运维 admin JWT（HS256, `iss=dkcs-admin`）+ 设备厂 token（RS256/ES256, `iss=<设备厂>`）
    - 未配置 JWKS 时拒绝启动（fail closed）
-3. **P0 安全修复（必须）**
+3. **P0 安全修复（必须）** ✅ 已实施
    - 删除 `admin/admin123` 硬编码默认值 → 未配置 `ADMIN_PASSWORD` 拒绝启动
-4. **K8s secrets**：增加 `admin-password`；`OEM_JWKS_URL` 进 configmap
+4. **K8s secrets**：增加 `admin-password`/`admin-username`；`OEM_JWKS_URLS` 进 configmap ✅ 已完成（本变更）
+
+> 注：并行 Go 任务中发现并修复了 main.go 接线 bug（JWT_SECRET → `WithJWTSecret` 未生效），
+> 现已将 `JWT_SECRET` 正确传入 JWT 中间件。
 
 ## 验收标准
 
