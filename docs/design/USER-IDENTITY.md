@@ -1,93 +1,59 @@
-# 用户体系对接方案（P1-2）
+# 用户/设备身份对接方案（P1-2，修订版）
 
 > 状态: 📋 待决策 · 关联: SDK 架构决策（三层模型，SDK 不做用户登录）
+> 修订说明: v2 依据 CCC-TS-101 v4.0.0 原文 §11.3.4 修正认证模型。
 
-## 问题
+## 规范依据（CCC-TS-101 v4.0.0，§11.3.4 General API Parameter Definitions, p.172）
 
-Hub 当前鉴权是**单一 admin 账号**（`ADMIN_USERNAME`/`ADMIN_PASSWORD`，默认 `admin/admin123`），
-JWT 用 HS256 共享密钥签发。这不满足量产：
+> "The deviceAttestation should be used to authenticate the sender device if the
+> Relay Server is not hosted by the owner device OEM. In other cases, the device
+> OEM might use proprietary methods to authenticate the device. **The receiver
+> device does not need to present a deviceAttestation.**"
 
-1. 车厂 App 用户（车主）无法登录 Hub —— SDK 嵌入车厂 App，用户账号在车厂侧
-2. 钥匙归属/分享（`bindKey`/Mailbox）需要**用户级**身份，不是 admin
-3. 硬编码默认密码 `admin/admin123` 是上线即被攻破的漏洞
-4. 多厂商部署（CCC/ICCOA/ICCE 多 OEM）下 user_id 会跨厂商冲突
+规范定义的 Mailbox 认证模型：
+- **URL Secret**：sender 生成，追加为 URL fragment，经任意渠道（微信/WhatsApp）发给接收方；
+  Relay Server 零知识（HTTP fragment 不上行），**URL 即访问凭据**
+- **deviceAttestation**：仅跨 OEM 时发送方出示，relay 存储但**不校验**（§11.3.5，
+  由接收方设备 OEM 校验）；接收方不需要
+- **deviceClaim**：sender/receiver 双方提供
+- **notificationToken**：Push 通知通道（无 token 时按规范轮询间隔降级）
 
-## 方案对比
+## 结论：Hub 是"两个身份域"的组合，不能用一套用户 JWT 覆盖
 
-### 方案 A：OEM 签发 JWT，Hub 用 JWKS 验签（推荐）
-
-```
-车主 App ←登录→ OEM 后端 (OIDC/OAuth2)
-车主 App --Authorization: Bearer <OEM JWT>--> Hub REST Gateway
-                                            │ JWKS 拉取公钥验签 (RS256/ES256)
-                                            ▼
-                                  user_id = oem:<oem_id>:<user_id>
-```
-
-| 维度 | 说明 |
-|:-----|:-----|
-| 身份来源 | OEM 后端是唯一认证方（登录、会话、吊销全在车厂侧）|
-| Hub 职责 | 只验签，不存密码/用户数据 |
-| 合规 | Hub 无用户数据存储负担（个保法/GDPR）|
-| 吊销 | OEM 侧随时吊销（JWT 短时效 + 车厂会话失效）|
-| 多厂商 | `iss` 区分租户，`oem:<id>:<uid>` 命名空间隔离 |
-| 工作量 | 需 OEM 提供 JWKS endpoint（标准 OIDC 能力，多数车厂已有）|
-| 风险 | 首次对接依赖车厂侧配合 |
-
-### 方案 B：Hub 自建用户体系（用户名密码 / 手机号验证码）
-
-| 维度 | 说明 |
-|:-----|:-----|
-| 优点 | Hub 自主可控，不依赖车厂 |
-| 缺点 | 与"SDK 不做用户登录"架构决策冲突；重复造轮子 |
-| 缺点 | 用户数据合规负担（存储、脱敏、删除权）|
-| 缺点 | 车厂不会接受把账号体系放到第三方 Hub |
-
-**结论：不推荐。** 违背既定架构决策，且合规成本高。
-
-### 方案 C：信任代理模式（API Key + 车厂传 user_id）
-
-```
-车主 App ←→ OEM 后端 (唯一入口)
-OEM 后端 --API Key/mTLS + user_id--> Hub
-```
-
-| 维度 | 说明 |
-|:-----|:-----|
-| 优点 | 实现最简单；OEM 后端完全代理 |
-| 缺点 | 信任边界移到 OEM 后端；用户级吊销粒度粗 |
-| 缺点 | 审计弱（Hub 看到的是代理身份）|
-| 适用 | **服务间调用**（Relay、OEM 后端 → Hub），不作为移动端主路径 |
-
-**结论：作为方案 A 的补充**，用于车厂后端服务到 Hub 的内部通道（mTLS + 固定凭据），
-移动端 SDK 走方案 A。
-
-## 推荐：A 为主 + C 补充
-
-| 场景 | 通道 | 认证 |
+| 接口面 | 认证模型 | 依据 |
 |:-----|:-----|:-----|
-| 移动 SDK → Hub REST | 方案 A | OEM JWT（JWKS 验签）|
-| 车厂后端 → Hub gRPC/REST | 方案 C | mTLS / API Key |
-| 运维 → Hub REST | 保留 admin JWT | HS256 + 强随机 secret |
+| **Mailbox (Relay) API** | URL Secret 访问控制 + deviceAttestation 透传存储 + deviceClaim + notificationToken | CCC-TS-101 §11.3.4（现状已实现，不加用户 JWT）|
+| **Hub 管理 API**（bindKey/devices/车辆）| 设备厂 Server 签发 token，Hub JWKS 验签（`iss=设备厂`）| 架构原则：开通 = 设备厂 Server → Hub → 车厂 Server |
+| **服务间**（设备厂/车厂 Server ↔ Hub）| mTLS / API Key | 服务间通道 |
 
-## 实施步骤（方案 A）
+### 为什么 Mailbox 接口不能加用户 JWT
 
-1. **Gateway 新增 JWKS 验证中间件**
-   - 支持多租户：`OEM_JWKS_URL`（逗号分隔，多 OEM 部署）
-   - 按 `iss` 路由到对应租户公钥；缓存 JWKS（TTL 1h）
-2. **令牌双轨**
-   - 保留现有 HS256 admin JWT（运维通道，`iss=dkcs-admin`）
-   - 新增 RS256/ES256 OEM JWT（用户通道，`iss=<oem>`）
-3. **user_id 命名空间**
-   - 统一为 `oem:<oem_id>:<user_id>`，钥匙归属/Mailbox 分享按命名空间隔离
-4. **P0 安全修复（必须与方案 A 一起上）**
-   - 删除 `admin/admin123` 硬编码默认值 → 未配置 `ADMIN_PASSWORD` 时拒绝启动
-5. **K8s secrets**
-   - `secrets.yaml` 增加 `admin-password`；`OEM_JWKS_URL` 进 configmap
+1. **破坏跨 OEM 分享**：三星用户分享给苹果用户时，接收设备不持有发送方 OEM 的 token
+2. **规范无此要求**：规范明确 URL 即凭据，relay 零知识；强制用户身份偏离规范
+3. **接收方连 attestation 都不需要**（原文），加用户级认证是过度设计
+
+### 管理 API 的身份语义（修正 v1 的错误）
+
+v1 把方案 A 表述为"验证用户身份"。修正：Hub **不存人车关系**（架构原则），
+管理 API 的 token 来自**设备厂 Server**（SDK `setToken("session-token-from-oem-server")`），
+Hub 用 JWKS 验证的是**设备厂 Server 的授权**，不是终端用户身份。
+`user_id` 命名空间：`oem:<oem_id>:<device_id>`（设备维度，与人车关系无关）。
+
+## 实施步骤
+
+1. **Mailbox 接口**：保持规范模型，不引入用户 JWT（现状已满足）
+   - 确认 deviceAttestation 字段存储、不校验（✅ 已实现）
+   - URL Secret 访问控制按规范（relay 不校验 fragment，✅ 已对齐）
+2. **管理 API 增加 JWKS 验证中间件**（`OEM_JWKS_URL`，多租户逗号分隔）
+   - 令牌双轨：运维 admin JWT（HS256, `iss=dkcs-admin`）+ 设备厂 token（RS256/ES256, `iss=<设备厂>`）
+   - 未配置 JWKS 时拒绝启动（fail closed）
+3. **P0 安全修复（必须）**
+   - 删除 `admin/admin123` 硬编码默认值 → 未配置 `ADMIN_PASSWORD` 拒绝启动
+4. **K8s secrets**：增加 `admin-password`；`OEM_JWKS_URL` 进 configmap
 
 ## 验收标准
 
-- [ ] 无 `ADMIN_PASSWORD` 配置时 Hub 拒绝启动（fail closed）
-- [ ] OEM JWT 验签通过后，`bindKey`/Mailbox 操作归属到 `oem:<id>:<uid>`
-- [ ] 多租户下 A 厂商 token 不能访问 B 厂商数据
-- [ ] JWKS 拉取失败时降级为 401（不放过请求）
+- [ ] Mailbox API 无用户 JWT 依赖，跨 OEM 分享链路可用（E2E 验证）
+- [ ] 管理 API 无 `ADMIN_PASSWORD`/`OEM_JWKS_URL` 时拒绝启动（fail closed）
+- [ ] 多租户下 A 设备厂 token 不能访问 B 设备厂数据
+- [ ] JWKS 拉取失败时 401（不放过请求）
