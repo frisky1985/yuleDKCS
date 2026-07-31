@@ -5,18 +5,14 @@
 
 ---
 
-## 当前阶段：P0 — PostgreSQL 持久化存储
+## 当前阶段：P0 — SDK DeviceManager (设备信息填充)
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| P0-1 | pgx + golang-migrate 依赖 | ✅ | `jackc/pgx/v5` + `golang-migrate/v4` |
-| P0-2 | docker-compose.yml (postgres:16) | ✅ | 本地开发一键起 |
-| P0-3 | schema 迁移 (keys + mailboxes) | ✅ | `internal/store/migrations/0001_init` |
-| P0-4 | PostgresStore (KeyStore + MailboxStore) | ✅ | 双接口实现 |
-| P0-5 | KeyManagementService 接入 | ✅ | `WithKeyStore()` 注入 |
-| P0-6 | MailboxController 重构 (store 接口) | ✅ | 内存实现保留为默认 |
-| P0-7 | main.go 接入 (DATABASE_URL 必需) | ✅ | 未设置拒绝启动 |
-| P0-8 | 存储层集成测试 | ✅ | 4 个测试连真 PG |
+| P0-9 | iOS DeviceManager (SE 公钥 + vendor/protocol) | ✅ | Secure Enclave ECC P-256 |
+| P0-10 | Android DeviceManager (Keystore + vendor/protocol) | ✅ | AndroidKeyStore + Build 检测 |
+| P0-11 | iOS bindKey/acceptShare 自动填充 | ✅ | device_id/pubkey/vendor/protocol/keyType |
+| P0-12 | Android bindKey/acceptShare 自动填充 | ✅ | 同上 |
 
 
 ## Phase A（已完成）

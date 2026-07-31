@@ -36,8 +36,14 @@ public extension YDKHubClient {
     ///
     /// SDK 自动填充: device_id, user_id, vendor, device_pubkey
     func acceptShare(shareCode: String) async throws -> YDKKey {
+        let deviceManager = YDKDeviceManager.shared
+        let pubkey = try? deviceManager.readPublicKeyBase64()
+
         let body: [String: String] = [
             "shareCode": shareCode,
+            "deviceId": deviceManager.getDeviceId(),
+            "devicePubkey": pubkey ?? "",
+            "vendor": deviceManager.detectVendor().protoValue.description,
             "traceId": UUID().uuidString,
         ]
         return try await request(method: "POST", path: "/shares/accept", body: body)

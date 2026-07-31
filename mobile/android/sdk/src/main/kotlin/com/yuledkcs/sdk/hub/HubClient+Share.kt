@@ -1,5 +1,6 @@
 package com.yuledkcs.sdk.hub
 
+import com.yuledkcs.sdk.device.DeviceManager
 import java.util.UUID
 
 suspend fun HubClient.createShare(
@@ -23,8 +24,14 @@ suspend fun HubClient.createShare(
 }
 
 suspend fun HubClient.acceptShare(shareCode: String): YDKKey {
+    val device = DeviceManager
+    val pubkey = try { device.readPublicKeyBase64() } catch (_: Exception) { "" }
+
     val body = mapOf(
         "shareCode" to shareCode,
+        "deviceId" to device.getDeviceId(),
+        "devicePubkey" to pubkey,
+        "vendor" to device.detectVendor().protoValue.toString(),
         "traceId" to UUID.randomUUID().toString()
     )
     return request("POST", "/shares/accept", body)

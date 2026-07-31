@@ -1,6 +1,7 @@
 package com.yuledkcs.sdk.hub
 
 import com.google.gson.annotations.SerializedName
+import com.yuledkcs.sdk.device.DeviceManager
 import java.util.UUID
 
 // ─── 数据模型 ──────────────────────────────────────────────
@@ -55,8 +56,16 @@ suspend fun HubClient.bindKey(
     deviceId: String? = null,
     devicePubkey: String? = null
 ): BindKeyResponse {
+    val device = DeviceManager
+    val pubkey = try { device.readPublicKeyBase64() } catch (_: Exception) { "" }
+
     val body = mapOf(
         "vehicleId" to vehicleId,
+        "deviceId" to (deviceId ?: device.getDeviceId()),
+        "devicePubkey" to (devicePubkey ?: pubkey),
+        "vendor" to device.detectVendor().protoValue.toString(),
+        "protocol" to device.detectProtocol().protoValue.toString(),
+        "keyType" to "OWNER",
         "traceId" to UUID.randomUUID().toString()
     )
     return request("POST", "/keys", body)

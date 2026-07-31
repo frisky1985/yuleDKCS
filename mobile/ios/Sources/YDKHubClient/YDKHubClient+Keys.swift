@@ -69,12 +69,18 @@ public extension YDKHubClient {
         deviceId: String? = nil,
         devicePubkey: String? = nil
     ) async throws -> BindKeyResponse {
+        let deviceManager = YDKDeviceManager.shared
+        let pubkey = try? deviceManager.readPublicKeyBase64()
+
         let body: [String: String] = [
             "vehicleId": vehicleId,
+            "deviceId": deviceId ?? deviceManager.getDeviceId(),
+            "devicePubkey": devicePubkey ?? pubkey ?? "",
+            "vendor": deviceManager.detectVendor().protoValue.description,
+            "protocol": deviceManager.detectProtocol().protoValue.description,
+            "keyType": "OWNER",
             "traceId": UUID().uuidString,
         ]
-        // deviceId / devicePubkey / protocol / keyType 等
-        // 由 SDK 实现时从手机环境读取后填充
         return try await request(method: "POST", path: "/keys", body: body)
     }
 
