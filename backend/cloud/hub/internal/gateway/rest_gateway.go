@@ -209,6 +209,17 @@ func (g *RESTGateway) Serve(addr string) error {
 
 	r.POST("/api/v1/auth/login", g.login) // 登录获取token
 
+	// ── Mailbox API (公开 — 无需认证，安全由 mailbox_id 随机性 + E2E 加密保障) ──
+	mailbox := r.Group("/api/v1/mailbox")
+	{
+		mailbox.POST("", g.createMailbox)                    // 创建邮箱
+		mailbox.GET("/:id/display", g.readMailboxDisplay)    // 读取展示信息
+		mailbox.GET("/:id/content", g.readMailboxContent)    // 读取加密内容
+		mailbox.PUT("/:id", g.updateMailbox)                 // 更新邮箱
+		mailbox.DELETE("/:id", g.deleteMailbox)              // 删除邮箱
+		mailbox.POST("/:id/relinquish", g.relinquishMailbox) // 转移邮箱
+	}
+
 	// ── API v1 (需要认证) ──
 	v1 := r.Group("/api/v1")
 	v1.Use(g.authMiddleware())

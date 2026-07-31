@@ -5,16 +5,13 @@
 
 ---
 
-## 当前阶段：Phase 2c — KeyManager 钥匙缓存与同步
+## 当前阶段：Phase 2d — MailboxClient (CCC 分享)
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| 2c-1 | iOS KeyCache (JSON 文件缓存) | ✅ | |
-| 2c-2 | iOS KeyManager (同步 + 差异检测 + Delegate) | ✅ | |
-| 2c-3 | iOS 自动定时同步 + Push 触发 | ✅ | |
-| 2c-4 | Android KeyCache (JSON 文件缓存) | ✅ | |
-| 2c-5 | Android KeyManager (同步 + 差异检测 + StateFlow) | ✅ | |
-| 2c-6 | Android 自动定时同步 + Push 触发 | ✅ | |
+| 2d-1 | Backend: Mailbox REST 路由 (6 handlers) | ✅ | 公开 API，无 auth |
+| 2d-2 | iOS MailboxClient (URLSession) | ✅ | Sharing URL 解析 + 6 个操作 |
+| 2d-3 | Android MailboxClient (OkHttp) | ✅ | 同上 |
 
 
 ## Phase A（已完成）
@@ -28,6 +25,7 @@
 - ✅ Push 通知服务集成（FCM/APNs）
 - ✅ Phase 2a: HubClient (HTTP/JSON → REST Gateway)
 - ✅ Phase 2c: KeyManager (本地缓存 + 同步 + Push触发)
+- ✅ Phase 2d: MailboxClient (CCC 分享 HTTP 客户端 + Backend REST 路由)
 
 ---
 
