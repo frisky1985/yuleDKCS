@@ -25,5 +25,5 @@ public enum Platform: Int {
     case unspecified = 0
     case iOS = 1
     case android = 2
-    case huawei = 3
+    case harmony = 3
 }

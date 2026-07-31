@@ -482,7 +482,7 @@ enum Platform {
     PLATFORM_UNSPECIFIED = 0;
     IOS                  = 1;
     ANDROID              = 2;
-    HUAWEI               = 3;  // HMS (无 GMS)
+    HARMONY              = 3;  // HarmonyOS (HMS, 无 GMS)
 }
 
 enum Protocol {

@@ -3,33 +3,53 @@
 ## 生成命令
 
 ```bash
-# 在 mobile/ios/ 目录下执行
-cd mobile/ios
+# 从仓库根目录运行
+./scripts/gen-proto.sh ios
+```
 
+或者手动：
+
+```bash
+# hub.proto
 protoc \
   --swift_opt=Visibility=Public \
   --swift_out=./Sources/YDKProto \
   --grpc-swift_opt=Visibility=Public \
   --grpc-swift_out=./Sources/YDKProto \
-  -I=../../api \
-  ../../api/v1/hub.proto \
-  ../../api/relay/v1/relay.proto \
-  ../../api/sdk/v1/sdk.proto
+  -I=../../../../backend/cloud/hub/api/v1 \
+  ../../../../backend/cloud/hub/api/v1/hub.proto
+
+# relay.proto
+protoc \
+  --swift_opt=Visibility=Public \
+  --swift_out=./Sources/YDKProto \
+  --grpc-swift_opt=Visibility=Public \
+  --grpc-swift_out=./Sources/YDKProto \
+  -I=../../../../backend/cloud/hub/api/relay/v1 \
+  ../../../../backend/cloud/hub/api/relay/v1/relay.proto
+
+# sdk.proto
+protoc \
+  --swift_opt=Visibility=Public \
+  --swift_out=./Sources/YDKProto \
+  --grpc-swift_opt=Visibility=Public \
+  --grpc-swift_out=./Sources/YDKProto \
+  -I=../../../../api/sdk/v1 \
+  ../../../../api/sdk/v1/sdk.proto
 ```
 
 ## 输出
 
 ```
 Sources/YDKProto/
-├── hub.pb.swift         # Hub proto 消息类型
-├── hub.grpc.swift       # Hub gRPC client stub
+├── hub.pb.swift         # Hub proto 消息类型 + gRPC client stub
+├── hub.grpc.swift       # Hub gRPC service stub
 ├── relay.pb.swift       # Relay proto 消息类型
-├── relay.grpc.swift     # Relay gRPC client stub
-├── sdk.pb.swift         # SDK proto 消息类型 (BLE/Mailbox/Callback/KeyManager)
-└── sdk.grpc.swift       # 仅 HubService 生成 gRPC stub
+├── relay.grpc.swift     # Relay gRPC service stub
+├── sdk.pb.swift         # SDK proto 消息类型
+└── sdk.grpc.swift       # SDK HubService gRPC stub (仅用于参考)
 ```
 
 ## 注意
 
-每次 `api/*.proto` 文件变更后，都需要重新生成。
-CI 会自动检查 proto 变更并重新生成。
+每次 proto 文件变更后都需要重新生成。

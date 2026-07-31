@@ -46,6 +46,13 @@ reports/test-output/
 # Logs
 *.log
 
+# Mobile generated proto stubs (build artifacts, not committed)
+mobile/ios/Sources/YDKProto/*.pb.swift
+mobile/ios/Sources/YDKProto/*.grpc.swift
+mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/*Kt.kt
+mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/SdkKt.*.kt
+mobile/android/sdk/src/main/kotlin/digitalkey/
+
 # Secrets (never commit)
 config.yaml
 *.key
