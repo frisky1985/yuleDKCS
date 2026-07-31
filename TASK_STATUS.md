@@ -5,14 +5,17 @@
 
 ---
 
-## 当前阶段：Phase B — Relay Server 分享集成
+## 当前阶段：Phase 2c — KeyManager 钥匙缓存与同步
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| B1 | 注册 RelayService 到 Hub gRPC 服务器 | ✅ | `hub/main.go` 中注册 gRPC + REST gateway |
-| B2 | 集成 KeyShareService | ✅ | 密钥分享流程中使用 Mailbox 传输 |
-| B3 | 真实分享 URL 生成 | ✅ | 格式：`https://dk-relay.yuletech.com/mailbox/{id}#{secret}` |
-| C1 | 基础 E2E 测试 | ✅ | E2E-11（7步生命周期）+ E2E-12（TTL过期）— 8/8 绿 |
+| 2c-1 | iOS KeyCache (JSON 文件缓存) | ✅ | |
+| 2c-2 | iOS KeyManager (同步 + 差异检测 + Delegate) | ✅ | |
+| 2c-3 | iOS 自动定时同步 + Push 触发 | ✅ | |
+| 2c-4 | Android KeyCache (JSON 文件缓存) | ✅ | |
+| 2c-5 | Android KeyManager (同步 + 差异检测 + StateFlow) | ✅ | |
+| 2c-6 | Android 自动定时同步 + Push 触发 | ✅ | |
+
 
 ## Phase A（已完成）
 
@@ -21,6 +24,10 @@
 - ✅ TTL 过期 GC
 - ✅ Service 层（gRPC handlers）
 - ✅ 单元测试（7/7 绿）
+- ✅ Relay Server 分享集成（Phase B）
+- ✅ Push 通知服务集成（FCM/APNs）
+- ✅ Phase 2a: HubClient (HTTP/JSON → REST Gateway)
+- ✅ Phase 2c: KeyManager (本地缓存 + 同步 + Push触发)
 
 ---
 

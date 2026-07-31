@@ -14,6 +14,10 @@ let package = Package(
             targets: ["YDKHubClient"]
         ),
         .library(
+            name: "YDKKeyManager",
+            targets: ["YDKKeyManager"]
+        ),
+        .library(
             name: "YDKBLEManager",
             targets: ["YDKBLEManager"]
         ),
@@ -23,12 +27,17 @@ let package = Package(
 
     targets: [
         // ── Hub HTTPS REST 客户端 ──
-        // 通过 URLSession 调用 yuleDKCS Hub REST Gateway (:8080)
-        // 无需 gRPC / protobuf 外部依赖
         .target(
             name: "YDKHubClient",
             dependencies: [],
             path: "Sources/YDKHubClient"
+        ),
+
+        // ── 钥匙状态管理（本地缓存 + 定时同步） ──
+        .target(
+            name: "YDKKeyManager",
+            dependencies: ["YDKHubClient"],
+            path: "Sources/YDKKeyManager"
         ),
 
         // ── BLE/UWB 本地通信 ──
@@ -43,6 +52,11 @@ let package = Package(
             name: "YDKHubClientTests",
             dependencies: ["YDKHubClient"],
             path: "Tests/YDKHubClientTests"
+        ),
+        .testTarget(
+            name: "YDKKeyManagerTests",
+            dependencies: ["YDKKeyManager"],
+            path: "Tests/YDKKeyManagerTests"
         ),
         .testTarget(
             name: "YDKBLEManagerTests",
