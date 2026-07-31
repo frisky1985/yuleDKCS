@@ -23,6 +23,17 @@ public struct YDKBleUUIDs {
     /// UUID_DEVICE_DK_VERSION — 设备所选版本 (Table 19-11/12)
     public static let cccDeviceDkVersion = CBUUID(string: "BD4B9502-3F54-11EC-B919-0242AC120005")
 
+    // MARK: CCC R3.0 兼容特征 (FFD2-FFD7, 参考实现 ble_kw47a.c)
+    // 2b-E 按 CCC-TS-101 v4.0.0 Table 19-6..19-12 重写 CCC UUID 注册表时删除了
+    // R3.0 特征常量, 但 YDKBLEManager 的特征匹配仍引用它们 — 此处恢复以修复编译。
+    // ⚠️ v4.0.0 控制通道为 SPSM (L2CAP CoC, 见 cccSpsm), 特征直写仅用于 R3.0 兼容。
+    public static let cccPairingChar   = CBUUID(string: "FFD2")
+    public static let cccKeyDataChar   = CBUUID(string: "FFD3")
+    public static let cccAuthChar      = CBUUID(string: "FFD4")
+    public static let cccStateChar     = CBUUID(string: "FFD5")
+    public static let cccUwbConfigChar = CBUUID(string: "FFD6")
+    public static let cccRssiChar      = CBUUID(string: "FFD7")
+
     // MARK: ICCE (0xFEFA, T/CA 110-2020)
     public static let icceService          = CBUUID(string: "FEFA")
     public static let icceKeyStatusChar    = CBUUID(string: "FEFB")

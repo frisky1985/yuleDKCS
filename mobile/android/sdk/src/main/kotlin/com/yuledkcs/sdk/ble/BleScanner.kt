@@ -48,7 +48,7 @@ class LeScannerBleScanEngine(private val scanner: BluetoothLeScanner) : BleScanE
 
 /**
  * 扫描过滤器工厂 — 按协议生成 service UUID 过滤器。
- * 过滤条件来自 [BleUuids] (CCC 0xFFD1 / ICCOA 0xFEF5 / ICCE 0xFEFA)。
+ * 过滤条件来自 [BleUuids] (CCC 0xFFF5 / ICCOA 0xFEF5 / ICCE 0xFEFA)。
  */
 object BleScanFilterFactory {
 

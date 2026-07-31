@@ -51,7 +51,7 @@ class BleProtocolAdapterTest {
 
     private fun cccAdvertise(): ByteArray = concat(
         ad(0x01, 0x06),
-        ad(0x03, 0xD1, 0xFF),
+        ad(0x03, 0xF5, 0xFF), // CCC-TS-101 v4.0.0 DK Service 0xFFF5 (Table 19-6)
         ad(0xFF, 0x00, 0x01, 0x11, 0x22, 0x33, 0x44)
     )
 
@@ -124,13 +124,34 @@ class BleProtocolAdapterTest {
         val session = SessionContext(keyId = "key-1", vehicleId = "VH-1", sessionHandle = 0x0102, counter = 3)
 
         val command = adapter.buildUnlockCommand("key-1", session)
-        // [0] type | [1-2] handle | [3-6] counter | [7] payload len | [8..] keyId
-        assertEquals(0x01.toByte(), command[0])
-        assertEquals(13, command.size) // 8 + keyId("key-1") 5 字节
-        assertEquals(0x01, command[1].toInt() and 0xFF)
-        assertEquals(0x02, command[2].toInt() and 0xFF)
-        assertEquals(5, command[7].toInt() and 0xFF)
-        assertArrayEquals("key-1".toByteArray(), command.copyOfRange(8, 13))
+        // 规范 4 字节帧头 (CCC-TS-101 Table 19-19):
+        //   [0] = Message Header (Message Type: SE=0x01)
+        //   [1] = Payload Header (Message ID: DK_APDU_RQ=0x0B)
+        //   [2-3] = length (big endian u16)
+        assertEquals(CccFrame.MSG_TYPE_SE, command[0].toInt() and 0xFF)
+        assertEquals(CccFrame.MSG_ID_DK_APDU_RQ, command[1].toInt() and 0xFF)
+        val declaredLen = ((command[2].toInt() and 0xFF) shl 8) or (command[3].toInt() and 0xFF)
+        assertEquals(13, declaredLen) // type(1) + handle(2) + counter(4) + keyIdLen(1) + keyId(5)
+        assertEquals(CccFrame.HEADER_SIZE + 13, command.size)
+
+        // 帧解析往返
+        val frame = CccFrame.parse(command)
+        assertNotNull(frame)
+        assertEquals(CccFrame.MSG_TYPE_SE, frame!!.messageType)
+        assertEquals(CccFrame.MSG_ID_DK_APDU_RQ, frame.messageId)
+
+        // 透传载荷 (CccNullMessageSecurity): [0] type | [1-2] handle BE | [3-6] counter BE | [7] keyId len | [8..] keyId
+        val p = frame.payload
+        assertEquals(13, p.size)
+        assertEquals(0x01, p[0].toInt() and 0xFF) // UNLOCK
+        assertEquals(0x01, p[1].toInt() and 0xFF)
+        assertEquals(0x02, p[2].toInt() and 0xFF)
+        assertEquals(0x00, p[3].toInt() and 0xFF)
+        assertEquals(0x00, p[4].toInt() and 0xFF)
+        assertEquals(0x00, p[5].toInt() and 0xFF)
+        assertEquals(0x03, p[6].toInt() and 0xFF)
+        assertEquals(5, p[7].toInt() and 0xFF)
+        assertArrayEquals("key-1".toByteArray(), p.copyOfRange(8, 13))
     }
 
     // ─── 2b-F: ICCOA 指令帧 ───────────────────────────────
@@ -336,7 +357,7 @@ class BleProtocolAdapterTest {
 
     @Test
     fun `service uuids match spec`() {
-        assertEquals("0000FFD1-0000-1000-8000-00805F9B34FB", BleUuids.CCC_SERVICE.toString())
+        assertEquals("0000FFF5-0000-1000-8000-00805F9B34FB", BleUuids.CCC_SERVICE.toString())
         assertEquals("0000FEF5-0000-1000-8000-00805F9B34FB", BleUuids.ICCOA_SERVICE.toString())
         assertEquals("0000FEFA-0000-1000-8000-00805F9B34FB", BleUuids.ICCE_SERVICE.toString())
     }

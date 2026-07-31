@@ -23,8 +23,23 @@ final class YDKBLEManagerTests: XCTestCase {
         let session = SessionContext(keyId: "key-1", vehicleId: "VH-1")
 
         let command = try adapter.buildUnlockCommand(keyId: "key-1", session: session)
-        XCTAssertEqual(command[0], 0x01)  // unlock type
-        XCTAssertEqual(command.count, 8)  // 1 + 2 + 4 + 1
+
+        // 2b-E: 规范帧头 (CCC-TS-101 Table 19-19, 4 字节):
+        //   [0]=Message Type (SE=0x01)  [1]=Message ID (DK_APDU_RQ=0x0B)  [2-3]=length(BE)
+        XCTAssertEqual(command[0], CCCMessageType.se.rawValue)                    // 0x01 SE 消息
+        XCTAssertEqual(command[1], CCCApduMessageID.dkApduRq.rawValue)            // 0x0B DK_APDU_RQ
+        let declaredLength = (Int(command[2]) << 8) | Int(command[3])
+        XCTAssertEqual(declaredLength, command.count - CCCCommandFrame.headerLength)
+        // 透传安全提供者 (CCCNullMessageSecurity): payload = 8 + keyId.count;
+        // keyId 为空时总长 12 (4B 帧头 + 8B payload), keyId="key-1" 时总长 17
+        XCTAssertEqual(command.count, CCCCommandFrame.headerLength + 8 + "key-1".count)
+
+        // 载荷可解析回明文控制指令 (透传), 校验 subcommand + keyId
+        let parsed = try CCCCommandFrame.parse(command)
+        XCTAssertEqual(parsed.messageID, CCCApduMessageID.dkApduRq.rawValue)
+        let payload = CCCControlPayload.parse(parsed.payload)
+        XCTAssertEqual(payload?.subcommand, BleCommandType.unlock.rawValue)
+        XCTAssertEqual(payload?.keyId, "key-1")
     }
 
     func testCCCAdapterParsesVehicleStatus() throws {
@@ -40,7 +55,7 @@ final class YDKBLEManagerTests: XCTestCase {
     // MARK: - 协议 UUID
 
     func testServiceUUIDs() {
-        XCTAssertEqual(YDKBleUUIDs.serviceUUID(for: .ccc).uuidString, "FFD1")
+        XCTAssertEqual(YDKBleUUIDs.serviceUUID(for: .ccc).uuidString, "FFF5")
         XCTAssertEqual(YDKBleUUIDs.serviceUUID(for: .iccoa).uuidString, "FEF5")
         XCTAssertEqual(YDKBleUUIDs.serviceUUID(for: .icce).uuidString, "FEFA")
     }

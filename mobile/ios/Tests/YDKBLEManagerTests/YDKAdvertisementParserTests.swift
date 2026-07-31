@@ -11,7 +11,7 @@ final class YDKAdvertisementParserTests: XCTestCase {
         // Flags(3) + Service UUIDs(5) + Local Name(6)
         var record = Data()
         record.append(contentsOf: [0x02, 0x01, 0x06])                    // flags
-        record.append(contentsOf: [0x05, 0x03, 0xD1, 0xFF, 0xF5, 0xFE])  // 16-bit service UUIDs
+        record.append(contentsOf: [0x05, 0x03, 0xF5, 0xFF, 0xF5, 0xFE])  // 16-bit service UUIDs (FFF5, FEF5)
         record.append(contentsOf: [0x05, 0x09, 0x44, 0x4B, 0x2D, 0x31])  // "DK-1"
 
         let structures = YDKAdvertisementParser.parseADStructures(from: record)
@@ -19,7 +19,7 @@ final class YDKAdvertisementParserTests: XCTestCase {
         XCTAssertEqual(structures[0].type, YDKADType.flags)
         XCTAssertEqual(structures[0].data, Data([0x06]))
         XCTAssertEqual(structures[1].type, YDKADType.complete16BitServiceUUIDs)
-        XCTAssertEqual(structures[1].data, Data([0xD1, 0xFF, 0xF5, 0xFE]))
+        XCTAssertEqual(structures[1].data, Data([0xF5, 0xFF, 0xF5, 0xFE]))
         XCTAssertEqual(structures[2].type, YDKADType.completeLocalName)
         XCTAssertEqual(structures[2].data, Data([0x44, 0x4B, 0x2D, 0x31]))
     }
@@ -99,7 +99,7 @@ final class YDKAdvertisementParserTests: XCTestCase {
         mfr.append(contentsOf: [0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7,
                                 0xE8, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xFF])
         let advertisement: [String: Any] = [
-            CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: "FFD1")],
+            CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: "FFF5")],
             CBAdvertisementDataManufacturerDataKey: mfr,
             CBAdvertisementDataIsConnectable: true
         ]
@@ -114,7 +114,7 @@ final class YDKAdvertisementParserTests: XCTestCase {
 
     func testCCCBleAdapterRejectsMissingService() {
         let adapter = BleProtocolAdapterFactory.makeAdapter(for: .ccc)
-        // 广播不包含 CCC Service (0xFFD1) → 拒绝
+        // 广播不包含 CCC Service (0xFFF5) → 拒绝
         let advertisement: [String: Any] = [
             CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: "FEF5")],
             CBAdvertisementDataManufacturerDataKey: Data([0x4C, 0x00, 0x02, 0x15])
@@ -126,7 +126,7 @@ final class YDKAdvertisementParserTests: XCTestCase {
         let adapter = BleProtocolAdapterFactory.makeAdapter(for: .ccc)
         // 有 service UUID, 但 mfr data 不是 iBeacon 布局 → 不伪造 vehicleId, 返回 nil
         let advertisement: [String: Any] = [
-            CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: "FFD1")],
+            CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: "FFF5")],
             CBAdvertisementDataManufacturerDataKey: Data([0x4C, 0x00, 0x99])
         ]
         XCTAssertNil(adapter.parseAdvertisement(advertisement, rssi: -45))

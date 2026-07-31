@@ -69,9 +69,9 @@ class BleAdvertiseParserTest {
     @Test
     fun `parses 16-bit service uuid list with multiple entries`() {
         val parsed = parse(
-            ad(0x02, 0xD1, 0xFF, 0xF5, 0xFE) // Incomplete 16-bit UUID list: 0xFFD1, 0xFEF5
+            ad(0x02, 0xF5, 0xFF, 0xF5, 0xFE) // Incomplete 16-bit UUID list: 0xFFF5, 0xFEF5
         )
-        assertTrue(parsed!!.hasServiceUuid16(0xFFD1))
+        assertTrue(parsed!!.hasServiceUuid16(0xFFF5))
         assertTrue(parsed.hasServiceUuid16(0xFEF5))
         assertFalse(parsed.hasServiceUuid16(0x1234))
     }
@@ -93,7 +93,7 @@ class BleAdvertiseParserTest {
 
     @Test
     fun `hasServiceUuid matches full 128-bit uuid`() {
-        val parsed = parse(ad(0x03, 0xD1, 0xFF))
+        val parsed = parse(ad(0x03, 0xF5, 0xFF)) // 0xFFF5 = CCC v4.0.0 DK Service (Table 19-6)
         assertTrue(parsed!!.hasServiceUuid(BleUuids.CCC_SERVICE))
         assertFalse(parsed.hasServiceUuid(BleUuids.ICCOA_SERVICE))
     }
@@ -125,9 +125,9 @@ class BleAdvertiseParserTest {
     @Test
     fun `zero length ad structure terminates parsing`() {
         // [0x00] 终止符 (类似 iBeacon 尾部填充) → 之前的结构仍解析成功
-        val bytes = concat(ad(0x03, 0xD1, 0xFF), byteArrayOf(0x00), byteArrayOf(0x02, 0x01, 0x05))
+        val bytes = concat(ad(0x03, 0xF5, 0xFF), byteArrayOf(0x00), byteArrayOf(0x02, 0x01, 0x05))
         val parsed = BleAdvertiseParser.parse(bytes)
-        assertTrue(parsed!!.serviceUuids16.contains(0xFFD1))
+        assertTrue(parsed!!.serviceUuids16.contains(0xFFF5))
         assertEquals(1, parsed.adStructures.size) // 0x00 之后的结构被忽略
     }
 

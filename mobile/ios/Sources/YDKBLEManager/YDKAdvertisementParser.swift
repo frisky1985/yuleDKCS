@@ -130,17 +130,21 @@ public enum YDKAdvertisementParser {
     /// vendorData:
     ///   [0]       0x02  iBeacon subtype
     ///   [1]       0x15  iBeacon payload 长度 (21)
-    ///   [2...22]  20 字节 proximity UUID — 由 keymgmt 模块按车辆填充 → vehicleId
+    ///   [2...18]  16 字节 proximity UUID — 由 keymgmt 模块按车辆填充 → vehicleId
     /// ```
+    /// (注: 参考实现注释声称 20 字节 UUID, 与标准 iBeacon 16 字节布局及既有测试
+    /// 不符, 按 16 字节解析; 20 字节布局待对照 ble_kw47a.c 原文 TODO-verify)
     ///
     /// ⚠️ v4.0.0 规范生产广播不含该结构 (见 `cccServiceData`), 此函数仅用于兼容
     /// R3.0 存量联调设备; 新设备接入应优先走规范 Service Data 解析。
     public static func cccVehicleID(from payload: YDKManufacturerPayload) -> String? {
+        // 仅接受 Apple 厂商广播 (0x004C, 参考 ble_kw47a.c)
+        guard payload.companyID == YDKCompanyID.apple else { return nil }
         let vendor = payload.vendorData
-        guard vendor.count >= 22 else { return nil }
+        guard vendor.count >= 18 else { return nil }
         guard vendor[0] == 0x02 else { return nil }   // iBeacon subtype
         guard vendor[1] == 0x15 else { return nil }   // iBeacon payload 长度
-        return uuidString(from: vendor.subdata(in: 2..<22))
+        return uuidString(from: vendor.subdata(in: 2..<18))
     }
 
     /// 便捷入口: 直接从 manufacturer data 字节解析 CCC vehicleId (R3.0 兼容)

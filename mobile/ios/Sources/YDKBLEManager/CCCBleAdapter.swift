@@ -154,12 +154,14 @@ final class CCCBleAdapter: BleProtocolAdapter {
         }
     }
 
-    /// 解析车辆状态。优先按 CCC 帧解析 (STATE_NOTIFY 0x40);
+    /// 解析车辆状态。优先按 CCC 帧解析 (DK Event Notification 0x03);
     /// 非帧格式 (FFD5 直接读) 回退到 [locked][engineOn][batteryPct] 布局。
     /// TODO-verify: 状态载荷字段布局需对照 CCC-TS-101 Vehicle Status 定义确认。
     func parseVehicleStatus(_ data: Data) throws -> VehicleStatus {
+        // 2b-E 修正: 旧 R3.0 枚举的 stateNotify(0x40) 在 v4.0.0 Table 19-21 中对应
+        // DK Event Notification (Message Type=3), 见 CCCCommandFrame.CCCMessageType。
         if let frame = CCCCommandFrame(data: data),
-           frame.messageType == CCCMessageType.stateNotify.rawValue,
+           frame.messageType == CCCMessageType.dkEventNotification.rawValue,
            frame.payload.count >= 3 {
             let p = frame.payload
             return VehicleStatus(locked: p[0] != 0, engineOn: p[1] != 0, batteryPct: Int32(p[2]))

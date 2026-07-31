@@ -116,7 +116,7 @@ Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
 |:-:|:-----|:-----|:----:|:----:|
 | 4.1 | SDK 单元测试（Mock Hub、Mock TCU） | iOS XCTest + Android JUnit | 无 | ✅ 可与 2b 并行 |
 | 4.2 | SDK × Hub 集成测试（真实 gRPC 调用） | 复用现有 E2E 测试框架；REST 层已实测打通（2026-07-31） | 无 | ✅ 可与 2b 并行 |
-| 4.3 | BLE 桩测试（模拟车辆广播） | iOS + Android 模拟器 | **2b-A/B/C/D** | ❌ 依赖 2b 真实化 |
+| 4.3 | BLE 桩测试（模拟车辆广播） | iOS + Android 模拟器 | 2b-A/B/C/D | ✅ **桩就位 (2026-07-31)**: iOS FakeCentral/FakePeripheral + Android FakeBleScanEngine; 存量测试同步修复; iOS wire 级独立验证 9/9 + 加密 16/16; Android 测试 CI 执行; 真机联调单列 |
 | 4.4 | CCC 分享全链路 E2E（两台手机 ↔ Hub ↔ Relay） | 物理机测试 | 分享链路: 无；BLE 解锁: 2b | ⚠️ 分享部分先行 |
 | 4.5 | ICCOA/ICCE S2S 分享全链路 E2E | 通过 Hub mock S2S | 无 | ✅ 可与 2b 并行 |
 
