@@ -2,14 +2,18 @@ import Foundation
 
 /// yuleDKCS SDK 配置
 public struct SDKConfig {
+    /// Hub REST Gateway 主机地址（如 "hub.yuletech.com"）
     let hubEndpoint: String
+    /// Hub REST Gateway 端口（默认 8080）
     let hubPort: Int
+    /// 手机平台（SDK 自动检测）
     let platform: Platform
+    /// 是否启用日志
     let enableLogging: Bool
 
     public init(
         hubEndpoint: String,
-        hubPort: Int = 9090,
+        hubPort: Int = 8080,
         platform: Platform = .iOS,
         enableLogging: Bool = false
     ) {
@@ -21,7 +25,7 @@ public struct SDKConfig {
 }
 
 /// 手机平台
-public enum Platform: Int {
+public enum Platform: Int, Codable {
     case unspecified = 0
     case iOS = 1
     case android = 2

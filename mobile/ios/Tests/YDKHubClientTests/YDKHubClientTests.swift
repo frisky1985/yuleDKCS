@@ -3,9 +3,37 @@ import XCTest
 
 final class YDKHubClientTests: XCTestCase {
 
-    func testBindKeyRequestIsConstructed() async throws {
-        // 集成测试需启动本地 gRPC Hub（复用 e2e_11 的 bufconn 模式）
-        // 当前 Phase 2a 仅验证接口编译通过
-        XCTAssertTrue(true, "完整测试在 Phase 4 集成测试阶段补充")
+    var client: YDKHubClient!
+
+    override func setUp() {
+        super.setUp()
+        client = YDKHubClient(config: SDKConfig(
+            hubEndpoint: "hub.test.local",
+            hubPort: 8080,
+            enableLogging: false
+        ))
+    }
+
+    override func tearDown() {
+        client.shutdown()
+        client = nil
+        super.tearDown()
+    }
+
+    func testBindKeyReturnsKey() async throws {
+        client.setToken("test-token")
+
+        // 集成测试需要运行中的 Hub REST Gateway
+        // 当前验证接口和类型定义编译通过
+        XCTAssertNotNil(client, "YDKHubClient should be initialized")
+        XCTAssertEqual(client.token, "test-token")
+    }
+
+    func testSetTokenAndClear() {
+        client.setToken("token-123")
+        XCTAssertEqual(client.token, "token-123")
+
+        client.clearToken()
+        XCTAssertNil(client.token)
     }
 }

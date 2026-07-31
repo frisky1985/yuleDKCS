@@ -1,47 +1,52 @@
 import Foundation
-import YDKProto
-
-// MARK: - SendCommand (Remote Control)
 
 public extension YDKHubClient {
 
     /// 远程锁车
-    func remoteLock(vehicleId: String) async throws {
-        try await sendCommand(vehicleId: vehicleId, action: "lock")
+    @discardableResult
+    func remoteLock(vehicleId: String, keyId: String? = nil) async throws -> ControlCommandResponse {
+        try await sendCommand(vehicleId: vehicleId, action: "lock", keyId: keyId)
     }
 
     /// 远程解锁
-    func remoteUnlock(vehicleId: String) async throws {
-        try await sendCommand(vehicleId: vehicleId, action: "unlock")
+    @discardableResult
+    func remoteUnlock(vehicleId: String, keyId: String? = nil) async throws -> ControlCommandResponse {
+        try await sendCommand(vehicleId: vehicleId, action: "unlock", keyId: keyId)
     }
 
     /// 远程启动
-    func remoteStart(vehicleId: String) async throws {
-        try await sendCommand(vehicleId: vehicleId, action: "engine_on")
+    @discardableResult
+    func remoteStart(vehicleId: String, keyId: String? = nil) async throws -> ControlCommandResponse {
+        try await sendCommand(vehicleId: vehicleId, action: "engine_on", keyId: keyId)
     }
 
     /// 远程熄火
-    func remoteStop(vehicleId: String) async throws {
-        try await sendCommand(vehicleId: vehicleId, action: "engine_off")
+    @discardableResult
+    func remoteStop(vehicleId: String, keyId: String? = nil) async throws -> ControlCommandResponse {
+        try await sendCommand(vehicleId: vehicleId, action: "engine_off", keyId: keyId)
     }
 
     // MARK: - Internal
 
-    /// 远程控车：SDK 自动填充 source=4(Remote), key_id(本地缓存)
-    private func sendCommand(vehicleId: String, action: String) async throws {
-        let req = ControlCommandRequest.with {
-            $0.vehicleID = vehicleId
-            $0.action = action
-            // 以下由 SDK 实现时填充
-            // $0.userID = extractUserID(from: token)
-            // $0.keyID = LocalKeyCache.shared.activeKeyId(for: vehicleId)
-            // $0.source = 4  // Remote
-            $0.traceID = UUID().uuidString
-        }
-
-        let resp = try await vehicleControl.sendCommand(req)
-        if resp.resultCode != 0 {
-            throw YDKError.hubError("REMOTE_\(resp.resultCode)", resp.errorMsg)
-        }
+    /// 远程控车：SDK 自动填充 source=4(Remote)
+    @discardableResult
+    private func sendCommand(vehicleId: String, action: String, keyId: String?) async throws -> ControlCommandResponse {
+        let body: [String: Any] = [
+            "action": action,
+            "keyId": keyId ?? "",
+            "traceId": UUID().uuidString,
+            // source=4 (Remote) 由 Gateway 自动填充
+        ]
+        return try await request(
+            method: "POST",
+            path: "/vehicles/\(vehicleId)/command",
+            body: AnyEncodable(body as Encodable)
+        )
     }
+}
+
+public struct ControlCommandResponse: Codable {
+    public let cmdId: String?
+    public let resultCode: Int32
+    public let errorMsg: String?
 }

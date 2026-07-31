@@ -1,17 +1,15 @@
 #!/bin/bash
 # yuleDKCS Proto 代码生成脚本
-# 用法: ./scripts/gen-proto.sh [ios|android|all]
-# 依赖: protoc, protoc-gen-swift, protoc-gen-grpc-swift
 #
-# Proto 文件位置:
-#   backend/cloud/hub/api/v1/hub.proto        (package digitalkey.hub.v1)
-#   backend/cloud/hub/api/relay/v1/relay.proto (package digitalkey.relay.v1)
-#   api/sdk/v1/sdk.proto                       (package digitalkey.sdk.v1)
+# 移动端架构变化: 2026-07-31
+#   手机 SDK 不再使用 gRPC stubs（grpc-swift 2.x 强制 iOS 18+）。
+#   改用 HTTP/JSON 调用 Hub REST Gateway (:8080)。
+#   Proto 仅作为 JSON 字段名和类型的合约参考。
 #
-# 三个 proto 互相独立（无 import 关系），可分别编译。
-# iOS: 生成 Swift gRPC stubs → mobile/ios/Sources/YDKProto/
-# Android: 由 Gradle protobuf 插件自动处理，本脚本仅做参考
-
+# 因此本脚本已废弃（保留以备未来可能恢复 gRPC）。
+# 后端 Go proto 由 Go build 系统自动处理（go generate）。
+#
+# 用法: 已废弃，仅作参考
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,39 +17,22 @@ HUB_PROTO_DIR="$ROOT/backend/cloud/hub/api"
 SDK_PROTO_DIR="$ROOT/api/sdk/v1"
 
 ios_gen() {
-    echo ">>> Generating iOS Swift proto stubs..."
-    OUT="$ROOT/mobile/ios/Sources/YDKProto"
-    ARGS="--swift_opt=Visibility=Public --grpc-swift_opt=Visibility=Public"
-
-    # hub.proto (KeyManagementService / KeyShareService / VehicleControlService)
-    protoc $ARGS --swift_out="$OUT" --grpc-swift_out="$OUT" \
-        -I="$HUB_PROTO_DIR/v1" \
-        "$HUB_PROTO_DIR/v1/hub.proto"
-
-    # relay.proto (Mailbox API)
-    protoc $ARGS --swift_out="$OUT" --grpc-swift_out="$OUT" \
-        -I="$HUB_PROTO_DIR/relay/v1" \
-        "$HUB_PROTO_DIR/relay/v1/relay.proto"
-
-    # sdk.proto (BLE / MailboxClient / Callback / KeyManager)
-    protoc $ARGS --swift_out="$OUT" --grpc-swift_out="$OUT" \
-        -I="$SDK_PROTO_DIR" \
-        "$SDK_PROTO_DIR/sdk.proto"
-
-    echo "    ✓ $OUT ($(ls "$OUT"/*.swift 2>/dev/null | wc -l) files)"
+    echo "[DEPRECATED] iOS SDK 使用 HTTP/JSON，不生成 gRPC stubs"
+    echo "  Proto 合约参考: api/sdk/v1/sdk.proto"
+    echo "  Proto 合约参考: $HUB_PROTO_DIR/v1/hub.proto"
+    echo "  Proto 合约参考: $HUB_PROTO_DIR/relay/v1/relay.proto"
+    echo "  如需手动生成消息类型（仅供文档参考）:"
+    echo "    protoc --swift_opt=Visibility=Public --swift_out=./Sources/YDKProto \\"
+    echo "      -I=$HUB_PROTO_DIR/v1 \$HUB_PROTO_DIR/v1/hub.proto"
 }
 
 android_gen() {
-    echo ">>> Android: handled by Gradle protobuf plugin"
-    echo "    Run: cd mobile/android && ./gradlew :sdk:generateProto"
-    echo "    Generated to: sdk/build/generated/source/proto/"
+    echo "[DEPRECATED] Android SDK 使用 HTTP/JSON + Gson，不生成 gRPC stubs"
+    echo "  JSON 字段名与 proto field names 手动对齐"
 }
 
-case "${1:-all}" in
+case "${1:-}" in
     ios)     ios_gen ;;
     android) android_gen ;;
-    all)     ios_gen; android_gen ;;
-    *)       echo "Usage: $0 [ios|android|all]"; exit 1 ;;
+    all|*)   ios_gen; android_gen ;;
 esac
-
-echo "Done."

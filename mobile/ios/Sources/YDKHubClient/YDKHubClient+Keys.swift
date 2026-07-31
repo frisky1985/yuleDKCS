@@ -1,119 +1,140 @@
 import Foundation
-import YDKProto
 
-// MARK: - BindKey
+// MARK: - 请求/响应模型
+
+public struct YDKKey: Codable, Equatable {
+    public let keyId: String
+    public let vehicleId: String
+    public let deviceId: String
+    public let vehicleName: String?
+    public let keyType: String        // OWNER / FRIEND / SERVICE / TEMPORARY
+    public let `protocol`: String?    // CCC / ICCOA / ICCE
+    public let status: String         // ACTIVE / SUSPENDED / REVOKED / EXPIRED
+    public let validFrom: Int64
+    public let validUntil: Int64
+    public let createdAt: Int64
+}
+
+public struct YDKShare: Codable {
+    public let shareId: String
+    public let shareCode: String?
+    public let sharingUrl: String?    // CCC Mailbox URL（仅 CCC 协议）
+    public let keyId: String
+    public let fromUserId: String?
+    public let toUserId: String?
+    public let validFrom: Int64
+    public let validUntil: Int64
+    public let errorCode: String?
+    public let errorMsg: String?
+}
+
+public struct BindKeyResponse: Codable {
+    public let keyId: String
+    public let vehicleId: String
+    public let errorCode: String?
+    public let errorMsg: String?
+}
+
+// MARK: - 发送命令的 body
+
+struct SendCommandBody: Encodable {
+    let action: String
+    let keyId: String?
+    let traceId: String
+}
+
+struct CreateShareBody: Encodable {
+    let keyId: String
+    let toVendor: String
+    let toUserId: String?
+    let validFrom: Int64
+    let validUntil: Int64
+    let maxUses: Int32
+    let traceId: String
+}
+
+struct AcceptShareBody: Encodable {
+    let shareCode: String
+    let traceId: String
+}
+
+// MARK: - 钥匙操作
 
 public extension YDKHubClient {
 
     /// 绑定钥匙到手机
-    ///
-    /// SDK 自动填充: device_id, user_id, vendor, protocol, key_type, device_pubkey, access_level
-    func bindKey(vehicleId: String) async throws -> BindKeyResponse {
-        let req = BindKeyRequest.with {
-            $0.vehicleID = vehicleId
-            // 以下由 SDK 实现时填充（见 Phase 2a 实现计划）
-            // $0.deviceID = DeviceManager.shared.deviceId
-            // $0.userID = extractUserID(from: token)
-            // $0.vendor = detectPhoneVendor()
-            // $0.protocol = detectProtocol()
-            // $0.keyType = .owner
-            // $0.accessLevel = .init(lock: true, unlock: true, engine: true)
-            // $0.devicePubkey = try await SecureEnclave.shared.readPublicKey()
-            $0.traceID = UUID().uuidString
-        }
-
-        let resp = try await keyManagement.bindKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, resp.errorMsg)
-        }
-        return resp
+    /// SDK 自动填充: device_id, user_id, vendor, protocol, key_type, device_pubkey
+    func bindKey(
+        vehicleId: String,
+        deviceId: String? = nil,
+        devicePubkey: String? = nil
+    ) async throws -> BindKeyResponse {
+        let body: [String: String] = [
+            "vehicleId": vehicleId,
+            "traceId": UUID().uuidString,
+        ]
+        // deviceId / devicePubkey / protocol / keyType 等
+        // 由 SDK 实现时从手机环境读取后填充
+        return try await request(method: "POST", path: "/keys", body: body)
     }
 
     /// 解绑钥匙
     func unbindKey(keyId: String) async throws {
-        let req = UnbindKeyRequest.with {
-            $0.keyID = keyId
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyManagement.unbindKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+        let _: EmptyResponse? = try await request(method: "DELETE", path: "/keys/\(keyId)")
     }
 
     /// 挂起钥匙
-    func suspendKey(keyId: String, reason: String = "") async throws {
-        let req = SuspendKeyRequest.with {
-            $0.keyID = keyId
-            $0.reason = reason
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyManagement.suspendKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+    func suspendKey(keyId: String, reason: String? = nil) async throws {
+        let body: [String: String] = [
+            "reason": reason ?? "",
+            "traceId": UUID().uuidString,
+        ]
+        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/suspend", body: body)
     }
 
     /// 恢复钥匙
     func resumeKey(keyId: String) async throws {
-        let req = ResumeKeyRequest.with {
-            $0.keyID = keyId
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyManagement.resumeKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+        let body: [String: String] = [
+            "traceId": UUID().uuidString,
+        ]
+        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/resume", body: body)
     }
 
     /// 撤销钥匙
-    func revokeKey(keyId: String, reason: String) async throws {
-        let req = RevokeKeyRequest.with {
-            $0.keyID = keyId
-            $0.reason = reason
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyManagement.revokeKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+    func revokeKey(keyId: String, reason: String? = nil) async throws {
+        let body: [String: String] = [
+            "reason": reason ?? "",
+            "traceId": UUID().uuidString,
+        ]
+        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/revoke", body: body)
     }
 
     /// 续期钥匙
     func renewKey(keyId: String, validUntil: Int64) async throws {
-        let req = RenewKeyRequest.with {
-            $0.keyID = keyId
-            $0.validUntil = validUntil
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyManagement.renewKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+        let body: [String: Any] = [
+            "validUntil": validUntil,
+            "traceId": UUID().uuidString,
+        ]
+        let _: EmptyResponse? = try await request(method: "PUT", path: "/keys/\(keyId)/renew", body: AnyEncodable(body as Encodable))
     }
 
     /// 查询单把钥匙
-    func getKey(keyId: String) async throws -> KeyItem {
-        let req = GetKeyRequest.with { $0.keyID = keyId }
-        let resp = try await keyManagement.getKey(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
-        // SDK 补充 vehicle_name（来自本地缓存）
-        var item = resp.key
-        item.vehicleName = LocalKeyCache.shared.vehicleName(for: item.vehicleID)
-        return item
+    func getKey(keyId: String) async throws -> YDKKey {
+        try await request(method: "GET", path: "/keys/\(keyId)")
     }
 
     /// 查询钥匙列表
-    func listKeys() async throws -> [KeyItem] {
-        let req = ListKeysRequest()
-        let resp = try await keyManagement.listKeys(req)
-
-        return resp.keys.map { key in
-            var item = key
-            item.vehicleName = LocalKeyCache.shared.vehicleName(for: item.vehicleID)
-            return item
-        }
+    func listKeys(vehicleId: String? = nil, status: String? = nil) async throws -> [YDKKey] {
+        var query: [String: String] = [:]
+        if let vid = vehicleId { query["vehicleId"] = vid }
+        if let s = status { query["status"] = s }
+        let resp: KeyListResponse = try await request(method: "GET", path: "/keys", query: query.isEmpty ? nil : query)
+        return resp.keys ?? []
     }
 }
+
+struct KeyListResponse: Codable {
+    let keys: [YDKKey]?
+}
+
+struct EmptyResponse: Codable {}

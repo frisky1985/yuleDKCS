@@ -19,43 +19,23 @@ let package = Package(
         ),
     ],
 
-    dependencies: [
-        .package(
-            url: "https://github.com/grpc/grpc-swift.git",
-            from: "2.0.0"
-        ),
-    ],
+    dependencies: [],
 
     targets: [
-        // ── Hub gRPC 客户端 ──
+        // ── Hub HTTPS REST 客户端 ──
+        // 通过 URLSession 调用 yuleDKCS Hub REST Gateway (:8080)
+        // 无需 gRPC / protobuf 外部依赖
         .target(
             name: "YDKHubClient",
-            dependencies: [
-                .product(name: "GRPC", package: "grpc-swift"),
-                "YDKProto",
-            ],
+            dependencies: [],
             path: "Sources/YDKHubClient"
         ),
 
         // ── BLE/UWB 本地通信 ──
         .target(
             name: "YDKBLEManager",
-            dependencies: [
-                "YDKProto",
-            ],
+            dependencies: [],
             path: "Sources/YDKBLEManager"
-        ),
-
-        // ── 由 proto 代码生成（手动运行 protoc 后填充） ──
-        .target(
-            name: "YDKProto",
-            dependencies: [
-                .product(name: "GRPC", package: "grpc-swift"),
-            ],
-            path: "Sources/YDKProto",
-            exclude: [
-                "README.md",
-            ]
         ),
 
         // ── 测试 ──

@@ -1,7 +1,4 @@
 import Foundation
-import YDKProto
-
-// MARK: - CreateShare
 
 public extension YDKHubClient {
 
@@ -17,72 +14,42 @@ public extension YDKHubClient {
     /// - Returns: 分享信息（含 6 位分享码）
     func createShare(
         keyId: String,
-        toVendor: PhoneVendor,
+        toVendor: String,
         toUserId: String? = nil,
         validFrom: Int64 = 0,
         validUntil: Int64 = 0,
         maxUses: Int32 = 0
-    ) async throws -> CreateShareResponse {
-        let req = CreateShareRequest.with {
-            $0.keyID = keyId
-            $0.toVendor = toVendor
-            if let uid = toUserId { $0.toUserID = uid }
-            $0.validFrom = validFrom
-            $0.validUntil = validUntil
-            $0.maxUses = maxUses
-            $0.accessLevel = AccessLevel.with {
-                $0.lock = true; $0.unlock = true; $0.engine = true
-            }
-            $0.traceID = UUID().uuidString
-        }
-
-        let resp = try await keyShare.createShare(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
-        return resp
+    ) async throws -> YDKShare {
+        let body: [String: Any] = [
+            "keyId": keyId,
+            "toVendor": toVendor,
+            "toUserId": toUserId ?? "",
+            "validFrom": validFrom,
+            "validUntil": validUntil,
+            "maxUses": maxUses,
+            "traceId": UUID().uuidString,
+        ]
+        return try await request(method: "POST", path: "/shares", body: AnyEncodable(body as Encodable))
     }
 
     /// 接受分享
     ///
     /// SDK 自动填充: device_id, user_id, vendor, device_pubkey
-    func acceptShare(shareCode: String) async throws -> AcceptShareResponse {
-        let req = AcceptShareRequest.with {
-            $0.shareCode = shareCode
-            // 以下由 SDK 实现时填充
-            // $0.deviceID = DeviceManager.shared.deviceId
-            // $0.userID = extractUserID(from: token)
-            // $0.vendor = detectPhoneVendor()
-            // $0.devicePubkey = try await SecureEnclave.shared.readPublicKey()
-            $0.traceID = UUID().uuidString
-        }
-
-        let resp = try await keyShare.acceptShare(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
-        return resp
+    func acceptShare(shareCode: String) async throws -> YDKKey {
+        let body: [String: String] = [
+            "shareCode": shareCode,
+            "traceId": UUID().uuidString,
+        ]
+        return try await request(method: "POST", path: "/shares/accept", body: body)
     }
 
     /// 取消分享
     func cancelShare(shareId: String) async throws {
-        let req = CancelShareRequest.with {
-            $0.shareID = shareId
-            $0.traceID = UUID().uuidString
-        }
-        let resp = try await keyShare.cancelShare(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
+        let _: EmptyResponse? = try await request(method: "DELETE", path: "/shares/\(shareId)")
     }
 
     /// 查询分享记录
-    func getShare(shareId: String) async throws -> GetShareResponse {
-        let req = GetShareRequest.with { $0.shareID = shareId }
-        let resp = try await keyShare.getShare(req)
-        if !resp.errorCode.isEmpty {
-            throw YDKError.hubError(resp.errorCode, "")
-        }
-        return resp
+    func getShare(shareId: String) async throws -> YDKShare {
+        try await request(method: "GET", path: "/shares/\(shareId)")
     }
 }

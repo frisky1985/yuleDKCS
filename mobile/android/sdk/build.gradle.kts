@@ -1,7 +1,6 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.jvm")
-    id("com.google.protobuf")
 }
 
 android {
@@ -19,36 +18,18 @@ android {
 }
 
 dependencies {
-    // gRPC
-    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
-    implementation("io.grpc:grpc-okhttp:1.66.0")
-    implementation("io.grpc:grpc-protobuf-lite:1.66.0")
-    implementation("com.google.protobuf:protobuf-kotlin-lite:4.29.3")
+    // HTTP 客户端
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // SSE 支持
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0")
+    // JSON 序列化
+    implementation("com.google.code.gson:gson:2.11.0")
+    // 协程
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // Test
+    // 测试
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("io.mockk:mockk:1.13.13")
     testImplementation("junit:junit:4.13.2")
-}
-
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:4.29.3"
-    }
-    plugins {
-        create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.66.0"
-        }
-        create("grpckt") {
-            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.4.1"
-        }
-    }
-    generateProtoTasks {
-        all().configureEach {
-            plugins {
-                create("grpc") {}
-                create("grpckt") {}
-            }
-        }
-    }
 }
