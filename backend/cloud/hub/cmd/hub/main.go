@@ -22,13 +22,27 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/store"
 )
 
 func main() {
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 
-	grpcSrv, gw := setupHubGRPCServer(logger)
+	// ── 持久化存储 (PostgreSQL) ──
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		logger.Fatal("DATABASE_URL must be set — refusing to start without persistence")
+	}
+
+	ctx := context.Background()
+	pgStore, err := store.NewPostgresStore(ctx, dsn)
+	if err != nil {
+		logger.Fatal("failed to init postgres store", zap.Error(err))
+	}
+	defer pgStore.Close()
+
+	grpcSrv, gw := setupHubGRPCServerWithStores(logger, pgStore, pgStore)
 
 	// ── Start ──
 	lis, err := net.Listen("tcp", ":9090")
@@ -63,7 +77,18 @@ func main() {
 
 // setupHubGRPCServer creates and configures the gRPC server with all adapters and services.
 // Extracted for testability — returns the gRPC server and REST gateway.
+// Uses in-memory stores (no persistence).
 func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway) {
+	return setupHubGRPCServerWithStores(logger, nil, nil)
+}
+
+// setupHubGRPCServerWithStores 与 setupHubGRPCServer 相同，但注入持久化存储。
+// keyStore / mailboxStore 为 nil 时使用内存实现（测试默认路径）。
+func setupHubGRPCServerWithStores(
+	logger *zap.Logger,
+	keyStore service.KeyStore,
+	mailboxStore relay.MailboxStore,
+) (*grpc.Server, *gateway.RESTGateway) {
 	// ── gRPC Server ──
 	kaParams := keepalive.ServerParameters{
 		MaxConnectionIdle:     5 * time.Minute,
@@ -84,6 +109,12 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 
 	// CCC Adapter + Mailbox middleware
 	mailboxCtrl := relay.NewMailboxController(logger)
+	if mailboxStore != nil {
+		mailboxCtrl = mailboxCtrl.WithStore(mailboxStore)
+		logger.Info("mailbox store: postgres")
+	} else {
+		logger.Info("mailbox store: in-memory (dev/test)")
+	}
 	mailboxBridge := &mailboxCreatorBridge{ctrl: mailboxCtrl}
 
 	cccApple := adapter.NewCCCAdapter("apple", logger).WithMailboxCreator(mailboxBridge)
@@ -102,6 +133,12 @@ func setupHubGRPCServer(logger *zap.Logger) (*grpc.Server, *gateway.RESTGateway)
 
 	// ── Services ──
 	keySvc := service.NewKeyManagementService(adapterRegistry, logger)
+	if keyStore != nil {
+		keySvc = keySvc.WithKeyStore(keyStore)
+		logger.Info("key store: postgres")
+	} else {
+		logger.Info("key store: in-memory (dev/test)")
+	}
 	shareSvc := service.NewKeyShareService(adapterRegistry, logger)
 	vehicleSvc := service.NewVehicleControlService(logger)
 	transportSvc := service.NewHubTransportService(adapterRegistry, logger)

@@ -1,23 +1,22 @@
-version: '3.8'
+# yuleDKCS 本地开发依赖
+# 用法: docker compose up -d postgres
 services:
-  hub:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      - GIN_MODE=release
-      - DB_DSN=postgres://user:pass@db:5432/yuledkcs?sslmode=disable
-    depends_on:
-      - db
-  db:
+  postgres:
     image: postgres:16-alpine
+    container_name: yuledkcs-postgres
     environment:
+      POSTGRES_USER: yuledkcs
+      POSTGRES_PASSWORD: yuledkcs
       POSTGRES_DB: yuledkcs
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yuledkcs"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   pgdata:

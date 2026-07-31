@@ -5,16 +5,18 @@
 
 ---
 
-## 当前阶段：Phase 2b — BLEProtocol (BLE/UWB 通信栈)
+## 当前阶段：P0 — PostgreSQL 持久化存储
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| 2b-1 | Phase 2b 计划文档 | ✅ | docs/sdk/PHASE2B-BLEPROTOCOL-PLAN.md |
-| 2b-2 | BLE 协议抽象层 (CCC/ICCOA/ICCE adapter) | ✅ | 指令编解码 + 响应解析 |
-| 2b-3 | iOS YDKBLEManager (CoreBluetooth 扫描+连接+指令) | ✅ | URLSession 风格 async |
-| 2b-4 | Android BleManager (android.bluetooth) | ✅ | Coroutine + ScanCallback |
-| 2b-5 | UWB 测距接口 (FiRa 抽象 + Mock) | ✅ | 真实集成需硬件 |
-| 2b-6 | NFC 备用解锁接口 | ✅ | 接口 + 说明 |
+| P0-1 | pgx + golang-migrate 依赖 | ✅ | `jackc/pgx/v5` + `golang-migrate/v4` |
+| P0-2 | docker-compose.yml (postgres:16) | ✅ | 本地开发一键起 |
+| P0-3 | schema 迁移 (keys + mailboxes) | ✅ | `internal/store/migrations/0001_init` |
+| P0-4 | PostgresStore (KeyStore + MailboxStore) | ✅ | 双接口实现 |
+| P0-5 | KeyManagementService 接入 | ✅ | `WithKeyStore()` 注入 |
+| P0-6 | MailboxController 重构 (store 接口) | ✅ | 内存实现保留为默认 |
+| P0-7 | main.go 接入 (DATABASE_URL 必需) | ✅ | 未设置拒绝启动 |
+| P0-8 | 存储层集成测试 | ✅ | 4 个测试连真 PG |
 
 
 ## Phase A（已完成）
@@ -31,6 +33,7 @@
 - ✅ Phase 2d: MailboxClient (CCC 分享 HTTP 客户端 + Backend REST 路由)
 - ✅ 量产 P1: 多厂商 E2E 测试 + PICS/PIXIT 认证文档 + 依赖检查
 - ✅ Phase 2b: BLEProtocol (协议层 + iOS/Android BLE + UWB/NFC 抽象)
+- ✅ P0: PostgreSQL 持久化存储（KeyStore + MailboxStore 落盘）
 
 ---
 

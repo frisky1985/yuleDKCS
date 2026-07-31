@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -76,7 +77,7 @@ type Mailbox struct {
 
 type MailboxController struct {
 	mu              sync.RWMutex
-	mailboxes       map[string]*Mailbox
+	store           MailboxStore
 	logger          *zap.Logger
 	now             func() time.Time // 可注入，方便测试
 	notifier        PushNotifier     // 推送通知接口，默认 NoopPusher
@@ -85,11 +86,18 @@ type MailboxController struct {
 
 func NewMailboxController(logger *zap.Logger) *MailboxController {
 	return &MailboxController{
-		mailboxes: make(map[string]*Mailbox),
-		logger:    logger.With(zap.String("component", "mailbox-controller")),
-		now:       time.Now,
-		notifier:  &NoopPusher{},
+		store:   NewInMemoryMailboxStore(),
+		logger:  logger.With(zap.String("component", "mailbox-controller")),
+		now:     time.Now,
+		notifier: &NoopPusher{},
 	}
+}
+
+// WithStore 注入持久化存储实现（默认内存版）。
+// 量产环境应注入 PostgresMailboxStore。
+func (c *MailboxController) WithStore(s MailboxStore) *MailboxController {
+	c.store = s
+	return c
 }
 
 // WithNotifier 注入推送通知实现
@@ -149,7 +157,7 @@ func (c *MailboxController) Create(ctx context.Context, req *pb.CreateMailboxReq
 		DeviceAttestation: req.DeviceAttestation,
 	}
 
-	c.mailboxes[id] = mb
+	c.store.Create(ctx, mb)
 
 	c.logger.Info("mailbox created",
 		zap.String("mailbox_id", id),
@@ -165,9 +173,12 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mb, ok := c.mailboxes[req.MailboxId]
-	if !ok {
-		return nil, fmt.Errorf("mailbox %s not found", req.MailboxId)
+	mb, err := c.store.Get(ctx, req.MailboxId)
+	if err != nil {
+		if errors.Is(err, ErrMailboxNotFound) {
+			return nil, fmt.Errorf("mailbox %s not found", req.MailboxId)
+		}
+		return nil, err
 	}
 
 	if err := c.checkExpired(mb); err != nil {
@@ -276,6 +287,15 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 		}
 	}
 
+	// 持久化更新
+	if err := c.store.Update(ctx, mb); err != nil {
+		c.logger.Error("mailbox update persist failed",
+			zap.String("mailbox_id", mb.ID),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
 	return toProtoMailbox(mb), nil
 }
 
@@ -285,9 +305,12 @@ func (c *MailboxController) Delete(ctx context.Context, req *pb.DeleteMailboxReq
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mb, ok := c.mailboxes[req.MailboxId]
-	if !ok {
-		return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+	mb, err := c.store.Get(ctx, req.MailboxId)
+	if err != nil {
+		if errors.Is(err, ErrMailboxNotFound) {
+			return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+		}
+		return nil, err
 	}
 
 	// 只允许在终态删除
@@ -302,7 +325,13 @@ func (c *MailboxController) Delete(ctx context.Context, req *pb.DeleteMailboxReq
 	mb.Version++
 
 	// 延迟删除（保留一段时间用于审计）
-	delete(c.mailboxes, req.MailboxId)
+	if err := c.store.Delete(ctx, req.MailboxId); err != nil {
+		c.logger.Error("mailbox delete persist failed",
+			zap.String("mailbox_id", req.MailboxId),
+			zap.Error(err),
+		)
+		return nil, err
+	}
 
 	c.logger.Info("mailbox deleted",
 		zap.String("mailbox_id", req.MailboxId),
@@ -324,9 +353,12 @@ func (c *MailboxController) ReadDisplayInfo(ctx context.Context, mailboxID strin
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	mb, ok := c.mailboxes[mailboxID]
-	if !ok {
-		return nil, 0, fmt.Errorf("mailbox %s not found", mailboxID)
+	mb, err := c.store.Get(ctx, mailboxID)
+	if err != nil {
+		if errors.Is(err, ErrMailboxNotFound) {
+			return nil, 0, fmt.Errorf("mailbox %s not found", mailboxID)
+		}
+		return nil, 0, err
 	}
 
 	if err := c.checkExpired(mb); err != nil {
@@ -342,9 +374,12 @@ func (c *MailboxController) ReadSecureContent(ctx context.Context, mailboxID str
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	mb, ok := c.mailboxes[mailboxID]
-	if !ok {
-		return nil, 0, fmt.Errorf(ErrCodeMailboxNotFound)
+	mb, err := c.store.Get(ctx, mailboxID)
+	if err != nil {
+		if errors.Is(err, ErrMailboxNotFound) {
+			return nil, 0, fmt.Errorf(ErrCodeMailboxNotFound)
+		}
+		return nil, 0, err
 	}
 
 	if err := c.checkExpired(mb); err != nil {
@@ -360,9 +395,12 @@ func (c *MailboxController) Relinquish(ctx context.Context, req *pb.RelinquishMa
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	mb, ok := c.mailboxes[req.MailboxId]
-	if !ok {
-		return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+	mb, err := c.store.Get(ctx, req.MailboxId)
+	if err != nil {
+		if errors.Is(err, ErrMailboxNotFound) {
+			return nil, fmt.Errorf(ErrCodeMailboxNotFound)
+		}
+		return nil, err
 	}
 
 	if err := c.checkExpired(mb); err != nil {
@@ -378,16 +416,26 @@ func (c *MailboxController) Relinquish(ctx context.Context, req *pb.RelinquishMa
 	mb.Version++
 	mb.UpdatedAt = c.now()
 
+	// 持久化更新
+	if err := c.store.Update(ctx, mb); err != nil {
+		c.logger.Error("mailbox relinquish persist failed",
+			zap.String("mailbox_id", mb.ID),
+			zap.Error(err),
+		)
+		return nil, err
+	}
+
 	return toProtoMailbox(mb), nil
 }
 
 // ─── 内部方法 ────────────────────────────────────────────────
 
 func (c *MailboxController) Get(mailboxID string) (*Mailbox, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	mb, ok := c.mailboxes[mailboxID]
-	return mb, ok
+	mb, err := c.store.Get(context.Background(), mailboxID)
+	if err != nil {
+		return nil, false
+	}
+	return mb, true
 }
 
 // getSenderAdapter 获取发送方对应的厂商适配器
@@ -424,13 +472,24 @@ func (c *MailboxController) ExpireScan() int {
 	defer c.mu.Unlock()
 
 	now := c.now()
+	expiredList, err := c.store.ListExpired(context.Background(), now)
+	if err != nil {
+		c.logger.Error("expire scan list failed", zap.Error(err))
+		return 0
+	}
+
 	expired := 0
-	for id, mb := range c.mailboxes {
-		if now.After(mb.ExpiresAt) && mb.Status != StatusExpired {
-			mb.Status = StatusExpired
-			expired++
-			c.logger.Info("mailbox expired", zap.String("mailbox_id", id))
+	for _, mb := range expiredList {
+		mb.Status = StatusExpired
+		if err := c.store.Update(context.Background(), mb); err != nil {
+			c.logger.Error("expire scan persist failed",
+				zap.String("mailbox_id", mb.ID),
+				zap.Error(err),
+			)
+			continue
 		}
+		expired++
+		c.logger.Info("mailbox expired", zap.String("mailbox_id", mb.ID))
 	}
 	return expired
 }
