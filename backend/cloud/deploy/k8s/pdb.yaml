@@ -30,13 +30,13 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: mysql-pdb
+  name: postgres-pdb
   namespace: dkcs-prod
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app: mysql
+      app: postgres
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

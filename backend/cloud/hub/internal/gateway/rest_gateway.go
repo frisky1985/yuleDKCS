@@ -137,6 +137,8 @@ type RESTGateway struct {
 	deviceService *service.DeviceService
 	tokenSvc     *token.Service
 	dkServer     service.DKServer
+	tlsCertFile  string
+	tlsKeyFile   string
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
@@ -158,6 +160,14 @@ func (g *RESTGateway) WithJWTSecret(secret string) *RESTGateway {
 // WithGRPCConn sets a gRPC client connection for forwarding to HUB services
 func (g *RESTGateway) WithGRPCConn(conn *grpc.ClientConn) *RESTGateway {
 	g.grpcConn = conn
+	return g
+}
+
+// WithTLS configures TLS certificate/key for HTTPS serving.
+// If not set, the gateway serves plain HTTP (local development only).
+func (g *RESTGateway) WithTLS(certFile, keyFile string) *RESTGateway {
+	g.tlsCertFile = certFile
+	g.tlsKeyFile = keyFile
 	return g
 }
 
@@ -288,6 +298,15 @@ func (g *RESTGateway) Serve(addr string) error {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	// TLS 支持: 配置了证书则 HTTPS，否则 HTTP（本地开发）
+	if g.tlsCertFile != "" && g.tlsKeyFile != "" {
+		g.logger.Info("REST gateway serving HTTPS",
+			zap.String("cert", g.tlsCertFile),
+			zap.String("addr", addr),
+		)
+		return g.httpSrv.ListenAndServeTLS(g.tlsCertFile, g.tlsKeyFile)
+	}
+	g.logger.Info("REST gateway serving HTTP (no TLS configured)", zap.String("addr", addr))
 	return g.httpSrv.ListenAndServe()
 }
 

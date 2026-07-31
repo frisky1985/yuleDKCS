@@ -42,11 +42,20 @@ spec:
               name: metrics
               protocol: TCP
           env:
-            - name: DB_PASSWORD
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: dkcs-secrets
-                  key: mysql-password
+                  key: database-url
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dkcs-secrets
+                  key: jwt-secret
+            - name: TLS_CERT_FILE
+              value: "/etc/hub-tls/tls.crt"
+            - name: TLS_KEY_FILE
+              value: "/etc/hub-tls/tls.key"
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -55,6 +64,10 @@ spec:
           envFrom:
             - configMapRef:
                 name: hub-config
+          volumeMounts:
+            - name: hub-tls
+              mountPath: /etc/hub-tls
+              readOnly: true
           resources:
             requests:
               cpu: "500m"
@@ -63,15 +76,17 @@ spec:
               cpu: "1000m"
               memory: "1Gi"
           livenessProbe:
-            grpc:
-              port: 9090
+            httpGet:
+              path: /health
+              port: 8080
             initialDelaySeconds: 15
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
-            grpc:
-              port: 9090
+            httpGet:
+              path: /health
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
@@ -82,3 +97,8 @@ spec:
             initialDelaySeconds: 3
             periodSeconds: 5
             failureThreshold: 30
+      volumes:
+        - name: hub-tls
+          secret:
+            secretName: hub-tls
+            optional: true

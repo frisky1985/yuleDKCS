@@ -44,6 +44,22 @@ func main() {
 
 	grpcSrv, gw := setupHubGRPCServerWithStores(logger, pgStore, pgStore)
 
+	// ── TLS (可选) ──
+	// K8s 部署中 hub-tls secret 为 optional: 证书未就绪时回退 HTTP 并打 WARN
+	// （cert-manager/托管证书签发后自动启用 HTTPS，无需改 manifest）
+	if cert := os.Getenv("TLS_CERT_FILE"); cert != "" {
+		key := os.Getenv("TLS_KEY_FILE")
+		if key == "" {
+			logger.Fatal("TLS_CERT_FILE set but TLS_KEY_FILE missing")
+		}
+		if _, err := os.Stat(cert); err != nil {
+			logger.Warn("TLS_CERT_FILE set but cert file not found — serving HTTP until cert is provisioned",
+				zap.String("cert", cert), zap.Error(err))
+		} else {
+			gw.WithTLS(cert, key)
+		}
+	}
+
 	// ── Start ──
 	lis, err := net.Listen("tcp", ":9090")
 	if err != nil {

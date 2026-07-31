@@ -1,29 +1,20 @@
 version: '3.8'
 
 services:
-  # ── MySQL ──
-  mysql:
-    image: mysql:8.0
-    container_name: dk-mysql
+  # ── PostgreSQL 16 (Hub + DKCS 共享) ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: dk-postgres
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
-      MYSQL_DATABASE: digital_key
-      MYSQL_USER: dk_service
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      POSTGRES_USER: yuledkcs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yuledkcs}
+      POSTGRES_DB: yuledkcs
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ../db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    command: >
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --innodb-buffer-pool-size=1G
-      --innodb-log-file-size=256M
-      --max-connections=500
-      --wait-timeout=28800
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U yuledkcs"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -89,7 +80,7 @@ services:
       dockerfile: Dockerfile
     container_name: dk-hub
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -99,11 +90,8 @@ services:
       - "8080:8080"   # REST API
       - "9090:9090"   # gRPC
     environment:
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=dk_service
-      - DB_PASSWORD=${MYSQL_PASSWORD:?}
-      - DB_NAME=digital_key
+      # Hub 必需: 持久化连接串 (未设置拒绝启动; 表结构由内置迁移自动创建)
+      - DATABASE_URL=postgres://yuledkcs:${POSTGRES_PASSWORD:-yuledkcs}@postgres:5432/yuledkcs?sslmode=disable
       - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:?}
       - KAFKA_BROKERS=kafka:9092
@@ -124,16 +112,17 @@ services:
     container_name: dk-dkcs
     depends_on:
       - hub
-      - mysql
+      - postgres
     ports:
       - "9091:9091"   # gRPC (车厂内网)
     environment:
       - HUB_ADDR=hub:9090
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=dk_service
-      - DB_PASSWORD=${MYSQL_PASSWORD:?}
-      - DB_NAME=digital_key
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=yuledkcs
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-yuledkcs}
+      - DB_NAME=yuledkcs
+      - DB_SSL_MODE=disable
       - MQTT_BROKER=tcp://emqx:1883
       - LOG_LEVEL=info
       - LOG_FORMAT=json
@@ -161,7 +150,7 @@ services:
       - dk-net
 
 volumes:
-  mysql_data:
+  pgdata:
   redis_data:
   zk_data:
   kafka_data:

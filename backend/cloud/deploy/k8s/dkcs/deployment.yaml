@@ -40,7 +40,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: dkcs-secrets
-                  key: mysql-password
+                  key: postgres-password
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:

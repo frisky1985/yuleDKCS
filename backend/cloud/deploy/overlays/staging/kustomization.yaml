@@ -1,0 +1,58 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: dkcs-staging
+
+# ── Staging overlay: 基于 base (k8s/)，切 namespace + 缩容 ──
+# namespace transformer 会把 base 的 dkcs-prod Namespace 重命名为 dkcs-staging
+namespace: dkcs-staging
+
+resources:
+  - ../../k8s
+
+patches:
+  # 修正重命名后的 Namespace label（patches 先于 transformer 执行，需 target 原名 dkcs-prod）
+  - target:
+      kind: Namespace
+      name: dkcs-prod
+    patch: |-
+      - op: replace
+        path: /metadata/labels/environment
+        value: staging
+  - target:
+      kind: Deployment
+      name: hub|dkcs
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "200m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: hub|dkcs
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+  - target:
+      kind: StatefulSet
+      name: redis|kafka|zookeeper
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

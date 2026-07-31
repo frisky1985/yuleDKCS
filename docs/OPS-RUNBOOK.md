@@ -213,6 +213,9 @@ go run ./backend/cloud/hub/cmd/yuledkcs \
 # 部署全栈
 kubectl apply -k backend/cloud/deploy/k8s/
 
+# 部署 staging 环境（base + overlays/staging，namespace 为 dkcs-staging）
+kubectl apply -k backend/cloud/deploy/overlays/staging/
+
 # 仅部署服务层（假设中间件已部署）
 kubectl apply -k backend/cloud/deploy/k8s/ --selector='app.kubernetes.io/component in (gateway,control-plane)'
 

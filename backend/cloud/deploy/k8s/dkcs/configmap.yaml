@@ -7,10 +7,10 @@ metadata:
   labels:
     app: dkcs
 data:
-  DB_HOST: "mysql"
-  DB_PORT: "3306"
-  DB_USER: "dk_service"
-  DB_NAME: "digital_key"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_USER: "yuledkcs"
+  DB_NAME: "yuledkcs"
   DB_SSL_MODE: "disable"
   DB_MAX_OPEN_CONNS: "100"
   DB_MAX_IDLE_CONNS: "10"

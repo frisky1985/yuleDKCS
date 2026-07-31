@@ -7,10 +7,10 @@ metadata:
   labels:
     app: hub
 data:
-  DB_HOST: "mysql"
-  DB_PORT: "3306"
-  DB_USER: "dk_service"
-  DB_NAME: "digital_key"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_USER: "yuledkcs"
+  DB_NAME: "yuledkcs"
   REDIS_ADDR: "redis:6379"
   KAFKA_BROKERS: "kafka:9092"
   LOG_LEVEL: "info"

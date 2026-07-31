@@ -28,11 +28,11 @@ scrape_configs:
           service: dkcs
           environment: 'development'
 
-  # ── MySQL Exporter ──
-  - job_name: 'mysql'
+  # ── Postgres Exporter ──
+  - job_name: 'postgres'
     static_configs:
       - targets:
-          - 'mysql-exporter:9104'
+          - 'postgres-exporter:9187'
 
   # ── Redis Exporter ──
   - job_name: 'redis'

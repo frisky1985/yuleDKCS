@@ -85,11 +85,11 @@ data:
           - targets:
               - 'kafka-exporter:9308'
 
-      # ── MySQL Exporter ──
-      - job_name: 'mysql-exporter'
+      # ── Postgres Exporter ──
+      - job_name: 'postgres-exporter'
         static_configs:
           - targets:
-              - 'mysql-exporter:9104'
+              - 'postgres-exporter:9187'
 
       # ── Redis Exporter ──
       - job_name: 'redis-exporter'

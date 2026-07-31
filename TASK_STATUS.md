@@ -1,19 +1,17 @@
 # TASK_STATUS — 量产就绪待办清单
 
 > 关键量产代办事项，持续更新。
-> 当前阶段：Relay Server Phase B — 分享集成
+> 当前阶段：P1 — TLS + K8s 部署编排（已完成，待证书签发）
 
 ---
 
-## 当前阶段：P0 — SDK DeviceManager (设备信息填充)
+## 当前阶段：P1-2 — 用户体系对接方案
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| P0-9 | iOS DeviceManager (SE 公钥 + vendor/protocol) | ✅ | Secure Enclave ECC P-256 |
-| P0-10 | Android DeviceManager (Keystore + vendor/protocol) | ✅ | AndroidKeyStore + Build 检测 |
-| P0-11 | iOS bindKey/acceptShare 自动填充 | ✅ | device_id/pubkey/vendor/protocol/keyType |
-| P0-12 | Android bindKey/acceptShare 自动填充 | ✅ | 同上 |
+| P1-2 | 用户体系对接（车厂后端鉴权） | 📋 | 需车厂后端配合，出方案对比 |
 
+---
 
 ## Phase A（已完成）
 
@@ -30,6 +28,8 @@
 - ✅ 量产 P1: 多厂商 E2E 测试 + PICS/PIXIT 认证文档 + 依赖检查
 - ✅ Phase 2b: BLEProtocol (协议层 + iOS/Android BLE + UWB/NFC 抽象)
 - ✅ P0: PostgreSQL 持久化存储（KeyStore + MailboxStore 落盘）
+- ✅ P0: SDK DeviceManager（iOS SE / Android Keystore + vendor/protocol 检测 + bindKey/acceptShare 自动填充）
+- ✅ P1-1: TLS + K8s 部署编排（Gateway HTTPS + postgres StatefulSet + kustomize base/overlay 拆分）
 
 ---
 
@@ -43,6 +43,7 @@
 |:-:|:-----|:----:|:----:|
 | 🔴 | **Push 通知服务集成**（FCM/APNs）| ✅ **已完成** | 接口 + Mock/测试 + FCM/APNs 实现，环境变量配置 |
 | 🔴 | Apple 开发者证书签名（macOS 桌面端）| 📋 | 需 `MAC_CSC_LINK` + `MAC_CSC_KEY_PASSWORD` |
+| 🔴 | **TLS 证书签发** | 🔜 | K8s 已支持（hub-tls secret，optional），生产需 cert-manager 或托管证书；证书未就绪时服务回退 HTTP 并打 WARN |
 
 ### P1 — 重要功能
 
@@ -51,6 +52,8 @@
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
 | 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
+| 🟠 | **dkcs 服务 PG schema 迁移** | 📋 | dkcs 用 lib/pq 但无自带迁移；旧 `db/schema.sql` 是 MySQL 方言，需转 PG 方言并纳入迁移 |
+| 🟠 | **Helm Chart 同步 postgres** | 📋 | `helm/dkcs` 仍引用 mysql-statefulset + mysql-password；现行部署走 kustomize，helm 需跟进或标记废弃 |
 
 ### P2 — 增强功能
 
@@ -59,6 +62,7 @@
 | 🟡 | 离线授权回退机制 | 📋 |
 | 🟡 | 插件 SDK 文档（面向第三方开发者）| 📋 |
 | 🟡 | 性能测试（大配置加载/保存）| 📋 |
+| 🟡 | postgres-exporter 部署 | 📋 | Prometheus 采集已指向 `postgres-exporter:9187`，需部署 exporter（可用 postgres_exporter sidecar 或独立 Deployment） |
 
 ---
 
