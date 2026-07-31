@@ -68,7 +68,7 @@ func (g *RESTGateway) createMailbox(c *gin.Context) {
 
 	resp, err := g.relayClient().CreateMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "createMailbox", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (g *RESTGateway) readMailboxDisplay(c *gin.Context) {
 
 	resp, err := g.relayClient().ReadDisplayInformationFromMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "readMailboxDisplay", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (g *RESTGateway) readMailboxContent(c *gin.Context) {
 
 	resp, err := g.relayClient().ReadSecureContentFromMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "readMailboxContent", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (g *RESTGateway) updateMailbox(c *gin.Context) {
 
 	resp, err := g.relayClient().UpdateMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "updateMailbox", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (g *RESTGateway) deleteMailbox(c *gin.Context) {
 
 	resp, err := g.relayClient().DeleteMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "deleteMailbox", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 
@@ -248,7 +248,7 @@ func (g *RESTGateway) relinquishMailbox(c *gin.Context) {
 
 	resp, err := g.relayClient().RelinquishMailbox(c.Request.Context(), grpcReq)
 	if err != nil {
-		g.handleGRPCError(c, "relinquishMailbox", err)
+		g.handleGRPCError(c, err)
 		return
 	}
 

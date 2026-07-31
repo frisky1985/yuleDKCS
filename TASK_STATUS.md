@@ -5,13 +5,13 @@
 
 ---
 
-## 当前阶段：Phase 2d — MailboxClient (CCC 分享)
+## 当前阶段：量产 P1 — E2E 测试 + 认证文档 + 依赖检查
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
-| 2d-1 | Backend: Mailbox REST 路由 (6 handlers) | ✅ | 公开 API，无 auth |
-| 2d-2 | iOS MailboxClient (URLSession) | ✅ | Sharing URL 解析 + 6 个操作 |
-| 2d-3 | Android MailboxClient (OkHttp) | ✅ | 同上 |
+| P1-1 | E2E-14 跨厂商 Mailbox 分享测试 | ✅ | Apple→Xiaomi + Samsung→Huawei |
+| P1-2 | PICS/PIXIT 认证文档 | ✅ | 覆盖 CCC §11.3.4 |
+| P1-3 | Go 依赖检查 | ✅ | `go mod tidy` + `go vet` 通过 |
 
 
 ## Phase A（已完成）
@@ -26,6 +26,7 @@
 - ✅ Phase 2a: HubClient (HTTP/JSON → REST Gateway)
 - ✅ Phase 2c: KeyManager (本地缓存 + 同步 + Push触发)
 - ✅ Phase 2d: MailboxClient (CCC 分享 HTTP 客户端 + Backend REST 路由)
+- ✅ 量产 P1: 多厂商 E2E 测试 + PICS/PIXIT 认证文档 + 依赖检查
 
 ---
 
@@ -44,9 +45,9 @@
 
 | # | 事项 | 状态 | 计划 |
 |:-:|:-----|:----:|:----:|
-| 🟠 | 多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）| 📋 | 含 Relay Mailbox 跨厂商流转 |
-| 🟠 | 认证文档更新（PICS/PIXIT — Relay Server 部分）| 📋 | 覆盖 CCC §11.3.4 |
-| 🟠 | 依赖安全漏洞清零 | 📋 | 持续跟踪 |
+| 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
+| 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
+| 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
 
 ### P2 — 增强功能
 
