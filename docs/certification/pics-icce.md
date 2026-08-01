@@ -87,6 +87,33 @@
 | **Key Slots** | 0x00 (Root), 0x01 (Master), 0x02 (Device), 0x10+ (Session) |
 | **I2C Address** | 0x48 |
 
+### 3.5 ICCE control_command 帧（2b-F 增补）
+
+> 字节级裁决以 `docs/certification/iccoa-icce-ble-command-frames.md` §5 为准（依据 `module_design.md` §3.1.4:275-291）。
+
+```
+[command_type(1)][target(1)][user_id BE u32(4)][hmac(32)] = 38 字节
+```
+
+| Field | Bytes | Supported | Rule |
+|:------|:-----:|:---------:|:-----|
+| command_type | 0 | ✅ | 0x01 UNLOCK / 0x02 LOCK / 0x03 ENGINE_ON / 0x04 ENGINE_OFF / 0x05 TRUNK / 0x06 QUERY_STATUS |
+| target | 1 | ✅ | 目标设备（0x00 = 车辆主体） |
+| user_id | 2-5 | ✅ | **大端 BE u32** |
+| hmac | 6-37 | ✅ | HMAC-SHA256(会话密钥, 命令体前 6 字节) — **覆盖范围待真机确认（R-3）** |
+
+> ⚠️ **通用枚举映射注意**: ICCE UNLOCK→0x01 / LOCK→0x02（与 ICCOA 方向相反, 适配器须区分, 防锁/解颠倒）。
+
+### 3.6 ICCE 会话安全（2b-F 增补）
+
+| 机制 | 状态 | 说明 |
+|:-----|:----:|:-----|
+| 配对 | ✅ | OOB（NFC/QR 传公钥）+ LE SC 加密（technical_specification.md §3.3.1） |
+| 认证 | ✅ | 挑战-响应 → ECDH 派生 session_key[32]（security_auth.c:177-179） |
+| 命令完整性 | ✅ | hmac[32] = HMAC-SHA256（crypto_engine.c, RFC 2104） |
+| 会话加密 | ✅ | **SM4-CBC + PKCS#7**（KEY_TYPE_SM4, security_auth.h:54）; 密钥 = session_key 前 16 B; **IV 协商机制待确认（R-4, 当前未协商全零仅调试）** |
+| SM4 标准向量 | ✅ | GM/T 0002-2012 附录 A: 密钥/明文 `0123...3210` → 密文 `681EDF34D206965E86B3E94F536E4246` |
+
 ---
 
 ## 4. Key Types and Lifecycle
@@ -217,7 +244,27 @@
 
 ---
 
-## 9. Conformance Summary
+## 9. SDK 移动端补充（v1.1 增补）
+
+> 本 PICS 主体为车端嵌入式声明；以下补充移动端 SDK（iOS/Android）在 ICCE 认证中涉及的平台能力。
+> 详细测试项见 `docs/certification/sdk-certification-checklist.md` §2.3。
+
+| 功能面 | iOS | Android | 状态 |
+|:------|:---:|:-------:|:----:|
+| control_command 38B 帧 | ✅ 帧编解码 | ✅ 帧编解码 | ✅ 代码就位 |
+| 命令完整性 HMAC-SHA256 | ✅ CryptoKit | ✅ javax.crypto | ✅ 代码就位 / ⏳ 覆盖范围真机待验（R-3） |
+| SM4-CBC 会话加密 | ✅ `Sm4.swift`（新增, 同构） | ✅ `Sm4.kt`（预存, 已验证） | ✅ 代码就位（标准向量验证）/ ⏳ IV 协商待确认（R-4） |
+| NFC 离线解锁（断电场景） | ✅ CoreNFC 桩（12/12） | ✅ NfcAdapter/IsoDep（33/33） | ✅ 代码就位 / ⏳ 真机待验 |
+| UWB 边缘分区（5 分区） | ✅ `YDKNIUWBManager.swift` | ✅ `AndroidUwbManager.kt`（android.uwb API 34+） | ✅ 代码就位 / ⏳ 真机待验 |
+| 后台运行 | ✅ 2b-I iOS（restore） | ✅ 2b-I Android（前台服务） | ✅ 代码就位 / ⏳ 真机待验 |
+| S2S 分享 | —（Hub 侧） | —（Hub 侧） | ✅ E2E 就位（e2e_13 ICCE 6/6 mock 全过）/ 🔴 生产接入待厂商 API |
+| 远程控车（经 Hub） | ✅ HubClient gRPC | ✅ HubClient gRPC | ✅ 代码就位（4.2 E2E 21 断言） |
+
+**待确认项（送测前）**: ① hmac 覆盖范围（当前命令体前 6 字节）; ② SM4 IV 协商机制; ③ ICCE GATT 特征 UUID（Android 注释 0xFEFE vs 参考 0x2A04, 属连接层范围）。
+
+---
+
+## 10. Conformance Summary
 
 | Requirement Category | Count | Implemented | Notes |
 |:--------------------|:-----:|:-----------:|:------|
@@ -231,8 +278,9 @@
 
 ---
 
-## 10. Version History
+## 11. Version History
 
 | Version | Date | Changes | Author |
 |:-------:|:----:|:--------|:------:|
 | v1.0 | 2026-07-30 | Initial ICCE PICS document | Hermes |
+| v1.1 | 2026-08-01 | 增补: control_command 帧定义（§3.5）+ 会话安全机制（§3.6, 2b-F 裁决）+ SDK 移动端补充（§9）+ 待确认项标注（hmac 覆盖/SM4 IV/GATT UUID） | Hermes |

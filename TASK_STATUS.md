@@ -1,11 +1,11 @@
 # TASK_STATUS — 量产就绪待办清单
 
 > 关键量产代办事项，持续更新。
-> 当前阶段：P1 — TLS + K8s 部署编排（已完成，待证书签发）
+> 当前阶段：量产就绪收尾 — Loop C 杂项收尾（审计文档更新 / kustomize+helm 渲染 smoke / TASK_STATUS 整理）已完成；剩余仅外部依赖（TLS 证书签发、Apple 证书签名）
 
 ---
 
-## 当前阶段：P1-2 — 用户体系对接（已完成）+ SDK↔Hub 打通验证（已完成）
+## P1-2 里程碑（已完成）
 
 | # | 任务 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
@@ -36,6 +36,19 @@
 
 ---
 
+## Loop B/C 收尾（已完成, 2026-08-01）
+
+| # | 事项 | 状态 | 备注 |
+|:-:|:-----|:----:|:-----|
+| B-1 | 离线授权回退机制（P2 语义调研 + 双端 OfflineAuthorizer） | ✅ | 见 P2 表格; `docs/sdk/OFFLINE-FALLBACK-DESIGN.md` |
+| B-2 | postgres-exporter 部署（kustomize + helm 同步） | ✅ | 见 P2 表格; `deploy/k8s/README.md` |
+| B-3 | iOS wire 断言补齐（transport 注入缝 + WireShapeContractTests 5 形状） | ✅ | 见 P1 iOS 编译错误项; `swiftc -parse` 通过 |
+| C-1 | TEST-COVERAGE-AUDIT 过时标注更新（第 74 行受限/待补 → Batch B 已补齐 ✅） | ✅ | `docs/sdk/TEST-COVERAGE-AUDIT.md` 表 2.1 + 结论 3 + 清单 + 验证表 |
+| C-2 | kustomize 全量渲染 smoke（base + staging overlay） | ✅ | `kubectl kustomize` 双 exit 0, 各 33 文档 YAML 结构合法（仅 commonLabels deprecation warning） |
+| C-3 | helm 静态校验（18 模板 `{{}}` 平衡 + 119 个 `.Values.*` 引用全覆盖） | ✅ | 2 个 default 保护可选覆盖（fullnameOverride/nameOverride）属 Helm 惯例 |
+
+---
+
 ## 量产就绪待办
 
 > 这些是生产环境上线前必须完成的关键事项。
@@ -52,7 +65,7 @@
 
 | # | 事项 | 状态 | 计划 |
 |:-:|:-----|:----:|:----:|
-| 🟠 | **iOS 模块预存编译错误 4 处** | ✅ **已修复 (Batch A, W3 复验)** | 4.1 审计 4 处已全修（①YDKHubClient+Stream 跨文件访问 ②YDKKeyManager/YDKKeyCache 缺 import YDKHubClient ③internal YDKLogger 引用 ④YDKKeyManager+Sync 跨文件 private）; HEAD (c18e5fb) `swift build` 全绿复验通过; W3 补 tail: YDKHubClient 最小 transport 注入缝 + ListKeys/GetKey/UnbindKey/CancelShare wire 断言测试（typecheck 绿）。⚠️ 注意: W1 未提交的离线授权代码（YDKKeyManager.swift:216 嵌套字符串插值语法错）当前使工作区整体构建变红, 归 W1 修复后即全绿 |
+| 🟠 | **iOS 模块预存编译错误 4 处** | ✅ **已修复 (Batch A, W3 复验)** | 4.1 审计 4 处已全修（①YDKHubClient+Stream 跨文件访问 ②YDKKeyManager/YDKKeyCache 缺 import YDKHubClient ③internal YDKLogger 引用 ④YDKKeyManager+Sync 跨文件 private）; Batch A (c18e5fb) `swift build` 全绿; Batch B 补 tail: YDKHubClient transport 注入缝 + WireShapeContractTests（listKeys/getKey/unbindKey/cancelShare 5 形状）+ 修复 W1 遗留嵌套插值语法错（YDKKeyManager.swift:216）; **W3 复验 (2026-08-01): HEAD `swift build` 全绿 + WireShapeContractTests `swiftc -parse` 通过** |
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
 | 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |

@@ -23,12 +23,12 @@
 | 功能面 | iOS 覆盖 | Android 覆盖 | 缺口 | 计划/状态 |
 |:---|:---|:---|:---|:---|
 | BindKey | ✅ `YDKHubClientRequestShapeContractTests`（枚举名/camelCase/base64） | ✅ 同上 + `HubClientTest`（路径/认证/错误映射） | 无 | — |
-| UnbindKey | ❌ | ✅ **本次新增** `HubClientRemoteControlContractTest`（DELETE /keys/{id}, 无 body） | iOS 无 wire 注入缝, 无法断言 | Android 已补; iOS 记录为受限缺口 |
-| ListKeys | ❌ 直接 | ⚠️ 间接（`KeyManagerTest.syncFromHub` 触发 listKeys wire） | 双端无 query 参数形状断言 | 记录, 建议后续补 |
-| GetKey | ❌ 直接 | ❌ 直接 | 双端无单钥查询路径断言 | 记录, 建议后续补 |
+| UnbindKey | ✅ **Batch B 新增** `YDKHubClientWireShapeContractTests`（DELETE /keys/{id}, 无 body/query, 真实 wire 捕获） | ✅ `HubClientRemoteControlContractTest`（DELETE /keys/{id}, 无 body） | 无 | ✅ 已补齐 |
+| ListKeys | ✅ **Batch B 新增** `YDKHubClientWireShapeContractTests`（GET /keys 路径 + query camelCase 透传 vehicleId/status + 无过滤条件不携带 query + Bearer 认证头） | ⚠️ 间接（`KeyManagerTest.syncFromHub` 触发 listKeys wire） | Android 无直接 query 形状断言 | iOS 已补; Android 间接覆盖已记录 |
+| GetKey | ✅ **Batch B 新增** `YDKHubClientWireShapeContractTests`（GET /keys/{keyId} 路径拼接, 无 body/query, 响应解码） | ❌ 直接 | Android 无单钥查询路径断言 | iOS 已补; Android 记录, 建议后续补 |
 | CreateShare | ⚠️ `YDKShareFlowTests` 走 mock 协议层（不验证 HTTP 形状） | ✅ `HubClientRequestShapeContractTest`（camelCase + 默认值） | iOS 无 HTTP 形状 | 记录 |
 | AcceptShare | ✅ `RequestShapeContractTests` | ✅ `RequestShapeContractTest` | 无 | — |
-| CancelShare | ❌ | ✅ **本次新增** `HubClientRemoteControlContractTest`（DELETE /shares/{id}, 无 body） | iOS 无 wire 注入缝 | Android 已补; iOS 记录为受限缺口 |
+| CancelShare | ✅ **Batch B 新增** `YDKHubClientWireShapeContractTests`（DELETE /shares/{id}, 无 body/query, 真实 wire 捕获） | ✅ `HubClientRemoteControlContractTest`（DELETE /shares/{id}, 无 body） | 无 | ✅ 已补齐 |
 | RemoteLock | ✅ **本次新增** `YDKHubClientRemoteControlContractTests`（action=lock, body 形状, 无 source, 路径形状, 响应解码, API 面编译契约） | ✅ **本次新增** `HubClientRemoteControlContractTest`（POST /vehicles/{id}/command wire 断言） | 补齐前双端 ❌ | ✅ 已补齐 |
 | RemoteUnlock | ✅ **本次新增**（action=unlock） | ✅ **本次新增**（wire 断言） | 补齐前双端 ❌ | ✅ 已补齐 |
 | RemoteStart | ✅ **本次新增**（action=engine_on） | ✅ **本次新增**（wire 断言） | 补齐前双端 ❌ | ✅ 已补齐 |
@@ -66,12 +66,13 @@
 | iOS `Tests/YDKKeyManagerTests/YDKKeyManagerPushSyncTests.swift` | Push 错误传播、delegate `syncDidFailWith` 回调、`SyncResult.hasChanges` 纯逻辑、`KeyChange.ChangeType` rawValue、离线 preferCache 语义、缓存跨实例持久化 |
 | Android `sdk/src/test/.../hub/HubClientRemoteControlContractTest.kt` | 远程控车 4 action 的 **wire 断言**（POST 路径/方法/Bearer 头/body 字段集/无 source/keyId 透传）、`ControlCommandResponse` 解码、`unbindKey`/`cancelShare` DELETE 无 body 形状 |
 | Android `sdk/src/test/.../keymanager/KeyManagerPushSyncTest.kt` | `handleKeyStatusPush` 有变更 true / 无变更 false、syncState Success/Failed 状态机、离线预置缓存无网络读取（getLocalKeys/getKey/keys Flow）、diff removed 分支、`SyncResult.hasChanges` 纯逻辑 |
+| iOS `Tests/YDKHubClientTests/YDKHubClientWireShapeContractTests.swift` | **Batch B** ListKeys/GetKey/UnbindKey/CancelShare 真实 wire 捕获（5 测试: listKeys 带 query camelCase 透传 / listKeys 无过滤无 query / getKey 路径拼接 / unbindKey DELETE 无 body / cancelShare DELETE 无 body; 配套 `YDKHubClient` internal `init(config:session:)` transport 注入缝 + `MockURLProtocol` 捕获器） |
 
 ## 4. 审计结论
 
 1. **主要缺口已补齐**: 远程控车（RemoteLock/Unlock/Start/Stop）请求形状、Push 回调入口、KeyManager 离线推断与 removed 分支此前双端零覆盖, 本次全部就位; Android 侧为真实 wire 断言, iOS 侧遵循既有 RequestShape 模式（URLSession 不可注入 → 镜像编码路径验证字节形状）。
 2. **既有覆盖确认充分**: BLE 全链路、Mailbox（Android wire / iOS 编排层）、BindKey/AcceptShare/CreateShare 形状、KeyManager added/updated diff 均无缺口。
-3. **记录为受限/待补的项**（非阻塞, 建议 Phase 5）: iOS 侧 ListKeys/GetKey 路径断言与 unbindKey/cancelShare wire 断言（需先给 YDKHubClient 加 transport 注入缝）; 双端 ListKeys query 参数形状断言。
+3. **受限/待补项已清零（Batch B 补齐）**: 此前记录的 iOS 侧 ListKeys/GetKey 路径断言与 unbindKey/cancelShare wire 断言, 已通过 `YDKHubClientWireShapeContractTests`（5 形状, 真实 wire 捕获）全部补齐 — 配套为 `YDKHubClient` 新增 internal `init(config:session:)` transport 注入缝, 使 iOS 侧从"镜像字节形状验证"升级为与 Android 同级的真实 wire 捕获; 双端 ListKeys query 参数形状断言由 iOS 侧补上（Android 侧仍为间接覆盖, 记录于表 2.1 缺口列, 非阻塞）。
 4. **预存风险记录（本次未动, 符合 AC-41-3 只增不删）**:
    - Android 既有 `HubClientTest.kt` 与 `KeyManagerTest.kt` 的 `@Before` 直接调用 suspend `HubClient.create(...)`（未包 `runBlocking`; 参考文件 `HubClientRequestShapeContractTest` 已注明此坑并正确使用 runBlocking）; 且 `HubClientTest.kt:57` 的 `assertFailsWith` 无 `kotlin.test` import（全测试目录无 kotlin.test 引用）→ 两个文件存在编译期风险, 建议后续轮次修复。
    - iOS 源码预存编译问题（本次验证时暴露, 仓库文件零改动）: ① `YDKHubClient+Stream.swift` 跨文件访问 `private baseURL` / `fileprivate token`; ② `YDKKeyManager.swift`/`YDKKeyCache.swift` 未 `import YDKHubClient` 却使用 `YDKKey`; ③ 二者引用 YDKHubClient 内部类型 `YDKLogger`（internal 不可跨模块）; ④ `YDKKeyManager+Sync.swift` 跨文件访问 `private syncQueue`/`private logger`。以上任一都会使 `swift build`/`swift test` 失败, 建议 Phase 5 统一修复。
@@ -84,4 +85,5 @@
 | iOS 类型检查 | 用真实 SDK 源码构建 `YDKHubClient`/`YDKKeyManager` 模块（`-enable-testing`; `/tmp` 副本仅对上述预存 bug 做最小修复: 补 `import`、`private let`→`let`、`YDKLogger` shim）+ XCTest/UIKit 最小桩, 对两个新增测试文件 `swiftc -typecheck` ✅ 全部通过（真实签名校验） |
 | Android 静态审查 | 新增文件仅引用既有公开 API（HubClient 扩展函数/KeyManager/KeyCache/YDKKey/SyncResult）; `runBlocking` 包裹 suspend create; 未使用 `assertFailsWith`（suspend 调用改 try/catch）; JUnit 断言消息参数序正确 ✅ |
 | Android Python 交叉验证 | 新增断言的纯逻辑（diff 归类 added/updated/removed/unchanged + hasChanges + 远程控车 body 字段集/action 映射/keyId 缺省 ""/无 source + wire JSON 形状）用 Python 独立复算: **33/33 通过** ✅ |
+| Batch B wire 形状 | `YDKHubClientWireShapeContractTests` 5 形状与 Android wire 断言交叉核对一致（路径/方法/无 body/query 形状/认证头）✅; `swiftc -parse` 通过 ✅ |
 | 既有测试 | 零改动（只增不删）✅ |

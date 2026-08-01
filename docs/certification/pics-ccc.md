@@ -25,7 +25,8 @@
 | Feature | Status | Notes |
 |:--------|:------:|:------|
 | CCC Digital Key 3.0 Core Specification | ✅ Supported | Full implementation |
-| CCC GATT Profile (UUID 0xFFD1) | ✅ Supported | 16 GATT characteristics |
+| CCC-TS-101 **v4.0.0** BLE Secure Channel | ✅ Supported | 2b-E 按 v4.0.0 实现（HKDF SystemKeys + SCP03 风格加密）, 见 `ccc-ts101-ble-secure-channel.md` |
+| CCC GATT Profile (UUID 0xFFD1) | ⚠️ R3.0 遗留 | 16 GATT characteristics; **v4.0.0 生产路径改用 0xFFF5 + SPSM/DK Version 特征（L2CAP 传输）** |
 | NFC ISO 14443-4 Activation | ✅ Supported | ST25R501 driver |
 | NFC-F (FeliCa) Support | ✅ Supported | NDEF parsing |
 | ISO/IEC 7816-4 APDU Commands | ✅ Supported | Secure APDU |
@@ -109,6 +110,22 @@
 | **I2C Address** | 0x48 |
 | **Attestation** | ✅ Supported (`ccc_attestation_t`) |
 | **Firmware Hash Verification** | ✅ Supported (SHA-256) |
+
+### 3.6 BLE Secure Channel — CCC-TS-101 v4.0.0（2b-E 增补）
+
+> 依据: `docs/certification/ccc-ts101-ble-secure-channel.md`（唯一依据, 所有字节级声明可追溯到 PDF 页码）
+
+| 参数 | 值 | 出处 |
+|:-----|:---|:-----|
+| **系统密钥派生** | HKDF-SHA256 (RFC 5869), IKM=SK (SPAKE2+ 共享密钥 32 B), Info="SystemKeys", Salt=NULL; 输出 Kenc/Kmac/Krmac/LTSS 各 128 bit（flag true 时 +Kble_intro/Kble_oob_master） | §18.4.9, PDF p.429 |
+| **命令加密** | GPC_SPE_014 §6.2.6 = SCP03 风格: AES-128-CBC (ICV=counter block) + CMAC-AES-128 8 B, MAC chaining | §18.4.12, PDF p.429-430 |
+| **响应加密** | GPC_SPE_014 §6.2.7: counter block `8000...h || counter`; R-MAC 用 Krmac 验证 | §18.4.13, PDF p.430 |
+| **DK 消息帧头** | **4 字节**: MsgHeader(1, Bit[5:0]=Type) + PayloadHeader(1, Message ID) + Length(2, **大端**) | 表 19-19, PDF p.449 |
+| **消息类型** | 0=Framework, 1=SE, 2=UWB Ranging Service, 3=DK Event, 4=Vehicle OEM App, 5=Supplementary, 6=Head Unit Pairing | 表 19-21 |
+| **APDU 封装** | DK_APDU_RQ=0x0B / DK_APDU_RS=0x0C; class byte 00h(SELECT)/80h(非安全)/84h(安全消息) | §19.3.2, PDF p.459-460 |
+| **传输** | L2CAP LE credit-based connection (SPSM 0x0080-0x00FF, UUID_SPSM=`D3B5A130-...`); 链路须先 LE 加密, 未加密 5 s 断开 | §19.2.1.7 / §19.2.2, PDF p.445 |
+| **广告格式** | Legacy LE 1M PHY, ADV_IND; AD1: 0xFFF5 (CCC_DK_UUID); AD2: Service Data 128-bit UUID `5810bbc0-...` + IntentConfiguration + Vehicle Brand ID | §19.2.1.3, PDF p.437-438 |
+| **测试向量** | §19.3 SELECT APDU 示例 wire 级比对（0x010B0013 00A40400...） | PDF p.451 |
 
 ---
 
@@ -240,7 +257,25 @@
 
 ---
 
-## 8. Conformance Summary
+## 8. SDK 移动端补充（v1.1 增补）
+
+> 本 PICS 主体为车端嵌入式声明；以下补充移动端 SDK（iOS/Android）在 CCC 认证中涉及的平台能力。
+> 详细测试项见 `docs/certification/sdk-certification-checklist.md` §2.1。
+
+| 功能面 | iOS | Android | 状态 |
+|:------|:---:|:-------:|:----:|
+| BLE 安全通道（v4.0.0） | ✅ `CCCSecureChannel.swift` + `CCCCommandFrame.swift`（16/16 断言 + wire 级 9/9） | ✅ `CCCSecureChannel.kt` + `CccFrame.kt`（测试就位） | ✅ 代码就位 |
+| 后台连接恢复 | ✅ restore identifier + willRestoreState + 唤醒 options | ✅ 前台服务 + autoConnect | ✅ 代码就位 / ⏳ 真机待验 |
+| NFC OOB 配对 | ✅ `YDKCoreNFCManager.swift`（CoreNFC 桩 12/12 断言） | ✅ `AndroidNfcManager.kt`（NfcAdapter/IsoDep 33/33） | ✅ 代码就位 / ⏳ 真机待验（entitlement/tech-list） |
+| UWB 测距 | ✅ `YDKNIUWBManager.swift`（NearbyInteraction） | ✅ `AndroidUwbManager.kt`（android.uwb API 34+） | ✅ 代码就位 / ⏳ 真机待验（token 交换） |
+| 分享（Relay/Mailbox） | ✅ MailboxClient (gRPC) + ShareFlow（7/7 独立验证） | ✅ MailboxClient + ShareFlow（16 wire 用例） | ✅ 链路就位 / ⏳ 物理机 E2E 单列 |
+| 远程控车（经 Hub） | ✅ HubClient gRPC | ✅ HubClient gRPC | ✅ 代码就位（4.2 E2E 21 断言） |
+
+**分享依赖**: Relay Server 侧认证声明见 `docs/compliance/PICS_PIXIT_RELAY.md`（6 API + 状态机 + Push）。
+
+---
+
+## 9. Conformance Summary
 
 | Requirement Category | Count | Implemented | Notes |
 |:--------------------|:-----:|:-----------:|:------|
@@ -255,8 +290,9 @@
 
 ---
 
-## 9. Version History
+## 10. Version History
 
 | Version | Date | Changes | Author |
 |:-------:|:----:|:--------|:------:|
 | v1.0 | 2026-07-30 | Initial CCC PICS document | Hermes |
+| v1.1 | 2026-08-01 | 增补: CCC-TS-101 v4.0.0 BLE 安全通道（§3.6, 2b-E 裁决）+ SDK 移动端补充（§8）+ GATT 0xFFD1 标注为 R3.0 遗留 | Hermes |
