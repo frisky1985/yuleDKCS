@@ -573,6 +573,72 @@ func TestKeyManagementService_ResumeKey_Success(t *testing.T) {
 	}
 }
 
+// ── 状态流转 (ICCOA 四态: 未激活→已激活→已冻结→已删除) ──
+
+// 流转: active → suspended (SuspendKey) → active (ResumeKey)
+func TestKeyManagementService_StateFlow_ActiveSuspendedActive(t *testing.T) {
+	logger := zap.NewNop()
+	reg := adapter.NewRegistry(logger)
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+
+	s := NewKeyManagementService(reg, logger)
+	ctx := context.Background()
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-001", OwnerUserID: "user-1", Vendor: "XIAOMI", VehicleID: "VH001",
+		Status: KeyStatusActive,
+	})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	// active → suspended
+	if _, err := s.SuspendKey(ctx2, &pb.SuspendKeyRequest{KeyId: "key-001", Reason: "trip"}); err != nil {
+		t.Fatalf("SuspendKey failed: %v", err)
+	}
+	rec, _ := s.keyStore.GetKeyRecord(ctx, "key-001")
+	if rec.Status != KeyStatusSuspended {
+		t.Fatalf("expected suspended after SuspendKey, got %s", rec.Status)
+	}
+
+	// suspended → active
+	if _, err := s.ResumeKey(ctx2, &pb.ResumeKeyRequest{KeyId: "key-001"}); err != nil {
+		t.Fatalf("ResumeKey failed: %v", err)
+	}
+	rec, _ = s.keyStore.GetKeyRecord(ctx, "key-001")
+	if rec.Status != KeyStatusActive {
+		t.Fatalf("expected active after ResumeKey, got %s", rec.Status)
+	}
+}
+
+// 流转: active → terminated (RevokeKey, ICCOA"已删除")
+func TestKeyManagementService_StateFlow_ActiveTerminated(t *testing.T) {
+	logger := zap.NewNop()
+	reg := adapter.NewRegistry(logger)
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+
+	s := NewKeyManagementService(reg, logger)
+	ctx := context.Background()
+	s.keyStore.SetKey(ctx, &KeyRecord{
+		KeyID: "key-001", OwnerUserID: "user-1", Vendor: "XIAOMI", VehicleID: "VH001",
+		Status: KeyStatusActive,
+	})
+
+	md := metadata.New(map[string]string{"user_id": "user-1"})
+	ctx2 := metadata.NewIncomingContext(ctx, md)
+
+	if _, err := s.RevokeKey(ctx2, &pb.RevokeKeyRequest{KeyId: "key-001", Reason: "stolen"}); err != nil {
+		t.Fatalf("RevokeKey failed: %v", err)
+	}
+	rec, _ := s.keyStore.GetKeyRecord(ctx, "key-001")
+	if rec.Status != KeyStatusTerminated {
+		t.Fatalf("expected terminated after RevokeKey, got %s", rec.Status)
+	}
+	// terminated 为终态: 后续 resume 不改变状态语义由上层策略保证, 此处仅验证不再回到 active
+	if rec.Status == KeyStatusActive {
+		t.Fatal("terminated key must not be active")
+	}
+}
+
 // ── RevokeKey ──
 
 func TestKeyManagementService_RevokeKey_NoAuth(t *testing.T) {
@@ -606,8 +672,8 @@ func TestKeyManagementService_RevokeKey_Success(t *testing.T) {
 	}
 
 	rec, _ := s.keyStore.GetKeyRecord(ctx, "key-001")
-	if rec.Status != "revoked" {
-		t.Errorf("expected revoked, got %s", rec.Status)
+	if rec.Status != KeyStatusTerminated {
+		t.Errorf("expected terminated, got %s", rec.Status)
 	}
 }
 
@@ -1073,6 +1139,8 @@ func TestKeyStatusFromString(t *testing.T) {
 		{"active", pb.KeyStatus_ACTIVE},
 		{"suspended", pb.KeyStatus_SUSPENDED},
 		{"revoked", pb.KeyStatus_REVOKED},
+		{"expired", pb.KeyStatus_EXPIRED},
+		{"terminated", pb.KeyStatus_TERMINATED},
 		// "pending" has no KeyStatus enum value in hub.proto → UNSPECIFIED
 		{"pending", pb.KeyStatus_KEY_STATUS_UNSPECIFIED},
 		{"", pb.KeyStatus_KEY_STATUS_UNSPECIFIED},

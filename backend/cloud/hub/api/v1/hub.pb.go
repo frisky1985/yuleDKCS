@@ -204,6 +204,7 @@ const (
 	KeyStatus_SUSPENDED              KeyStatus = 2
 	KeyStatus_REVOKED                KeyStatus = 3
 	KeyStatus_EXPIRED                KeyStatus = 4
+	KeyStatus_TERMINATED             KeyStatus = 5 // 已删除(终止) — ICCOA 四态"已删除"语义
 )
 
 // Enum value maps for KeyStatus.
@@ -214,6 +215,7 @@ var (
 		2: "SUSPENDED",
 		3: "REVOKED",
 		4: "EXPIRED",
+		5: "TERMINATED",
 	}
 	KeyStatus_value = map[string]int32{
 		"KEY_STATUS_UNSPECIFIED": 0,
@@ -221,6 +223,7 @@ var (
 		"SUSPENDED":              2,
 		"REVOKED":                3,
 		"EXPIRED":                4,
+		"TERMINATED":             5,
 	}
 )
 
@@ -3161,14 +3164,16 @@ const file_api_v1_hub_proto_rawDesc = "" +
 	"\n" +
 	"\x06FRIEND\x10\x02\x12\v\n" +
 	"\aSERVICE\x10\x03\x12\r\n" +
-	"\tTEMPORARY\x10\x04*\\\n" +
+	"\tTEMPORARY\x10\x04*l\n" +
 	"\tKeyStatus\x12\x1a\n" +
 	"\x16KEY_STATUS_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
 	"\x06ACTIVE\x10\x01\x12\r\n" +
 	"\tSUSPENDED\x10\x02\x12\v\n" +
 	"\aREVOKED\x10\x03\x12\v\n" +
-	"\aEXPIRED\x10\x04*U\n" +
+	"\aEXPIRED\x10\x04\x12\x0e\n" +
+	"\n" +
+	"TERMINATED\x10\x05*U\n" +
 	"\vShareStatus\x12\x1c\n" +
 	"\x18SHARE_STATUS_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aPENDING\x10\x01\x12\f\n" +

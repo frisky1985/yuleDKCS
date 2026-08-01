@@ -44,6 +44,7 @@ enum KeyStatus {
     SUSPENDED              = 2;
     REVOKED                = 3;
     EXPIRED                = 4;
+    TERMINATED             = 5;  // 已删除(终止) — ICCOA 四态"已删除"语义
 }
 
 // 分享状态 (密钥分享状态机: PENDING → ACCEPTED / CANCELLED)

@@ -29,7 +29,7 @@
 | G-1 | **无 SDK 侧认证测试清单** — 现有 checklist（`docs/CERTIFICATION-CHECKLIST.md`）只覆盖车端嵌入式（SWR-EMB-*），未覆盖移动端 SDK 认证测试项 | 本文档 §2 |
 | G-2 | **无厂商适配矩阵**（协议 × 功能面 × 状态） | 本文档 §3 |
 | G-3 | `pics-ccc.md` 缺 v4.0.0 BLE 安全通道（2b-E 按 v4.0.0 实现：HKDF-SHA256 SystemKeys、SCP03 风格 AES-128+CMAC、4 字节帧头、L2CAP SPSM、0xFFF5）；PICS 仍写 R3.0 GATT 0xFFD1 | 修补 pics-ccc.md |
-| G-4 | `pics-iccoa.md` 帧格式未标注端序（DK 3.0 SEQ/LEN 小端、checksum XOR 不含 SOP — 2b-F 裁决）；安全模型未澄清（应用层无加密，依赖 LE SC 链路层）；S2S 分享状态与 `iccoa-compliance-audit.md` 不一致（生产路径仍 stub） | 修补 pics-iccoa.md |
+| G-4 | `pics-iccoa.md` 帧格式未标注端序（DK 3.0 SEQ/LEN 小端、checksum XOR 不含 SOP — 2b-F 裁决）；安全模型未澄清（应用层无加密，依赖 LE SC 链路层）；S2S 分享状态与 `iccoa-compliance-audit.md` 不一致（生产路径仍 stub） | 修补 pics-iccoa.md（S2S 接入状态 2026-08-01 复审已更新 ✅） |
 | G-5 | `pics-icce.md` 未定义 control_command_t 帧（38 B：cmd+target+user_id+HMAC-SHA256）；待确认项（hmac 覆盖范围、SM4 IV 协商、GATT UUID）未标注 | 修补 pics-icce.md |
 | G-6 | 三份 PICS 均为车端视角，缺 SDK 移动端功能面声明（后台 BLE、NFC 手机侧、UWB 手机侧、分享流程移动端） | 各 PICS 增补 §"SDK 移动端补充" |
 
@@ -41,7 +41,7 @@
 | R-2 | NFC entitlement / tech-list 真机联调 | CCC/ICCE NFC 认证测试 | 送测前真机验证，见 `../sdk/NFC-INTEGRATION.md` |
 | R-3 | ICCE hmac 覆盖范围（当前: 命令体前 6 字节） | ICCE 指令一致性 | 待真机对照规范原文 |
 | R-4 | ICCE SM4 IV 协商（当前: 未协商全零, 仅调试） | ICCE 会话加密一致性 | 待真机/规范确认 |
-| R-5 | ICCOA S2S 生产路径未接入（客户端代码就位, `hub/main.go` 仍 stub） | ICCOA 分享认证 | 按 `iccoa-compliance-audit.md` P0 修复后复测 |
+| R-5 | ICCOA S2S 生产路径已接入（main.go 环境变量 `ICCOA_{VENDOR}_BASE_URL` 驱动, 未配置回退 stub） | ICCOA 分享认证 | ✅ 已解决（2026-08-01 复审）; 真机联调按 R-6 方式单列 |
 | R-6 | CCC 分享物理机 E2E（双手机 ↔ Hub ↔ Relay） | CCC 分享认证 | 4.4 单列, 送测前完成 |
 
 ---
@@ -85,7 +85,7 @@
 | SDK-ICCOA-SEC-02 | 密钥生命周期 | BIND/UNBIND（0x01-0x04）; 8 权限位逐位校验 | `pics-iccoa.md` §4 | HubClient + KeyManager | ✅ 代码就位（4.2 E2E） |
 | SDK-ICCOA-NFC-01 | NFC 备用解锁 | 手机贴近 NFC 解锁（offline 场景） | `../sdk/NFC-INTEGRATION.md` | NFC 管理器 | ✅ 代码就位 / ⏳ 真机待验 |
 | SDK-ICCOA-UWB-01 | DK 4.0 UWB 测距 | IEEE 802.15.4z TWR, ch5/ch9, STS | `pics-iccoa.md` §3.6 | UWB 管理器 | ✅ 代码就位 / ⏳ 真机待验 |
-| SDK-ICCOA-SHARE-01 | S2S 分享（车账号体系 16 步） | genSession → getMidCsr/putMidCert → share/sign → trackKey → notifyKeyEvent | `iccoa-spec.md` §6.3 + §7.2 | `s2s/iccoa_client.go`（12 API） | ✅ 客户端代码就位（34 mock 测试）/ 🔴 生产路径未接入（`hub/main.go` 仍 stub, 见审计 P0） |
+| SDK-ICCOA-SHARE-01 | S2S 分享（车账号体系 16 步） | genSession → getMidCsr/putMidCert → share/sign → trackKey → notifyKeyEvent | `iccoa-spec.md` §6.3 + §7.2 | `s2s/iccoa_client.go`（12 API） | ✅ 生产路径已接入（`hub/main.go` env 驱动, 见审计复审）; getMidCsr/putMidCert 中间证书链路待补（P1） |
 | SDK-ICCOA-SHARE-02 | S2S 分享 E2E（mock） | e2e_12 ICCOA 5/5 全 PASS | `../compliance/PICS_PIXIT_RELAY.md` 测试映射 | Hub 集成测试 | ✅ 完成（87 passed / 0 failed 全量） |
 | SDK-ICCOA-SHARE-03 | 钥匙信箱（DKF 侧） | BLE APDU 读写信箱（§8.3.12）— **设备端 DKF 功能, 非 Relay** | `iccoa-spec.md` §5 | 无 SDK 落点（车厂钱包 DKF 职责） | 📚 规范引用 |
 | SDK-ICCOA-REMOTE-01 | 远程控车（经 Hub） | manageKey / SendCommand 通道 | `../sdk/SDK-ARCHITECTURE.md` §3.1 | `HubClient` | ✅ 代码就位 |
@@ -119,9 +119,9 @@
 | **NFC 备用解锁** | ✅ 代码就位 / ⏳ 真机待验（entitlement/tech-list） | ✅ 代码就位 / ⏳ 真机待验 | ✅ 代码就位 / ⏳ 真机待验（断电场景） | 2b-H |
 | **UWB 测距** | ✅ 代码就位 / ⏳ 真机待验（token 交换/会话参数） | ✅ 代码就位 / ⏳ 真机待验 | ✅ 代码就位 / ⏳ 真机待验（5 分区） | 2b-G |
 | **后台运行** | ✅ 代码就位 / ⏳ 真机待验（state restoration） | ✅ 代码就位 / ⏳ 真机待验（前台服务） | ✅ 代码就位 / ⏳ 真机待验 | 2b-I |
-| **分享** | ✅ 链路就位 / ⏳ 物理机 E2E 单列（Relay/Mailbox） | 🔴 客户端就位, 生产路径 stub（S2S 接入 P0） | 🔴 E2E mock 就位, 生产接入待厂商 API | 4.4 / 4.5 + iccoa-compliance-audit |
+| **分享** | ✅ 链路就位 / ⏳ 物理机 E2E 单列（Relay/Mailbox） | 🟡 生产路径已接入（env 驱动）; getMidCsr/putMidCert 待补 | 🔴 E2E mock 就位, 生产接入待厂商 API | 4.4 / 4.5 + iccoa-compliance-audit（2026-08-01 复审） |
 | **远程控车** | ✅ 代码就位（HubClient + 4.2 E2E） | ✅ 代码就位 | ✅ 代码就位 | 2a + 4.2 |
-| **钥匙生命周期** | ✅ 代码就位（Create/Activate/Share/Revoke/Suspend/Resume/Delete） | ✅ 代码就位（BIND/UNBIND/8 权限位; ⚠️ 状态模型缺 SUSPENDED/TERMINATED） | ✅ 代码就位（KeyBind→Delete 全链） | 2a/2c + 审计 §3.2 |
+| **钥匙生命周期** | ✅ 代码就位（Create/Activate/Share/Revoke/Suspend/Resume/Delete） | ✅ 代码就位（BIND/UNBIND/8 权限位; 状态模型含 SUSPENDED/TERMINATED, 2026-08-01 补齐） | ✅ 代码就位（KeyBind→Delete 全链） | 2a/2c + 审计 §3.2 |
 | **离线能力** | 📚 规范引用（SDK 侧: 钥匙在 SE 可离线解锁, 无网可用） | 📚 规范引用 | ✅ 车端边缘计算（SDK 侧仅离线解锁） | `../sdk/SDK-ARCHITECTURE.md` §7 |
 
 ### 3.1 平台 × 协议适配状态（iOS / Android）
@@ -150,11 +150,12 @@
 | 车端认证 checklist | ✅ v1.0（嵌入式侧） | `docs/CERTIFICATION-CHECKLIST.md` |
 
 **送测前阻塞项（按优先级）**:
-1. 🔴 ICCOA/ICCE S2S 生产路径接入（`hub/main.go` 换 `NewICCOAAdapterWithClient`）— 影响 ICCOA 分享认证
-2. 🔴 ICCOA 钥匙状态模型补齐（SUSPENDED/TERMINATED）— 影响状态一致性测试
-3. ⏳ UWB / NFC / 后台真机联调 — 三项硬件面认证测试的前置
-4. ⏳ CCC 分享物理机 E2E — 分享认证前置
-5. ⏳ R-3/R-4 真机确认（ICCE hmac 覆盖范围、SM4 IV 协商）
+1. 🔴 getMidCsr / putMidCert 中间证书链路接入（ICCOA 分享流程剩余缺口）— 影响 ICCOA 分享认证
+2. ⏳ UWB / NFC / 后台真机联调 — 三项硬件面认证测试的前置
+3. ⏳ CCC 分享物理机 E2E — 分享认证前置
+4. ⏳ R-3/R-4 真机确认（ICCE hmac 覆盖范围、SM4 IV 协商）
+
+**已解决（2026-08-01 复审）**: ICCOA/ICCE S2S 生产路径接入（env 驱动）✅ · ICCOA 钥匙状态模型补齐（SUSPENDED/TERMINATED）✅
 
 ---
 
@@ -162,4 +163,5 @@
 
 | 版本 | 日期 | 变更内容 | 作者 |
 |:----:|:----:|:--------|:----:|
+| v1.1 | 2026-08-01 | 复审更新: ICCOA/ICCE S2S 生产路径接入 ✅（R-5/SHARE-01/矩阵/阻塞项）; 钥匙状态模型补齐 ✅（SUSPENDED/TERMINATED） | Hermes |
 | v1.0 | 2026-08-01 | 初始版本 — SDK 侧认证测试清单 + 厂商适配矩阵 + PICS 缺口修补 | Hermes |

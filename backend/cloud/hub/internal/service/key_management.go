@@ -36,10 +36,21 @@ type KeyRecord struct {
 	OwnerUserID string
 	VehicleID   string
 	Vendor      string
-	Status      string // "active", "suspended", "revoked", "pending"
+	Status      string // 见 KeyStatus* 常量: "active"/"suspended"/"revoked"/"expired"/"terminated"/"pending"
 	AccessBits  uint32 // 权限位掩码 (ICCOA_PERM 语义, 见 access_bits.go)
 	CreatedAt   int64  // unix millis
 }
+
+// 钥匙状态字符串常量（store 持久化语义, 与 pb.KeyStatus 枚举一一对应）。
+// ICCOA 四态映射: 未激活→pending, 已激活→active, 已冻结→suspended, 已删除→terminated。
+const (
+	KeyStatusActive     = "active"     // 已激活   (pb.KeyStatus_ACTIVE)
+	KeyStatusSuspended  = "suspended"  // 已冻结   (pb.KeyStatus_SUSPENDED)
+	KeyStatusRevoked    = "revoked"    // 已撤销   (pb.KeyStatus_REVOKED, 兼容旧数据)
+	KeyStatusExpired    = "expired"    // 已过期   (pb.KeyStatus_EXPIRED)
+	KeyStatusTerminated = "terminated" // 已删除   (pb.KeyStatus_TERMINATED)
+	KeyStatusPending    = "pending"    // 未激活   (无对应 pb 枚举, 映射 KEY_STATUS_UNSPECIFIED)
+)
 
 // KeyStore provides persistent storage for key metadata.
 // Implementations MUST be goroutine-safe.
@@ -257,7 +268,7 @@ func (s *KeyManagementService) BindKey(ctx context.Context, req *pb.BindKeyReque
 			OwnerUserID: req.UserId,
 			VehicleID:   req.VehicleId,
 			Vendor:      req.Vendor.String(),
-			Status:      "active",
+			Status:      KeyStatusActive,
 			AccessBits:  accessLevelToBits(req.AccessLevel),
 			CreatedAt:   time.Now().UnixMilli(),
 		}
@@ -343,8 +354,8 @@ func (s *KeyManagementService) SuspendKey(ctx context.Context, req *pb.SuspendKe
 		return nil, status.Error(codes.Internal, "failed to look up key record")
 	}
 
-	// Update key status in store
-	if err := s.keyStore.SetKeyStatus(ctx, req.KeyId, "suspended"); err != nil {
+	// Update key status in store (suspended 即 ICCOA"已冻结")
+	if err := s.keyStore.SetKeyStatus(ctx, req.KeyId, KeyStatusSuspended); err != nil {
 		s.logger.Warn("SuspendKey: store update failed",
 			zap.String("key_id", req.KeyId),
 			zap.Error(err),
@@ -393,8 +404,8 @@ func (s *KeyManagementService) ResumeKey(ctx context.Context, req *pb.ResumeKeyR
 		return nil, status.Error(codes.Internal, "failed to look up key record")
 	}
 
-	// Update key status in store
-	if err := s.keyStore.SetKeyStatus(ctx, req.KeyId, "active"); err != nil {
+	// Update key status in store (恢复为已激活)
+	if err := s.keyStore.SetKeyStatus(ctx, req.KeyId, KeyStatusActive); err != nil {
 		s.logger.Warn("ResumeKey: store update failed",
 			zap.String("key_id", req.KeyId),
 			zap.Error(err),
@@ -452,8 +463,9 @@ func (s *KeyManagementService) RevokeKey(ctx context.Context, req *pb.RevokeKeyR
 		s.auditLog(ctx, "revoke_key", userID, keyRecord.VehicleID, req.KeyId, "partial_no_adapter")
 	}
 
-	// Update local store
-	_ = s.keyStore.SetKeyStatus(ctx, req.KeyId, "revoked")
+	// Update local store — 撤销即 ICCOA"已删除" (TERMINATED); 旧数据 "revoked" 仍被
+	// keyStatusFromString 正确映射为 KeyStatus_REVOKED, 兼容存量记录
+	_ = s.keyStore.SetKeyStatus(ctx, req.KeyId, KeyStatusTerminated)
 
 	// Step 2: 通知手机端清除本地缓存的密钥 (通过推送服务)
 	if err := s.notifyPhoneRevocation(ctx, userID, req.KeyId); err != nil {
@@ -612,17 +624,20 @@ func keyRecordToDigitalKey(rec *KeyRecord) *pb.DigitalKey {
 }
 
 // keyStatusFromString maps the store's lowercase status strings onto the
-// pb.KeyStatus enum. "pending" has no matching KeyStatus value in hub.proto
-// (only UNSPECIFIED/ACTIVE/SUSPENDED/REVOKED/EXPIRED), so it — like any
-// unknown status — maps to KEY_STATUS_UNSPECIFIED.
+// pb.KeyStatus enum. "pending" has no matching KeyStatus value in hub.proto,
+// so it — like any unknown status — maps to KEY_STATUS_UNSPECIFIED.
 func keyStatusFromString(s string) pb.KeyStatus {
 	switch s {
-	case "active":
+	case KeyStatusActive:
 		return pb.KeyStatus_ACTIVE
-	case "suspended":
+	case KeyStatusSuspended:
 		return pb.KeyStatus_SUSPENDED
-	case "revoked":
+	case KeyStatusRevoked:
 		return pb.KeyStatus_REVOKED
+	case KeyStatusExpired:
+		return pb.KeyStatus_EXPIRED
+	case KeyStatusTerminated:
+		return pb.KeyStatus_TERMINATED
 	default:
 		return pb.KeyStatus_KEY_STATUS_UNSPECIFIED
 	}

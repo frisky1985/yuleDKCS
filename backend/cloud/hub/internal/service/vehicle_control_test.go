@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
@@ -123,6 +125,37 @@ func TestVehicleControlService_SendCommand_KeyNotFound(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for missing key")
+	}
+}
+
+// 状态校验: suspended/terminated(及任何非 active) 状态的钥匙必须拒绝控车指令 (HUB-4)
+func TestVehicleControlService_SendCommand_NonActiveRejected(t *testing.T) {
+	for _, st := range []string{KeyStatusSuspended, KeyStatusTerminated, KeyStatusRevoked, KeyStatusExpired} {
+		t.Run(st, func(t *testing.T) {
+			logger := zap.NewNop()
+			s := NewVehicleControlService(logger)
+			ks := NewInMemoryKeyStore()
+			_ = ks.SetKey(context.Background(), &KeyRecord{
+				KeyID: "key-001", OwnerUserID: "user-1", VehicleID: "VH001",
+				Status: st, AccessBits: PermBitAll,
+			})
+			s.WithKeyStore(ks)
+			d := NewMockCommandDispatcher()
+			s.WithCommandDispatcher(d)
+
+			_, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{
+				VehicleId: "VH001", Action: "unlock", KeyId: "key-001",
+			})
+			if err == nil {
+				t.Fatalf("expected rejection for status %s", st)
+			}
+			if got := status.Code(err); got != codes.FailedPrecondition {
+				t.Fatalf("expected FailedPrecondition for status %s, got %v", st, got)
+			}
+			if d.Count() != 0 {
+				t.Errorf("expected no dispatch, got %d", d.Count())
+			}
+		})
 	}
 }
 

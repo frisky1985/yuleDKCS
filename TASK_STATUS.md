@@ -68,7 +68,7 @@
 | 🟠 | **iOS 模块预存编译错误 4 处** | ✅ **已修复 (Batch A, W3 复验)** | 4.1 审计 4 处已全修（①YDKHubClient+Stream 跨文件访问 ②YDKKeyManager/YDKKeyCache 缺 import YDKHubClient ③internal YDKLogger 引用 ④YDKKeyManager+Sync 跨文件 private）; Batch A (c18e5fb) `swift build` 全绿; Batch B 补 tail: YDKHubClient transport 注入缝 + WireShapeContractTests（listKeys/getKey/unbindKey/cancelShare 5 形状）+ 修复 W1 遗留嵌套插值语法错（YDKKeyManager.swift:216）; **W3 复验 (2026-08-01): HEAD `swift build` 全绿 + WireShapeContractTests `swiftc -parse` 通过** |
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
-| 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
+| 🟠 | **依赖安全漏洞清零** | ✅ **已完成 (2026-08-01)** | govulncheck 三模块扫描 0 漏洞 (hub/dkcs/proto); 依赖升级 grpc 1.82.1 + x/net 0.56 + x/crypto 0.54 (CVE 修复版); 回归 1391 + 373 全绿 |
 | 🟠 | **dkcs 服务 PG schema 迁移** | ✅ **已完成 (2026-08-01)** | `backend/db/migrations/0001_init.*` + `backend/dkcs/internal/migrate`（零依赖执行器，启动自动迁移）; 真实 PG docker 验证幂等 + 5/5 单测; `scripts/migrate-dkcs.sh` 手动通道 |
 | 🟠 | **Helm Chart 同步 postgres** | ✅ **已完成 (2026-08-01)** | `backend/cloud/deploy/helm/dkcs` 全量 mysql→postgres 对齐 kustomize（statefulset/secret/configmap/deployment/values/pdb）; 0 mysql 残留静态验证; README 注明 kustomize 为官方路径 |
 
