@@ -3,21 +3,22 @@ package com.yuledkcs.sdk.ble
 /**
  * ICCOA DK 3.0 协议帧编解码 — 2b-F
  *
- * 帧格式 (来源: embedded/iccoa_protocol/docs/module_design.md §3.1.4,
- * ICCOA/T 002-2024 数字车钥匙3.0 BLE 章节):
+ * 帧格式 (来源: embedded/iccoa_protocol/src/iccoa/dk30/iccoa_dk30.c:114-139,
+ * iccoa_dk30_frame_t, iccoa_digital_key.h:71-79):
  *
  *   [0]     SOP       起始符 0xAA
  *   [1]     CMD_ID    命令 ID
- *   [2-3]   SEQ_NUM   序列号 (大端 u16)
- *   [4-5]   LEN       payload 长度 (大端 u16)
- *   [6..]   PAYLOAD   负载 (DK 3.0 为明文或 SM4 加密负载)
- *   [..]    CHECKSUM  XOR 校验和 (SOP..PAYLOAD 全部字节异或)
+ *   [2-3]   SEQ_NUM   序列号 (小端 LE u16, dk30.c:120: raw[2] | raw[3]<<8)
+ *   [4-5]   LEN       payload 长度 (小端 LE u16, dk30.c:121: raw[4] | raw[5]<<8)
+ *   [6..]   PAYLOAD   负载 (DK 3.0 明文负载; 应用层无加密, 由 BLE LE SC 链路层加密)
+ *   [..]    CHECKSUM  XOR 校验和 — 覆盖 CMD_ID+SEQ+LEN+PAYLOAD, 不含 SOP!
+ *                     (dk30.c:131-132: 从 raw+1 起 4+len 字节异或)
  *   [..]    EOP       结束符 0x55
  *
- * DK 3.0 命令 ID:
- *   0x01 BIND_REQUEST / 0x02 BIND_RESPONSE / 0x03 UNBIND_REQUEST / 0x04 UNBIND_RESPONSE
- *   0x10 AUTH_REQUEST / 0x11 AUTH_RESPONSE
- *   0x20 CTRL_REQUEST / 0x21 CTRL_RESPONSE
+ * DK 3.0 命令 ID (iccoa_digital_key.h:56-69):
+ *   0x01 BIND_REQ / 0x02 BIND_RSP / 0x03 UNBIND_REQ / 0x04 UNBIND_RSP
+ *   0x10 AUTH_REQ / 0x11 AUTH_RSP
+ *   0x20 CTRL_REQ / 0x21 CTRL_RSP
  *   0x30 STATUS_NOTIFY / 0x40 KEY_SHARE / 0x41 KEY_SHARE_ACK / 0xFF ERROR
  *
  * 纯 JVM 实现, 可单测。
@@ -62,7 +63,7 @@ object IcocaFrame {
     }
 
     /**
-     * 构造帧: SOP + CMD + SEQ + LEN + PAYLOAD + XOR 校验 + EOP
+     * 构造帧: SOP + CMD + SEQ(LE) + LEN(LE) + PAYLOAD + XOR 校验(不含 SOP) + EOP
      * @param cmdId  命令 ID (0..255)
      * @param seqNum 序列号 (0..65535)
      */
@@ -75,20 +76,24 @@ object IcocaFrame {
         val buf = ByteArray(total)
         buf[0] = SOP.toByte()
         buf[1] = cmdId.toByte()
-        buf[2] = (seqNum ushr 8).toByte()
-        buf[3] = seqNum.toByte()
-        buf[4] = (payload.size ushr 8).toByte()
-        buf[5] = payload.size.toByte()
+        // SEQ 小端 LE (dk30.c:120: raw[2] | raw[3]<<8)
+        buf[2] = seqNum.toByte()
+        buf[3] = (seqNum ushr 8).toByte()
+        // LEN 小端 LE (dk30.c:121: raw[4] | raw[5]<<8)
+        buf[4] = payload.size.toByte()
+        buf[5] = (payload.size ushr 8).toByte()
         payload.copyInto(buf, HEADER_SIZE)
         val checksumIndex = HEADER_SIZE + payload.size
-        buf[checksumIndex] = checksum(buf, 0, checksumIndex)
+        // 校验和覆盖 CMD+SEQ+LEN+PAYLOAD, 不含 SOP (dk30.c:131-132: 从 raw+1 起 4+len 字节)
+        buf[checksumIndex] = checksum(buf, 1, checksumIndex)
         buf[checksumIndex + 1] = EOP.toByte()
         return buf
     }
 
     /**
      * XOR 校验和: 对 [from, until) 区间内所有字节异或
-     * (帧校验约定: 覆盖 SOP..PAYLOAD, 不含 CHECKSUM 与 EOP)
+     * (帧校验约定: 覆盖 CMD_ID+SEQ_NUM+LEN+PAYLOAD, 不含 SOP/CHECKSUM/EOP,
+     * 与 dk30.c:131-132 一致 — checksum(raw+1, 4+len))
      */
     fun checksum(bytes: ByteArray, from: Int, until: Int): Byte {
         var acc = 0
@@ -104,15 +109,18 @@ object IcocaFrame {
         if (data.size < HEADER_SIZE + TRAILER_SIZE) return null
         if (data[0].toUInt8() != SOP || data[data.size - 1].toUInt8() != EOP) return null
 
-        val payloadLen = ((data[4].toUInt8()) shl 8) or data[5].toUInt8()
+        // LEN 小端 LE (dk30.c:121: raw[4] | raw[5]<<8)
+        val payloadLen = data[4].toUInt8() or (data[5].toUInt8() shl 8)
         if (data.size != HEADER_SIZE + payloadLen + TRAILER_SIZE) return null
 
         val checksumIndex = HEADER_SIZE + payloadLen
-        if (data[checksumIndex] != checksum(data, 0, checksumIndex)) return null
+        // 校验和覆盖 CMD+SEQ+LEN+PAYLOAD, 不含 SOP
+        if (data[checksumIndex] != checksum(data, 1, checksumIndex)) return null
 
         return Frame(
             cmdId = data[1].toUInt8(),
-            seqNum = ((data[2].toUInt8()) shl 8) or data[3].toUInt8(),
+            // SEQ 小端 LE (dk30.c:120: raw[2] | raw[3]<<8)
+            seqNum = data[2].toUInt8() or (data[3].toUInt8() shl 8),
             payload = data.copyOfRange(HEADER_SIZE, checksumIndex),
             raw = data
         )

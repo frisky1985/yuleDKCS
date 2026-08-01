@@ -100,9 +100,24 @@ public struct SessionContext {
     public let vehicleId: String
     public var sessionHandle: UInt16 = 0
     public var counter: UInt32 = 0
-    public init(keyId: String, vehicleId: String) {
+    /// ICCE 用户 ID — control_command_t.user_id (BE u32), 由绑定/认证流程填充
+    public var userId: UInt32 = 0
+    /// ICCE 会话密钥 — SM4 取前 16 字节 (裁决 AD-7); HMAC-SHA256 取全长 (裁决 AD-6);
+    /// nil 表示未协商 (仅调试/预认证阶段)
+    public var sessionKey: Data? = nil
+    /// ICCE 会话 IV (16 字节); nil 时回退全零 (仅调试, 裁决 AD-7)
+    public var sessionIv: Data? = nil
+
+    public init(keyId: String, vehicleId: String,
+                sessionHandle: UInt16 = 0, counter: UInt32 = 0,
+                userId: UInt32 = 0, sessionKey: Data? = nil, sessionIv: Data? = nil) {
         self.keyId = keyId
         self.vehicleId = vehicleId
+        self.sessionHandle = sessionHandle
+        self.counter = counter
+        self.userId = userId
+        self.sessionKey = sessionKey
+        self.sessionIv = sessionIv
     }
 }
 

@@ -2,16 +2,21 @@ import Foundation
 
 // MARK: - ICCOA 协议适配器
 
-/// ICCOA Digital Key BLE 协议适配器
+/// ICCOA Digital Key BLE 协议适配器 (DK3.0)
 ///
-/// 参考: ICCOA.DK.TS.002 BLE 章节 (知识库: docs/certification/iccoa-spec.md)
+/// 指令帧 (裁决 AD-2/AD-3, 事实来源: embedded/iccoa_protocol/src/iccoa/dk30/iccoa_dk30.c
+/// + include/iccoa_digital_key.h):
+/// ```
+///   [SOP(1) 0xAA][CMD_ID(1)][SEQ(2,LE)][LEN(2,LE)][PAYLOAD][XOR校验(1)][EOP(1) 0x55]
+/// ```
+/// - CTRL_REQ (0x20) payload = [cmd(1)][param(1)] (dk30.c:90-103, payload_len >= 2)
+/// - XOR 校验覆盖 CMD_ID+SEQ+LEN+PAYLOAD, 不含 SOP (dk30.c:131-132)
 ///
-/// ⚠️ 指令帧 (2b-F, 由 Android worker 主导): 车端参考实现
-/// `embedded/iccoa_protocol/src/iccoa/dk30/iccoa_dk30.c` 定义了 DK3.0 线格式:
-/// ```
-///   [SOP(1)][cmd_id(1)][seq_num(2,LE)][payload_len(2,LE)][payload][checksum(1)][EOP(1)]
-/// ```
-/// 当前 buildCommand 仍为占位, 需按上述格式 + SM4 加密实现 (TODO: 2b-F)。
+/// ⚠️ 无应用层加密 (裁决 AD-1): 链路加密由 BLE LE Secure Connections 负责,
+/// 禁止在 ICCOA 指令上做 SM4 — 本适配器不调用 Sm4。
+///
+/// 枚举映射 (裁决 AD-4, 映射表 §2.2, 适配器内部转换):
+///   BleCommandType.unlock→0x02 / lock→0x01 / engineOn→0x03 / engineOff→0x04 / status→0x05
 final class ICCOABleAdapter: BleProtocolAdapter {
 
     let protocolType: YDKBleProtocolType = .iccoa
@@ -52,21 +57,46 @@ final class ICCOABleAdapter: BleProtocolAdapter {
         try buildCommand(type: .engineOn, session: session)
     }
 
-    // ⚠️ TODO (2b-F): 按 ICCOA DK3.0 线格式 + SM4 加密实现, 当前为占位。
+    /// 构造 ICCOA DK3.0 CTRL_REQ 帧 (2b-F):
+    ///   payload = [wireCmd(1)][param(1)=0x00], 明文 (无应用层 SM4, AD-1);
+    ///   seq = session.counter 低 16 位 (小端);
+    ///   keyId 不参与线格式 (AD-3 废除 keyId/counter 内部约定结构)。
     private func buildCommand(type: BleCommandType, session: SessionContext) throws -> Data {
-        var frame = Data()
-        frame.append(type.rawValue)
-        frame.append(contentsOf: withUnsafeBytes(of: session.sessionHandle.bigEndian) { Array($0) })
-        frame.append(contentsOf: withUnsafeBytes(of: session.counter.bigEndian) { Array($0) })
-        frame.append(0x00) // payload 占位 (SM4 加密, TODO: 2b-F)
-        return frame
+        let wireCmd = Self.wireControlCode(for: type)
+        let payload = Data([wireCmd, 0x00])
+        let seqNum = UInt16(session.counter & 0xFFFF)
+        return IcocaFrame.build(cmdId: IcocaFrame.cmdCtrlRequest, seqNum: seqNum, payload: payload)
+    }
+
+    /// 通用 BleCommandType → ICCOA wire 控制码 (裁决 AD-4, 映射表 §2.2;
+    /// 枚举定义见 iccoa_digital_key.h:155-167)
+    static func wireControlCode(for type: BleCommandType) -> UInt8 {
+        switch type {
+        case .unlock:   return IcocaFrame.ctrlUnlock    // 0x02
+        case .lock:     return IcocaFrame.ctrlLock      // 0x01
+        case .engineOn: return IcocaFrame.ctrlEngineOn  // 0x03
+        case .engineOff: return IcocaFrame.ctrlEngineOff // 0x04
+        case .status:   return IcocaFrame.ctrlTrunkOpen // 0x05 (CTRL_REQ payload 复用, 映射表)
+        }
     }
 
     func parseCommandResponse(_ data: Data) throws -> CommandResult {
-        guard data.count >= 1 else {
+        guard !data.isEmpty else {
             return CommandResult(success: false, errorCode: -1, errorMessage: "empty response")
         }
-        let status = data[0]
+
+        // 响应为 DK3.0 帧 (CTRL_RSP 0x21), payload 首字节为状态 (dk30.c:102);
+        // 兼容裸状态字节 (旧联调格式)。
+        let status: UInt8
+        if data[data.startIndex] == IcocaFrame.sop {
+            guard let frame = IcocaFrame.parse(data) else {
+                return CommandResult(success: false, errorCode: -1, errorMessage: "invalid ICCOA frame")
+            }
+            status = frame.payload.first ?? 0x00
+        } else {
+            status = data[data.startIndex]
+        }
+
         if status == 0x00 {
             return CommandResult(success: true)
         }
@@ -74,13 +104,23 @@ final class ICCOABleAdapter: BleProtocolAdapter {
     }
 
     func parseVehicleStatus(_ data: Data) throws -> VehicleStatus {
-        guard data.count >= 3 else {
+        // 状态可经 STATUS_NOTIFY (0x30) 帧或裸 3 字节下发
+        let payload: Data
+        if !data.isEmpty && data[data.startIndex] == IcocaFrame.sop {
+            guard let frame = IcocaFrame.parse(data) else {
+                throw YDKError.internal_("invalid status frame")
+            }
+            payload = frame.payload
+        } else {
+            payload = data
+        }
+        guard payload.count >= 3 else {
             throw YDKError.internal_("invalid status response")
         }
         return VehicleStatus(
-            locked: data[0] != 0,
-            engineOn: data[1] != 0,
-            batteryPct: Int32(data[2])
+            locked: payload[payload.startIndex] != 0,
+            engineOn: payload[payload.startIndex + 1] != 0,
+            batteryPct: Int32(payload[payload.startIndex + 2])
         )
     }
 }

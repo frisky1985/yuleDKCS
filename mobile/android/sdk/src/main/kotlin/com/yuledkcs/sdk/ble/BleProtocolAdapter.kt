@@ -136,18 +136,19 @@ class CCCBleAdapter(
  * ICCOA Digital Key BLE 协议适配器 (ICCOA/T 002-2024 数字车钥匙3.0)
  *
  * 指令帧: ICCOA DK 3.0 帧 (见 [IcocaFrame]):
- *   SOP(0xAA) | CMD_ID | SEQ(2) | LEN(2) | PAYLOAD | XOR校验 | EOP(0x55)
+ *   SOP(0xAA) | CMD_ID | SEQ(LE u16) | LEN(LE u16) | PAYLOAD | XOR校验(不含SOP) | EOP(0x55)
  * 控制指令使用 CMD_CTRL_REQUEST (0x20), 响应为 CMD_CTRL_RESPONSE (0x21)。
  *
- * CTRL_REQUEST payload (知识库未定义具体负载结构, 采用下述内部约定并注明):
- *   [0]     control type (BleCommandType.value: 0x01解锁/0x02闭锁/0x03启动/0x04熄火/0x05状态)
- *   [1]     keyId 长度 (u8)
- *   [2..]   keyId (UTF-8)
- *   [..]    counter (BE u32)
+ * CTRL_REQUEST payload (依据 embedded/iccoa_protocol/src/iccoa/dk30/iccoa_dk30.c:88-104):
+ *   [0]     control cmd (DK 3.0 CTRL 枚举: 0x01 LOCK / 0x02 UNLOCK / 0x03 ENGINE_ON / ...)
+ *   [1]     param (参数, 无附加参数时为 0x00)
+ *   — 共 2 字节; dk30.c:90 要求 payload_len >= 2
  *
- * 安全: 绑定/认证完成后由密钥协商得到 SM4 会话密钥, 设置
- * [SessionContext.sessionKey]/[SessionContext.sessionIv] 后负载自动 SM4-CBC 加密;
- * 未协商时输出明文帧 (仅调试/预绑定阶段, 生产环境禁止)。
+ * 通用 [BleCommandType] → DK 3.0 CTRL 枚举映射 (iccoa_digital_key.h:155-167):
+ *   UNLOCK→0x02, LOCK→0x01, ENGINE_ON→0x03, ENGINE_OFF→0x04, STATUS→0x05
+ *
+ * 安全 (裁决 AD-1/AD-2): ICCOA DK 3.0 应用层无加密 — 加密由 BLE 链路层
+ * LE Secure Connections 负责, 本适配器输出明文帧, 不做 SM4。
  */
 class ICCOABleAdapter : BleProtocolAdapter {
 
@@ -186,28 +187,26 @@ class ICCOABleAdapter : BleProtocolAdapter {
         buildControlCommand(BleCommandType.ENGINE_ON, keyId, session)
 
     private fun buildControlCommand(type: BleCommandType, keyId: String, session: SessionContext): ByteArray {
-        val plain = buildControlPayload(type, keyId, session)
-        val payload = encryptPayload(plain, session)
+        // ICCOA 应用层明文帧 — 不加密 (AD-1: 加密由 BLE LE SC 链路层负责)
+        // 注: CTRL payload 仅 [cmd][param] 2 字节, 不含 keyId (dk30.c:88-104)
+        val payload = buildControlPayload(type)
         val seqNum = session.counter.toInt() and 0xFFFF
         return IcocaFrame.build(IcocaFrame.CMD_CTRL_REQUEST, seqNum, payload)
     }
 
-    /** 构造 CTRL_REQUEST 明文负载 (结构见类注释) */
-    private fun buildControlPayload(type: BleCommandType, keyId: String, session: SessionContext): ByteArray {
-        val keyIdBytes = keyId.toByteArray(StandardCharsets.UTF_8)
-        require(keyIdBytes.size <= 0xFF) { "keyId too long: ${keyIdBytes.size} bytes" }
-        return ByteBuffer.allocate(1 + 1 + keyIdBytes.size + 4)
-            .put(type.value)
-            .put(keyIdBytes.size.toByte())
-            .put(keyIdBytes)
-            .putInt(session.counter.toInt())
-            .array()
-    }
-
-    /** 会话密钥存在时 SM4-CBC 加密 (PKCS#7 填充), 否则返回明文 */
-    private fun encryptPayload(plain: ByteArray, session: SessionContext): ByteArray {
-        val key = session.sessionKey ?: return plain
-        return Sm4.cbcEncrypt(key, session.sessionIv ?: Sm4.ZERO_IV, Sm4.pkcs7Pad(plain))
+    /**
+     * 构造 CTRL_REQUEST 负载: [cmd(1)][param(1)] (dk30.c:88-104)
+     * 通用 [BleCommandType] → DK 3.0 CTRL 枚举 (iccoa_digital_key.h:155-167)
+     */
+    private fun buildControlPayload(type: BleCommandType): ByteArray {
+        val cmd = when (type) {
+            BleCommandType.UNLOCK -> 0x02 // CTRL_UNLOCK
+            BleCommandType.LOCK -> 0x01   // CTRL_LOCK
+            BleCommandType.ENGINE_ON -> 0x03   // CTRL_ENGINE_ON
+            BleCommandType.ENGINE_OFF -> 0x04  // CTRL_ENGINE_OFF
+            BleCommandType.STATUS -> 0x05      // CTRL_TRUNK_OPEN 复用 (契约 2.2)
+        }
+        return byteArrayOf(cmd.toByte(), 0x00) // param = 0x00 (无附加参数)
     }
 
     override fun parseCommandResponse(data: ByteArray): CommandResult {
@@ -251,10 +250,8 @@ class ICCOABleAdapter : BleProtocolAdapter {
  *   [0]     command_type (0x01 解锁 / 0x02 闭锁 / 0x03 启动 / 0x04 熄火 / 0x05 尾门 / 0x06 状态查询)
  *   [1]     target (0x00 = 车辆主体)
  *   [2-5]   user_id (BE u32)
- *   [6-37]  hmac[32]
- *
- * TODO(security): hmac 字段需要 HMAC-SHA256(会话密钥, 命令体) — 当前为零填充,
- * 待会话密钥管理就绪后实现 (勿在生产使用)。
+ *   [6-37]  hmac[32] = HMAC-SHA256(会话密钥, 命令体前 6 字节 command_type..user_id)
+ *           覆盖范围标注: 待真机确认
  */
 data class IcceControlCommand(
     val commandType: Int,
@@ -272,8 +269,16 @@ data class IcceControlCommand(
 /**
  * ICCE Digital Key BLE 协议适配器 (T/CA 110-2020)
  *
- * 控制指令写入 0xFEFE ControlCmd 特征, 格式见 [IcceControlCommand]。
- * 安全: 设置 [SessionContext.sessionKey] 后命令体自动 SM4-CBC 加密 (PKCS#7 填充)。
+ * 控制指令写入 0xFEFE ControlCmd 特征, 格式见 [IcceControlCommand]:
+ *   [command_type(1)][target(1)][user_id(BE u32)][hmac(32)] = 38 字节
+ *
+ * 通用 [BleCommandType] → ICCE command_type 映射 (module_design.md §3.1.4):
+ *   UNLOCK→0x01 (CMD_UNLOCK_DOOR), LOCK→0x02, ENGINE_ON→0x03 (CMD_START_ENGINE),
+ *   ENGINE_OFF→0x04, STATUS→0x06 (CMD_QUERY_STATUS)
+ *
+ * 安全: hmac[32] = HMAC-SHA256(会话密钥, 命令体前 6 字节) — 会话密钥存在时真实计算
+ * (crypto_engine.c crypto_hmac_sha256, RFC 2104); 未协商时零填充并告警(仅调试)。
+ * 设置 [SessionContext.sessionKey] 后命令体自动 SM4-CBC 加密 (PKCS#7 填充, AD-7)。
  */
 class ICCEBleAdapter : BleProtocolAdapter {
 
@@ -309,18 +314,47 @@ class ICCEBleAdapter : BleProtocolAdapter {
         buildControlCommand(BleCommandType.ENGINE_ON, session)
 
     private fun buildControlCommand(type: BleCommandType, session: SessionContext): ByteArray {
+        // 命令体前 6 字节: command_type(1) + target(1) + user_id(BE u32)
+        // 通用 BleCommandType → ICCE command_type 映射
+        val commandType = when (type) {
+            BleCommandType.UNLOCK -> 0x01 // CMD_UNLOCK_DOOR
+            BleCommandType.LOCK -> 0x02    // CMD_LOCK_DOOR
+            BleCommandType.ENGINE_ON -> 0x03   // CMD_START_ENGINE
+            BleCommandType.ENGINE_OFF -> 0x04  // CMD_STOP_ENGINE
+            BleCommandType.STATUS -> 0x06      // CMD_QUERY_STATUS
+        }
         val plain = ByteBuffer.allocate(38)
-            .put(type.value)
+            .put(commandType.toByte())
             .put(0x00.toByte())
             .putInt(session.userId)
-            .put(ByteArray(32)) // TODO(security): HMAC-SHA256(会话密钥, 命令体)
             .array()
+
+        // hmac[32] = HMAC-SHA256(会话密钥, 命令体前 6 字节) (AD-6, 覆盖范围待真机确认)
         val key = session.sessionKey
+        val hmac = if (key != null) {
+            hmacSha256(key, plain.copyOf(6))
+        } else {
+            LOG.warning("ICCE: 未协商会话密钥, hmac 零填充 (仅调试, 勿用于生产)")
+            ByteArray(32)
+        }
+        hmac.copyInto(plain, 6)
+
         return if (key != null) {
             Sm4.cbcEncrypt(key, session.sessionIv ?: Sm4.ZERO_IV, Sm4.pkcs7Pad(plain))
         } else {
             plain
         }
+    }
+
+    /** HMAC-SHA256 (RFC 2104), 输出 32 字节 — 与 crypto_engine.c crypto_hmac_sha256 同构 */
+    private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        mac.init(javax.crypto.spec.SecretKeySpec(key, "HmacSHA256"))
+        return mac.doFinal(data)
+    }
+
+    companion object {
+        private val LOG = java.util.logging.Logger.getLogger(ICCEBleAdapter::class.java.name)
     }
 
     /**

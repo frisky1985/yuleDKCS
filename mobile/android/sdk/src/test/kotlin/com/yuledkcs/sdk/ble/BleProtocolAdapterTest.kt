@@ -7,9 +7,11 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 /**
- * 协议适配器测试 — 2b-B 广告解析 / 2b-F 指令帧 + SM4
+ * 协议适配器测试 — 2b-B 广告解析 / 2b-F 指令帧 + SM4 + HMAC
  */
 class BleProtocolAdapterTest {
 
@@ -41,6 +43,13 @@ class BleProtocolAdapterTest {
     private fun ByteArray.toHex(): String = joinToString("") { "%02x".format(it) }
 
     private fun sm4Key(): ByteArray = hexToBytes("0123456789ABCDEFFEDCBA9876543210")
+
+    /** 参考 HMAC-SHA256 (javax.crypto, RFC 2104) — 与适配器实现同构 */
+    private fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(key, "HmacSHA256"))
+        return mac.doFinal(data)
+    }
 
     /** ICCOA 广播: FEF5 服务 + 厂商数据 (company 0x0100, vehicle_id 6B, ver, capability) */
     private fun iccoaAdvertise(capability: Int = 0x01): ByteArray = concat(
@@ -157,7 +166,7 @@ class BleProtocolAdapterTest {
     // ─── 2b-F: ICCOA 指令帧 ───────────────────────────────
 
     @Test
-    fun `ICCOA adapter builds framed control command`() {
+    fun `ICCOA adapter builds framed control command with cmd param payload`() {
         val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCOA)
         val session = SessionContext(keyId = "key-1", vehicleId = "VH-1", counter = 0x1234)
 
@@ -168,27 +177,51 @@ class BleProtocolAdapterTest {
         assertEquals(IcocaFrame.CMD_CTRL_REQUEST, frame!!.cmdId)
         assertEquals(0x1234, frame.seqNum)
 
-        // 未设置会话密钥 → 明文负载: [type=0x01][keyIdLen=5]["key-1"][counter BE]
-        assertEquals(11, frame.payload.size)
-        assertEquals(0x01, frame.payload[0].toInt() and 0xFF)
-        assertEquals(5, frame.payload[1].toInt() and 0xFF)
-        assertArrayEquals("key-1".toByteArray(), frame.payload.copyOfRange(2, 7))
+        // CTRL_REQUEST payload = [cmd(1)][param(1)] 共 2 字节 (dk30.c:88-104)
+        // 枚举映射: UNLOCK → 0x02 (CTRL_UNLOCK), param = 0x00
+        assertEquals(2, frame.payload.size)
+        assertEquals(0x02, frame.payload[0].toInt() and 0xFF)
+        assertEquals(0x00, frame.payload[1].toInt() and 0xFF)
     }
 
     @Test
-    fun `ICCOA adapter builds lock and engine commands`() {
+    fun `ICCOA adapter wire frame matches dk30 reference layout`() {
+        val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCOA)
+        val session = SessionContext(keyId = "key-1", vehicleId = "VH-1", counter = 0x1234)
+
+        val command = adapter.buildUnlockCommand("key-1", session)
+
+        // 完整帧: [SOP 0xAA][CMD 0x20][SEQ LE 0x34 0x12][LEN LE 0x02 0x00][0x02 0x00][XOR][EOP 0x55]
+        assertEquals(0xAA, command[0].toInt() and 0xFF)
+        assertEquals(0x20, command[1].toInt() and 0xFF)
+        assertEquals(0x34, command[2].toInt() and 0xFF)
+        assertEquals(0x12, command[3].toInt() and 0xFF)
+        assertEquals(0x02, command[4].toInt() and 0xFF)
+        assertEquals(0x00, command[5].toInt() and 0xFF)
+        assertEquals(0x02, command[6].toInt() and 0xFF) // cmd (UNLOCK→0x02)
+        assertEquals(0x00, command[7].toInt() and 0xFF) // param
+        // 校验和 = 0x20^0x34^0x12^0x02^0x00^0x02^0x00 = 0x06 (不含 SOP)
+        assertEquals(0x06, command[8].toInt() and 0xFF)
+        assertEquals(0x55, command[9].toInt() and 0xFF)
+        assertEquals(10, command.size)
+    }
+
+    @Test
+    fun `ICCOA adapter maps lock and engine commands per dk30 enums`() {
         val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCOA)
         val session = SessionContext(keyId = "k", vehicleId = "VH-1", counter = 1)
 
         val lock = IcocaFrame.parse(adapter.buildLockCommand("k", session))!!
-        assertEquals(0x02, lock.payload[0].toInt() and 0xFF)
+        // 映射: LOCK → 0x01 (CTRL_LOCK), 与通用枚举 0x02 相反
+        assertEquals(0x01, lock.payload[0].toInt() and 0xFF)
 
         val engine = IcocaFrame.parse(adapter.buildStartEngineCommand("k", session))!!
+        // 映射: ENGINE_ON → 0x03 (CTRL_ENGINE_ON)
         assertEquals(0x03, engine.payload[0].toInt() and 0xFF)
     }
 
     @Test
-    fun `ICCOA adapter encrypts payload with SM4 when session key present`() {
+    fun `ICCOA adapter does not encrypt payload even with session key`() {
         val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCOA)
         val session = SessionContext(
             keyId = "key-1", vehicleId = "VH-1", counter = 7,
@@ -199,14 +232,11 @@ class BleProtocolAdapterTest {
 
         val frame = IcocaFrame.parse(command)
         assertNotNull(frame)
-        // 明文 11 字节 → PKCS7 填充 → 16 字节 SM4 密文
-        assertEquals(16, frame!!.payload.size)
-
-        // 用同一会话密钥解密还原明文负载
-        val decrypted = Sm4.pkcs7Unpad(Sm4.cbcDecrypt(sm4Key(), Sm4.ZERO_IV, frame.payload))
-        assertEquals(0x01, decrypted[0].toInt() and 0xFF)
-        assertEquals(5, decrypted[1].toInt() and 0xFF)
-        assertArrayEquals("key-1".toByteArray(), decrypted.copyOfRange(2, 7))
+        // ICCOA 应用层无加密 (AD-1): payload 始终为明文 [cmd][param] 2 字节, 不做 SM4
+        assertEquals(2, frame!!.payload.size)
+        assertEquals(0x02, frame.payload[0].toInt() and 0xFF)
+        assertEquals(0x00, frame.payload[1].toInt() and 0xFF)
+        assertArrayEquals(byteArrayOf(0x02, 0x00), frame.payload)
     }
 
     @Test
@@ -264,7 +294,7 @@ class BleProtocolAdapterTest {
     // ─── 2b-F: ICCE 指令帧 ────────────────────────────────
 
     @Test
-    fun `ICCE adapter builds control command`() {
+    fun `ICCE adapter builds control command with zero hmac when no session key`() {
         val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCE)
         val session = SessionContext(keyId = "key-1", vehicleId = "VH-1", userId = 0x01020304)
 
@@ -272,12 +302,50 @@ class BleProtocolAdapterTest {
 
         // control_command_t: type(1) + target(1) + user_id(4) + hmac(32) = 38
         assertEquals(38, command.size)
-        assertEquals(0x01, command[0].toInt() and 0xFF) // CMD_UNLOCK_DOOR
+        assertEquals(0x01, command[0].toInt() and 0xFF) // 映射: UNLOCK → CMD_UNLOCK_DOOR 0x01
         assertEquals(0x00, command[1].toInt() and 0xFF) // target = 车辆主体
         assertEquals(0x01, command[2].toInt() and 0xFF)
         assertEquals(0x02, command[3].toInt() and 0xFF)
         assertEquals(0x03, command[4].toInt() and 0xFF)
         assertEquals(0x04, command[5].toInt() and 0xFF)
+        // 未协商会话密钥 → hmac 零填充 (仅调试)
+        assertArrayEquals(ByteArray(32), command.copyOfRange(6, 38))
+    }
+
+    @Test
+    fun `ICCE adapter fills real hmac when session key present`() {
+        val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCE)
+        val key = sm4Key()
+        val session = SessionContext(
+            keyId = "key-1", vehicleId = "VH-1", userId = 0x01020304,
+            sessionKey = key, sessionIv = Sm4.ZERO_IV
+        )
+
+        // 有会话密钥 → SM4-CBC 加密 48 字节, 解密后验证 hmac 非零且与参考计算一致
+        val command = adapter.buildUnlockCommand("key-1", session)
+        assertEquals(48, command.size) // 38 明文 → PKCS7 → 48 密文
+
+        val parsed = adapter.parseControlCommand(command, sessionKey = key, sessionIv = Sm4.ZERO_IV)
+        assertEquals(0x01, parsed.commandType)
+
+        // hmac = HMAC-SHA256(会话密钥, 命令体前 6 字节)
+        val expectedBody = byteArrayOf(0x01, 0x00, 0x01, 0x02, 0x03, 0x04)
+        val expectedHmac = hmacSha256(key, expectedBody)
+        assertFalse("hmac must not be zero-filled", parsed.hmac.all { it == 0.toByte() })
+        assertArrayEquals(expectedHmac, parsed.hmac)
+    }
+
+    @Test
+    fun `ICCE adapter maps commands per module design enums`() {
+        val adapter = BleProtocolAdapterFactory.makeAdapter(BleProtocolType.ICCE)
+        val session = SessionContext(keyId = "k", vehicleId = "VH-1", userId = 1)
+
+        // 映射: LOCK → 0x02, ENGINE_ON → 0x03 (module_design.md §3.1.4)
+        val lock = adapter.buildLockCommand("k", session)
+        assertEquals(0x02, lock[0].toInt() and 0xFF)
+
+        val engine = adapter.buildStartEngineCommand("k", session)
+        assertEquals(0x03, engine[0].toInt() and 0xFF)
     }
 
     @Test
@@ -309,6 +377,8 @@ class BleProtocolAdapterTest {
         val parsed = adapter.parseControlCommand(command, sessionKey = sm4Key())
         assertEquals(0x03, parsed.commandType)
         assertEquals(1, parsed.userId)
+        // 会话密钥存在 → hmac 为真实 HMAC, 非零
+        assertFalse(parsed.hmac.all { it == 0.toByte() })
     }
 
     @Test
