@@ -1,4 +1,5 @@
 import Foundation
+import YDKHubClient
 
 // MARK: - 数据模型
 
@@ -63,8 +64,9 @@ public final class YDKKeyManager {
 
     private let hubClient: YDKHubClient
     private let cache: YDKKeyCache
-    private let logger: YDKLogger
-    private let syncQueue = DispatchQueue(label: "com.yuledkcs.keymanager.sync", qos: .background)
+    // internal: YDKKeyManager+Sync.swift（同模块）跨文件访问 logger / syncQueue
+    let logger: YDKLogger
+    let syncQueue = DispatchQueue(label: "com.yuledkcs.keymanager.sync", qos: .background)
 
     // MARK: - 初始化
 

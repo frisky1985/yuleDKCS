@@ -1,0 +1,33 @@
+{
+  "": {
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/primary.swiftdeps"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Tests/YDKHubClientTests/YDKHubClientRemoteControlContractTests.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRemoteControlContractTests.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRemoteControlContractTests.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRemoteControlContractTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRemoteControlContractTests.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRemoteControlContractTests.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Tests/YDKHubClientTests/YDKHubClientRequestShapeContractTests.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRequestShapeContractTests.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRequestShapeContractTests.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRequestShapeContractTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRequestShapeContractTests.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientRequestShapeContractTests.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Tests/YDKHubClientTests/YDKHubClientTests.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientTests.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientTests.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientTests.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKHubClientTests.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Tests/YDKHubClientTests/YDKShareFlowTests.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKShareFlowTests.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKShareFlowTests.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKShareFlowTests~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKShareFlowTests.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKHubClientTests.build/YDKShareFlowTests.dia"
+  }
+}

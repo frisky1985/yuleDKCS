@@ -83,7 +83,9 @@ final class YDKUWBManagerTests: XCTestCase {
 
     // MARK: - U-1: YDKNIUWBManager 纯逻辑 (无硬件, 仅 iOS 宿主编译)
 
-    #if canImport(NearbyInteraction)
+    // 与 YDKUWBManager.swift 一致: NearbyInteraction 在 macOS 宿主 canImport 为 true
+    // 但 API 全部 API_UNAVAILABLE(macos), 故同步排除 macOS。
+    #if canImport(NearbyInteraction) && !os(macOS)
     @available(iOS 14.0, *)
     func testNIUWBManagerFailsWithoutPeerToken() async {
         let manager = YDKNIUWBManager()

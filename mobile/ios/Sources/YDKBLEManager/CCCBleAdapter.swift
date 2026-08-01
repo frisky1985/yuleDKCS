@@ -1,4 +1,5 @@
 import Foundation
+import YDKHubClient
 
 // MARK: - CCC 协议适配器
 

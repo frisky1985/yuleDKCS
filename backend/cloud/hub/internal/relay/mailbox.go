@@ -60,7 +60,7 @@ type Mailbox struct {
 	ReceiverToken     string          // 接收方 push token（用于通知接收方）
 	DisplayInfo       []byte
 	Payload           []byte          // 当前加密载荷（已由 sender Secret 加密）
-	SharingDataType   int32           // 1=KeyCreation, 2=KeySigning, 3=Import, 6=PinReEntryReq, 7=PinReEntryVal
+	SharingDataType   int32           // CCC §11.3.3: 1=KeyCreation, 2=KeySigning, 3=Import(→Completed), 4=SenderCancel, 5=ReceiverCancel, 6=PinReEntryReq, 7=PinReEntryVal
 	ReceiverDeviceID  string
 	ReceiverVendor    string
 	SharingURL        string          // base URL (不含 secret fragment — secret 由 sender 生成并加到 fragment)
@@ -200,8 +200,11 @@ func (c *MailboxController) Update(ctx context.Context, req *pb.UpdateMailboxReq
 		notifyTitle = "数字钥匙分享已更新"
 		notifyBody = "对方已签名，请完成钥匙导入"
 		notifyToken = mb.SenderToken
-	case 3: // ImportRequest — 发送方操作
-		newStatus = StatusUpdatedBySender
+	case 3: // ImportRequest (sharingImportRequest) — 发送方最终导入, 正常完成
+		// CCC-TS-101 §11.3.4: 发送方以 ImportRequest 作为正常分享流程的最后一步;
+		// 接收方获取 ImportRequest 后删除邮箱 (DeleteMailbox reason="completed")。
+		// 故 ImportRequest 将邮箱置为 COMPLETED 终态 (状态机允许 UPDATED_BY_RECEIVER → COMPLETED)。
+		newStatus = StatusCompleted
 		// 通知接收方
 		notifyTitle = "钥匙导入成功 🎉"
 		notifyBody = "你已收到数字钥匙，快去使用吧"

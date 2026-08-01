@@ -1,0 +1,103 @@
+{
+  "": {
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/primary.swiftdeps"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/BleProtocolAdapter.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/BleProtocolAdapter.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/BleProtocolAdapter.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/BleProtocolAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/BleProtocolAdapter.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/BleProtocolAdapter.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/CCCBleAdapter.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCBleAdapter.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCBleAdapter.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCBleAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCBleAdapter.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCBleAdapter.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/CCCCommandFrame.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCCommandFrame.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCCommandFrame.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCCommandFrame~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCCommandFrame.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCCommandFrame.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/CCCSecureChannel.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCSecureChannel.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCSecureChannel.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCSecureChannel~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCSecureChannel.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/CCCSecureChannel.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/ICCEBleAdapter.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCEBleAdapter.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCEBleAdapter.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCEBleAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCEBleAdapter.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCEBleAdapter.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/ICCOABleAdapter.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCOABleAdapter.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCOABleAdapter.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCOABleAdapter~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCOABleAdapter.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/ICCOABleAdapter.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/IcocaFrame.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/IcocaFrame.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/IcocaFrame.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/IcocaFrame~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/IcocaFrame.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/IcocaFrame.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/Sm4.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/Sm4.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/Sm4.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/Sm4~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/Sm4.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/Sm4.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKAdvertisementParser.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKAdvertisementParser.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKAdvertisementParser.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKAdvertisementParser~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKAdvertisementParser.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKAdvertisementParser.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKBLEManager.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEManager.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEManager.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEManager.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEManager.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKBLEModels.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEModels.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEModels.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEModels~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEModels.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBLEModels.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKBleUUIDs.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBleUUIDs.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBleUUIDs.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBleUUIDs~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBleUUIDs.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKBleUUIDs.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKNFCManager.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKNFCManager.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKNFCManager.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKNFCManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKNFCManager.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKNFCManager.dia"
+  },
+  "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/Sources/YDKBLEManager/YDKUWBManager.swift": {
+    "dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKUWBManager.d",
+    "object": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKUWBManager.swift.o",
+    "swiftmodule": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKUWBManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKUWBManager.swiftdeps",
+    "diagnostics": "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/YDKUWBManager.dia"
+  }
+}

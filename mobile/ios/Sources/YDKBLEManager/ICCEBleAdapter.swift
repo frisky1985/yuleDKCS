@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import YDKHubClient
 
 // MARK: - ICCE 协议适配器
 

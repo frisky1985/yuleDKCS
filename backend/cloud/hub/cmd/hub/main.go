@@ -198,7 +198,19 @@ func setupHubGRPCServerWithStores(
 		logger.Info("key store: in-memory (dev/test)")
 	}
 	shareSvc := service.NewKeyShareService(adapterRegistry, logger)
+	if keyStore != nil {
+		shareSvc = shareSvc.WithKeyStore(keyStore)
+		if ss, ok := keyStore.(service.ShareStore); ok {
+			shareSvc = shareSvc.WithShareStore(ss)
+			logger.Info("share store: postgres")
+		}
+	}
 	vehicleSvc := service.NewVehicleControlService(logger)
+	if keyStore != nil {
+		// 生产: SendCommand 权限校验基于 PG key store
+		vehicleSvc = vehicleSvc.WithKeyStore(keyStore)
+		logger.Info("vehicle control: key store postgres (permission checks enabled)")
+	}
 	transportSvc := service.NewHubTransportService(adapterRegistry, logger)
 
 	pb.RegisterKeyManagementServiceServer(grpcSrv, keySvc)

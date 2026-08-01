@@ -1,0 +1,3 @@
+module YDKBLEManager {
+    header "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKBLEManager.build/include/YDKBLEManager-Swift.h"
+}

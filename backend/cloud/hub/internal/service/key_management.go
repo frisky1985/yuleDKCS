@@ -37,6 +37,7 @@ type KeyRecord struct {
 	VehicleID   string
 	Vendor      string
 	Status      string // "active", "suspended", "revoked", "pending"
+	AccessBits  uint32 // 权限位掩码 (ICCOA_PERM 语义, 见 access_bits.go)
 	CreatedAt   int64  // unix millis
 }
 
@@ -257,6 +258,7 @@ func (s *KeyManagementService) BindKey(ctx context.Context, req *pb.BindKeyReque
 			VehicleID:   req.VehicleId,
 			Vendor:      req.Vendor.String(),
 			Status:      "active",
+			AccessBits:  accessLevelToBits(req.AccessLevel),
 			CreatedAt:   time.Now().UnixMilli(),
 		}
 		if err := s.keyStore.SetKey(ctx, keyRecord); err != nil {
@@ -600,11 +602,12 @@ func keyRecordToDigitalKey(rec *KeyRecord) *pb.DigitalKey {
 		return nil
 	}
 	return &pb.DigitalKey{
-		KeyId:     rec.KeyID,
-		VehicleId: rec.VehicleID,
-		UserId:    rec.OwnerUserID,
-		Status:    keyStatusFromString(rec.Status),
-		CreatedAt: rec.CreatedAt,
+		KeyId:       rec.KeyID,
+		VehicleId:   rec.VehicleID,
+		UserId:      rec.OwnerUserID,
+		Status:      keyStatusFromString(rec.Status),
+		AccessLevel: bitsToAccessLevel(rec.AccessBits),
+		CreatedAt:   rec.CreatedAt,
 	}
 }
 

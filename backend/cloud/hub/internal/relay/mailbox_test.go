@@ -83,19 +83,19 @@ func TestCreateAndUpdateMailbox(t *testing.T) {
 		t.Errorf("expected UPDATED_BY_RECEIVER, got %v", updated.Status)
 	}
 
-	// 3. Sender updates (ImportRequest)
+	// 3. Sender updates (ImportRequest) — 正常流程最后一步, 邮箱转为 COMPLETED
 	updateReq2 := &pb.UpdateMailboxRequest{
 		MailboxId:       mb.MailboxId,
 		Payload:         []byte("import-data"),
-		SharingDataType: 3, // ImportRequest
+		SharingDataType: 3, // ImportRequest (sharingImportRequest) — CCC §11.3.4: 发送方导入即完成
 		UpdaterDeviceId: "sender-001",
 	}
 	updated2, err := ctrl.Update(context.Background(), updateReq2)
 	if err != nil {
 		t.Fatalf("second Update failed: %v", err)
 	}
-	if updated2.Status != pb.MailboxStatus_UPDATED_BY_SENDER {
-		t.Errorf("expected UPDATED_BY_SENDER, got %v", updated2.Status)
+	if updated2.Status != pb.MailboxStatus_COMPLETED {
+		t.Errorf("expected COMPLETED (ImportRequest 完成分享), got %v", updated2.Status)
 	}
 
 	// 4. Read secure content
@@ -451,5 +451,113 @@ func TestURLNoFragment(t *testing.T) {
 	}
 	if mb.SharingUrl != "https://dk-relay.yuletech.com/mailbox/"+mb.MailboxId {
 		t.Errorf("unexpected URL format: %s", mb.SharingUrl)
+	}
+}
+
+// ─── 完成流测试 (W3: StatusCompleted 可达路径) ─────────────────
+
+// TestMailboxCompletionFlow 验证正常完成路径: Create → KeySigning(2) → Import(3)=COMPLETED → Delete(reason="completed")
+// 依据 CCC-TS-101 §11.3.3/§11.3.4:
+//   - sharingDataType=3 (sharingImportRequest) 是发送方正常流程的最后一步 → 邮箱置为 COMPLETED
+//   - DeleteMailbox 语义: 接收方获取 ImportRequest 后删除 (reason="completed")
+func TestMailboxCompletionFlow(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("key-creation-data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// 1. 接收方 KeySigning → UPDATED_BY_RECEIVER
+	updated, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Payload:         []byte("key-signing-data"),
+		SharingDataType: 2, // sharingKeySigningRequest — 接收方签名
+		UpdaterDeviceId: "receiver-001",
+	})
+	if err != nil {
+		t.Fatalf("KeySigning Update failed: %v", err)
+	}
+	if updated.Status != pb.MailboxStatus_UPDATED_BY_RECEIVER {
+		t.Fatalf("expected UPDATED_BY_RECEIVER, got %v", updated.Status)
+	}
+
+	// 2. 发送方 Import → COMPLETED (正常完成)
+	updated2, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Payload:         []byte("import-data"),
+		SharingDataType: 3, // sharingImportRequest — 发送方导入, 正常完成
+		UpdaterDeviceId: "sender-001",
+	})
+	if err != nil {
+		t.Fatalf("Import Update failed: %v", err)
+	}
+	if updated2.Status != pb.MailboxStatus_COMPLETED {
+		t.Fatalf("expected COMPLETED, got %v", updated2.Status)
+	}
+
+	// 3. COMPLETED 态下 Delete(reason="completed") 应成功 (CCC §11.3.4: 接收方获取 ImportRequest 后删除)
+	_, err = ctrl.Delete(context.Background(), &pb.DeleteMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		Reason:          "completed",
+		DeleterDeviceId: "receiver-001",
+	})
+	if err != nil {
+		t.Fatalf("Delete(reason=completed) on COMPLETED mailbox failed: %v", err)
+	}
+
+	// 4. 删除后邮箱应不可读
+	if _, _, err := ctrl.ReadSecureContent(context.Background(), mb.MailboxId); err == nil {
+		t.Error("expected error after delete, got nil")
+	}
+}
+
+// TestUpdateAfterCompletedRejected 验证 COMPLETED 是终态: 后续任何 Update 必须失败
+func TestUpdateAfterCompletedRejected(t *testing.T) {
+	logger := zap.NewNop()
+	ctrl := NewMailboxController(logger)
+
+	mb, err := ctrl.Create(context.Background(), &pb.CreateMailboxRequest{
+		SenderDeviceId: "sender-001",
+		SenderVendor:   "apple",
+		Payload:        []byte("data"),
+		Config:         &pb.MailboxConfig{ExpirationSeconds: 3600},
+	})
+	if err != nil {
+		t.Fatalf("Create failed: %v", err)
+	}
+
+	// 走完正常流程到 COMPLETED
+	if _, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		SharingDataType: 2,
+		UpdaterDeviceId: "receiver-001",
+	}); err != nil {
+		t.Fatalf("KeySigning failed: %v", err)
+	}
+	if _, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+		MailboxId:       mb.MailboxId,
+		SharingDataType: 3,
+		UpdaterDeviceId: "sender-001",
+	}); err != nil {
+		t.Fatalf("Import failed: %v", err)
+	}
+
+	// 终态后改变状态的 Update 应被拒绝 (KeySigning / SenderCancel / ReceiverCancel)
+	// 注: PinReEntry(6/7) 是仅更新 payload、保持状态不变的更新, 不违反终态约束, 不在断言范围。
+	for _, dt := range []int32{2, 4, 5} {
+		if _, err := ctrl.Update(context.Background(), &pb.UpdateMailboxRequest{
+			MailboxId:       mb.MailboxId,
+			SharingDataType: dt,
+			UpdaterDeviceId: "receiver-001",
+		}); err == nil {
+			t.Errorf("Update(dataType=%d) on COMPLETED mailbox should fail", dt)
+		}
 	}
 }

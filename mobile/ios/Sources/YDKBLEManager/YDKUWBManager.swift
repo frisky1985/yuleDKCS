@@ -118,11 +118,11 @@ public final class YDKMockUWBManager: YDKUWBManaging {
 //    NISession.deviceCapabilities.supportsPreciseDistanceMeasurement。
 //
 // macOS 宿主说明: NearbyInteraction 框架仅 iOS 可用 (canImport 在 macOS 上为 true
-// 但 API 全部 API_UNAVAILABLE(macos)), 真实实现以 `#if canImport(NearbyInteraction)`
-// 包裹 — macOS 宿主编译时整块被可用性检查拒绝, 不影响 iOS 构建;
+// 但 API 全部 API_UNAVAILABLE(macos)), 真实实现以 `#if canImport(NearbyInteraction) && !os(macOS)`
+// 包裹 — macOS 宿主编译时整块被排除, 不影响 iOS 构建;
 // swiftc -parse 语法验证不受影响 (parse 不做语义/可用性分析)。
 // ─────────────────────────────────────────────────────────────────────────────
-#if canImport(NearbyInteraction)
+#if canImport(NearbyInteraction) && !os(macOS)
 import NearbyInteraction
 import simd
 

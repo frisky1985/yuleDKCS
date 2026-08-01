@@ -1,4 +1,5 @@
 import Foundation
+import YDKHubClient
 
 /// 本地钥匙缓存 — JSON 文件持久化
 ///

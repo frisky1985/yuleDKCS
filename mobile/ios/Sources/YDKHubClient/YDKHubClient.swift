@@ -15,14 +15,16 @@ public final class YDKHubClient {
 
     // MARK: - 内部状态
 
-    private let baseURL: URL
-    private let session: URLSession
+    // 以下成员为 internal（而非 private/fileprivate）:
+    // 同模块的 YDKHubClient+Stream.swift 等扩展需跨文件访问（SSE 流/测试）。
+    let baseURL: URL
+    let session: URLSession
     private let config: SDKConfig
     private let logger: YDKLogger
-    private let decoder: JSONDecoder
+    let decoder: JSONDecoder
     private let encoder: JSONEncoder
 
-    fileprivate var token: String?
+    var token: String?
 
     // MARK: - 初始化
 
@@ -141,10 +143,11 @@ final class YDKURLSessionDelegate: NSObject, URLSessionDelegate {
     // TLS 验证（后续可添加证书固定）
 }
 
-final class YDKLogger {
+/// 日志器 — public: YDKKeyManager 模块（依赖 YDKHubClient）也使用该类型。
+public final class YDKLogger {
     private let enabled: Bool
-    init(enabled: Bool) { self.enabled = enabled }
-    func log(_ message: String) {
+    public init(enabled: Bool) { self.enabled = enabled }
+    public func log(_ message: String) {
         guard enabled else { return }
         print("[YDKHubClient] \(message)")
     }

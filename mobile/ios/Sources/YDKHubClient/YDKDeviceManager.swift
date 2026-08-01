@@ -1,6 +1,8 @@
 import Foundation
 import Security
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - 手机厂商枚举（与 sdk.proto PhoneVendor 对齐）
 
@@ -182,12 +184,15 @@ public final class YDKDeviceManager {
     public func detectVendor() -> PhoneVendor {
         #if targetEnvironment(simulator)
         return .apple
-        #else
+        #elseif canImport(UIKit)
         let model = UIDevice.current.model
         if model.localizedCaseInsensitiveContains("iPhone") {
             return .apple
         }
         // 非 iOS 设备（SDK 运行在 iOS，正常只会是 apple）
+        return .apple
+        #else
+        // 非 iOS 宿主（如 macOS 开发/CI 环境，无 UIKit）: 默认返回 apple，与 iOS 行为一致
         return .apple
         #endif
     }

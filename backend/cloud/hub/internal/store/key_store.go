@@ -45,9 +45,9 @@ func (s *PostgresStore) GetKeyStatus(ctx context.Context, keyID string) (string,
 func (s *PostgresStore) GetKeyRecord(ctx context.Context, keyID string) (*service.KeyRecord, error) {
 	rec := &service.KeyRecord{}
 	err := s.pool.QueryRow(ctx,
-		`SELECT key_id, owner_user_id, vehicle_id, vendor, status, created_at
+		`SELECT key_id, owner_user_id, vehicle_id, vendor, status, access_bits, created_at
 		 FROM keys WHERE key_id = $1`, keyID,
-	).Scan(&rec.KeyID, &rec.OwnerUserID, &rec.VehicleID, &rec.Vendor, &rec.Status, &rec.CreatedAt)
+	).Scan(&rec.KeyID, &rec.OwnerUserID, &rec.VehicleID, &rec.Vendor, &rec.Status, &rec.AccessBits, &rec.CreatedAt)
 	if isNotFound(err) {
 		return nil, fmt.Errorf("key %s not found", keyID)
 	}
@@ -60,15 +60,16 @@ func (s *PostgresStore) GetKeyRecord(ctx context.Context, keyID string) (*servic
 // SetKey 创建或更新钥匙元数据 (UPSERT)。
 func (s *PostgresStore) SetKey(ctx context.Context, key *service.KeyRecord) error {
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO keys (key_id, owner_user_id, vehicle_id, vendor, status, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)
+		`INSERT INTO keys (key_id, owner_user_id, vehicle_id, vendor, status, access_bits, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
 		 ON CONFLICT (key_id) DO UPDATE SET
 		   owner_user_id = EXCLUDED.owner_user_id,
 		   vehicle_id    = EXCLUDED.vehicle_id,
 		   vendor        = EXCLUDED.vendor,
 		   status        = EXCLUDED.status,
+		   access_bits   = EXCLUDED.access_bits,
 		   created_at    = EXCLUDED.created_at`,
-		key.KeyID, key.OwnerUserID, key.VehicleID, key.Vendor, key.Status, key.CreatedAt,
+		key.KeyID, key.OwnerUserID, key.VehicleID, key.Vendor, key.Status, key.AccessBits, key.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("set key: %w", err)
@@ -93,7 +94,7 @@ func (s *PostgresStore) SetKeyStatus(ctx context.Context, keyID, status string) 
 // ListKeysByUser 返回用户拥有的全部钥匙。
 func (s *PostgresStore) ListKeysByUser(ctx context.Context, userID string) ([]*service.KeyRecord, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT key_id, owner_user_id, vehicle_id, vendor, status, created_at
+		`SELECT key_id, owner_user_id, vehicle_id, vendor, status, access_bits, created_at
 		 FROM keys WHERE owner_user_id = $1`, userID,
 	)
 	if err != nil {
@@ -104,7 +105,7 @@ func (s *PostgresStore) ListKeysByUser(ctx context.Context, userID string) ([]*s
 	var result []*service.KeyRecord
 	for rows.Next() {
 		rec := &service.KeyRecord{}
-		if err := rows.Scan(&rec.KeyID, &rec.OwnerUserID, &rec.VehicleID, &rec.Vendor, &rec.Status, &rec.CreatedAt); err != nil {
+		if err := rows.Scan(&rec.KeyID, &rec.OwnerUserID, &rec.VehicleID, &rec.Vendor, &rec.Status, &rec.AccessBits, &rec.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan key record: %w", err)
 		}
 		result = append(result, rec)

@@ -9,6 +9,23 @@ import (
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 )
 
+// newTestVehicleSvc 构建注入 keyStore + MockCommandDispatcher 的 VehicleControlService。
+// key 默认 active + 全权限。
+func newTestVehicleSvc(t *testing.T, accessBits uint32) (*VehicleControlService, *MockCommandDispatcher) {
+	t.Helper()
+	logger := zap.NewNop()
+	s := NewVehicleControlService(logger)
+	ks := NewInMemoryKeyStore()
+	_ = ks.SetKey(context.Background(), &KeyRecord{
+		KeyID: "key-001", OwnerUserID: "user-1", VehicleID: "VH001",
+		Status: "active", AccessBits: accessBits,
+	})
+	s.WithKeyStore(ks)
+	d := NewMockCommandDispatcher()
+	s.WithCommandDispatcher(d)
+	return s, d
+}
+
 func TestNewVehicleControlService(t *testing.T) {
 	logger := zap.NewNop()
 	s := NewVehicleControlService(logger)
@@ -18,8 +35,7 @@ func TestNewVehicleControlService(t *testing.T) {
 }
 
 func TestVehicleControlService_SendCommand(t *testing.T) {
-	logger := zap.NewNop()
-	s := NewVehicleControlService(logger)
+	s, d := newTestVehicleSvc(t, PermBitAll)
 	ctx := context.Background()
 
 	req := &pb.ControlCommandRequest{
@@ -41,11 +57,13 @@ func TestVehicleControlService_SendCommand(t *testing.T) {
 	if resp.ResultCode != 0 {
 		t.Errorf("expected result code 0, got %d", resp.ResultCode)
 	}
+	if d.Count() != 1 {
+		t.Errorf("expected dispatcher called once, got %d", d.Count())
+	}
 }
 
 func TestVehicleControlService_SendCommand_CmdIDFormat(t *testing.T) {
-	logger := zap.NewNop()
-	s := NewVehicleControlService(logger)
+	s, _ := newTestVehicleSvc(t, PermBitAll)
 	ctx := context.Background()
 
 	req := &pb.ControlCommandRequest{
@@ -66,8 +84,7 @@ func TestVehicleControlService_SendCommand_CmdIDFormat(t *testing.T) {
 }
 
 func TestVehicleControlService_SendCommand_DifferentActions(t *testing.T) {
-	logger := zap.NewNop()
-	s := NewVehicleControlService(logger)
+	s, d := newTestVehicleSvc(t, PermBitAll)
 	ctx := context.Background()
 
 	actions := []string{"lock", "unlock", "engine_start", "engine_stop", "trunk_open"}
@@ -85,21 +102,51 @@ func TestVehicleControlService_SendCommand_DifferentActions(t *testing.T) {
 			t.Errorf("expected non-empty CmdId for action %s", action)
 		}
 	}
+	if d.Count() != len(actions) {
+		t.Errorf("expected %d dispatches, got %d", len(actions), d.Count())
+	}
 }
 
 func TestVehicleControlService_SendCommand_EmptyFields(t *testing.T) {
-	logger := zap.NewNop()
-	s := NewVehicleControlService(logger)
+	s, _ := newTestVehicleSvc(t, PermBitAll)
 
-	resp, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{})
-	if err != nil {
-		t.Fatalf("SendCommand failed: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil response")
+	_, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{})
+	if err == nil {
+		t.Fatal("expected error for empty request")
 	}
 }
 
-// ── StreamStatus ──
+func TestVehicleControlService_SendCommand_KeyNotFound(t *testing.T) {
+	s, _ := newTestVehicleSvc(t, PermBitAll)
+	_, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{
+		VehicleId: "VH001", Action: "unlock", KeyId: "key-missing",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing key")
+	}
+}
 
+func TestVehicleControlService_SendCommand_NoPermission(t *testing.T) {
+	// key 只有 lock 权限, 执行 unlock → 权限拒绝
+	s, d := newTestVehicleSvc(t, PermBitLock)
+	_, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{
+		VehicleId: "VH001", Action: "unlock", KeyId: "key-001",
+	})
+	if err == nil {
+		t.Fatal("expected permission denied for unlock without unlock bit")
+	}
+	if d.Count() != 0 {
+		t.Errorf("expected no dispatch, got %d", d.Count())
+	}
+}
 
+func TestVehicleControlService_SendCommand_DispatcherFailure(t *testing.T) {
+	s, d := newTestVehicleSvc(t, PermBitAll)
+	d.Err = context.DeadlineExceeded
+	_, err := s.SendCommand(context.Background(), &pb.ControlCommandRequest{
+		VehicleId: "VH001", Action: "unlock", KeyId: "key-001",
+	})
+	if err == nil {
+		t.Fatal("expected error when dispatcher fails")
+	}
+}

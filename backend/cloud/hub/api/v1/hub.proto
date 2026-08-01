@@ -46,6 +46,14 @@ enum KeyStatus {
     EXPIRED                = 4;
 }
 
+// 分享状态 (密钥分享状态机: PENDING → ACCEPTED / CANCELLED)
+enum ShareStatus {
+    SHARE_STATUS_UNSPECIFIED = 0;
+    PENDING                  = 1;  // 已创建, 等待接收方使用分享码接受
+    ACCEPTED                 = 2;  // 已被接受, 分享生效
+    CANCELLED                = 3;  // 已取消 (创建者主动取消或过期)
+}
+
 // 权限位掩码
 message AccessLevel {
     bool lock     = 1;
@@ -265,6 +273,9 @@ message GetShareResponse {
     int64  valid_from     = 5;
     int64  valid_until    = 6;
     string error_code     = 7;
+    ShareStatus status    = 8;  // 分享当前状态 (PENDING/ACCEPTED/CANCELLED)
+    string share_code     = 9;  // 分享码 (创建者透传给接收方)
+    string to_user_id     = 10; // 接收方用户 id (为空表示按分享码接受)
 }
 
 // ============================================================

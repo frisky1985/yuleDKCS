@@ -1,0 +1,3 @@
+module YDKKeyManager {
+    header "/Users/stefan/.openclaw/workspace/yuleDKCS/mobile/ios/.build/arm64-apple-macosx/debug/YDKKeyManager.build/include/YDKKeyManager-Swift.h"
+}

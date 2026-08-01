@@ -1,5 +1,6 @@
 import Foundation
 import CoreBluetooth
+import YDKHubClient
 
 // MARK: - BLE 管理器协议
 

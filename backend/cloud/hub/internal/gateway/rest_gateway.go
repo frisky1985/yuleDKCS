@@ -648,6 +648,9 @@ func (g *RESTGateway) handleGRPCError(c *gin.Context, err error) {
 	case codes.DeadlineExceeded:
 		httpStatus = http.StatusGatewayTimeout
 		errorCode = "GRPC_DEADLINE_EXCEEDED"
+	case codes.FailedPrecondition:
+		httpStatus = http.StatusConflict
+		errorCode = "GRPC_FAILED_PRECONDITION"
 	case codes.ResourceExhausted:
 		httpStatus = http.StatusTooManyRequests
 		errorCode = "GRPC_RESOURCE_EXHAUSTED"

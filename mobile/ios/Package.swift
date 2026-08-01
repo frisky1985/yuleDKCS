@@ -5,7 +5,11 @@ let package = Package(
     name: "yuleDKCS-SDK",
 
     platforms: [
-        .iOS(.v15)
+        .iOS(.v15),
+        // macOS 最低版本声明: 仅用于 macOS 宿主（开发/CI）编译验证。
+        // AsyncThrowingStream (10.15+) 与 URLSession.data(for:) (12.0+)
+        // 需要 macOS 12+ 部署目标; 不影响 iOS 构建。
+        .macOS(.v12)
     ],
 
     products: [
@@ -41,9 +45,10 @@ let package = Package(
         ),
 
         // ── BLE/UWB 本地通信 ──
+        // 依赖 YDKHubClient: 复用其 public YDKLogger / YDKError（预存跨模块引用）
         .target(
             name: "YDKBLEManager",
-            dependencies: [],
+            dependencies: ["YDKHubClient"],
             path: "Sources/YDKBLEManager"
         ),
 
