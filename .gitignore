@@ -53,7 +53,12 @@
     53|mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/SdkKt.*.kt
     54|mobile/android/sdk/src/main/kotlin/digitalkey/
     55|
-    56|# SwiftPM build artifacts
+    56|# Embedded test build artifacts
+embedded/tests/build/
+
+# Local temp outputs
+backend/cloud/hub/hub_orig.out
+# SwiftPM build artifacts
 mobile/ios/.build/
 mobile/ios/.swiftpm/
 
