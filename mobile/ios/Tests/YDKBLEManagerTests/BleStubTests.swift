@@ -122,6 +122,7 @@ final class FakeCentral: YDKCentralManaging {
     var onPeripheralConnected: ((YDKPeripheralManaging) -> Void)?
     var onPeripheralFailedToConnect: ((YDKPeripheralManaging, Error?) -> Void)?
     var onPeripheralDisconnected: ((YDKPeripheralManaging, Error?) -> Void)?
+    var onRestoreState: (([YDKPeripheralManaging]) -> Void)?
 
     /// 预置外设: (外设, 广播字典, rssi)
     private(set) var presets: [(peripheral: YDKPeripheralManaging, advertisement: [String: Any], rssi: Int)] = []
@@ -129,6 +130,10 @@ final class FakeCentral: YDKCentralManaging {
     private(set) var connectedPeripherals: [YDKPeripheralManaging] = []
     private(set) var cancelledPeripherals: [YDKPeripheralManaging] = []
     private(set) var scannedServices: [CBUUID]?
+    /// 记录最近一次 connect 的 options (2b-I B1.4 断言连接唤醒选项用)
+    private(set) var connectOptions: [String: Any]?
+    /// retrieveConnectedPeripherals 返回的系统已连接外设 (2b-I B1.5 回退路径用)
+    var connectedSystemPeripherals: [YDKPeripheralManaging] = []
 
     /// 连接失败注入 (nil = 连接成功)
     var connectError: Error?
@@ -137,6 +142,11 @@ final class FakeCentral: YDKCentralManaging {
     func simulateStateChange(_ newState: CBManagerState) {
         state = newState
         onStateChange?(newState)
+    }
+
+    /// 模拟 centralManager(_:willRestoreState:) — 驱动 onRestoreState 回调 (2b-I B1.3)
+    func simulateRestoreState(_ peripherals: [YDKPeripheralManaging]) {
+        onRestoreState?(peripherals)
     }
 
     /// 注入预置外设 (车辆广播桩)
@@ -159,6 +169,7 @@ final class FakeCentral: YDKCentralManaging {
 
     func connect(_ peripheral: YDKPeripheralManaging, options: [String: Any]?) {
         connectedPeripherals.append(peripheral)
+        connectOptions = options
         if let error = connectError {
             onPeripheralFailedToConnect?(peripheral, error)
         } else {
@@ -171,7 +182,7 @@ final class FakeCentral: YDKCentralManaging {
     }
 
     func retrieveConnectedPeripherals(withServices serviceUUIDs: [CBUUID]) -> [YDKPeripheralManaging] {
-        []
+        connectedSystemPeripherals
     }
 }
 

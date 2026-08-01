@@ -62,7 +62,7 @@ Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
 | 2b-F | ICCOA/ICCE 指令帧 SM4 | `ICCOABleAdapter.swift`、`BleProtocolAdapter.kt` | ✅ **完成 (2026-08-01)**: 以车端参考实现裁决 (dk30.c/iccoa_digital_key.h/module_design.md), 见 `docs/certification/iccoa-icce-ble-command-frames.md`; 关键裁决: ICCOA 应用层无 SM4 (链路层 LE SC 加密), CTRL payload=[cmd][param], 帧 SEQ/LEN 小端 + checksum 不含 SOP, 枚举映射 (unlock→0x02 防锁/解颠倒), ICCE HMAC-SHA256 真实化 + SM4-CBC; iOS 42/42 断言 + 类型检查, Android 测试更新 CI 执行 | W2 |
 | 2b-G | UWB 测距 | iOS/Android 60 行骨架 | ⚠️ 真机依赖: 代码+接口+模拟测，真机联调单列 | 独立 |
 | 2b-H | NFC 备用解锁 | iOS/Android 34 行骨架 | ⚠️ 真机依赖: 同上 | 独立 |
-| 2b-I | 后台 BLE | 未开始 | iOS background mode + Android foreground service | W1/W2 尾 |
+| 2b-I | 后台 BLE | iOS YDKBLEManager + Android BleManager | ✅ **完成 (2026-08-01)**: 见 `docs/certification/ble-background-runtime.md` + `docs/sdk/BLE-BACKGROUND-INTEGRATION.md`; iOS: state restoration (RestoreIdentifier + willRestoreState) + 连接唤醒 options, 16/16 断言; Android: YdkBleForegroundService + BlePermissions 权限矩阵 + autoConnect + startBackgroundScan, 41 个 API level 穷举验证; 真机验证单列 | W1/W2 尾 |
 
 **防幻觉原则**:
 1. 协议指令真实化（2b-E/F）必须先研读规范/参考实现再写，禁止凭印象编帧格式

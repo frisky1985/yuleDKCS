@@ -128,13 +128,32 @@ class BleManager(
             discoveredDevices.values.toList()
         }
 
+    /**
+     * 后台扫描入口 — 2b-I (契约 B2.3)
+     *
+     * 复用 [scanVehicles] 同一扫描路径 (BleScanEngine + ScanResultProcessor),
+     * 不新造扫描逻辑; 供 [YdkBleForegroundService] 在前台服务上下文中调用。
+     * 启动前做权限预检 ([BlePermissions.checkOrThrow])。
+     *
+     * @param timeoutMs 单次后台扫描超时（毫秒）
+     * @param vehicleIds 可选过滤: 仅保留 vehicleId (或设备 MAC) 在此集合内的结果
+     * @throws IllegalStateException 缺少 BLE 权限时
+     */
+    suspend fun startBackgroundScan(timeoutMs: Long = 30_000, vehicleIds: Set<String>? = null): List<VehicleAdvertise> {
+        BlePermissions.checkOrThrow(context)
+        return scanVehicles(timeoutMs, vehicleIds)
+    }
+
     // MARK: 连接
 
     /**
      * 连接车辆
      * @param address BLE 设备地址（扫描结果中的 vehicleId 或 MAC）
+     * @param autoConnect 是否启用系统后台重连 (契约 AD-7):
+     *        true 时 connectGatt 由系统维护连接/断线重连, 适合后台场景;
+     *        默认 false 保持现有行为 (仅主动连接一次)。
      */
-    suspend fun connect(address: String): ConnectResponse = withContext(Dispatchers.Main) {
+    suspend fun connect(address: String, autoConnect: Boolean = false): ConnectResponse = withContext(Dispatchers.Main) {
         val bleAdapter = bluetoothAdapter ?: return@withContext ConnectResponse(false, "bluetooth not available")
 
         val device: BluetoothDevice = try {
@@ -189,7 +208,7 @@ class BleManager(
             }
         }
 
-        gatt = device.connectGatt(context, false, gattCallback)
+        gatt = device.connectGatt(context, autoConnect, gattCallback)
         deferred.await()
     }
 

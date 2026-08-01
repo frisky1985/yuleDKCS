@@ -38,6 +38,10 @@ protocol YDKCentralManaging: AnyObject {
     var onPeripheralConnected: ((YDKPeripheralManaging) -> Void)? { get set }
     var onPeripheralFailedToConnect: ((YDKPeripheralManaging, Error?) -> Void)? { get set }
     var onPeripheralDisconnected: ((YDKPeripheralManaging, Error?) -> Void)? { get set }
+    /// 系统状态恢复回调 (2b-I AD-4): CBCentralManager 携带 restore identifier 重建后,
+    /// 系统把被杀前已连接/扫描中的外设经 `willRestoreState` 交回, 这里包装成
+    /// `YDKPeripheralManaging` 数组传出。未启用 state restoration 时不会触发。
+    var onRestoreState: (([YDKPeripheralManaging]) -> Void)? { get set }
 
     func scanForPeripherals(withServices serviceUUIDs: [CBUUID]?, options: [String: Any]?)
     func stopScan()
@@ -86,6 +90,7 @@ final class YDKCoreBluetoothCentral: NSObject, YDKCentralManaging, CBCentralMana
     var onPeripheralConnected: ((YDKPeripheralManaging) -> Void)?
     var onPeripheralFailedToConnect: ((YDKPeripheralManaging, Error?) -> Void)?
     var onPeripheralDisconnected: ((YDKPeripheralManaging, Error?) -> Void)?
+    var onRestoreState: (([YDKPeripheralManaging]) -> Void)?
 
     init(queue: DispatchQueue? = nil, options: [String: Any]? = nil) {
         self.manager = CBCentralManager(delegate: nil, queue: queue, options: options)
@@ -141,6 +146,14 @@ final class YDKCoreBluetoothCentral: NSObject, YDKCentralManaging, CBCentralMana
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         onPeripheralDisconnected?(YDKCoreBluetoothPeripheral.wrap(peripheral), error)
+    }
+
+    /// 状态恢复 (2b-I AD-4): 系统在后台重建 CBCentralManager 后, 把被杀前已连接/扫描中的
+    /// 外设经此回调交回。从 dict 取 `CBCentralManagerRestoredStatePeripheralsKey` 对应的
+    /// `[CBPeripheral]`, 包装成 `YDKPeripheralManaging` 后经 `onRestoreState` 交给上层。
+    func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        let restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] ?? []
+        onRestoreState?(restored.map { YDKCoreBluetoothPeripheral.wrap($0) })
     }
 }
 
@@ -299,14 +312,26 @@ public final class YDKBLEManager: NSObject, YDKBLEManaging {
     /// 等待车辆指令响应的超时
     private static let responseTimeout: TimeInterval = 5
 
+    /// 连接唤醒选项 (2b-I AD-3): 后台连接/断开时系统唤醒宿主 App。
+    /// 对应 Apple: `CBConnectPeripheralOptionNotifyOnConnectionKey` /
+    /// `CBConnectPeripheralOptionNotifyOnDisconnectionKey`。
+    private static let connectWakeOptions: [String: Any] = [
+        CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+        CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+    ]
+
     private let logger: YDKLogger
 
     // MARK: - 初始化
 
-    public init(enableLogging: Bool = false) {
+    /// 生产入口 (2b-I AD-1/AD-8): 传 `backgroundRestoreIdentifier` 时启用 CoreBluetooth
+    /// state preservation & restoration — central 创建时携带
+    /// `[CBCentralManagerOptionRestoreIdentifierKey: id]`, 宿主 App 还需在 Info.plist
+    /// 声明 `UIBackgroundModes = [bluetooth-central]` (见 BLE-BACKGROUND-INTEGRATION.md)。
+    public init(enableLogging: Bool = false, backgroundRestoreIdentifier: String? = nil) {
         self.logger = YDKLogger(enabled: enableLogging)
-        let central = YDKCoreBluetoothCentral(queue: .main)
-        self.central = central
+        let options = YDKBLEManager.centralOptions(backgroundRestoreIdentifier: backgroundRestoreIdentifier)
+        self.central = YDKCoreBluetoothCentral(queue: .main, options: options)
         super.init()
         wireCallbacks(central)
     }
@@ -317,6 +342,25 @@ public final class YDKBLEManager: NSObject, YDKBLEManaging {
         self.central = central
         super.init()
         wireCallbacks(central)
+    }
+
+    /// 测试注入入口 (2b-I B1.2): 用 central 工厂捕获生产路径的 options —
+    /// 断言 `backgroundRestoreIdentifier` 是否被正确传给 central 创建。
+    init(centralFactory: @escaping ([String: Any]?) -> YDKCentralManaging,
+         enableLogging: Bool = false,
+         backgroundRestoreIdentifier: String? = nil) {
+        self.logger = YDKLogger(enabled: enableLogging)
+        let options = YDKBLEManager.centralOptions(backgroundRestoreIdentifier: backgroundRestoreIdentifier)
+        self.central = centralFactory(options)
+        super.init()
+        wireCallbacks(central)
+    }
+
+    /// 构造 CBCentralManager options (2b-I AD-1): restore identifier 非空时启用状态恢复,
+    /// 否则返回 nil (保持现有行为, options 缺省)。
+    static func centralOptions(backgroundRestoreIdentifier: String?) -> [String: Any]? {
+        guard let identifier = backgroundRestoreIdentifier, !identifier.isEmpty else { return nil }
+        return [CBCentralManagerOptionRestoreIdentifierKey: identifier]
     }
 
     deinit {
@@ -369,6 +413,28 @@ public final class YDKBLEManager: NSObject, YDKBLEManaging {
             self.responseContinuation?.resume(throwing: failure)
             self.responseContinuation = nil
         }
+
+        // 2b-I AD-4: 系统状态恢复 — 记录恢复的外设并复位连接状态,
+        // 重连由 connectVehicle 现有回退路径 (peripheralByVehicleId + retrieveConnectedPeripherals) 负责
+        central.onRestoreState = { [weak self] restoredPeripherals in
+            self?.handleRestoredState(restoredPeripherals)
+        }
+    }
+
+    /// 处理系统状态恢复 (2b-I AD-4):
+    /// 1. 恢复的外设按 name / identifier 存入 `peripheralByVehicleId` — connectVehicle 可直接命中;
+    /// 2. 连接状态复位为 disconnected (恢复不等同于已连接, 连接由 connectVehicle 显式发起)。
+    /// 简单处理即可: 系统重建后 `centralManagerDidUpdateState` 会随后触发, 状态机照常推进。
+    private func handleRestoredState(_ restoredPeripherals: [YDKPeripheralManaging]) {
+        for peripheral in restoredPeripherals {
+            if let name = peripheral.name, !name.isEmpty {
+                peripheralByVehicleId[name] = peripheral
+            }
+            peripheralByVehicleId[peripheral.identifier.uuidString] = peripheral
+        }
+        connectionState = .disconnected
+        connectionChangeHandler?(0)
+        logger.log("Restored \(restoredPeripherals.count) peripheral(s) from system BLE state")
     }
 
     /// 为 peripheral 挂接回调 (同一 wrapper 幂等)
@@ -484,7 +550,8 @@ public final class YDKBLEManager: NSObject, YDKBLEManaging {
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.connectContinuation = continuation
-            central.connect(peripheral, options: nil)
+            // 2b-I AD-3: 带连接唤醒选项 — 后台场景下连接/断开事件可唤醒宿主 App
+            central.connect(peripheral, options: YDKBLEManager.connectWakeOptions)
         }
     }
 
