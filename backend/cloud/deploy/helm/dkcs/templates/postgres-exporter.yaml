@@ -1,0 +1,88 @@
+---
+# ── postgres-exporter (与 kustomize deploy/k8s/postgres/exporter.yaml 对齐) ──
+# 说明:
+#   - Service/Deployment 名称固定为 postgres-exporter, 以匹配 kustomize 侧
+#     prometheus-config.yaml 的静态抓取目标 postgres-exporter:9187,
+#     保证 kustomize 与 helm 两条部署路径下 Prometheus 抓取地址一致。
+#   - 连接目标: helm 部署的 PostgreSQL 服务名为 {{ .Release.Name }}-postgres,
+#     密码来自 Secret {{ .Release.Name }}-secrets key postgres-password。
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: postgres-exporter
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: postgres-exporter
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: metrics
+      port: 9187
+      targetPort: 9187
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: postgres-exporter
+    app.kubernetes.io/name: postgres-exporter
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres-exporter
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.postgresExporter.repository }}:{{ .Values.image.postgresExporter.tag }}"
+          imagePullPolicy: {{ .Values.image.postgresExporter.pullPolicy }}
+          ports:
+            - containerPort: 9187
+              name: metrics
+          env:
+            # 连接串: 用户/库与 values.yaml postgres.user/database 一致 (默认 yuledkcs);
+            # $(POSTGRES_PASSWORD) 由 Kubernetes 在同一容器内展开为 Secret 值
+            - name: DATA_SOURCE_NAME
+              value: "postgresql://{{ .Values.postgres.user }}:$(POSTGRES_PASSWORD)@{{ .Release.Name }}-postgres:5432/{{ .Values.postgres.database }}?sslmode=disable"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: postgres-password
+          resources:
+            requests:
+              cpu: {{ .Values.resources.postgresExporter.requests.cpu }}
+              memory: {{ .Values.resources.postgresExporter.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.postgresExporter.limits.cpu }}
+              memory: {{ .Values.resources.postgresExporter.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9187
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9187
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3

@@ -28,17 +28,30 @@ public final class YDKHubClient {
 
     // MARK: - 初始化
 
-    public init(config: SDKConfig) {
+    public convenience init(config: SDKConfig) {
+        self.init(config: config, session: nil)
+    }
+
+    /// 测试注入缝 (internal): 允许注入自定义 URLSession（例如挂载 MockURLProtocol
+    /// 的 session），用于 wire 形状断言。生产路径走 public init（session=nil）。
+    /// 说明: 4.1 审计遗留 "iOS 侧 ListKeys/GetKey/unbindKey/cancelShare wire 断言
+    /// 需先给 YDKHubClient 加 transport 注入缝" — 此处为最小化、纯增量改动,
+    /// 不触碰 request() 请求管线。
+    init(config: SDKConfig, session: URLSession?) {
         self.config = config
         self.logger = YDKLogger(enabled: config.enableLogging)
         self.baseURL = URL(string: "https://\(config.hubEndpoint):\(config.hubPort)/api/v1")!
 
-        let delegate = YDKURLSessionDelegate()
-        self.session = URLSession(
-            configuration: .ephemeral,
-            delegate: delegate,
-            delegateQueue: nil
-        )
+        if let session = session {
+            self.session = session
+        } else {
+            let delegate = YDKURLSessionDelegate()
+            self.session = URLSession(
+                configuration: .ephemeral,
+                delegate: delegate,
+                delegateQueue: nil
+            )
+        }
 
         self.decoder = JSONDecoder()
         self.encoder = JSONEncoder()

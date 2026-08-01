@@ -192,7 +192,12 @@ final class CCCAdvertisementTests: XCTestCase {
         ad.append(0x00)
         ad.append(0x2A)
         let structures = YDKAdvertisementParser.parseADStructures(from: ad)
-        XCTAssertNil(YKDAdvertisementParser.cccServiceData(from: structures))
+        // 注: cccServiceData 返回带标签元组可选。直接内联进 XCTAssertNil 的
+        // @autoclosure () throws -> Any? 参数会触发 Swift 6.3.3 编译器解析 bug
+        // (模块内符号误报 "cannot find in scope"), 故先绑定局部变量再断言 —
+        // 语义等价, 且与上方 testServiceDataParsing 写法保持一致。
+        let result = YDKAdvertisementParser.cccServiceData(from: structures)
+        XCTAssertNil(result)
     }
 }
 

@@ -52,7 +52,7 @@
 
 | # | 事项 | 状态 | 计划 |
 |:-:|:-----|:----:|:----:|
-| 🟠 | **iOS 模块预存编译错误 4 处** | 📋 | 4.1 审计发现: ① YDKHubClient+Stream.swift 跨文件访问 private baseURL/fileprivate token ② YDKKeyManager.swift/YDKKeyCache.swift 缺 import YDKHubClient ③ 引用 internal YDKLogger ④ YDKKeyManager+Sync.swift 跨文件 private 访问。阻塞 iOS SDK 完整构建, 需修复 + swift build 全绿 |
+| 🟠 | **iOS 模块预存编译错误 4 处** | ✅ **已修复 (Batch A, W3 复验)** | 4.1 审计 4 处已全修（①YDKHubClient+Stream 跨文件访问 ②YDKKeyManager/YDKKeyCache 缺 import YDKHubClient ③internal YDKLogger 引用 ④YDKKeyManager+Sync 跨文件 private）; HEAD (c18e5fb) `swift build` 全绿复验通过; W3 补 tail: YDKHubClient 最小 transport 注入缝 + ListKeys/GetKey/UnbindKey/CancelShare wire 断言测试（typecheck 绿）。⚠️ 注意: W1 未提交的离线授权代码（YDKKeyManager.swift:216 嵌套字符串插值语法错）当前使工作区整体构建变红, 归 W1 修复后即全绿 |
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
 | 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
@@ -63,10 +63,10 @@
 
 | # | 事项 | 状态 |
 |:-:|:-----|:----:|
-| 🟡 | 离线授权回退机制 | 📋 |
-| 🟡 | 插件 SDK 文档（面向第三方开发者）| 📋 |
-| 🟡 | 性能测试（大配置加载/保存）| 📋 |
-| 🟡 | postgres-exporter 部署 | 📋 | Prometheus 采集已指向 `postgres-exporter:9187`，需部署 exporter（可用 postgres_exporter sidecar 或独立 Deployment） |
+| 🟡 | 离线授权回退机制 | ✅ **已完成 (2026-08-01)** | 调研: 移动端 KeyManager 离线授权裁决 (PRD 模块五/RS-007-34); 方案 A 双端 OfflineAuthorizer (fail-closed: revoked/suspended/expired/未知状态拒 + 7 天宽限期); iOS 13 + Android 17 用例; 见 `docs/sdk/OFFLINE-FALLBACK-DESIGN.md` |
+| 🟡 | 插件 SDK 文档（面向第三方开发者）| 📋 | ⚠️ 疑为 yuleASR-Configurator 项目错放项（yuleDKCS 无插件体系）; 已在 yuleASR 侧处理, 建议移除 |
+| 🟡 | 性能测试（大配置加载/保存）| 📋 | ⚠️ 疑为 yuleASR-Configurator 错放项（AUTOSAR 配置语境）; 建议移除 |
+| 🟡 | postgres-exporter 部署 | ✅ **已完成 (2026-08-01)** | kustomize `deploy/k8s/postgres/exporter.yaml` (Deployment + Service :9187) + helm 同步; 独立 Deployment 与 StatefulSet 解耦; kubectl kustomize 33 文档渲染验证; 见 `deploy/k8s/README.md` |
 | 🟡 | JWKS kid 未命中防放大 | ✅ **已完成 (2026-08-01)** | oem 级刷新冷却 30s + kid 级负缓存（上限 1024/OEM 防内存撑爆）; 单飞并发去重保留; 4 单测含 -race, 24 passed |
 | 🟡 | tests/integration 预存 vet 错误 | ✅ **已完成 (2026-08-01)** | e2e_14 relay API 签名漂移修复 + e2e_11 Delete 终态语义隐性回归修复; integration **87 passed / 0 failed**, go vet exit 0 |
 

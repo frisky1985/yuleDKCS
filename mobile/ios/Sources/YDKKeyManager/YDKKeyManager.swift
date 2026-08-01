@@ -187,6 +187,37 @@ public final class YDKKeyManager {
     public func clearCache() {
         cache.clear()
     }
+
+    /// 离线授权回退 — BLE/NFC 离线解锁前调用
+    ///
+    /// 当 Hub 不可达时, SDK 回退到本地缓存做离线授权裁决
+    /// （状态 + 有效期窗口 + 离线宽限期, 详见 YDKOfflineAuthorizer）。
+    ///
+    /// - Parameters:
+    ///   - keyId: 待裁决的钥匙 ID
+    ///   - now: 当前时间（可注入便于测试）
+    ///   - maxOfflineGrace: 允许的最大离线时长（秒）, 默认 7 天
+    /// - Returns: nil 表示本地缓存无此钥匙; 否则返回裁决结果
+    public func authorizeOfflineUse(
+        keyId: String,
+        at now: Date = Date(),
+        maxOfflineGrace: TimeInterval = YDKOfflineAuthorizer.defaultMaxOfflineGrace
+    ) -> YDKOfflineAuthorization? {
+        guard let key = getKey(keyId: keyId) else {
+            logger.log("OfflineAuth: key \\(keyId) not in local cache")
+            return nil
+        }
+        let result = YDKOfflineAuthorizer.authorize(
+            key: key,
+            now: now,
+            lastSyncAtMillis: cache.lastSyncTimestampMillis(),
+            maxOfflineGrace: maxOfflineGrace
+        )
+        let reason = result.reason?.rawValue ?? "unknown"
+        let verdict = result.allowed ? "allowed" : "denied(\(reason))"
+        logger.log("OfflineAuth: key \(keyId) \(verdict)")
+        return result
+    }
 }
 
 // MARK: - 内部方法

@@ -1,6 +1,7 @@
 package com.yuledkcs.sdk.keymanager
 
 import com.yuledkcs.sdk.hub.HubClient
+import com.yuledkcs.sdk.hub.YDKKey
 import com.yuledkcs.sdk.hub.listKeys
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +172,37 @@ class KeyManager(
         cache.clear()
         _keys.value = emptyList()
         logger.log("Cache: cleared")
+    }
+
+    /**
+     * 离线授权回退 — BLE/NFC 离线解锁前调用
+     *
+     * 当 Hub 不可达时, SDK 回退到本地缓存做离线授权裁决
+     * （状态 + 有效期窗口 + 离线宽限期, 详见 [OfflineAuthorizer]）。
+     *
+     * @param keyId 待裁决的钥匙 ID
+     * @param nowMillis 当前时间（毫秒, 可注入便于测试）
+     * @param maxOfflineGraceMillis 允许的最大离线时长（毫秒）, 默认 7 天
+     * @return null 表示本地缓存无此钥匙; 否则返回裁决结果
+     */
+    fun authorizeOfflineUse(
+        keyId: String,
+        nowMillis: Long = System.currentTimeMillis(),
+        maxOfflineGraceMillis: Long = OfflineAuthorizer.DEFAULT_MAX_OFFLINE_GRACE_MILLIS
+    ): OfflineAuthorization? {
+        val key = getKey(keyId) ?: run {
+            logger.log("OfflineAuth: key $keyId not in local cache")
+            return null
+        }
+        val result = OfflineAuthorizer.authorize(
+            key = key,
+            nowMillis = nowMillis,
+            lastSyncAtMillis = cache.lastSyncAtMillis(),
+            maxOfflineGraceMillis = maxOfflineGraceMillis
+        )
+        val detail = if (result.allowed) "allowed" else "denied(${result.reason})"
+        logger.log("OfflineAuth: key $keyId $detail")
+        return result
     }
 
     /** 释放资源 */

@@ -51,6 +51,11 @@ final class YDKKeyCache {
         read()?.keys ?? []
     }
 
+    /// 最近一次成功同步时间戳（毫秒）; 无缓存时返回 0
+    func lastSyncTimestampMillis() -> Int64 {
+        read()?.lastSyncAt ?? 0
+    }
+
     /// 写入缓存（覆盖）
     func write(keys: [YDKKey]) {
         let data = CacheData(

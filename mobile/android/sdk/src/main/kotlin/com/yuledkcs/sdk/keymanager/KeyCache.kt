@@ -42,6 +42,9 @@ class KeyCache private constructor(
     /** 获取本地钥匙列表 */
     fun getLocalKeys(): List<YDKKey> = read().keys
 
+    /** 最近一次成功同步时间戳（毫秒）; 无缓存时返回 0 */
+    fun lastSyncAtMillis(): Long = read().lastSyncAt
+
     /** 写入缓存（覆盖） */
     fun write(keys: List<YDKKey>) {
         val data = CacheData(

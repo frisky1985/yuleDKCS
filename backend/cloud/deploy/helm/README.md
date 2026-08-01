@@ -16,6 +16,7 @@
 | 数据库密码 | Secret `dkcs-secrets` key `postgres-password` | Secret `{{ .Release.Name }}-secrets` key `postgres-password` |
 | Hub 连接 | Secret key `database-url` | 同 key（模板自动拼接） |
 | 管理 API 凭据 | Secret key `admin-username` / `admin-password` | 同 key（P1-2 fail-closed 必需） |
+| PG 指标采集 | `deploy/k8s/postgres/exporter.yaml` — postgres-exporter v0.15.0, Service `postgres-exporter:9187`, Prometheus 静态 target | `templates/postgres-exporter.yaml` — 同镜像/同名 Service（连接 `{{ .Release.Name }}-postgres`） |
 
 > 注：早期版本引用 MySQL（`mysql-statefulset` + `mysql-password`）已移除。
 

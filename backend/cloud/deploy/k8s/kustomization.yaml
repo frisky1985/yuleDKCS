@@ -34,6 +34,7 @@ resources:
 
   # Infrastructure
   - postgres/statefulset.yaml
+  - postgres/exporter.yaml
   - redis/statefulset.yaml
   - kafka/kafka.yaml
   - emqx.yaml

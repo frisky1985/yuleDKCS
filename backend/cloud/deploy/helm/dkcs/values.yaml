@@ -22,6 +22,10 @@ image:
     repository: postgres
     tag: "16-alpine"
     pullPolicy: IfNotPresent
+  postgresExporter:
+    repository: prometheuscommunity/postgres-exporter
+    tag: "v0.15.0"
+    pullPolicy: IfNotPresent
   redis:
     repository: redis
     tag: "7-alpine"
@@ -72,6 +76,13 @@ resources:
     limits:
       cpu: "1000m"
       memory: "1Gi"
+  postgresExporter:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
   redis:
     requests:
       cpu: "200m"
