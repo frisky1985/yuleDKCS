@@ -34,6 +34,8 @@ type DatabaseConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	// MigrationsDir SQL 迁移目录 (启动时自动执行; 目录不存在仅告警)
+	MigrationsDir string
 }
 
 // DSN 返回数据库连接字符串
@@ -106,6 +108,7 @@ func Load() *Config {
 			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 100),
 			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 10),
 			ConnMaxLifetime: time.Duration(getEnvInt("DB_CONN_MAX_LIFETIME_MIN", 30)) * time.Minute,
+			MigrationsDir:   getEnv("DB_MIGRATIONS_DIR", "db/migrations"),
 		},
 		Redis: RedisConfig{
 			Addr:     getEnv("REDIS_ADDR", "localhost:6379"),

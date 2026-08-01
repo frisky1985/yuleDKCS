@@ -55,11 +55,11 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ .Release.Name }}-mysql-pdb
+  name: {{ .Release.Name }}-postgres-pdb
   namespace: {{ .Release.Namespace }}
 spec:
-  minAvailable: {{ sub .Values.replicas.mysql 1 }}
+  minAvailable: {{ sub .Values.replicas.postgres 1 }}
   selector:
     matchLabels:
-      app: mysql
+      app: postgres
       app.kubernetes.io/instance: {{ .Release.Name }}

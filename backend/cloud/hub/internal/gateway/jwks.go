@@ -33,6 +33,10 @@ const (
 	jwksMaxBodyBytes = 1 << 20 // 1 MiB
 	// jwksMinRSABits RSA 公钥最小模长 (RFC 7518 建议 ≥2048)
 	jwksMinRSABits = 2048
+	// jwksMissCooldown kid 未命中负缓存冷却期 (防随机 kid 触发重复拉取的放大攻击)
+	jwksMissCooldown = 30 * time.Second
+	// jwksMissCacheMax 单个 OEM 负缓存条目上限 (防恶意随机 kid 撑爆内存)
+	jwksMissCacheMax = 1024
 )
 
 // jwksDocument JWKS 文档结构 (RFC 7517)
@@ -76,18 +80,24 @@ type oemJWKSVerifier struct {
 	cache    map[string]*jwksCacheEntry
 	inflight map[string]*jwksInflight
 	cacheTTL time.Duration // 可覆盖 (测试用), 默认 jwksCacheTTL
+	// missCache 负缓存: oem_id -> kid -> 首次未命中时间。
+	// 恶意令牌携带随机 kid 时, 冷却期内同一 kid 不再触发远端拉取 (防放大攻击)。
+	missCache    map[string]map[string]time.Time
+	missCooldown time.Duration // 可覆盖 (测试用), 默认 jwksMissCooldown
 }
 
 // newOEMJWKSVerifier 创建 OEM JWKS 验证器。
 // urls: oem_id -> JWKS URL 映射。
 func newOEMJWKSVerifier(logger *zap.Logger, urls map[string]string) *oemJWKSVerifier {
 	return &oemJWKSVerifier{
-		logger:   logger,
-		client:   &http.Client{Timeout: jwksFetchTimeout},
-		urls:     urls,
-		cache:    make(map[string]*jwksCacheEntry),
-		inflight: make(map[string]*jwksInflight),
-		cacheTTL: jwksCacheTTL,
+		logger:       logger,
+		client:       &http.Client{Timeout: jwksFetchTimeout},
+		urls:         urls,
+		cache:        make(map[string]*jwksCacheEntry),
+		inflight:     make(map[string]*jwksInflight),
+		cacheTTL:     jwksCacheTTL,
+		missCache:    make(map[string]map[string]time.Time),
+		missCooldown: jwksMissCooldown,
 	}
 }
 
@@ -111,6 +121,7 @@ func (v *oemJWKSVerifier) keyfunc(oemID string) jwt.Keyfunc {
 
 // keyFor 返回指定 oem 的 JWKS 中 kid 对应的公钥。
 // 缓存未命中/过期时触发拉取; 拉取失败返回错误 (失败即关闭)。
+// 负缓存: 冷却期内未命中过的 kid 直接拒绝, 不再重复拉取远端 JWKS (防放大攻击)。
 func (v *oemJWKSVerifier) keyFor(oemID, kid string) (crypto.PublicKey, error) {
 	v.mu.Lock()
 	// 快速路径: 缓存有效且包含 kid
@@ -119,7 +130,17 @@ func (v *oemJWKSVerifier) keyFor(oemID, kid string) (crypto.PublicKey, error) {
 			v.mu.Unlock()
 			return key, nil
 		}
-		// kid 未命中 (密钥轮换场景) → 落入下方刷新路径
+		// kid 未命中 (密钥轮换场景) → 冷却检查, 命中任一冷却则直接拒绝:
+		//   ① oem 级刷新冷却: 30s 内刚拉取过 → 随机新 kid 无法触发重复拉取 (防放大核心)
+		//   ② kid 级负缓存: 同一 kid 冷却期内不重复拉取
+		if time.Since(entry.fetchedAt) < v.missCooldown {
+			v.mu.Unlock()
+			return nil, fmt.Errorf("kid %q not found in JWKS for OEM %q (refresh cooldown %s)", kid, oemID, v.missCooldown)
+		}
+		if v.inMissCooldownLocked(oemID, kid) {
+			v.mu.Unlock()
+			return nil, fmt.Errorf("kid %q not found in JWKS for OEM %q (negative cache, %s cooldown)", kid, oemID, v.missCooldown)
+		}
 	}
 	// 单飞: 已有拉取在进行中则等待结果
 	if f, ok := v.inflight[oemID]; ok {
@@ -157,9 +178,62 @@ func (v *oemJWKSVerifier) keyFor(oemID, kid string) (crypto.PublicKey, error) {
 	}
 	key, found := keys[kid]
 	if !found {
+		// 拉取成功但 kid 仍不存在 → 记录负缓存, 冷却期内不再重复拉取
+		v.recordMiss(oemID, kid)
 		return nil, fmt.Errorf("kid %q not found in JWKS for OEM %q", kid, oemID)
 	}
 	return key, nil
+}
+
+// inMissCooldownLocked 判断 (oemID, kid) 是否处于负缓存冷却期内。
+// 调用方必须持有 v.mu。
+func (v *oemJWKSVerifier) inMissCooldownLocked(oemID, kid string) bool {
+	entry, ok := v.missCache[oemID]
+	if !ok {
+		return false
+	}
+	missedAt, ok := entry[kid]
+	if !ok {
+		return false
+	}
+	// 冷却期已过 → 惰性清理该条目并放行
+	if time.Since(missedAt) >= v.missCooldown {
+		delete(entry, kid)
+		if len(entry) == 0 {
+			delete(v.missCache, oemID)
+		}
+		return false
+	}
+	return true
+}
+
+// recordMiss 记录 (oemID, kid) 的未命中时间, 并清理过期条目/限制缓存大小。
+// 调用方不必持有 v.mu (内部加锁)。
+func (v *oemJWKSVerifier) recordMiss(oemID, kid string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	// 清理该 OEM 已过期的负缓存条目
+	if entry, ok := v.missCache[oemID]; ok {
+		for k, t := range entry {
+			if time.Since(t) >= v.missCooldown {
+				delete(entry, k)
+			}
+		}
+		if len(entry) == 0 {
+			delete(v.missCache, oemID)
+		}
+	}
+	entry := v.missCache[oemID]
+	if entry == nil {
+		entry = make(map[string]time.Time)
+		v.missCache[oemID] = entry
+	}
+	// 上限保护: 恶意随机 kid 撑满后整体清空该 OEM 的负缓存 (防内存无限增长)
+	if len(entry) >= jwksMissCacheMax {
+		entry = make(map[string]time.Time)
+		v.missCache[oemID] = entry
+	}
+	entry[kid] = time.Now()
 }
 
 // fetch 从远端拉取并解析 oem 的 JWKS, 返回 kid -> 公钥 映射。

@@ -47,16 +47,32 @@ spec:
               name: metrics
               protocol: TCP
           env:
-            - name: DB_PASSWORD
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
-                  key: mysql-password
+                  key: database-url
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
                   key: redis-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: jwt-secret
+            # P1-2 管理 API 管理员凭据 (fail-closed: 未配置时 Hub 拒绝启动)
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: admin-username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: admin-password
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-hub-config

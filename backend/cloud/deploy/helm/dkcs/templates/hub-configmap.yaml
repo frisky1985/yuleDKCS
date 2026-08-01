@@ -8,10 +8,7 @@ metadata:
     app.kubernetes.io/name: hub
     app.kubernetes.io/instance: {{ .Release.Name }}
 data:
-  DB_HOST: {{ .Values.hub.db.host | quote }}
-  DB_PORT: {{ .Values.hub.db.port | quote }}
-  DB_USER: {{ .Values.hub.db.user | quote }}
-  DB_NAME: {{ .Values.hub.db.name | quote }}
+  # Hub 使用 DATABASE_URL (Secret: database-url), 见 hub-deployment.yaml
   REDIS_ADDR: {{ .Values.hub.redis.addr | quote }}
   KAFKA_BROKERS: {{ .Values.hub.kafka.brokers | quote }}
   LOG_LEVEL: {{ .Values.hub.logLevel | quote }}

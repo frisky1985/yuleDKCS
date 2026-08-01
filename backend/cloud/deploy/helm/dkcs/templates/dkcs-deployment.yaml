@@ -45,7 +45,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secrets
-                  key: mysql-password
+                  key: postgres-password
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:

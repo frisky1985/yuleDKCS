@@ -21,6 +21,7 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/cache"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/config"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/middleware"
+	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/migrate"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/mq"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/repository"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/service"
@@ -54,6 +55,19 @@ func main() {
 	defer db.Close()
 
 	log.Info("Database connection established")
+
+	// 执行数据库迁移 (PG schema 自动建表/升级)
+	// 迁移目录不存在时仅告警 (K8s 镜像未挂载迁移文件等场景), 不阻塞启动;
+	// 目录存在但执行失败则必须暴露问题, 直接终止。
+	if err := migrate.Run(ctx, db, cfg.Database.MigrationsDir); err != nil {
+		if os.IsNotExist(err) {
+			log.Warn("Migrations directory not found, skipping auto-migration", logger.Err(err))
+		} else {
+			log.Fatal("Database migration failed", logger.Err(err))
+		}
+	} else {
+		log.Info("Database migrations applied", logger.String("dir", cfg.Database.MigrationsDir))
+	}
 
 	// Initialize Redis client
 	redisClient := initRedis(cfg.Redis)

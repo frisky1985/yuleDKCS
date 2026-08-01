@@ -2,6 +2,7 @@
 
 > 宿主 App 集成文档。双端分写: iOS 部分 (W1) / Android 部分 (W2), 主导合并。
 > 配套裁决文档: `docs/certification/ble-background-runtime.md`。
+> NFC 备用解锁通道（2b-H）配置见: `docs/sdk/NFC-INTEGRATION.md`。
 
 ---
 

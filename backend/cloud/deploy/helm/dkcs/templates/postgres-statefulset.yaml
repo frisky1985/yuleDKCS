@@ -1,0 +1,98 @@
+---
+# ── PostgreSQL 16 StatefulSet ──
+# 与 kustomize 现行部署 (deploy/k8s/postgres/statefulset.yaml) 对齐:
+#   Service/StatefulSet 名称、镜像 postgres:16-alpine、POSTGRES_USER=yuledkcs、
+#   POSTGRES_DB=yuledkcs、密码来自 Secret key postgres-password。
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  serviceName: {{ .Release.Name }}-postgres
+  replicas: {{ .Values.replicas.postgres }}
+  selector:
+    matchLabels:
+      app: postgres
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: postgres
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgres
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.image.postgres.repository }}:{{ .Values.image.postgres.tag }}"
+          imagePullPolicy: {{ .Values.image.postgres.pullPolicy }}
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.postgres.requests.cpu }}
+              memory: {{ .Values.resources.postgres.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.postgres.limits.cpu }}
+              memory: {{ .Values.resources.postgres.limits.memory }}
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgres.user | quote }}]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", {{ .Values.postgres.user | quote }}]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.postgres.size }}
+        storageClassName: {{ .Values.storage.postgres.storageClass }}

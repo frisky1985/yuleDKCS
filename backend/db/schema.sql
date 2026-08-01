@@ -1,6 +1,12 @@
 -- yuleDKCS Database Schema
 -- Version: 1.0.0
 -- Date: 2026-05-06
+--
+-- ⚠️ 说明: 本文件为 dkcs 服务的设计级 schema 参考 (PostgreSQL 方言)。
+--    实际建表以 db/migrations/ 目录下的迁移文件为准
+--    (dkcs 服务启动时由 internal/migrate 自动执行, 或运行
+--    scripts/migrate-dkcs.sh), 二者表结构以 repository 实际使用为准,
+--    本文件中的扩展表 (users/keys/shares/commands 等) 为后续演进预留。
 
 -- ============================================================
 -- 扩展

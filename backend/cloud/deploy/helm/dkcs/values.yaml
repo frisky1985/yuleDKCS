@@ -18,9 +18,9 @@ image:
     repository: yuledkcs/dkcs
     tag: latest
     pullPolicy: IfNotPresent
-  mysql:
-    repository: mysql
-    tag: "8.0"
+  postgres:
+    repository: postgres
+    tag: "16-alpine"
     pullPolicy: IfNotPresent
   redis:
     repository: redis
@@ -43,7 +43,7 @@ image:
 replicas:
   hub: 3
   dkcs: 3
-  mysql: 2
+  postgres: 1
   redis: 3
   kafka: 3
   zookeeper: 3
@@ -65,13 +65,13 @@ resources:
     limits:
       cpu: "1000m"
       memory: "1Gi"
-  mysql:
+  postgres:
     requests:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "250m"
+      memory: "512Mi"
     limits:
-      cpu: "2000m"
-      memory: "4Gi"
+      cpu: "1000m"
+      memory: "1Gi"
   redis:
     requests:
       cpu: "200m"
@@ -103,8 +103,8 @@ resources:
 
 # ── Storage ──
 storage:
-  mysql:
-    size: 50Gi
+  postgres:
+    size: 10Gi
     storageClass: standard
   redis:
     size: 10Gi
@@ -163,21 +163,23 @@ ingress:
 
 # ── Secrets ──
 secrets:
-  mysql:
-    rootPassword: "change-me-root-password"
-    dkPassword: "change-me-dk-password"
+  postgres:
+    password: "change-me-pg-password"
   redis:
     password: "change-me-redis-password"
   jwt:
     secret: "change-me-jwt-secret-at-least-32-chars-long"
+  admin:
+    username: "change-me-admin-username"
+    password: "change-me-admin-password-at-least-16-chars"
+
+# ── PostgreSQL (StatefulSet, 对齐 kustomize deploy/k8s/postgres) ──
+postgres:
+  user: yuledkcs
+  database: yuledkcs
 
 # ── Hub Config ──
 hub:
-  db:
-    host: mysql
-    port: 3306
-    user: dk_service
-    name: digital_key
   redis:
     addr: redis-access:6379
   kafka:
@@ -191,10 +193,6 @@ hub:
 dkcs:
   grpcPort: 9091
   db:
-    host: mysql
-    port: 3306
-    user: dk_service
-    name: digital_key
     sslMode: disable
     maxOpenConns: 100
   redis:

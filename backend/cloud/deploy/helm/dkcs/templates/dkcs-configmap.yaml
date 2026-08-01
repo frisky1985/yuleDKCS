@@ -8,12 +8,14 @@ metadata:
     app.kubernetes.io/name: dkcs
     app.kubernetes.io/instance: {{ .Release.Name }}
 data:
-  DB_HOST: {{ .Values.dkcs.db.host | quote }}
-  DB_PORT: {{ .Values.dkcs.db.port | quote }}
-  DB_USER: {{ .Values.dkcs.db.user | quote }}
-  DB_NAME: {{ .Values.dkcs.db.name | quote }}
+  # PostgreSQL 连接 (对齐 kustomize: postgres StatefulSet + yuledkcs 库)
+  DB_HOST: {{ .Release.Name }}-postgres
+  DB_PORT: "5432"
+  DB_USER: {{ .Values.postgres.user | quote }}
+  DB_NAME: {{ .Values.postgres.database | quote }}
   DB_SSL_MODE: {{ .Values.dkcs.db.sslMode | quote }}
   DB_MAX_OPEN_CONNS: {{ .Values.dkcs.db.maxOpenConns | quote }}
+  DB_MIGRATIONS_DIR: "db/migrations"
   REDIS_ADDR: {{ .Values.dkcs.redis.addr | quote }}
   REDIS_DB: {{ .Values.dkcs.redis.db | quote }}
   KAFKA_BROKERS: {{ .Values.dkcs.kafka.brokers | quote }}

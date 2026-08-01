@@ -60,8 +60,8 @@ Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
 | 2b-D | BLE 扫描 Android | `BleManager.kt` | BluetoothLeScanner + mock 测试 | W2 |
 | 2b-E | **CCC 指令帧 + 加密签名** | `CCCSecureChannel.swift/kt` + `CccFrame.kt` + `CCCCommandFrame.swift` | ✅ **完成 (2026-07-31)**: 规范 v4.0.0 原文裁决 (AES-128+CMAC-AES-128/SCP03), 见 `docs/certification/ccc-ts101-ble-secure-channel.md`; iOS 16/16 测试通过, Android 测试就位 | W1 |
 | 2b-F | ICCOA/ICCE 指令帧 SM4 | `ICCOABleAdapter.swift`、`BleProtocolAdapter.kt` | ✅ **完成 (2026-08-01)**: 以车端参考实现裁决 (dk30.c/iccoa_digital_key.h/module_design.md), 见 `docs/certification/iccoa-icce-ble-command-frames.md`; 关键裁决: ICCOA 应用层无 SM4 (链路层 LE SC 加密), CTRL payload=[cmd][param], 帧 SEQ/LEN 小端 + checksum 不含 SOP, 枚举映射 (unlock→0x02 防锁/解颠倒), ICCE HMAC-SHA256 真实化 + SM4-CBC; iOS 42/42 断言 + 类型检查, Android 测试更新 CI 执行 | W2 |
-| 2b-G | UWB 测距 | iOS/Android 60 行骨架 | ⚠️ 真机依赖: 代码+接口+模拟测，真机联调单列 | 独立 |
-| 2b-H | NFC 备用解锁 | iOS/Android 34 行骨架 | ⚠️ 真机依赖: 同上 | 独立 |
+| 2b-G | UWB 测距 | `YDKUWBManager.swift` + `UwbManager.kt` | ✅ **代码就位 (2026-08-01)**: iOS YDKNIUWBManager (NearbyInteraction, typecheck 零错误, 修 3 处真实 API 差异); Android AndroidUwbManager (android.uwb API 34+ + 版本降级); Mock 保留; 模拟测就位; 见 `docs/sdk/PHASE2G-UWB-PLATFORM.md`; ⚠️ 真机联调单列 (token 交换/会话参数) | 独立 |
+| 2b-H | NFC 备用解锁 | `YDKNFCManager.swift` + `NfcManager.kt` | ✅ **代码就位 (2026-08-01)**: iOS YDKCoreNFCManager (CoreNFC, 桩模块 typecheck + 12/12 断言); Android AndroidNfcManager (NfcAdapter/IsoDep, 33/33 交叉验证); 模拟测就位; 见 `docs/sdk/NFC-INTEGRATION.md`; ⚠️ 真机联调单列 (entitlement/tech-list) | 独立 |
 | 2b-I | 后台 BLE | iOS YDKBLEManager + Android BleManager | ✅ **完成 (2026-08-01)**: 见 `docs/certification/ble-background-runtime.md` + `docs/sdk/BLE-BACKGROUND-INTEGRATION.md`; iOS: state restoration (RestoreIdentifier + willRestoreState) + 连接唤醒 options, 16/16 断言; Android: YdkBleForegroundService + BlePermissions 权限矩阵 + autoConnect + startBackgroundScan, 41 个 API level 穷举验证; 真机验证单列 | W1/W2 尾 |
 
 **防幻觉原则**:

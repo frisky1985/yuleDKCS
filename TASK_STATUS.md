@@ -55,8 +55,8 @@
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
 | 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
-| 🟠 | **dkcs 服务 PG schema 迁移** | 📋 | dkcs 用 lib/pq 但无自带迁移；旧 `db/schema.sql` 是 MySQL 方言，需转 PG 方言并纳入迁移 |
-| 🟠 | **Helm Chart 同步 postgres** | 📋 | `helm/dkcs` 仍引用 mysql-statefulset + mysql-password；现行部署走 kustomize，helm 需跟进或标记废弃 |
+| 🟠 | **dkcs 服务 PG schema 迁移** | ✅ **已完成 (2026-08-01)** | `backend/db/migrations/0001_init.*` + `backend/dkcs/internal/migrate`（零依赖执行器，启动自动迁移）; 真实 PG docker 验证幂等 + 5/5 单测; `scripts/migrate-dkcs.sh` 手动通道 |
+| 🟠 | **Helm Chart 同步 postgres** | ✅ **已完成 (2026-08-01)** | `backend/cloud/deploy/helm/dkcs` 全量 mysql→postgres 对齐 kustomize（statefulset/secret/configmap/deployment/values/pdb）; 0 mysql 残留静态验证; README 注明 kustomize 为官方路径 |
 
 ### P2 — 增强功能
 
@@ -66,7 +66,7 @@
 | 🟡 | 插件 SDK 文档（面向第三方开发者）| 📋 |
 | 🟡 | 性能测试（大配置加载/保存）| 📋 |
 | 🟡 | postgres-exporter 部署 | 📋 | Prometheus 采集已指向 `postgres-exporter:9187`，需部署 exporter（可用 postgres_exporter sidecar 或独立 Deployment） |
-| 🟡 | JWKS kid 未命中防放大 | 📋 | 恶意令牌随机 kid 会触发重复拉取；建议 kid miss 负缓存或 30s 冷却后再刷新（评审 MINOR #4） |
+| 🟡 | JWKS kid 未命中防放大 | ✅ **已完成 (2026-08-01)** | oem 级刷新冷却 30s + kid 级负缓存（上限 1024/OEM 防内存撑爆）; 单飞并发去重保留; 4 单测含 -race, 24 passed |
 | 🟡 | tests/integration 预存 vet 错误 | 📋 | `scenarios/e2e_14_cross_vendor_mailbox_share_test.go` relay API 签名漂移（与本次改动无关，预存） |
 
 ---
