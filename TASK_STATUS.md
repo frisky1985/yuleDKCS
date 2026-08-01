@@ -58,7 +58,7 @@
 | # | 事项 | 状态 | 计划 |
 |:-:|:-----|:----:|:----:|
 | 🔴 | **Push 通知服务集成**（FCM/APNs）| ✅ **已完成** | 接口 + Mock/测试 + FCM/APNs 实现，环境变量配置 |
-| 🔴 | Apple 开发者证书签名（macOS 桌面端）| 📋 | 需 `MAC_CSC_LINK` + `MAC_CSC_KEY_PASSWORD` |
+| 🔴 | Apple 开发者证书签名（macOS 桌面端）| 📋 | ⚠️ **属 yuleASR-Configurator 项目错放项**（已补记到 yuleASR TASK_STATUS）; yuleDKCS 侧移除 |
 | 🔴 | **TLS 证书签发** | 🔜 | K8s 已支持（hub-tls secret，optional），生产需 cert-manager 或托管证书；证书未就绪时服务回退 HTTP 并打 WARN |
 
 ### P1 — 重要功能
