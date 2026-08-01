@@ -29,7 +29,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	relay_pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
@@ -49,9 +48,10 @@ func startMailboxTestServer(t *testing.T) (httpBaseURL string, shutdown func()) 
 	logger := zap.NewNop()
 
 	// gRPC 服务器 (含 RelayService)
+	// 注: relay.NewRelayService 当前签名为 (logger, notifier ...PushNotifier),
+	// MailboxController 由服务内部创建, 不再由调用方注入
 	grpcSrv := grpc.NewServer()
-	mailboxCtrl := relay.NewMailboxController(logger)
-	relaySvc := relay.NewRelayService(logger, mailboxCtrl)
+	relaySvc := relay.NewRelayService(logger)
 	relay_pb.RegisterRelayServiceServer(grpcSrv, relaySvc)
 
 	// 通过 bufconn 创建自连接

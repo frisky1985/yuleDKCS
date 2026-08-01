@@ -52,6 +52,7 @@
 
 | # | 事项 | 状态 | 计划 |
 |:-:|:-----|:----:|:----:|
+| 🟠 | **iOS 模块预存编译错误 4 处** | 📋 | 4.1 审计发现: ① YDKHubClient+Stream.swift 跨文件访问 private baseURL/fileprivate token ② YDKKeyManager.swift/YDKKeyCache.swift 缺 import YDKHubClient ③ 引用 internal YDKLogger ④ YDKKeyManager+Sync.swift 跨文件 private 访问。阻塞 iOS SDK 完整构建, 需修复 + swift build 全绿 |
 | 🟠 | **多厂商并发 E2E 测试（CCC↔ICCOA↔ICCE）** | ✅ **E2E-14 已创建** | 含 Relay Mailbox 跨厂商流转: Apple→Xiaomi + Samsung→Huawei |
 | 🟠 | **认证文档更新（PICS/PIXIT — Relay Server 部分）** | ✅ `docs/compliance/PICS_PIXIT_RELAY.md` | 覆盖 CCC §11.3.4 全部 6 个 RPC + 邮箱状态机 + Push |
 | 🟠 | **依赖安全漏洞清零** | ✅ `go mod tidy` + `go vet` 通过 | 需安装 `govulncheck` 做 CVE 深度扫描 |
@@ -67,7 +68,7 @@
 | 🟡 | 性能测试（大配置加载/保存）| 📋 |
 | 🟡 | postgres-exporter 部署 | 📋 | Prometheus 采集已指向 `postgres-exporter:9187`，需部署 exporter（可用 postgres_exporter sidecar 或独立 Deployment） |
 | 🟡 | JWKS kid 未命中防放大 | ✅ **已完成 (2026-08-01)** | oem 级刷新冷却 30s + kid 级负缓存（上限 1024/OEM 防内存撑爆）; 单飞并发去重保留; 4 单测含 -race, 24 passed |
-| 🟡 | tests/integration 预存 vet 错误 | 📋 | `scenarios/e2e_14_cross_vendor_mailbox_share_test.go` relay API 签名漂移（与本次改动无关，预存） |
+| 🟡 | tests/integration 预存 vet 错误 | ✅ **已完成 (2026-08-01)** | e2e_14 relay API 签名漂移修复 + e2e_11 Delete 终态语义隐性回归修复; integration **87 passed / 0 failed**, go vet exit 0 |
 
 ---
 

@@ -114,11 +114,11 @@ Android `BleProtocolAdapter.kt:74`）、UWB/NFC 为 60 行级骨架。
 
 | # | 任务 | 说明 | 依赖 | 并行性 |
 |:-:|:-----|:-----|:----:|:----:|
-| 4.1 | SDK 单元测试（Mock Hub、Mock TCU） | iOS XCTest + Android JUnit | 无 | ✅ 可与 2b 并行 |
-| 4.2 | SDK × Hub 集成测试（真实 gRPC 调用） | 复用现有 E2E 测试框架；REST 层已实测打通（2026-07-31） | 无 | ✅ 可与 2b 并行 |
+| 4.1 | SDK 单元测试（Mock Hub、Mock TCU） | iOS XCTest + Android JUnit | ✅ **完成 (2026-08-01)**: 覆盖审计 `docs/sdk/TEST-COVERAGE-AUDIT.md`; 补齐远程控车请求形状 (iOS+Android) + Push 回调/KeyManager 离线推断 (双端); iOS parse/typecheck, Android 33/33 交叉验证; 发现 iOS 模块预存编译错误 4 处 (见 TASK_STATUS) | 无 | ✅ 可与 2b 并行 |
+| 4.2 | SDK × Hub 集成测试（真实 gRPC 调用） | 复用现有 E2E 测试框架；REST 层已实测打通（2026-07-31） | ✅ **完成 (2026-08-01)**: `scripts/sdk-hub-contract-e2e.sh` 扩展至 11 段 21 断言 (新增 remoteLock/Unlock/CreateShare/AcceptShare/CancelShare/UnbindKey), 全量跑通 exit 0; 关键契约事实: sendCommand 端点 snake_case 需特判, 分享状态机/UnbindKey 记录保留为 hub stub 缺口 | 无 | ✅ 可与 2b 并行 |
 | 4.3 | BLE 桩测试（模拟车辆广播） | iOS + Android 模拟器 | 2b-A/B/C/D | ✅ **桩就位 (2026-07-31)**: iOS FakeCentral/FakePeripheral + Android FakeBleScanEngine; 存量测试同步修复; iOS wire 级独立验证 9/9 + 加密 16/16; Android 测试 CI 执行; 真机联调单列 |
 | 4.4 | CCC 分享全链路 E2E（两台手机 ↔ Hub ↔ Relay） | 物理机测试 | 分享链路: 无；BLE 解锁: 2b | ✅ **分享链路就位 (2026-07-31)**: 双端高层编排层 (ShareFlow: Sender/Receiver/取消流) + URL 生成/解析; iOS 核心逻辑 7/7 独立验证 + 类型检查; Android 16 wire 级用例就位; 物理机 E2E 单列 |
-| 4.5 | ICCOA/ICCE S2S 分享全链路 E2E | 通过 Hub mock S2S | 无 | ✅ 可与 2b 并行 |
+| 4.5 | ICCOA/ICCE S2S 分享全链路 E2E | 通过 Hub mock S2S | ✅ **完成 (2026-08-01)**: e2e_12 (ICCOA 5/5) + e2e_13 (ICCE 6/6) 全 PASS; 修复 e2e_14 预存编译错误 + e2e_11 隐性回归 (relay Delete 终态语义); 全量 integration **87 passed / 0 failed**; 纯 mock 无外部依赖 | 无 | ✅ 可与 2b 并行 |
 
 ---
 

@@ -207,7 +207,31 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 	})
 
 	// ── Step 6: DeleteMailbox — 完成删除 ──
+	// 注: 5f41257 起 relay 按 CCC-TS-101 §11.3.4 收紧 Delete 语义 —
+	// 仅允许在终态 (Completed/Cancelled) 删除, 活跃态 Delete 返回 InvalidTransition。
+	// 故删除前先通过 Update(SenderCancel) 将邮箱转入终态, 与 relay 单测
+	// TestDeleteMailbox (Create→Cancel→Delete) 用法保持一致。
 	t.Run("E2E-11-06: DeleteMailbox (completed)", func(t *testing.T) {
+		// 6a: 先转入终态 — SenderCancel (SharingDataType=4)
+		cancelReq := &pb.UpdateMailboxRequest{
+			MailboxId:        mailboxID,
+			SharingDataType:  4, // SenderCancel
+			UpdaterDeviceId:  "iphone-15-pro-001",
+			TraceId:          "trace-sender-cancel",
+		}
+		uResp, err := client.UpdateMailbox(ctx, cancelReq)
+		if err != nil {
+			t.Fatalf("UpdateMailbox (SenderCancel) failed: %v", err)
+		}
+		if uResp.ErrorCode != "" {
+			t.Fatalf("UpdateMailbox (SenderCancel) error: %s", uResp.ErrorCode)
+		}
+		if uResp.Status != pb.MailboxStatus_CANCELLED {
+			t.Errorf("expected CANCELLED, got %v", uResp.Status)
+		}
+		t.Logf("Mailbox transitioned to terminal state: %v", uResp.Status)
+
+		// 6b: 终态下删除
 		req := &pb.DeleteMailboxRequest{
 			MailboxId:       mailboxID,
 			Reason:          "completed",
@@ -219,7 +243,7 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 			t.Fatalf("DeleteMailbox failed: %v", err)
 		}
 		if !resp.Success {
-			t.Fatal("expected success")
+			t.Fatalf("expected success, got error_code=%s", resp.ErrorCode)
 		}
 		t.Log("Mailbox deleted successfully")
 	})
