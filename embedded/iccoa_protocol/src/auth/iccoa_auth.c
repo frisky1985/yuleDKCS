@@ -13,7 +13,7 @@ static uint8_t g_user_count = 0;
 
 int32_t iccoa_auth_init(void)
 {
-    memset(g_users, 0, sizeof(g_users));
+    (void)memset(g_users, 0, sizeof(g_users));
     g_user_count = 0;
     return ICCOA_OK;
 }
@@ -45,7 +45,7 @@ int32_t iccoa_auth_verify(const uint8_t *response, uint16_t len)
     /* Verify ECDSA signature using SE050 */
     /* response layout: [user_id(16)] + [signature(32..72)] */
     uint8_t user_id[16];
-    memcpy(user_id, response, 16);
+    (void)memcpy(user_id, response, 16);
 
     int32_t idx = find_user(user_id);
     if (idx < 0) return ICCOA_ERR_DENIED;

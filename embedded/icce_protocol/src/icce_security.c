@@ -21,7 +21,7 @@ static uint8_t g_device_count = 0;
 
 int32_t icce_security_init(void)
 {
-    memset(g_devices, 0, sizeof(g_devices));
+    (void)memset(g_devices, 0, sizeof(g_devices));
     g_device_count = 0;
     return ICCE_OK;
 }
@@ -33,7 +33,7 @@ int32_t icce_security_bind(const uint8_t *device_pubkey, uint16_t len)
 
     /* [P0-02 FIX] 实现设备公钥绑定存储 */
     icce_bound_device_t *dev = &g_devices[g_device_count];
-    memcpy(dev->device_pubkey, device_pubkey, 64);
+    (void)memcpy(dev->device_pubkey, device_pubkey, 64);
     dev->key_slot = g_device_count + 1;
     dev->active = true;
 

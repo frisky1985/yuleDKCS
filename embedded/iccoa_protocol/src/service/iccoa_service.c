@@ -60,7 +60,7 @@ static int32_t ctrl_door_lock(uint8_t lock)
     int ret = hal_vehicle_lock_doors(lock);
     if (ret == 0) {
         /* 更新状态 */
-        hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
+        (void)hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
     }
     return (ret == 0) ? ICCOA_OK : ICCOA_ERR_HARDWARE;
 }
@@ -78,7 +78,7 @@ static int32_t ctrl_engine(uint8_t start)
 
     int ret = hal_vehicle_start_engine(start);
     if (ret == 0) {
-        hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
+        (void)hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
     }
     return (ret == 0) ? ICCOA_OK : ICCOA_ERR_HARDWARE;
 }
@@ -94,7 +94,7 @@ static int32_t ctrl_window(uint8_t param)
 
     int ret = hal_vehicle_control_window(window_id, direction);
     if (ret == 0) {
-        hal_vehicle_get_window_status(&g_vehicle_status.window_status);
+        (void)hal_vehicle_get_window_status(&g_vehicle_status.window_status);
     }
     return (ret == 0) ? ICCOA_OK : ICCOA_ERR_HARDWARE;
 }
@@ -124,7 +124,7 @@ static int32_t ctrl_find(void)
 {
     /* 闪烁灯光 + 鸣笛 */
     hal_vehicle_flash_lights(0x03); /* 双闪 */
-    hal_vehicle_horn(3);
+    (void)hal_vehicle_horn(3);
 
     return ICCOA_OK;
 }
@@ -146,16 +146,16 @@ int32_t iccoa_service_init(void)
 {
     if (g_initialized) return ICCOA_OK;
 
-    memset(&g_vehicle_status, 0, sizeof(g_vehicle_status));
+    (void)memset(&g_vehicle_status, 0, sizeof(g_vehicle_status));
 
     /* 初始化车辆状态 */
-    hal_vehicle_get_door_status(&g_vehicle_status.door_status);
-    hal_vehicle_get_window_status(&g_vehicle_status.window_status);
-    hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
-    hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
-    hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
-    hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
-    hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
+    (void)hal_vehicle_get_door_status(&g_vehicle_status.door_status);
+    (void)hal_vehicle_get_window_status(&g_vehicle_status.window_status);
+    (void)hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
+    (void)hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
+    (void)hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
+    (void)hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
+    (void)hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
 
     g_initialized = true;
     return ICCOA_OK;
@@ -210,33 +210,33 @@ int32_t iccoa_service_get_status(iccoa_vehicle_status_t *status)
     if (!g_initialized) return ICCOA_ERR_NOT_INIT;
 
     /* 刷新状态 */
-    hal_vehicle_get_door_status(&g_vehicle_status.door_status);
-    hal_vehicle_get_window_status(&g_vehicle_status.window_status);
-    hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
-    hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
-    hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
-    hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
-    hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
+    (void)hal_vehicle_get_door_status(&g_vehicle_status.door_status);
+    (void)hal_vehicle_get_window_status(&g_vehicle_status.window_status);
+    (void)hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
+    (void)hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
+    (void)hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
+    (void)hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
+    (void)hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
 
-    memcpy(status, &g_vehicle_status, sizeof(iccoa_vehicle_status_t));
+    (void)memcpy(status, &g_vehicle_status, sizeof(iccoa_vehicle_status_t));
     return ICCOA_OK;
 }
 
 /**
  * @brief 更新车辆状态 (由外部事件调用)
  */
-void iccoa_service_update_status(void)
+static void iccoa_service_update_status(void)
 {
     if (!g_initialized) return;
 
     /* 读取最新状态 */
-    hal_vehicle_get_door_status(&g_vehicle_status.door_status);
-    hal_vehicle_get_window_status(&g_vehicle_status.window_status);
-    hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
-    hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
-    hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
-    hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
-    hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
+    (void)hal_vehicle_get_door_status(&g_vehicle_status.door_status);
+    (void)hal_vehicle_get_window_status(&g_vehicle_status.window_status);
+    (void)hal_vehicle_get_engine_status(&g_vehicle_status.engine_status);
+    (void)hal_vehicle_get_lock_status(&g_vehicle_status.lock_status);
+    (void)hal_vehicle_get_battery_level(&g_vehicle_status.battery_level);
+    (void)hal_vehicle_get_interior_temp(&g_vehicle_status.interior_temp);
+    (void)hal_vehicle_get_alarm_status(&g_vehicle_status.alarm_status);
 
     /* TODO: 触发状态通知到已连接的手机 */
 }

@@ -40,9 +40,9 @@ static ccc_status_t ncj29d6_send_cmd(uint8_t cmd, const uint8_t *payload, uint16
     uint8_t header[4] = { cmd, 0x00, (uint8_t)(len >> 8), (uint8_t)(len & 0xFF) };
 
     gpio_write(NCJ29D6_CS_PORT, NCJ29D6_CS_PIN, 0);
-    spi_transfer(3, header, NULL, 4);
+    (void)spi_transfer(3, header, NULL, 4);
     if (len > 0 && payload) {
-        spi_transfer(3, payload, NULL, len);
+        (void)spi_transfer(3, payload, NULL, len);
     }
     gpio_write(NCJ29D6_CS_PORT, NCJ29D6_CS_PIN, 1);
 
@@ -57,7 +57,7 @@ ccc_status_t uwb_ncj29d6_init(void)
     ncj29d6_send_cmd(NCJ29D6_CMD_INIT, NULL, 0);
 
     /* Cast away volatile for one-time init; ISR-only fields are safe */
-    memset((void*)g_sessions, 0, sizeof(g_sessions));
+    (void)memset((void*)g_sessions, 0, sizeof(g_sessions));
     return CCC_OK;
 }
 
@@ -167,7 +167,7 @@ ccc_status_t uwb_set_threshold(const distance_threshold_t *th)
 {
     if (!th) return CCC_ERR_INVALID_PARAM;
     /* g_threshold is volatile (accessed by IRQ); cast for one-time set [EMB-P1-01] */
-    memcpy((void*)&g_threshold, th, sizeof(g_threshold));
+    (void)memcpy((void*)&g_threshold, th, sizeof(g_threshold));
     return CCC_OK;
 }
 
@@ -178,16 +178,16 @@ ccc_status_t uwb_register_zone_cb(uwb_zone_cb_t cb)
 }
 
 /* IRQ handler - ranging result from NCJ29D6 */
-void ncj29d6_irq_handler(void)
+static void ncj29d6_irq_handler(void)
 {
     uint8_t result_buf[16] = {0};
     uint8_t header[4] = {0};
 
     gpio_write(NCJ29D6_CS_PORT, NCJ29D6_CS_PIN, 0);
-    spi_transfer(3, NULL, header, 4);
+    (void)spi_transfer(3, NULL, header, 4);
     uint16_t len = ((uint16_t)header[2] << 8) | header[3];
     if (len > 0 && len <= 16) {
-        spi_transfer(3, NULL, result_buf, len);
+        (void)spi_transfer(3, NULL, result_buf, len);
     }
     gpio_write(NCJ29D6_CS_PORT, NCJ29D6_CS_PIN, 1);
 

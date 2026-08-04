@@ -70,7 +70,7 @@ void test_ble_send(void)
 
     /* Large payload within MTU */
     uint8_t big[240];
-    memset(big, 0xAB, sizeof(big));
+    (void)memset(big, 0xAB, sizeof(big));
     ret = iccoa_ble_send(big, sizeof(big));
     TEST_ASSERT_EQUAL_INT32(ICCOA_OK, ret);
 

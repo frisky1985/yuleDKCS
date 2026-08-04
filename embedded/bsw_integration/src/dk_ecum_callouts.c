@@ -177,20 +177,20 @@ void EcuM_AL_WakeupReaction(void)
 /* =========================================================================
  * EcuM Callout: OS 挂钩
  * ========================================================================= */
-void StartupHook(void)
+static void StartupHook(void)
 {
     /* OS 启动后的钩子 */
     /* 可在此处执行轻量级初始化 */
 }
 
-void ShutdownHook(StatusType Error)
+static void ShutdownHook(StatusType Error)
 {
     (void)Error;
     /* OS 关闭前的钩子 */
     /* 执行紧急关闭动作 */
 }
 
-void ErrorHook(StatusType Error)
+static void ErrorHook(StatusType Error)
 {
     (void)Error;
     /* OS/运行时错误的钩子 */

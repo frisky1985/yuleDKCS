@@ -24,9 +24,9 @@ int main(void) {
         uint8_t hash[32];
         sm3_hash((const uint8_t *)msg, 3, hash);
         if (memcmp(hash, expected, 32) == 0) {
-            printf("[PASS] SM3 test vector (abc)\n");
+            (void)printf("[PASS] SM3 test vector (abc)\n");
         } else {
-            printf("[FAIL] SM3 test vector (abc)\n");
+            (void)printf("[FAIL] SM3 test vector (abc)\n");
             printf("  got:      "); for(int i=0;i<32;i++) printf("%02X",hash[i]); printf("\n");
             printf("  expected: "); for(int i=0;i<32;i++) printf("%02X",expected[i]); printf("\n");
             failures++;
@@ -45,9 +45,9 @@ int main(void) {
         uint8_t hash[32];
         sm3_hash((const uint8_t *)msg64, 64, hash);
         if (memcmp(hash, expected, 32) == 0) {
-            printf("[PASS] SM3 test vector (64-byte block)\n");
+            (void)printf("[PASS] SM3 test vector (64-byte block)\n");
         } else {
-            printf("[FAIL] SM3 test vector (64-byte block)\n");
+            (void)printf("[FAIL] SM3 test vector (64-byte block)\n");
             failures++;
         }
     }
@@ -68,13 +68,13 @@ int main(void) {
         };
         uint8_t ct[16], pt2[16];
         sm4_key_t sk;
-        sm4_set_key(key, &sk);
-        sm4_ecb_encrypt(&sk, pt, 16, ct);
-        sm4_ecb_decrypt(&sk, ct, 16, pt2);
+        (void)sm4_set_key(key, &sk);
+        (void)sm4_ecb_encrypt(&sk, pt, 16, ct);
+        (void)sm4_ecb_decrypt(&sk, ct, 16, pt2);
         if (memcmp(ct, expected, 16) == 0 && memcmp(pt, pt2, 16) == 0) {
-            printf("[PASS] SM4 ECB encrypt/decrypt\n");
+            (void)printf("[PASS] SM4 ECB encrypt/decrypt\n");
         } else {
-            printf("[FAIL] SM4 ECB encrypt/decrypt\n");
+            (void)printf("[FAIL] SM4 ECB encrypt/decrypt\n");
             failures++;
         }
     }
@@ -91,17 +91,17 @@ int main(void) {
 
         ret = sm4_gcm_encrypt(key, iv, 12, NULL, 0, pt, 32, ct, tag, 16);
         if (ret != CRYPTO_SUCCESS) {
-            printf("[FAIL] SM4-GCM encrypt returned %d\n", ret);
+            (void)printf("[FAIL] SM4-GCM encrypt returned %d\n", ret);
             failures++;
         } else {
             ret = sm4_gcm_decrypt(key, iv, 12, NULL, 0, ct, 32, tag, 16, dec);
             if (ret != CRYPTO_SUCCESS) {
-                printf("[FAIL] SM4-GCM decrypt returned %d\n", ret);
+                (void)printf("[FAIL] SM4-GCM decrypt returned %d\n", ret);
                 failures++;
             } else if (memcmp(pt, dec, 32) == 0) {
-                printf("[PASS] SM4-GCM round-trip (zero IV/key)\n");
+                (void)printf("[PASS] SM4-GCM round-trip (zero IV/key)\n");
             } else {
-                printf("[FAIL] SM4-GCM round-trip mismatch\n");
+                (void)printf("[FAIL] SM4-GCM round-trip mismatch\n");
                 failures++;
             }
         }
@@ -115,13 +115,13 @@ int main(void) {
         uint8_t mac[32];
         int ret = sm3_hmac(key, 16, (const uint8_t *)msg, 8, mac);
         if (ret == CRYPTO_SUCCESS) {
-            printf("[PASS] SM3-HMAC basic (no errors)\n");
+            (void)printf("[PASS] SM3-HMAC basic (no errors)\n");
         } else {
-            printf("[FAIL] SM3-HMAC returned %d\n", ret);
+            (void)printf("[FAIL] SM3-HMAC returned %d\n", ret);
             failures++;
         }
     }
 
-    printf("\n=== Results: %d failures ===\n", failures);
+    (void)printf("\n=== Results: %d failures ===\n", failures);
     return failures;
 }

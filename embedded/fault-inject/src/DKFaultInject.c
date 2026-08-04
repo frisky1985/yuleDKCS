@@ -78,8 +78,8 @@ void dk_fi_init(void)
     g_initialized = true;
     g_active_fault_count = 0;
     g_result_count = 0;
-    memset(g_active_faults, 0, sizeof(g_active_faults));
-    memset(g_results, 0, sizeof(g_results));
+    (void)memset(g_active_faults, 0, sizeof(g_active_faults));
+    (void)memset(g_results, 0, sizeof(g_results));
 }
 
 void dk_fi_deinit(void)
@@ -150,9 +150,9 @@ const dk_fi_result_t* dk_fi_get_result(uint32_t index)
 
 void dk_fi_print_results(void)
 {
-    printf("\n===== DK Fault Injection Test Report =====\n");
-    printf("%-5s %-8s %-40s %s\n", "ID", "Protocol", "Test Name", "Status");
-    printf("------ -------- ---------------------------------------- ----------\n");
+    (void)printf("\n===== DK Fault Injection Test Report =====\n");
+    (void)printf("%-5s %-8s %-40s %s\n", "ID", "Protocol", "Test Name", "Status");
+    (void)printf("------ -------- ---------------------------------------- ----------\n");
 
     uint32_t passed = 0, failed = 0, errors = 0;
     for (uint32_t i = 0; i < g_result_count; i++) {
@@ -172,11 +172,11 @@ void dk_fi_print_results(void)
                status);
     }
 
-    printf("\n");
+    (void)printf("\n");
     printf("Total: %u | Passed: %u | Failed: %u | Errors: %u\n",
            (unsigned int)g_result_count,
            (unsigned int)passed, (unsigned int)failed, (unsigned int)errors);
-    printf("============================================\n");
+    (void)printf("============================================\n");
 }
 
 /* ========================================================================
@@ -381,7 +381,7 @@ void dk_fi_icce_sign_forgery_test(void)
     dk_fi_enable(DK_FI_ICCE_SIGN_FORGERY, true);
 
     static uint8_t forged_pubkey[64];
-    memset(forged_pubkey, 0xFF, sizeof(forged_pubkey));
+    (void)memset(forged_pubkey, 0xFF, sizeof(forged_pubkey));
     int ret = icce_sim_bind(forged_pubkey, 64);
 
     if (ret == -7) {
@@ -394,7 +394,7 @@ void dk_fi_icce_sign_forgery_test(void)
     dk_fi_enable(DK_FI_ICCE_SIGN_FORGERY, false);
 
     /* Use a minimal reasonable public key (all zeros is invalid but won't trigger our fault) */
-    memset(forged_pubkey, 0x42, 64);
+    (void)memset(forged_pubkey, 0x42, 64);
     ret = icce_sim_bind(forged_pubkey, 64);
 
     dk_fi_result_t recovery = {
@@ -841,11 +841,11 @@ void dk_fi_run_all_tests(void)
 {
     dk_fi_init();
 
-    printf("\n=== yuleDKCS Fault Injection Test Suite ===\n");
+    (void)printf("\n=== yuleDKCS Fault Injection Test Suite ===\n");
     printf("Running with DK_FAULT_INJECT_ENABLE = 1\n\n");
 
     /* ── ICCE Protocol Tests ── */
-    printf("--- ICCE Tests ---\n");
+    (void)printf("--- ICCE Tests ---\n");
     dk_fi_icce_sign_forgery_test();
     dk_fi_icce_cert_expired_test();
     dk_fi_icce_illegal_transition_test();
@@ -853,7 +853,7 @@ void dk_fi_run_all_tests(void)
     dk_fi_icce_distance_spoof_test();
 
     /* ── CCC Protocol Tests ── */
-    printf("\n--- CCC Tests ---\n");
+    (void)printf("\n--- CCC Tests ---\n");
     dk_fi_ccc_secure_channel_fail_test();
     dk_fi_ccc_cert_verify_anomaly_test();
     dk_fi_ccc_nfc_oob_corrupt_test();
@@ -861,7 +861,7 @@ void dk_fi_run_all_tests(void)
     dk_fi_ccc_illegal_state_test();
 
     /* ── ICCOA Protocol Tests ── */
-    printf("\n--- ICCOA Tests ---\n");
+    (void)printf("\n--- ICCOA Tests ---\n");
     dk_fi_iccoa_handshake_fail_test();
     dk_fi_iccoa_key_derive_error_test();
     dk_fi_iccoa_downgrade_attack_test();

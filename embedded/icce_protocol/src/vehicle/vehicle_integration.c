@@ -88,14 +88,14 @@ vehicle_result_t vehicle_init(void)
     }
     
     /* 注册接收回调 */
-    can_driver_register_rx_handler(can_rx_handler);
+    (void)can_driver_register_rx_handler(can_rx_handler);
     
     /* 启动CAN驱动 */
     if (can_driver_start() != CAN_SUCCESS) {
         return VEHICLE_ERR_CAN_INIT_FAILED;
     }
     
-    memset(&g_vehicle.current_state, 0, sizeof(vehicle_state_t));
+    (void)memset(&g_vehicle.current_state, 0, sizeof(vehicle_state_t));
     g_vehicle.state_callback = NULL;
     g_vehicle.monitoring = false;
     g_vehicle.initialized = true;
@@ -110,7 +110,7 @@ vehicle_result_t vehicle_execute_command(const vehicle_command_t *cmd,
         return VEHICLE_ERR_INVALID_COMMAND;
     }
     
-    memset(result, 0, sizeof(command_result_t));
+    (void)memset(result, 0, sizeof(command_result_t));
     
     /* 构建CAN消息 */
     can_message_t can_msg;
@@ -144,7 +144,7 @@ vehicle_result_t vehicle_execute_command(const vehicle_command_t *cmd,
     
     while ((sys_tick_get_ms() - start) < timeout) {
         if (g_vehicle.last_result.command_type == cmd->command_type) {
-            memcpy(result, &g_vehicle.last_result, sizeof(command_result_t));
+            (void)memcpy(result, &g_vehicle.last_result, sizeof(command_result_t));
             g_vehicle.pending_command = 0;
             return (result->result == 0) ? VEHICLE_SUCCESS : VEHICLE_ERR_EXECUTION_FAILED;
         }
@@ -168,7 +168,7 @@ vehicle_result_t vehicle_get_state(vehicle_state_t *state)
         return VEHICLE_ERR_INVALID_PARAM;
     }
     
-    memcpy(state, &g_vehicle.current_state, sizeof(vehicle_state_t));
+    (void)memcpy(state, &g_vehicle.current_state, sizeof(vehicle_state_t));
     return VEHICLE_SUCCESS;
 }
 
@@ -242,25 +242,25 @@ static void can_rx_handler(const can_message_t *msg)
     /* 根据CAN ID分发消息 */
     switch (msg->id) {
         case CAN_ID_DIGITAL_KEY_RSP:
-            process_command_response(msg);
+            (void)process_command_response(msg);
             break;
             
         case CAN_ID_VEHICLE_STATE:
-            process_vehicle_state_msg(msg);
+            (void)process_vehicle_state_msg(msg);
             break;
             
         case CAN_ID_DOOR_STATUS:
-            process_door_status_msg(msg);
+            (void)process_door_status_msg(msg);
             break;
             
         case CAN_ID_ENGINE_STATUS:
-            process_engine_status_msg(msg);
+            (void)process_engine_status_msg(msg);
             break;
             
         default:
             /* 保存到缓冲区 */
             if (g_can_rx_count < sizeof(g_can_rx_buffer)/sizeof(can_message_t)) {
-                memcpy(&g_can_rx_buffer[g_can_rx_count++], msg, sizeof(can_message_t));
+                (void)memcpy(&g_can_rx_buffer[g_can_rx_count++], msg, sizeof(can_message_t));
             }
             break;
     }
@@ -353,7 +353,7 @@ static int32_t process_command_response(const can_message_t *msg)
         if (response_len > sizeof(g_vehicle.last_result.response_data)) {
             response_len = sizeof(g_vehicle.last_result.response_data);
         }
-        memcpy(g_vehicle.last_result.response_data, &msg->data[3], response_len);
+        (void)memcpy(g_vehicle.last_result.response_data, &msg->data[3], response_len);
     }
     
     return 0;

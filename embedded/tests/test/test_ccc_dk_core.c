@@ -37,7 +37,7 @@ void test_ccc_init(void)
 
     /* CCC_CORE_002: 获取状态 */
     system_status_t status;
-    memset(&status, 0, sizeof(status));
+    (void)memset(&status, 0, sizeof(status));
     ret = ccc_dk_get_status(&status);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
 
@@ -97,7 +97,7 @@ void test_uwb_create_session(void)
     uwb_ncj29d6_init();
 
     uwb_session_config_t cfg;
-    memset(&cfg, 0, sizeof(cfg));
+    (void)memset(&cfg, 0, sizeof(cfg));
     cfg.session_id[0] = 0x01; cfg.session_id[1] = 0x02;
     cfg.channel = 9;
     cfg.preamble_code = 12;
@@ -145,7 +145,7 @@ void test_uwb_zone_classification(void)
 
     /* 创建会话 */
     uwb_session_config_t cfg;
-    memset(&cfg, 0, sizeof(cfg));
+    (void)memset(&cfg, 0, sizeof(cfg));
     cfg.channel = 9;
     cfg.preamble_code = 12;
     cfg.prf_len = 128;
@@ -286,7 +286,7 @@ void test_ble_connect_disconnect(void)
         .interval_max = 200,
         .len = 10
     };
-    memcpy(adv.data, "\x02\x01\x06\x07\xFF\xD1\xFF\x01\x02\x03", 10);
+    (void)memcpy(adv.data, "\x02\x01\x06\x07\xFF\xD1\xFF\x01\x02\x03", 10);
 
     ccc_status_t ret = ble_start_adv(&adv);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
@@ -305,9 +305,9 @@ void test_key_management(void)
     key_mgmt_init();
 
     ccc_digital_key_t key;
-    memset(&key, 0, sizeof(key));
-    memcpy(key.key_id, "key_core_001_test", 16);
-    memcpy(key.vehicle_id, "vehicle_0001", 12);
+    (void)memset(&key, 0, sizeof(key));
+    (void)memcpy(key.key_id, "key_core_001_test", 16);
+    (void)memcpy(key.vehicle_id, "vehicle_0001", 12);
     key.key_type = KEY_TYPE_OWNER;
     key.access_rights[0] = ACCESS_LOCK_UNLOCK | ACCESS_ENGINE_START;
     key.valid_from = 1700000000;
@@ -320,7 +320,7 @@ void test_key_management(void)
 
     /* CCC_CORE_011: 查询密钥 */
     ccc_digital_key_t retrieved;
-    memset(&retrieved, 0, sizeof(retrieved));
+    (void)memset(&retrieved, 0, sizeof(retrieved));
     ret = key_get((const uint8_t*)"key_core_001_test", &retrieved);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
     TEST_ASSERT_EQUAL_MEMORY(key.key_id, retrieved.key_id, 16);
@@ -348,8 +348,8 @@ void test_key_sharing(void)
     key_mgmt_init();
 
     ccc_digital_key_t key;
-    memset(&key, 0, sizeof(key));
-    memcpy(key.key_id, "share_test_key", 14);
+    (void)memset(&key, 0, sizeof(key));
+    (void)memcpy(key.key_id, "share_test_key", 14);
     key.key_type = KEY_TYPE_OWNER;
     key.state = KEY_STATE_ACTIVE;
     key_create(&key);

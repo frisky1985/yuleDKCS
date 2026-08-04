@@ -195,8 +195,8 @@ ccc_status_t sec_store_key(const uint8_t *id, const uint8_t *d, uint16_t l)
 {
     if (l>256) return CCC_ERR_INVALID_PARAM;
     if (g_sec_n>=SEC_STORE_MAX) return CCC_ERR_NO_MEM;
-    memcpy(g_sec[g_sec_n].id, id, 16);
-    memcpy(g_sec[g_sec_n].data, d, l);
+    (void)memcpy(g_sec[g_sec_n].id, id, 16);
+    (void)memcpy(g_sec[g_sec_n].data, d, l);
     g_sec[g_sec_n].len = l;
     g_sec_n++;
     return CCC_OK;
@@ -207,7 +207,7 @@ ccc_status_t sec_load_key(const uint8_t *id, uint8_t *d, uint16_t *l)
         if (id_match16(g_sec[i].id, id)) {
             uint16_t cl = g_sec[i].len;
             if (*l < cl) cl = *l;
-            memcpy(d, g_sec[i].data, cl);
+            (void)memcpy(d, g_sec[i].data, cl);
             *l = g_sec[i].len;
             return CCC_OK;
         }
@@ -250,7 +250,7 @@ ccc_status_t key_mgmt_deinit(void) { g_kcount=0; return CCC_OK; }
 ccc_status_t key_create(ccc_digital_key_t *k)
 {
     if (g_kcount>=KEY_STORE_MAX) return CCC_ERR_NO_MEM;
-    memcpy(&g_kstore[g_kcount].key, k, sizeof(ccc_digital_key_t));
+    (void)memcpy(&g_kstore[g_kcount].key, k, sizeof(ccc_digital_key_t));
     g_kcount++;
     return CCC_OK;
 }
@@ -269,7 +269,7 @@ ccc_status_t key_get(const uint8_t *id, ccc_digital_key_t *k)
 {
     for (int i=0; i<g_kcount; i++) {
         if (key_id_match(g_kstore[i].key.key_id, id)) {
-            memcpy(k, &g_kstore[i].key, sizeof(ccc_digital_key_t));
+            (void)memcpy(k, &g_kstore[i].key, sizeof(ccc_digital_key_t));
             return CCC_OK;
         }
     }
@@ -326,14 +326,14 @@ static bool g_dk_initd = false;
 
 dk_status_t dk_init(const dk_device_type_t *d) {
     if (!d) return DK_ERR_INVALID_PARAM;
-    memcpy(&g_dk_dev, d, sizeof(g_dk_dev));
+    (void)memcpy(&g_dk_dev, d, sizeof(g_dk_dev));
     g_dk_initd = true;
     return DK_OK;
 }
 dk_status_t dk_deinit(void) { g_dk_initd = false; return DK_OK; }
 dk_status_t dk_get_status(dk_device_status_t *s) {
-    memset(s,0,sizeof(*s));
-    memcpy(&s->device, &g_dk_dev, sizeof(g_dk_dev));
+    (void)memset(s,0,sizeof(*s));
+    (void)memcpy(&s->device, &g_dk_dev, sizeof(g_dk_dev));
     return DK_OK;
 }
 dk_status_t dk_run(void) { return DK_OK; }
@@ -367,7 +367,7 @@ static bool dk_key_id_match(const uint8_t *a, const uint8_t *b)
 
 dk_status_t dk_key_create(dk_key_t *k) {
     if (g_dk_key_n >= DK_KEY_MAX) return DK_ERR_NO_MEM;
-    memcpy(&g_dk_keys[g_dk_key_n].key, k, sizeof(dk_key_t));
+    (void)memcpy(&g_dk_keys[g_dk_key_n].key, k, sizeof(dk_key_t));
     g_dk_key_n++;
     return DK_OK;
 }
@@ -384,7 +384,7 @@ dk_status_t dk_key_delete(const uint8_t *id) {
 dk_status_t dk_key_get(const uint8_t *id, dk_key_t *o) {
     for (int i=0; i<g_dk_key_n; i++) {
         if (dk_key_id_match(g_dk_keys[i].key.key_id, id)) {
-            memcpy(o, &g_dk_keys[i].key, sizeof(dk_key_t));
+            (void)memcpy(o, &g_dk_keys[i].key, sizeof(dk_key_t));
             return DK_OK;
         }
     }

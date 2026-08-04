@@ -54,7 +54,7 @@ static int32_t handle_bind_request(const uint8_t *payload, uint16_t len)
     /* Generate vehicle key pair via SE050 */
     /* Build bind response with vehicle public key */
     static uint8_t rsp_payload[128];
-    memset(rsp_payload, 0, sizeof(rsp_payload));
+    (void)memset(rsp_payload, 0, sizeof(rsp_payload));
     /* TODO: Fill with vehicle public key + signature */
     return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 64);
 }
@@ -178,7 +178,7 @@ int32_t iccoa_dk30_send_response(iccoa_cmd_e cmd, const uint8_t *payload, uint16
     frame.payload_len = len;
 
     if (len > 0 && payload) {
-        memcpy(frame.payload, payload, len);
+        (void)memcpy(frame.payload, payload, len);
     }
 
     frame.checksum = iccoa_dk30_checksum((const uint8_t *)&frame + 1, 4 + len);

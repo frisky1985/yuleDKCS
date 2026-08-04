@@ -83,7 +83,7 @@ int32_t edge_condition_pool_init(void)
         return ICCE_OK;
     }
 
-    memset(&g_cond_pool, 0, sizeof(g_cond_pool));
+    (void)memset(&g_cond_pool, 0, sizeof(g_cond_pool));
     g_cond_pool.initialized = true;
 
     return ICCE_OK;
@@ -92,7 +92,7 @@ int32_t edge_condition_pool_init(void)
 int32_t edge_condition_pool_deinit(void)
 {
     g_cond_pool.initialized = false;
-    memset(&g_cond_pool, 0, sizeof(g_cond_pool));
+    (void)memset(&g_cond_pool, 0, sizeof(g_cond_pool));
     return ICCE_OK;
 }
 
@@ -106,7 +106,7 @@ icce_condition_t *edge_condition_alloc(void)
     for (uint32_t i = 0; i < EDGE_COND_POOL_SIZE; i++) {
         if (!g_cond_pool.nodes[i].allocated) {
             g_cond_pool.nodes[i].allocated = true;
-            memset(&g_cond_pool.nodes[i].cond, 0, sizeof(icce_condition_t));
+            (void)memset(&g_cond_pool.nodes[i].cond, 0, sizeof(icce_condition_t));
 
             /* Update stats */
             g_cond_pool.allocation_count++;
@@ -186,7 +186,7 @@ static void cond_free_recursive(icce_condition_t *node)
             /* Free this node */
             g_cond_pool.nodes[i].allocated = false;
             g_cond_pool.free_count++;
-            memset(node, 0, sizeof(icce_condition_t));
+            (void)memset(node, 0, sizeof(icce_condition_t));
             return;
         }
     }
@@ -407,8 +407,8 @@ static void build_nvm_key(const char *rule_tag, uint8_t *key_buf, uint16_t *key_
         total = 64;
     }
 
-    memcpy(key_buf, prefix, plen);
-    memcpy(key_buf + plen, rule_tag, tlen);
+    (void)memcpy(key_buf, prefix, plen);
+    (void)memcpy(key_buf + plen, rule_tag, tlen);
     key_buf[total - 1] = '\0';
 
     *key_len = (uint16_t)total;
@@ -531,7 +531,7 @@ int32_t edge_condition_load_rules_from_nvm(uint8_t storage_handle)
 
         /* Build the icce_edge_rule_t from serialized fields */
         icce_edge_rule_t rule;
-        memset(&rule, 0, sizeof(rule));
+        (void)memset(&rule, 0, sizeof(rule));
 
         rule.trigger        = (icce_trigger_e)sr->trigger;
         rule.zone_id        = sr->zone_id;
@@ -565,7 +565,7 @@ int32_t edge_condition_load_rules_from_nvm(uint8_t storage_handle)
                                         sr->cond_node_count, &cond_root);
                 if (ret == ICCE_OK && cond_root) {
                     /* Store condition in rule (shallow copy pointer semantics) */
-                    memcpy(&rule.condition, cond_root, sizeof(icce_condition_t));
+                    (void)memcpy(&rule.condition, cond_root, sizeof(icce_condition_t));
                 }
             }
 
@@ -656,7 +656,7 @@ static void buf_append_int(char *buf, uint32_t *pos, uint32_t buf_size,
     char tmp[16];
     char *end = tmp + sizeof(tmp);
     char *start = i32_to_str_end(val, end);
-    buf_append(buf, pos, buf_size, start);
+    (void)buf_append(buf, pos, buf_size, start);
 }
 
 /**
@@ -668,8 +668,8 @@ static void buf_append_hex(char *buf, uint32_t *pos, uint32_t buf_size,
     char tmp[16];
     char *end = tmp + sizeof(tmp);
     char *hex_str = u32_to_hex_end(val, end, digits);
-    buf_append(buf, pos, buf_size, "0x");
-    buf_append(buf, pos, buf_size, hex_str);
+    (void)buf_append(buf, pos, buf_size, "0x");
+    (void)buf_append(buf, pos, buf_size, hex_str);
 }
 
 /* ========================================================================
@@ -704,72 +704,72 @@ static void dump_recursive(const icce_condition_t *node,
     switch (node->op) {
     case COND_OP_AND:
     case COND_OP_OR:
-        buf_append(buf, pos, buf_size, "(");
-        buf_append(buf, pos, buf_size, op_name(node->op));
-        buf_append(buf, pos, buf_size, " ");
+        (void)buf_append(buf, pos, buf_size, "(");
+        (void)buf_append(buf, pos, buf_size, op_name(node->op));
+        (void)buf_append(buf, pos, buf_size, " ");
         dump_recursive(node->left, buf, pos, buf_size);
-        buf_append(buf, pos, buf_size, " ");
+        (void)buf_append(buf, pos, buf_size, " ");
         dump_recursive(node->right, buf, pos, buf_size);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_NOT:
-        buf_append(buf, pos, buf_size, "(NOT ");
+        (void)buf_append(buf, pos, buf_size, "(NOT ");
         dump_recursive(node->left, buf, pos, buf_size);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_RSSI_GT:
-        buf_append(buf, pos, buf_size, "(RSSI_GT ");
+        (void)buf_append(buf, pos, buf_size, "(RSSI_GT ");
         buf_append_int(buf, pos, buf_size, node->threshold);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_RSSI_LT:
-        buf_append(buf, pos, buf_size, "(RSSI_LT ");
+        (void)buf_append(buf, pos, buf_size, "(RSSI_LT ");
         buf_append_int(buf, pos, buf_size, node->threshold);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_DIST_GT:
-        buf_append(buf, pos, buf_size, "(DIST_GT ");
+        (void)buf_append(buf, pos, buf_size, "(DIST_GT ");
         buf_append_int(buf, pos, buf_size, node->threshold);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_DIST_LT:
-        buf_append(buf, pos, buf_size, "(DIST_LT ");
+        (void)buf_append(buf, pos, buf_size, "(DIST_LT ");
         buf_append_int(buf, pos, buf_size, node->threshold);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_ZONE_EQ:
-        buf_append(buf, pos, buf_size, "(ZONE_EQ ");
+        (void)buf_append(buf, pos, buf_size, "(ZONE_EQ ");
         buf_append_int(buf, pos, buf_size, (int32_t)node->zone_id);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_VEHICLE_STOPPED:
-        buf_append(buf, pos, buf_size, "VEHICLE_STOPPED");
+        (void)buf_append(buf, pos, buf_size, "VEHICLE_STOPPED");
         break;
 
     case COND_OP_VEHICLE_LOCKED:
-        buf_append(buf, pos, buf_size, "VEHICLE_LOCKED");
+        (void)buf_append(buf, pos, buf_size, "VEHICLE_LOCKED");
         break;
 
     case COND_OP_VEHICLE_PARKED:
-        buf_append(buf, pos, buf_size, "VEHICLE_PARKED");
+        (void)buf_append(buf, pos, buf_size, "VEHICLE_PARKED");
         break;
 
     case COND_OP_TIME_IN_WINDOW:
-        buf_append(buf, pos, buf_size, "(TIME_IN_WINDOW ");
+        (void)buf_append(buf, pos, buf_size, "(TIME_IN_WINDOW ");
         buf_append_hex(buf, pos, buf_size, (uint32_t)node->threshold, 6);
-        buf_append(buf, pos, buf_size, ")");
+        (void)buf_append(buf, pos, buf_size, ")");
         break;
 
     case COND_OP_NONE:
     default:
-        buf_append(buf, pos, buf_size, "NONE");
+        (void)buf_append(buf, pos, buf_size, "NONE");
         break;
     }
 }
@@ -783,7 +783,7 @@ void edge_condition_dump(const icce_condition_t *root,
     uint32_t pos = 0;
 
     if (!root) {
-        buf_append(out_buf, &pos, buf_size, "(empty)");
+        (void)buf_append(out_buf, &pos, buf_size, "(empty)");
         return;
     }
 
@@ -838,7 +838,7 @@ int32_t edge_condition_upgrade_rule(icce_edge_rule_t *rule)
     }
 
     /* Replace the embedded condition with the dynamic copy */
-    memcpy(&rule->condition, dynamic_copy, sizeof(icce_condition_t));
+    (void)memcpy(&rule->condition, dynamic_copy, sizeof(icce_condition_t));
 
     return ICCE_OK;
 }
@@ -857,7 +857,7 @@ static int32_t deep_copy_recursive(const icce_condition_t *src,
     if (!node) return ICCE_ERR_NO_MEM;
 
     /* Shallow copy all fields */
-    memcpy(node, src, sizeof(icce_condition_t));
+    (void)memcpy(node, src, sizeof(icce_condition_t));
 
     /* Deep-copy children */
     node->left  = NULL;

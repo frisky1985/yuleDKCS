@@ -101,7 +101,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
     uint16_t blob_len = 4 + 2 + 1 + keys_data_len + 4;
     uint8_t *blob = (uint8_t *)pvPortMalloc(blob_len);
     if (!blob) return CCC_ERR_NO_MEM;
-    memset(blob, 0, blob_len);
+    (void)memset(blob, 0, blob_len);
     uint16_t pos = 0;
 
     /* Magic */
@@ -119,7 +119,7 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
     for (uint8_t i = 0, written = 0; i < MAX_KEYS && written < active_count; i++) {
         if (g_keys[i].state == KEY_STATE_ACTIVE ||
             g_keys[i].state == KEY_STATE_SUSPENDED) {
-            memcpy(blob + pos, &g_keys[i], sizeof(ccc_digital_key_t));
+            (void)memcpy(blob + pos, &g_keys[i], sizeof(ccc_digital_key_t));
             pos += sizeof(ccc_digital_key_t);
             written++;
         }
@@ -243,10 +243,10 @@ static ccc_status_t load_keys(void)  /* [P0-4] */
 
     /* 恢复密钥到内存 */
     uint16_t src_pos = 7; /* 跳过 magic(4) + version(2) + count(1) */
-    memset(g_keys, 0, sizeof(g_keys));
+    (void)memset(g_keys, 0, sizeof(g_keys));
 
     for (uint8_t i = 0; i < count && i < MAX_KEYS; i++) {
-        memcpy(&g_keys[i], blob + src_pos, sizeof(ccc_digital_key_t));
+        (void)memcpy(&g_keys[i], blob + src_pos, sizeof(ccc_digital_key_t));
 
         /* 有效性检查: 确保状态合法 */
         if (g_keys[i].state != KEY_STATE_ACTIVE &&
@@ -264,7 +264,7 @@ static ccc_status_t load_keys(void)  /* [P0-4] */
 
 ccc_status_t key_mgmt_init(void)
 {
-    memset(g_keys, 0, sizeof(g_keys));
+    (void)memset(g_keys, 0, sizeof(g_keys));
     g_key_count = 0;
 
     /* [P0-4] 从非易失存储恢复持久化密钥 */
@@ -281,7 +281,7 @@ ccc_status_t key_mgmt_deinit(void)
     /* [P0-4] 在关闭前持久化当前密钥状态 */
     save_keys();
 
-    memset(g_keys, 0, sizeof(g_keys));
+    (void)memset(g_keys, 0, sizeof(g_keys));
     g_key_count = 0;
     return CCC_OK;
 }
@@ -321,7 +321,7 @@ ccc_status_t key_create(ccc_digital_key_t *key)
     if (slot < 0) return CCC_ERR_NO_MEM;
 
     /* Store key */
-    memcpy(&g_keys[slot], key, sizeof(ccc_digital_key_t));
+    (void)memcpy(&g_keys[slot], key, sizeof(ccc_digital_key_t));
     g_keys[slot].state = KEY_STATE_ACTIVE;
     g_key_count++;
 
@@ -348,7 +348,7 @@ ccc_status_t key_delete(const uint8_t *key_id)
     sec_delete_key(key_id);
 
     /* [P0-4] 删除内存中的密钥记录 */
-    memset(&g_keys[slot], 0, sizeof(ccc_digital_key_t));
+    (void)memset(&g_keys[slot], 0, sizeof(ccc_digital_key_t));
     g_key_count--;
 
     /* [P0-4] 持久化最新的密钥元数据 */
@@ -364,7 +364,7 @@ ccc_status_t key_get(const uint8_t *key_id, ccc_digital_key_t *key)
     int8_t slot = find_key_slot(key_id);
     if (slot < 0) return CCC_ERR_NOT_FOUND;
 
-    memcpy(key, &g_keys[slot], sizeof(ccc_digital_key_t));
+    (void)memcpy(key, &g_keys[slot], sizeof(ccc_digital_key_t));
     return CCC_OK;
 }
 
@@ -375,7 +375,7 @@ ccc_status_t key_list(ccc_digital_key_t *keys, uint8_t *count)
     uint8_t idx = 0;
     for (uint8_t i = 0; i < MAX_KEYS && idx < *count; i++) {
         if (g_keys[i].state != KEY_STATE_INACTIVE) {
-            memcpy(&keys[idx], &g_keys[i], sizeof(ccc_digital_key_t));
+            (void)memcpy(&keys[idx], &g_keys[i], sizeof(ccc_digital_key_t));
             idx++;
         }
     }

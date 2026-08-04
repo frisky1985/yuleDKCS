@@ -331,7 +331,7 @@ Std_ReturnType Csm_Cfg_KeyRead(uint32 keyId, uint32 elementId,
  *
  * 当硬件 SE050 可用时, 这里应转发到 SE050 驱动
  * ============================================================================ */
-Std_ReturnType Csm_Cfg_HwService(uint32 jobId, Csm_ServiceType serviceType,
+static Std_ReturnType Csm_Cfg_HwService(uint32 jobId, Csm_ServiceType serviceType,
                                   const uint8* input, uint32 inputLength,
                                   uint8* output, uint32* outputLength)
 {
@@ -524,7 +524,7 @@ Std_ReturnType Csm_Cfg_HwService(uint32 jobId, Csm_ServiceType serviceType,
  * 使用 XORSHIFT128 PRNG 生成随机数
  * S32K312 有硬件 TRNG (RNGB) 时可改用硬件 RNG
  * ============================================================================ */
-Std_ReturnType Csm_Cfg_RandomGenerate(uint8* data, uint32 length)
+static Std_ReturnType Csm_Cfg_RandomGenerate(uint8* data, uint32 length)
 {
     if (data == NULL_PTR || length == 0U)
         return E_NOT_OK;
@@ -543,7 +543,7 @@ Std_ReturnType Csm_Cfg_RandomGenerate(uint8* data, uint32 length)
 /* ============================================================================
  * Csm_Cfg_GetTimestamp: 获取当前时间戳 (ms)
  * ============================================================================ */
-uint32 Csm_Cfg_GetTimestamp(void)
+static uint32 Csm_Cfg_GetTimestamp(void)
 {
     /* 从 FreeRTOS tick 获取 */
     extern uint32 xTaskGetTickCount(void);

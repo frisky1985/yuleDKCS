@@ -28,7 +28,7 @@ void test_unified_init_smartphone(void)
 {
     /* 构建智能手机设备配置 */
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
 
     device.device_type  = DK_DEVICE_SMARTPHONE;
     device.protocol     = DK_PROTOCOL_ICCOA;
@@ -44,7 +44,7 @@ void test_unified_init_smartphone(void)
 
     /* 获取状态 */
     dk_device_status_t status;
-    memset(&status, 0, sizeof(status));
+    (void)memset(&status, 0, sizeof(status));
     ret = dk_get_status(&status);
     TEST_ASSERT_EQUAL(DK_OK, ret);
 
@@ -62,7 +62,7 @@ void test_unified_init_smartphone(void)
 void test_unified_init_vehicle_ce(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
 
     device.device_type  = DK_DEVICE_VEHICLE_CE;
     device.protocol     = DK_PROTOCOL_CCC;
@@ -86,7 +86,7 @@ void test_unified_init_vehicle_ce(void)
 void test_unified_init_icce(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
 
     device.device_type  = DK_DEVICE_VEHICLE_TCU;
     device.protocol     = DK_PROTOCOL_ICCE;
@@ -110,7 +110,7 @@ void test_unified_init_icce(void)
 void test_unified_callback_registration(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -143,7 +143,7 @@ void test_unified_callback_registration(void)
 void test_unified_ble_adv(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -164,7 +164,7 @@ void test_unified_ble_adv(void)
 void test_unified_nfc_listen(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_VEHICLE_CE;
     device.protocol = DK_PROTOCOL_CCC;
     device.capabilities.capabilities = DK_CAP_NFC;
@@ -181,7 +181,7 @@ void test_unified_nfc_listen(void)
 void test_unified_key_lifecycle(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -189,9 +189,9 @@ void test_unified_key_lifecycle(void)
 
     /* 创建钥匙 */
     dk_key_t key;
-    memset(&key, 0, sizeof(key));
-    memcpy(key.key_id, "unified_key_01", 14);
-    memcpy(key.vehicle_id, "VH_00001", 8);
+    (void)memset(&key, 0, sizeof(key));
+    (void)memcpy(key.key_id, "unified_key_01", 14);
+    (void)memcpy(key.vehicle_id, "VH_00001", 8);
     key.key_type = DK_KEY_OWNER;
     key.state = DK_KEY_STATE_ACTIVE;
     key.access_rights[0] = DK_ACCESS_LOCK | DK_ACCESS_UNLOCK | DK_ACCESS_ENGINE_START;
@@ -201,7 +201,7 @@ void test_unified_key_lifecycle(void)
 
     /* 获取钥匙 */
     dk_key_t retrieved;
-    memset(&retrieved, 0, sizeof(retrieved));
+    (void)memset(&retrieved, 0, sizeof(retrieved));
     ret = dk_key_get((const uint8_t*)"unified_key_01", &retrieved);
     TEST_ASSERT_EQUAL(DK_OK, ret);
     TEST_ASSERT_EQUAL(DK_KEY_OWNER, retrieved.key_type);
@@ -241,7 +241,7 @@ void test_unified_key_lifecycle(void)
 void test_unified_vehicle_control(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -257,7 +257,7 @@ void test_unified_vehicle_control(void)
 
     /* 获取车辆状态 */
     dk_vehicle_status_t vs;
-    memset(&vs, 0, sizeof(vs));
+    (void)memset(&vs, 0, sizeof(vs));
     TEST_ASSERT_EQUAL(DK_OK, dk_vehicle_get_status(&vs));
 
     dk_deinit();
@@ -269,7 +269,7 @@ void test_unified_vehicle_control(void)
 void test_unified_location(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -280,7 +280,7 @@ void test_unified_location(void)
 
     /* 获取位置 */
     dk_location_t loc;
-    memset(&loc, 0, sizeof(loc));
+    (void)memset(&loc, 0, sizeof(loc));
     TEST_ASSERT_EQUAL(DK_OK, dk_location_get(&loc));
     TEST_ASSERT_TRUE(loc.zone >= DK_ZONE_LOCKED && loc.zone <= DK_ZONE_UNKNOWN);
 
@@ -293,7 +293,7 @@ void test_unified_location(void)
 void test_unified_protocol_raw(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -324,7 +324,7 @@ void test_unified_protocol_raw(void)
 void test_unified_auth_flow(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 
@@ -336,8 +336,8 @@ void test_unified_auth_flow(void)
 
     /* 创建钥匙 */
     dk_key_t key;
-    memset(&key, 0, sizeof(key));
-    memcpy(key.key_id, "auth_test_key", 13);
+    (void)memset(&key, 0, sizeof(key));
+    (void)memcpy(key.key_id, "auth_test_key", 13);
     key.key_type = DK_KEY_OWNER;
     key.state = DK_KEY_STATE_ACTIVE;
     TEST_ASSERT_EQUAL(DK_OK, dk_key_create(&key));
@@ -359,7 +359,7 @@ void test_unified_auth_flow(void)
 void test_unified_run_tick(void)
 {
     dk_device_type_t device;
-    memset(&device, 0, sizeof(device));
+    (void)memset(&device, 0, sizeof(device));
     device.device_type = DK_DEVICE_SMARTPHONE;
     device.protocol = DK_PROTOCOL_ICCOA;
 

@@ -115,7 +115,7 @@ static void bonding_cache_evict_lru(void)
         }
     }
 
-    memset(&g_bonding_cache[oldest_idx], 0, sizeof(bonding_cache_entry_t));
+    (void)memset(&g_bonding_cache[oldest_idx], 0, sizeof(bonding_cache_entry_t));
 
     /* 压缩数组: 将后续元素前移 */
     for (uint32_t i = oldest_idx; i < g_bonding_count - 1; i++) {
@@ -135,7 +135,7 @@ static ccc_status_t ble_bonding_cache_add(const uint8_t addr[6], uint8_t addr_ty
     for (uint32_t i = 0; i < g_bonding_count; i++) {
         if (memcmp(g_bonding_cache[i].addr, addr, 6) == 0) {
             /* 更新已有条目 */
-            memcpy(g_bonding_cache[i].ltk, ltk, 16);
+            (void)memcpy(g_bonding_cache[i].ltk, ltk, 16);
             if (irk) memcpy(g_bonding_cache[i].irk, irk, 16);
             g_bonding_cache[i].addr_type = addr_type;
             g_bonding_cache[i].last_used = sys_tick_get_ms();
@@ -150,9 +150,9 @@ static ccc_status_t ble_bonding_cache_add(const uint8_t addr[6], uint8_t addr_ty
     }
 
     /* 添加新条目 */
-    memcpy(g_bonding_cache[g_bonding_count].addr, addr, 6);
+    (void)memcpy(g_bonding_cache[g_bonding_count].addr, addr, 6);
     g_bonding_cache[g_bonding_count].addr_type = addr_type;
-    memcpy(g_bonding_cache[g_bonding_count].ltk, ltk, 16);
+    (void)memcpy(g_bonding_cache[g_bonding_count].ltk, ltk, 16);
     if (irk) memcpy(g_bonding_cache[g_bonding_count].irk, irk, 16);
     g_bonding_cache[g_bonding_count].last_used = sys_tick_get_ms();
     g_bonding_cache[g_bonding_count].valid = 1;
@@ -184,7 +184,7 @@ static ccc_status_t ble_check_pan_id_change(uint16_t conn_handle, const uint8_t 
                 delay_ms(50);  /* 等待断开完成 */
 
                 /* 更新为新 PAN ID */
-                memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
+                (void)memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
                 g_pan_id_cache[i].last_seen = sys_tick_get_ms();
 
                 /* 重新开始广播以便重连 */
@@ -202,7 +202,7 @@ static ccc_status_t ble_check_pan_id_change(uint16_t conn_handle, const uint8_t 
     /* 未找到记录: 添加新记录 */
     for (int i = 0; i < PAN_ID_CACHE_SIZE; i++) {
         if (!g_pan_id_cache[i].valid) {
-            memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
+            (void)memcpy(g_pan_id_cache[i].pan_id, new_pan_id, 4);
             g_pan_id_cache[i].conn_handle = conn_handle;
             g_pan_id_cache[i].last_seen = sys_tick_get_ms();
             g_pan_id_cache[i].valid = 1;
@@ -218,9 +218,9 @@ static ccc_status_t kw47a_send_cmd(uint8_t cmd, const uint8_t *payload, uint16_t
     uint8_t header[4] = { cmd, 0x00, (uint8_t)(len >> 8), (uint8_t)(len & 0xFF) };
 
     gpio_write(KW47A_CS_PORT, KW47A_CS_PIN, 0);
-    spi_transfer(1, header, NULL, 4);
+    (void)spi_transfer(1, header, NULL, 4);
     if (len > 0 && payload) {
-        spi_transfer(1, payload, NULL, len);
+        (void)spi_transfer(1, payload, NULL, len);
     }
     gpio_write(KW47A_CS_PORT, KW47A_CS_PIN, 1);
 
@@ -243,7 +243,7 @@ ccc_status_t ble_kw47a_init(void)
     if (ret != CCC_OK) return ret;
 
     /* Initialize default low power config */
-    memcpy(&g_ble_lp_cfg, &g_default_lp, sizeof(g_ble_lp_cfg));
+    (void)memcpy(&g_ble_lp_cfg, &g_default_lp, sizeof(g_ble_lp_cfg));
 
     g_conn_handle = 0xFFFF;
     g_ble_pwr_state = BLE_PWR_IDLE;
@@ -257,10 +257,10 @@ ccc_status_t ble_kw47a_init(void)
  * @brief Enter low power advertising mode (beacon mode)
  * @note Current ~10uA in non-connectable beacon mode
  */
-ccc_status_t ble_enter_lp_mode(const ble_lp_config_t *cfg)
+static ccc_status_t ble_enter_lp_mode(const ble_lp_config_t *cfg)
 {
     if (cfg) {
-        memcpy(&g_ble_lp_cfg, cfg, sizeof(g_ble_lp_cfg));
+        (void)memcpy(&g_ble_lp_cfg, cfg, sizeof(g_ble_lp_cfg));
     }
     
     /* Set TX power */
@@ -297,7 +297,7 @@ ccc_status_t ble_enter_lp_mode(const ble_lp_config_t *cfg)
 /**
  * @brief Exit low power mode, enter connectable mode
  */
-ccc_status_t ble_exit_lp_mode(void)
+static ccc_status_t ble_exit_lp_mode(void)
 {
     kw47a_send_cmd(KW47A_CMD_STOP_ADV, NULL, 0);
     
@@ -327,7 +327,7 @@ static void ble_trigger_uwb_wake(uwb_wake_reason_e reason)
 /**
  * @brief Register UWB wake callback
  */
-ccc_status_t ble_register_uwb_wake_cb(void (*cb)(uwb_wake_reason_e reason))
+static ccc_status_t ble_register_uwb_wake_cb(void (*cb)(uwb_wake_reason_e reason))
 {
     g_uwb_wake_cb = cb;
     return CCC_OK;
@@ -337,7 +337,7 @@ ccc_status_t ble_register_uwb_wake_cb(void (*cb)(uwb_wake_reason_e reason))
  * @brief Send data to UWB via BLE UART bridge
  * @note Used when phone is connected via BLE for UWB ranging
  */
-ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t len)
+static ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t len)
 {
     if (!data || len == 0 || len > 240) return CCC_ERR_INVALID_PARAM;
     
@@ -347,7 +347,7 @@ ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t 
     buf[1] = (uint8_t)(session_id >> 16);
     buf[2] = (uint8_t)(session_id >> 8);
     buf[3] = (uint8_t)(session_id & 0xFF);
-    memcpy(&buf[4], data, len);
+    (void)memcpy(&buf[4], data, len);
     
     return kw47a_send_cmd(KW47A_CMD_SEND_DATA, buf, len + 4);
 }
@@ -356,7 +356,7 @@ ccc_status_t ble_send_to_uwb(uint32_t session_id, const uint8_t *data, uint16_t 
  * @brief Enter deep sleep mode
  * @note Current ~0.5uA
  */
-ccc_status_t ble_enter_deep_sleep(void)
+static ccc_status_t ble_enter_deep_sleep(void)
 {
     if (g_adv_active) {
         kw47a_send_cmd(KW47A_CMD_STOP_ADV, NULL, 0);
@@ -373,7 +373,7 @@ ccc_status_t ble_enter_deep_sleep(void)
 /**
  * @brief Wake from deep sleep
  */
-ccc_status_t ble_wake_from_sleep(void)
+static ccc_status_t ble_wake_from_sleep(void)
 {
     kw47a_send_cmd(KW47A_CMD_WAKE, NULL, 0);
     
@@ -388,7 +388,7 @@ ccc_status_t ble_wake_from_sleep(void)
 /**
  * @brief Get current power state
  */
-ble_power_state_e ble_get_power_state(void)
+static ble_power_state_e ble_get_power_state(void)
 {
     return g_ble_pwr_state;
 }
@@ -396,7 +396,7 @@ ble_power_state_e ble_get_power_state(void)
 /**
  * @brief Check if in low power mode
  */
-bool ble_is_lp_mode(void)
+static bool ble_is_lp_mode(void)
 {
     return g_lp_mode;
 }
@@ -481,17 +481,17 @@ ccc_status_t ble_oob_pair(const ccc_nfc_oob_data_t *oob)
 }
 
 /* IRQ handler */
-void kw47a_irq_handler(void)
+static void kw47a_irq_handler(void)
 {
     static uint8_t evt_buf[260];
     uint8_t header[4] = {0};
-    memset(evt_buf, 0, sizeof(evt_buf));
+    (void)memset(evt_buf, 0, sizeof(evt_buf));
 
     gpio_write(KW47A_CS_PORT, KW47A_CS_PIN, 0);
-    spi_transfer(1, NULL, header, 4);
+    (void)spi_transfer(1, NULL, header, 4);
     uint16_t payload_len = ((uint16_t)header[2] << 8) | header[3];
     if (payload_len > 0 && payload_len <= 256) {
-        spi_transfer(1, NULL, evt_buf, payload_len);
+        (void)spi_transfer(1, NULL, evt_buf, payload_len);
     }
     gpio_write(KW47A_CS_PORT, KW47A_CS_PIN, 1);
 
@@ -750,12 +750,12 @@ ccc_status_t ble_gatt_notify(uint16_t char_uuid, const uint8_t *data, uint16_t l
 
     static uint8_t buf[260]; /* 固定最大: 8 + 252 */
     if ((uint16_t)(8 + len) > sizeof(buf)) return CCC_ERR_INVALID_PARAM;
-    memset(buf, 0, sizeof(buf));
+    (void)memset(buf, 0, sizeof(buf));
     buf[0] = (uint8_t)(char_uuid >> 8);
     buf[1] = (uint8_t)(char_uuid & 0xFF);
     buf[2] = (uint8_t)(len >> 8);
     buf[3] = (uint8_t)(len & 0xFF);
-    memcpy(buf + 4, data, len);
+    (void)memcpy(buf + 4, data, len);
 
     return kw47a_send_cmd(/* KW47A_CMD_GATT_NOTIFY */ 0x53, buf, 4 + len);
 }

@@ -94,9 +94,9 @@ int32_t decision_init(void)
         return 0;
     }
     
-    memset(g_decision.rules, 0, sizeof(g_decision.rules));
-    memset(g_decision.history, 0, sizeof(g_decision.history));
-    memset(g_decision.rate_limits, 0, sizeof(g_decision.rate_limits));
+    (void)memset(g_decision.rules, 0, sizeof(g_decision.rules));
+    (void)memset(g_decision.history, 0, sizeof(g_decision.history));
+    (void)memset(g_decision.rate_limits, 0, sizeof(g_decision.rate_limits));
     
     g_decision.rule_count = 0;
     g_decision.history_index = 0;
@@ -112,7 +112,7 @@ int32_t decision_init(void)
         .priority = 100,
         .enabled = 1
     };
-    decision_add_rule(&rule1);
+    (void)decision_add_rule(&rule1);
     
     /* 规则2: 高风险操作拒绝 */
     decision_rule_t rule2 = {
@@ -122,7 +122,7 @@ int32_t decision_init(void)
         .priority = 90,
         .enabled = 1
     };
-    decision_add_rule(&rule2);
+    (void)decision_add_rule(&rule2);
     
     /* 规则3: 低风险操作允许 */
     decision_rule_t rule3 = {
@@ -132,7 +132,7 @@ int32_t decision_init(void)
         .priority = 10,
         .enabled = 1
     };
-    decision_add_rule(&rule3);
+    (void)decision_add_rule(&rule3);
     
     g_decision.initialized = true;
     return 0;
@@ -193,7 +193,7 @@ int32_t decision_evaluate(const decision_request_t *request,
         return -1;
     }
     
-    memset(output, 0, sizeof(decision_output_t));
+    (void)memset(output, 0, sizeof(decision_output_t));
     output->decision_id = ++g_decision.decision_counter;
     output->user_id = request->user_id;
     output->key_id = request->key_id;
@@ -336,7 +336,7 @@ int32_t decision_add_rule(const decision_rule_t *rule)
     }
     
     /* 插入新规则 */
-    memcpy(&g_decision.rules[insert_pos], rule, sizeof(decision_rule_t));
+    (void)memcpy(&g_decision.rules[insert_pos], rule, sizeof(decision_rule_t));
     g_decision.rule_count++;
     
     return 0;
@@ -441,7 +441,7 @@ static int32_t check_key_validity(uint32_t key_id, key_cache_item_t *key_info)
         return -1;
     }
     
-    memcpy(key_info, key_buf, sizeof(key_cache_item_t));
+    (void)memcpy(key_info, key_buf, sizeof(key_cache_item_t));
     return 0;
 }
 
@@ -468,7 +468,7 @@ static int32_t check_permission(uint32_t user_id, uint8_t command,
         return -1;
     }
     
-    memcpy(perm, perm_buf, sizeof(permission_cache_item_t));
+    (void)memcpy(perm, perm_buf, sizeof(permission_cache_item_t));
     
     /* 检查权限位 */
     uint8_t byte_idx = command / 8;
@@ -509,7 +509,7 @@ static int32_t check_signature(uint32_t key_id, const uint8_t *nonce,
         .type = KEY_TYPE_ECC_P256_PUBLIC,
         .length = 64
     };
-    memcpy(public_key.data, key_info.public_key, 64);
+    (void)memcpy(public_key.data, key_info.public_key, 64);
     
     /* 验证签名 (nonce作为被签名数据) */
     if (security_verify_signature(&public_key, nonce, 16, signature, 64) != SEC_SUCCESS) {
@@ -638,7 +638,7 @@ static void log_decision(const decision_output_t *decision)
 {
     decision_history_entry_t *entry = &g_decision.history[g_decision.history_index];
     
-    memcpy(&entry->decision, decision, sizeof(decision_output_t));
+    (void)memcpy(&entry->decision, decision, sizeof(decision_output_t));
     entry->timestamp = sys_tick_get_ms();
     
     g_decision.history_index = (g_decision.history_index + 1) % MAX_DECISION_HISTORY;

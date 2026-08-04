@@ -78,8 +78,8 @@ security_result_t security_init(void)
     }
     
     /* 清空会话和Nonce缓存 */
-    memset(g_security.sessions, 0, sizeof(g_security.sessions));
-    memset(g_security.nonce_cache, 0, sizeof(g_security.nonce_cache));
+    (void)memset(g_security.sessions, 0, sizeof(g_security.sessions));
+    (void)memset(g_security.nonce_cache, 0, sizeof(g_security.nonce_cache));
     
     g_security.nonce_cache_index = 0;
     g_security.challenge_counter = 0;
@@ -153,9 +153,9 @@ security_result_t security_verify_response(
     /* 构建验证数据 */
     static uint8_t verify_data[128];
     uint16_t verify_len = 0;
-    memset(verify_data, 0, sizeof(verify_data));
+    (void)memset(verify_data, 0, sizeof(verify_data));
     
-    memcpy(&verify_data[verify_len], challenge->nonce, sizeof(challenge->nonce));
+    (void)memcpy(&verify_data[verify_len], challenge->nonce, sizeof(challenge->nonce));
     verify_len += sizeof(challenge->nonce);
     
     memcpy(&verify_data[verify_len], challenge->server_random, 
@@ -171,7 +171,7 @@ security_result_t security_verify_response(
         .type = KEY_TYPE_ECC_P256_PUBLIC,
         .length = 64
     };
-    memcpy(public_key.data, response->public_key, 64);
+    (void)memcpy(public_key.data, response->public_key, 64);
     
     if (security_verify_signature(&public_key, verify_data, verify_len,
                                   response->signature, 64) != SEC_SUCCESS) {
@@ -195,7 +195,7 @@ security_result_t security_verify_response(
     /* 派生会话密钥 (ECDH) */
     // TODO: 实际的ECDH密钥协商
     
-    memcpy(session, &ctx->info, sizeof(session_info_t));
+    (void)memcpy(session, &ctx->info, sizeof(session_info_t));
     
     return SEC_SUCCESS;
 }
@@ -243,8 +243,8 @@ security_result_t security_establish_session(
 
         ctx->info.session_id = ++g_security.session_counter;
         ctx->info.conn_handle = conn_handle;
-        memcpy(ctx->info.session_key, key_material, 32);
-        memcpy(ctx->info.session_id_key, &key_material[32], 16);
+        (void)memcpy(ctx->info.session_key, key_material, 32);
+        (void)memcpy(ctx->info.session_id_key, &key_material[32], 16);
         ctx->info.creation_time = current_time;
         ctx->info.expiry_time = current_time + SESSION_EXPIRY_MS;
         ctx->info.is_encrypted = 1;
@@ -255,7 +255,7 @@ security_result_t security_establish_session(
         crypto_secure_zero(shared_secret, sizeof(shared_secret));
         crypto_secure_zero(key_material, sizeof(key_material));
 
-        memcpy(session, &ctx->info, sizeof(session_info_t));
+        (void)memcpy(session, &ctx->info, sizeof(session_info_t));
         return SEC_SUCCESS;
     }
 #else
@@ -285,19 +285,19 @@ security_result_t security_establish_session(
 
         ctx->info.session_id = ++g_security.session_counter;
         ctx->info.conn_handle = conn_handle;
-        memcpy(ctx->info.session_key, key_material, 32);
-        memcpy(ctx->info.session_id_key, &key_material[32], 16);
+        (void)memcpy(ctx->info.session_key, key_material, 32);
+        (void)memcpy(ctx->info.session_id_key, &key_material[32], 16);
         ctx->info.creation_time = current_time;
         ctx->info.expiry_time = current_time + SESSION_EXPIRY_MS;
         ctx->info.is_encrypted = 1;
         ctx->in_use = 1;
         ctx->last_activity = current_time;
 
-        memset(my_private_key, 0, sizeof(my_private_key));
-        memset(shared_secret, 0, sizeof(shared_secret));
-        memset(key_material, 0, sizeof(key_material));
+        (void)memset(my_private_key, 0, sizeof(my_private_key));
+        (void)memset(shared_secret, 0, sizeof(shared_secret));
+        (void)memset(key_material, 0, sizeof(key_material));
 
-        memcpy(session, &ctx->info, sizeof(session_info_t));
+        (void)memcpy(session, &ctx->info, sizeof(session_info_t));
         return SEC_SUCCESS;
     }
 #endif
@@ -338,9 +338,9 @@ security_result_t security_encrypt(
         return SEC_ERR_BUFFER_OVERFLOW;
     }
 
-    memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
-    memcpy(ciphertext, iv, sizeof(iv));
-    memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
+    (void)memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
+    (void)memcpy(ciphertext, iv, sizeof(iv));
+    (void)memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
 
     *ciphertext_len = total_len;
     return SEC_SUCCESS;
@@ -369,9 +369,9 @@ security_result_t security_encrypt(
         return SEC_ERR_BUFFER_OVERFLOW;
     }
 
-    memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
-    memcpy(ciphertext, iv, sizeof(iv));
-    memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
+    (void)memmove(&ciphertext[sizeof(iv)], ciphertext, plaintext_len);
+    (void)memcpy(ciphertext, iv, sizeof(iv));
+    (void)memcpy(&ciphertext[sizeof(iv) + plaintext_len], tag, sizeof(tag));
 
     *ciphertext_len = total_len;
 
@@ -559,7 +559,7 @@ security_result_t security_destroy_session(uint32_t session_id)
     }
     
     /* 清除会话密钥 */
-    memset(&ctx->info, 0, sizeof(session_info_t));
+    (void)memset(&ctx->info, 0, sizeof(session_info_t));
     ctx->in_use = 0;
     
     return SEC_SUCCESS;
@@ -620,7 +620,7 @@ static void mark_nonce_used(const uint8_t *nonce)
 {
     nonce_cache_entry_t *entry = &g_security.nonce_cache[g_security.nonce_cache_index];
     
-    memcpy(entry->nonce, nonce, 16);
+    (void)memcpy(entry->nonce, nonce, 16);
     entry->timestamp = sys_tick_get_ms();
     entry->used = 1;
     

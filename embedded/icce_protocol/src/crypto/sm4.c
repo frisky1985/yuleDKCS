@@ -220,14 +220,14 @@ int sm4_cbc_encrypt(const sm4_key_t *skey,
     if (pt_len == 0 || (pt_len % SM4_BLOCK_SIZE) != 0) return CRYPTO_ERR_BAD_LENGTH;
 
     uint8_t block[SM4_BLOCK_SIZE];
-    memcpy(block, iv, SM4_BLOCK_SIZE);
+    (void)memcpy(block, iv, SM4_BLOCK_SIZE);
 
     for (size_t i = 0; i < pt_len; i += SM4_BLOCK_SIZE) {
         for (int j = 0; j < SM4_BLOCK_SIZE; j++) {
             block[j] ^= plain[i + j];
         }
         sm4_encrypt_block(skey, block, cipher + i);
-        memcpy(block, cipher + i, SM4_BLOCK_SIZE);
+        (void)memcpy(block, cipher + i, SM4_BLOCK_SIZE);
     }
     return CRYPTO_SUCCESS;
 }
@@ -243,14 +243,14 @@ int sm4_cbc_decrypt(const sm4_key_t *skey,
     uint8_t block[SM4_BLOCK_SIZE];
     uint8_t prev[SM4_BLOCK_SIZE];
 
-    memcpy(prev, iv, SM4_BLOCK_SIZE);
+    (void)memcpy(prev, iv, SM4_BLOCK_SIZE);
 
     for (size_t i = 0; i < ct_len; i += SM4_BLOCK_SIZE) {
         sm4_decrypt_block(skey, cipher + i, block);
         for (int j = 0; j < SM4_BLOCK_SIZE; j++) {
             plain[i + j] = block[j] ^ prev[j];
         }
-        memcpy(prev, cipher + i, SM4_BLOCK_SIZE);
+        (void)memcpy(prev, cipher + i, SM4_BLOCK_SIZE);
     }
     return CRYPTO_SUCCESS;
 }
@@ -267,7 +267,7 @@ static void gf128_mul(uint8_t r[16], const uint8_t a[16], const uint8_t b[16])
 {
     uint8_t Z[16] = {0};
     uint8_t V[16];
-    memcpy(V, b, 16);
+    (void)memcpy(V, b, 16);
 
     for (int i = 0; i < 128; i++) {
         int byte_idx = i / 8;
@@ -286,7 +286,7 @@ static void gf128_mul(uint8_t r[16], const uint8_t a[16], const uint8_t b[16])
             V[0] ^= 0xE1;  /* R = 0xE1 << 120 */
         }
     }
-    memcpy(r, Z, 16);
+    (void)memcpy(r, Z, 16);
 }
 
 /* GHASH: 对输入块链计算哈希 */
@@ -306,8 +306,8 @@ static void ghash(uint8_t result[16], const uint8_t H[16],
     }
     /* 处理 AAD 尾部 (如有) */
     if (pos < aad_len) {
-        memset(block, 0, 16);
-        memcpy(block, aad + pos, aad_len - pos);
+        (void)memset(block, 0, 16);
+        (void)memcpy(block, aad + pos, aad_len - pos);
         for (int j = 0; j < 16; j++) Y[j] ^= block[j];
         gf128_mul(Y, Y, H);
     }
@@ -320,14 +320,14 @@ static void ghash(uint8_t result[16], const uint8_t H[16],
         pos += 16;
     }
     if (pos < ct_len) {
-        memset(block, 0, 16);
-        memcpy(block, cipher + pos, ct_len - pos);
+        (void)memset(block, 0, 16);
+        (void)memcpy(block, cipher + pos, ct_len - pos);
         for (int j = 0; j < 16; j++) Y[j] ^= block[j];
         gf128_mul(Y, Y, H);
     }
 
     /* 处理长度块: [len(AAD)*8 || len(CT)*8] (big-endian, 各 64 位) */
-    memset(block, 0, 16);
+    (void)memset(block, 0, 16);
     uint64_t aad_bits = (uint64_t)aad_len * 8;
     uint64_t ct_bits  = (uint64_t)ct_len  * 8;
     store_be64(block,      aad_bits);
@@ -335,7 +335,7 @@ static void ghash(uint8_t result[16], const uint8_t H[16],
     for (int j = 0; j < 16; j++) Y[j] ^= block[j];
     gf128_mul(Y, Y, H);
 
-    memcpy(result, Y, 16);
+    (void)memcpy(result, Y, 16);
 }
 
 /* GCM 增量计数器 */
@@ -370,11 +370,11 @@ int sm4_gcm_encrypt(const uint8_t key[SM4_KEY_SIZE],
     /* J0 构造 */
     uint8_t J0[16];
     if (iv_len == 12) {
-        memcpy(J0, iv, 12);
+        (void)memcpy(J0, iv, 12);
         J0[12] = J0[13] = J0[14] = 0;
         J0[15] = 1;
     } else {
-        memset(J0, 0, 16);
+        (void)memset(J0, 0, 16);
         /* GHASH(H, {}, IV)  — 但使用空 AAD 和 IV 作为数据 */
         /* 简化: 对于非标准 IV 长度, 使用内部 GHASH */
         ghash(J0, H, NULL, 0, iv, iv_len);
@@ -382,7 +382,7 @@ int sm4_gcm_encrypt(const uint8_t key[SM4_KEY_SIZE],
 
     /* CTR 模式加密 */
     uint8_t counter[16];
-    memcpy(counter, J0, 16);
+    (void)memcpy(counter, J0, 16);
     uint8_t keystream[16];
     size_t pos = 0;
 
@@ -440,7 +440,7 @@ int sm4_gcm_decrypt(const uint8_t key[SM4_KEY_SIZE],
     /* J0 */
     uint8_t J0[16];
     if (iv_len == 12) {
-        memcpy(J0, iv, 12);
+        (void)memcpy(J0, iv, 12);
         J0[12] = J0[13] = J0[14] = 0;
         J0[15] = 1;
     } else {
@@ -469,7 +469,7 @@ int sm4_gcm_decrypt(const uint8_t key[SM4_KEY_SIZE],
 
     /* CTR 解密 */
     uint8_t counter[16];
-    memcpy(counter, J0, 16);
+    (void)memcpy(counter, J0, 16);
     uint8_t keystream[16];
     size_t pos = 0;
 

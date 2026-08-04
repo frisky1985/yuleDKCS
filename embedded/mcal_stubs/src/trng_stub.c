@@ -160,7 +160,7 @@ int hal_trng_init(void)
         else
         {
             size_t n = fread(g_sw_state, 1, sizeof(g_sw_state), f);
-            fclose(f);
+            (void)fclose(f);
             if (n < sizeof(g_sw_state))
             {
                 return HAL_TRNG_ERR_HW;

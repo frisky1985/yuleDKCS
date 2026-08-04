@@ -171,7 +171,7 @@ void hal_ble_on_connect(uint16_t conn_handle, const uint8_t *peer_addr)
     g_ble.state = BLE_STATE_CONNECTED;
     g_ble.conn_handle = conn_handle;
     g_ble.mtu = 23; /* 默认 MTU */
-    memcpy(g_ble.peer_addr, peer_addr, 6);
+    (void)memcpy(g_ble.peer_addr, peer_addr, 6);
     g_ble.bonded = 0;
     g_ble.encrypted = 0;
 
@@ -186,20 +186,20 @@ void hal_ble_on_connect(uint16_t conn_handle, const uint8_t *peer_addr)
 /**
  * @brief 断开事件回调
  */
-void hal_ble_on_disconnect(uint16_t conn_handle)
+static void hal_ble_on_disconnect(uint16_t conn_handle)
 {
     (void)conn_handle;
 
     g_ble.state = BLE_STATE_IDLE;
     g_ble.conn_handle = 0;
     g_ble.mtu = 0;
-    memset(g_ble.peer_addr, 0, 6);
+    (void)memset(g_ble.peer_addr, 0, 6);
     g_ble.bonded = 0;
     g_ble.encrypted = 0;
     g_ble.tx_busy = 0;
 
     /* 自动重新开始广播 */
-    iccoa_ble_start_adv();
+    (void)iccoa_ble_start_adv();
 }
 
 /**
@@ -232,14 +232,14 @@ void hal_ble_on_bonding_complete(uint16_t conn_handle, uint8_t success)
     if (success) {
         g_ble.bonded = 1;
         /* 配对成功后请求加密 */
-        hal_ble_request_encryption(g_ble.conn_handle);
+        (void)hal_ble_request_encryption(g_ble.conn_handle);
     }
 }
 
 /**
  * @brief GATT 写入回调
  */
-void hal_ble_on_write(uint16_t conn_handle, uint16_t char_handle,
+static void hal_ble_on_write(uint16_t conn_handle, uint16_t char_handle,
                        const uint8_t *data, uint16_t len)
 {
     (void)conn_handle;
@@ -269,7 +269,7 @@ void hal_ble_on_write(uint16_t conn_handle, uint16_t char_handle,
 /**
  * @brief GATT 读取回调
  */
-void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
+static void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
                       uint8_t *data, uint16_t *len)
 {
     (void)conn_handle;
@@ -278,7 +278,7 @@ void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
         /* 返回车辆状态 */
         iccoa_vehicle_status_t status;
         iccoa_service_get_status(&status);
-        memcpy(data, &status, sizeof(status));
+        (void)memcpy(data, &status, sizeof(status));
         *len = sizeof(status);
     }
     else if (char_handle == g_ble.uwb_char_handle) {
@@ -294,7 +294,7 @@ void hal_ble_on_read(uint16_t conn_handle, uint16_t char_handle,
 
 int32_t iccoa_ble_init(void)
 {
-    memset(&g_ble, 0, sizeof(g_ble));
+    (void)memset(&g_ble, 0, sizeof(g_ble));
 
     int ret = hal_ble_init();
     if (ret != 0) return ICCOA_ERR_HARDWARE;
@@ -309,10 +309,10 @@ int32_t iccoa_ble_init(void)
 int32_t iccoa_ble_deinit(void)
 {
     if (g_ble.state == BLE_STATE_CONNECTED) {
-        hal_ble_disconnect(g_ble.conn_handle);
+        (void)hal_ble_disconnect(g_ble.conn_handle);
     }
-    hal_ble_deinit();
-    memset(&g_ble, 0, sizeof(g_ble));
+    (void)hal_ble_deinit();
+    (void)memset(&g_ble, 0, sizeof(g_ble));
     return ICCOA_OK;
 }
 

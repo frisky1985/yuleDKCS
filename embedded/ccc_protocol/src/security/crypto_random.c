@@ -197,13 +197,13 @@ static int os_get_random(uint8_t *buf, size_t len)
         if (n == 0)
         {
             /* EOF or error */
-            fclose(f);
+            (void)fclose(f);
             return -1;
         }
         total_read += n;
     }
 
-    fclose(f);
+    (void)fclose(f);
     return 0;
 
 #elif defined(CRYPTO_RANDOM_OS_WIN)

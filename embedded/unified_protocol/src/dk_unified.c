@@ -113,7 +113,7 @@ dk_status_t dk_init(const dk_device_type_t *device)
     }
     
     /* 保存设备配置 */
-    memcpy(&g_dk.device, device, sizeof(dk_device_type_t));
+    (void)memcpy(&g_dk.device, device, sizeof(dk_device_type_t));
     
     /* 根据协议类型初始化对应协议栈 */
     dk_status_t ret = DK_OK;
@@ -144,8 +144,8 @@ dk_status_t dk_init(const dk_device_type_t *device)
     
     if (ret == DK_OK) {
         g_dk.initialized = true;
-        memset(&g_dk.status, 0, sizeof(g_dk.status));
-        memcpy(&g_dk.status.device, device, sizeof(dk_device_type_t));
+        (void)memset(&g_dk.status, 0, sizeof(g_dk.status));
+        (void)memcpy(&g_dk.status.device, device, sizeof(dk_device_type_t));
     }
     
     return ret;
@@ -182,7 +182,7 @@ dk_status_t dk_get_status(dk_device_status_t *status)
         return DK_ERR_INVALID_PARAM;
     }
     
-    memcpy(status, &g_dk.status, sizeof(dk_device_status_t));
+    (void)memcpy(status, &g_dk.status, sizeof(dk_device_status_t));
     return DK_OK;
 }
 
@@ -592,11 +592,11 @@ dk_status_t dk_key_create(dk_key_t *key)
         case DK_PROTOCOL_CCC:
             {
                 ccc_digital_key_t ccc_key = {0};
-                memcpy(ccc_key.key_id, key->key_id, 16);
-                memcpy(ccc_key.vehicle_id, key->vehicle_id, 16);
-                memcpy(ccc_key.owner_id, key->owner_id, 16);
+                (void)memcpy(ccc_key.key_id, key->key_id, 16);
+                (void)memcpy(ccc_key.vehicle_id, key->vehicle_id, 16);
+                (void)memcpy(ccc_key.owner_id, key->owner_id, 16);
                 ccc_key.key_type = (uint8_t)key->key_type;
-                memcpy(ccc_key.access_rights, key->access_rights, 4);
+                (void)memcpy(ccc_key.access_rights, key->access_rights, 4);
                 ccc_key.valid_from = key->valid_from;
                 ccc_key.valid_until = key->valid_until;
                 
@@ -642,12 +642,12 @@ dk_status_t dk_key_get(const uint8_t *key_id, dk_key_t *key)
             {
                 ccc_digital_key_t ccc_key = {0};
                 if (key_get(key_id, &ccc_key) == CCC_OK) {
-                    memcpy(key->key_id, ccc_key.key_id, 16);
-                    memcpy(key->vehicle_id, ccc_key.vehicle_id, 16);
-                    memcpy(key->owner_id, ccc_key.owner_id, 16);
+                    (void)memcpy(key->key_id, ccc_key.key_id, 16);
+                    (void)memcpy(key->vehicle_id, ccc_key.vehicle_id, 16);
+                    (void)memcpy(key->owner_id, ccc_key.owner_id, 16);
                     key->key_type = (dk_key_type_e)ccc_key.key_type;
                     key->state = (dk_key_state_e)ccc_key.state;
-                    memcpy(key->access_rights, ccc_key.access_rights, 4);
+                    (void)memcpy(key->access_rights, ccc_key.access_rights, 4);
                     key->valid_from = ccc_key.valid_from;
                     key->valid_until = ccc_key.valid_until;
                     return DK_OK;
@@ -671,7 +671,7 @@ dk_status_t dk_key_list(dk_key_t *keys, uint8_t *count)
                 ccc_digital_key_t ccc_keys[MAX_KEYS];
                 if (key_list(ccc_keys, count) == CCC_OK) {
                     for (uint8_t i = 0; i < *count; i++) {
-                        memcpy(keys[i].key_id, ccc_keys[i].key_id, 16);
+                        (void)memcpy(keys[i].key_id, ccc_keys[i].key_id, 16);
                         keys[i].key_type = (dk_key_type_e)ccc_keys[i].key_type;
                         keys[i].state = (dk_key_state_e)ccc_keys[i].state;
                     }

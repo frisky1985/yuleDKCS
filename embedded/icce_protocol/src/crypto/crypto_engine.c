@@ -170,7 +170,7 @@ static int sha256_update(sha256_ctx_t *ctx, const uint8_t *data, size_t len)
     while (len > 0) {
         size_t space = 64 - ctx->block_len;
         size_t copy  = (len < space) ? len : space;
-        memcpy(ctx->block + ctx->block_len, data, copy);
+        (void)memcpy(ctx->block + ctx->block_len, data, copy);
         ctx->block_len += (uint32_t)copy;
         data += copy; len -= copy;
 
@@ -187,14 +187,14 @@ static int sha256_final(sha256_ctx_t *ctx, uint8_t hash[32])
     if (!ctx || !hash) return CRYPTO_ERR_NULL_PTR;
     uint64_t orig_bits = ctx->total_bits;
     uint8_t pad = 0x80;
-    sha256_update(ctx, &pad, 1);
+    (void)sha256_update(ctx, &pad, 1);
     while (ctx->block_len != 56) {
         uint8_t zero = 0;
-        sha256_update(ctx, &zero, 1);
+        (void)sha256_update(ctx, &zero, 1);
     }
     uint8_t bits[8];
     store_be64(bits, orig_bits);
-    sha256_update(ctx, bits, 8);
+    (void)sha256_update(ctx, bits, 8);
 
     for (int i = 0; i < 8; i++)
         store_be32(hash + i * 4, ctx->state[i]);
@@ -235,10 +235,10 @@ int crypto_hmac_sha256(const uint8_t *key, size_t klen,
 
     /* 密钥超过分组长度则先哈希 */
     if (klen > 64) {
-        crypto_sha256(key, klen, ekey);
+        (void)crypto_sha256(key, klen, ekey);
         ekey_len = 32;
     } else {
-        memcpy(ekey, key, klen);
+        (void)memcpy(ekey, key, klen);
         ekey_len = klen;
     }
     if (ekey_len < 64) memset(ekey + ekey_len, 0, 64 - ekey_len);
@@ -248,15 +248,15 @@ int crypto_hmac_sha256(const uint8_t *key, size_t klen,
         k_opad[i] = ekey[i] ^ 0x5C;
     }
 
-    sha256_init(&ctx);
-    sha256_update(&ctx, k_ipad, 64);
-    sha256_update(&ctx, data, dlen);
-    sha256_final(&ctx, tmp);
+    (void)sha256_init(&ctx);
+    (void)sha256_update(&ctx, k_ipad, 64);
+    (void)sha256_update(&ctx, data, dlen);
+    (void)sha256_final(&ctx, tmp);
 
-    sha256_init(&ctx);
-    sha256_update(&ctx, k_opad, 64);
-    sha256_update(&ctx, tmp, 32);
-    sha256_final(&ctx, mac);
+    (void)sha256_init(&ctx);
+    (void)sha256_update(&ctx, k_opad, 64);
+    (void)sha256_update(&ctx, tmp, 32);
+    (void)sha256_final(&ctx, mac);
 
     crypto_secure_zero(k_ipad, sizeof(k_ipad));
     crypto_secure_zero(k_opad, sizeof(k_opad));
@@ -309,7 +309,7 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
         size_t ctx_len = 0;
 
         if (counter > 1) {
-            memcpy(ctx_buf, T, 32);
+            (void)memcpy(ctx_buf, T, 32);
             ctx_len = 32;
         }
         if (info && info_len > 0) {
@@ -319,12 +319,12 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
                 crypto_secure_zero(T, sizeof(T));
                 return CRYPTO_ERR_BAD_LENGTH;
             }
-            memcpy(ctx_buf + ctx_len, info, info_len);
+            (void)memcpy(ctx_buf + ctx_len, info, info_len);
             ctx_len += info_len;
         }
         uint8_t c_be[4];
         store_be32(c_be, counter);
-        memcpy(ctx_buf + ctx_len, c_be, 4);
+        (void)memcpy(ctx_buf + ctx_len, c_be, 4);
         ctx_len += 4;
 
         /* [EMB-P1-06 FIX] 校验每次 HMAC 调用返回值 */
@@ -336,7 +336,7 @@ int crypto_kdf(const uint8_t *key, size_t key_len,
         }
 
         size_t todo = (out_len - offset < 32) ? (out_len - offset) : 32;
-        memcpy(out + offset, T, todo);
+        (void)memcpy(out + offset, T, todo);
         offset += todo;
         counter++;
     }
@@ -508,7 +508,7 @@ static void aes_gf128_mul(uint8_t r[16], const uint8_t a[16], const uint8_t b[16
 {
     uint8_t Z[16] = {0};
     uint8_t V[16];
-    memcpy(V, b, 16);
+    (void)memcpy(V, b, 16);
 
     for (int i = 0; i < 128; i++) {
         if ((a[i / 8] >> (7 - (i % 8))) & 1) {
@@ -519,7 +519,7 @@ static void aes_gf128_mul(uint8_t r[16], const uint8_t a[16], const uint8_t b[16
         V[0] >>= 1;
         if (lsb) V[0] ^= 0xE1;
     }
-    memcpy(r, Z, 16);
+    (void)memcpy(r, Z, 16);
 }
 
 /* GHASH */
@@ -538,8 +538,8 @@ static void aes_ghash(uint8_t result[16], const uint8_t H[16],
         pos += 16;
     }
     if (pos < aad_len) {
-        memset(block, 0, 16);
-        memcpy(block, aad + pos, aad_len - pos);
+        (void)memset(block, 0, 16);
+        (void)memcpy(block, aad + pos, aad_len - pos);
         for (int j = 0; j < 16; j++) Y[j] ^= block[j];
         aes_gf128_mul(Y, Y, H);
     }
@@ -551,19 +551,19 @@ static void aes_ghash(uint8_t result[16], const uint8_t H[16],
         pos += 16;
     }
     if (pos < ct_len) {
-        memset(block, 0, 16);
-        memcpy(block, ct + pos, ct_len - pos);
+        (void)memset(block, 0, 16);
+        (void)memcpy(block, ct + pos, ct_len - pos);
         for (int j = 0; j < 16; j++) Y[j] ^= block[j];
         aes_gf128_mul(Y, Y, H);
     }
 
-    memset(block, 0, 16);
+    (void)memset(block, 0, 16);
     store_be64(block, (uint64_t)aad_len * 8);
     store_be64(block + 8, (uint64_t)ct_len * 8);
     for (int j = 0; j < 16; j++) Y[j] ^= block[j];
     aes_gf128_mul(Y, Y, H);
 
-    memcpy(result, Y, 16);
+    (void)memcpy(result, Y, 16);
 }
 
 static void aes_gcm_incr(uint8_t *counter, size_t len)
@@ -585,7 +585,7 @@ int crypto_aes_gcm_encrypt(const uint8_t *key, size_t key_len,
         return CRYPTO_ERR_BAD_LENGTH;
 
     aes256_ctx_t ctx;
-    aes256_set_key(&ctx, key);
+    (void)aes256_set_key(&ctx, key);
 
     /* H = AES(0^128) */
     uint8_t H[16] = {0};
@@ -594,7 +594,7 @@ int crypto_aes_gcm_encrypt(const uint8_t *key, size_t key_len,
     /* J0 */
     uint8_t J0[16];
     if (iv_len == 12) {
-        memcpy(J0, iv, 12);
+        (void)memcpy(J0, iv, 12);
         J0[12] = J0[13] = J0[14] = 0;
         J0[15] = 1;
     } else {
@@ -603,7 +603,7 @@ int crypto_aes_gcm_encrypt(const uint8_t *key, size_t key_len,
 
     /* CTR 加密 */
     uint8_t counter[16], ks[16];
-    memcpy(counter, J0, 16);
+    (void)memcpy(counter, J0, 16);
     size_t pos = 0;
     while (pos < pt_len) {
         aes_gcm_incr(counter + 12, 4);
@@ -641,14 +641,14 @@ int crypto_aes_gcm_decrypt(const uint8_t *key, size_t key_len,
         return CRYPTO_ERR_BAD_LENGTH;
 
     aes256_ctx_t ctx;
-    aes256_set_key(&ctx, key);
+    (void)aes256_set_key(&ctx, key);
 
     uint8_t H[16] = {0};
     aes256_encrypt_block(&ctx, H, H);
 
     uint8_t J0[16];
     if (iv_len == 12) {
-        memcpy(J0, iv, 12);
+        (void)memcpy(J0, iv, 12);
         J0[12] = J0[13] = J0[14] = 0;
         J0[15] = 1;
     } else {
@@ -671,7 +671,7 @@ int crypto_aes_gcm_decrypt(const uint8_t *key, size_t key_len,
 
     /* CTR 解密 */
     uint8_t counter[16], ks[16];
-    memcpy(counter, J0, 16);
+    (void)memcpy(counter, J0, 16);
     size_t pos = 0;
     while (pos < ct_len) {
         aes_gcm_incr(counter + 12, 4);
@@ -761,7 +761,7 @@ int crypto_sm2_key_exchange(const uint8_t *private_key,
 
     /* 默认 UID */
     uint8_t uid[16];
-    memset(uid, 0, 16);
+    (void)memset(uid, 0, 16);
 
     return sm2_key_exchange_initiator(
         private_key, self_public,

@@ -30,22 +30,22 @@ static void on_zone_change(dk_zone_e zone, uint32_t distance_mm, void *user_data
     const char *zone_names[] = {
         "LOCKED", "APPROACH", "UNLOCK", "ENTRY", "INSIDE", "UNKNOWN"
     };
-    printf("[ZONE] %s (%d mm)\n", zone_names[zone], distance_mm);
+    (void)printf("[ZONE] %s (%d mm)\n", zone_names[zone], distance_mm);
     
     // 根据区域自动执行操作
     switch (zone) {
         case DK_ZONE_UNLOCK:
-            printf("  -> Auto unlock\n");
+            (void)printf("  -> Auto unlock\n");
             dk_vehicle_ctrl(DK_CTRL_UNLOCK, 0);
             break;
             
         case DK_ZONE_ENTRY:
-            printf("  -> Welcome light\n");
+            (void)printf("  -> Welcome light\n");
             dk_vehicle_ctrl(DK_CTRL_LIGHTS, 1);
             break;
             
         case DK_ZONE_LOCKED:
-            printf("  -> Auto lock\n");
+            (void)printf("  -> Auto lock\n");
             dk_vehicle_ctrl(DK_CTRL_LOCK, 0);
             break;
             
@@ -60,13 +60,13 @@ static void on_zone_change(dk_zone_e zone, uint32_t distance_mm, void *user_data
 
 int main(int argc, char *argv[])
 {
-    printf("=== Digital Key Unified Protocol Demo ===\n\n");
+    (void)printf("=== Digital Key Unified Protocol Demo ===\n\n");
     
     /* 1. 配置设备类型 */
     dk_device_type_t device = {0};
     
     // 设备标识
-    memset(device.device_id, 0x01, 16);
+    (void)memset(device.device_id, 0x01, 16);
     device.device_type = DK_DEVICE_VEHICLE_TCU;
     
     // 协议配置 (这里使用 CCC)
@@ -82,18 +82,18 @@ int main(int argc, char *argv[])
     device.capabilities.uwb_max_range_cm = 1000;
     
     // 硬件信息
-    memset(device.ble_mac, 0xAA, 6);
-    memset(device.uwb_id, 0xBB, 8);
-    memset(device.nfc_uid, 0xCC, 10);
+    (void)memset(device.ble_mac, 0xAA, 6);
+    (void)memset(device.uwb_id, 0xBB, 8);
+    (void)memset(device.nfc_uid, 0xCC, 10);
     
     /* 2. 初始化 */
-    printf("Initializing...\n");
+    (void)printf("Initializing...\n");
     dk_status_t ret = dk_init(&device);
     if (ret != DK_OK) {
-        printf("Init failed: %d\n", ret);
+        (void)printf("Init failed: %d\n", ret);
         return -1;
     }
-    printf("Initialized OK\n\n");
+    (void)printf("Initialized OK\n\n");
     
     /* 3. 注册回调 */
     dk_register_conn_cb(on_connection_change, NULL);
@@ -102,10 +102,10 @@ int main(int argc, char *argv[])
     
     /* 4. 设置区域阈值 */
     dk_zone_set_threshold(1000, 500, 200, 50);
-    printf("Zone thresholds: approach=10m, unlock=5m, entry=2m, inside=0.5m\n\n");
+    (void)printf("Zone thresholds: approach=10m, unlock=5m, entry=2m, inside=0.5m\n\n");
     
     /* 5. 开始监听 */
-    printf("Starting listeners...\n");
+    (void)printf("Starting listeners...\n");
     
     // NFC LPCD 监听
     ret = dk_nfc_start_listen();
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     ret = dk_uwb_start_ranging(&uwb_session);
     printf("  UWB Ranging (session %u): %s\n", uwb_session, ret == DK_OK ? "OK" : "FAIL");
     
-    printf("\n=== Running (Ctrl+C to stop) ===\n\n");
+    (void)printf("\n=== Running (Ctrl+C to stop) ===\n\n");
     
     /* 6. 主循环 */
     int counter = 0;
@@ -144,13 +144,13 @@ int main(int argc, char *argv[])
     }
     
     /* 7. 清理 */
-    printf("\nShutting down...\n");
+    (void)printf("\nShutting down...\n");
     
     dk_uwb_stop_ranging(uwb_session);
     dk_ble_stop_adv();
     dk_nfc_stop_listen();
     dk_deinit();
     
-    printf("Done.\n");
+    (void)printf("Done.\n");
     return 0;
 }

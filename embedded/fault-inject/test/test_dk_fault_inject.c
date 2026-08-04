@@ -46,7 +46,7 @@ static int tests_failed = 0;
 
 static void test_framework_init_deinit(void)
 {
-    printf("\n[Unit] Framework Init/Deinit\n");
+    (void)printf("\n[Unit] Framework Init/Deinit\n");
 
     dk_fi_init();
     TEST_ASSERT(dk_fi_get_result_count() == 0, "Result count starts at 0 after init");
@@ -56,7 +56,7 @@ static void test_framework_init_deinit(void)
 
 static void test_framework_enable_disable(void)
 {
-    printf("\n[Unit] Fault Enable/Disable\n");
+    (void)printf("\n[Unit] Fault Enable/Disable\n");
 
     dk_fi_init();
 
@@ -87,7 +87,7 @@ static void test_framework_enable_disable(void)
 
 static void test_framework_result_storage(void)
 {
-    printf("\n[Unit] Result Storage\n");
+    (void)printf("\n[Unit] Result Storage\n");
 
     dk_fi_init();
 
@@ -115,7 +115,7 @@ static void test_framework_result_storage(void)
 
 static void test_icce_sign_forgery(void)
 {
-    printf("\n[ICCE] Signature Forgery Detection\n");
+    (void)printf("\n[ICCE] Signature Forgery Detection\n");
 
     dk_fi_init();
 
@@ -132,7 +132,7 @@ static void test_icce_sign_forgery(void)
 
 static void test_icce_cert_expired(void)
 {
-    printf("\n[ICCE] Certificate Expiry Detection\n");
+    (void)printf("\n[ICCE] Certificate Expiry Detection\n");
 
     dk_fi_init();
     dk_fi_icce_cert_expired_test();
@@ -142,7 +142,7 @@ static void test_icce_cert_expired(void)
 
 static void test_icce_illegal_transition(void)
 {
-    printf("\n[ICCE] Illegal State Transition Detection\n");
+    (void)printf("\n[ICCE] Illegal State Transition Detection\n");
 
     dk_fi_init();
     dk_fi_icce_illegal_transition_test();
@@ -152,7 +152,7 @@ static void test_icce_illegal_transition(void)
 
 static void test_icce_comm_timeout(void)
 {
-    printf("\n[ICCE] Communication Timeout Detection\n");
+    (void)printf("\n[ICCE] Communication Timeout Detection\n");
 
     dk_fi_init();
     dk_fi_icce_comm_timeout_test();
@@ -162,7 +162,7 @@ static void test_icce_comm_timeout(void)
 
 static void test_icce_distance_spoof(void)
 {
-    printf("\n[ICCE] Distance Spoof Detection\n");
+    (void)printf("\n[ICCE] Distance Spoof Detection\n");
 
     dk_fi_init();
     dk_fi_icce_distance_spoof_test();
@@ -174,7 +174,7 @@ static void test_icce_distance_spoof(void)
 
 static void test_ccc_secure_channel_fail(void)
 {
-    printf("\n[CCC] Secure Channel Failure Detection\n");
+    (void)printf("\n[CCC] Secure Channel Failure Detection\n");
 
     dk_fi_init();
     dk_fi_ccc_secure_channel_fail_test();
@@ -184,7 +184,7 @@ static void test_ccc_secure_channel_fail(void)
 
 static void test_ccc_cert_verify_anomaly(void)
 {
-    printf("\n[CCC] Certificate Verify Anomaly\n");
+    (void)printf("\n[CCC] Certificate Verify Anomaly\n");
 
     dk_fi_init();
     dk_fi_ccc_cert_verify_anomaly_test();
@@ -194,7 +194,7 @@ static void test_ccc_cert_verify_anomaly(void)
 
 static void test_ccc_nfc_oob_corrupt(void)
 {
-    printf("\n[CCC] NFC OOB Corruption Detection\n");
+    (void)printf("\n[CCC] NFC OOB Corruption Detection\n");
 
     dk_fi_init();
     dk_fi_ccc_nfc_oob_corrupt_test();
@@ -204,7 +204,7 @@ static void test_ccc_nfc_oob_corrupt(void)
 
 static void test_ccc_ble_encrypt_fail(void)
 {
-    printf("\n[CCC] BLE Encryption Failure Detection\n");
+    (void)printf("\n[CCC] BLE Encryption Failure Detection\n");
 
     dk_fi_init();
     dk_fi_ccc_ble_encrypt_fail_test();
@@ -216,7 +216,7 @@ static void test_ccc_ble_encrypt_fail(void)
 
 static void test_iccoa_handshake_fail(void)
 {
-    printf("\n[ICCOA] Handshake Failure Detection\n");
+    (void)printf("\n[ICCOA] Handshake Failure Detection\n");
 
     dk_fi_init();
     dk_fi_iccoa_handshake_fail_test();
@@ -226,7 +226,7 @@ static void test_iccoa_handshake_fail(void)
 
 static void test_iccoa_key_derive_error(void)
 {
-    printf("\n[ICCOA] Key Derive Error Detection\n");
+    (void)printf("\n[ICCOA] Key Derive Error Detection\n");
 
     dk_fi_init();
     dk_fi_iccoa_key_derive_error_test();
@@ -236,7 +236,7 @@ static void test_iccoa_key_derive_error(void)
 
 static void test_iccoa_downgrade_attack(void)
 {
-    printf("\n[ICCOA] Downgrade Attack Detection\n");
+    (void)printf("\n[ICCOA] Downgrade Attack Detection\n");
 
     dk_fi_init();
     dk_fi_iccoa_downgrade_attack_test();
@@ -246,7 +246,7 @@ static void test_iccoa_downgrade_attack(void)
 
 static void test_iccoa_permission_bypass(void)
 {
-    printf("\n[ICCOA] Permission Bypass Detection\n");
+    (void)printf("\n[ICCOA] Permission Bypass Detection\n");
 
     dk_fi_init();
     dk_fi_iccoa_permission_bypass_test();
@@ -258,13 +258,13 @@ static void test_iccoa_permission_bypass(void)
 
 static void test_run_all_integration(void)
 {
-    printf("\n[Integration] Running all fault injection tests via dk_fi_run_all_tests()\n");
+    (void)printf("\n[Integration] Running all fault injection tests via dk_fi_run_all_tests()\n");
 
     dk_fi_run_all_tests();
 
     /* After run_all, there should be results */
     uint32_t count = dk_fi_get_result_count();
-    printf("\n  Total results from run_all: %u\n", (unsigned int)count);
+    (void)printf("\n  Total results from run_all: %u\n", (unsigned int)count);
     TEST_ASSERT(count > 0, "run_all_tests() produced results");
 }
 
@@ -272,27 +272,27 @@ static void test_run_all_integration(void)
 
 static void test_stubs(void)
 {
-    printf("\n[STUBS] Verifying production stub behavior\n");
+    (void)printf("\n[STUBS] Verifying production stub behavior\n");
 
     /* Verify all stubs compile and return safe defaults */
     dk_fi_init();
     dk_fi_enable(42, true);
     if (dk_fi_is_active(42)) {
-        printf("  FAIL: Stub should never report active fault\n");
+        (void)printf("  FAIL: Stub should never report active fault\n");
     } else {
-        printf("  PASS: Stub returns false for is_active\n");
+        (void)printf("  PASS: Stub returns false for is_active\n");
     }
 
     dk_fi_result_t r = { .fault_id = 1 };
     dk_fi_record_result(&r);
     if (dk_fi_get_result_count() == 0) {
-        printf("  PASS: Stub returns 0 for result count\n");
+        (void)printf("  PASS: Stub returns 0 for result count\n");
     } else {
         printf("  FAIL: Stub should return 0 results\n");
     }
 
     if (dk_fi_get_result(0) == NULL) {
-        printf("  PASS: Stub returns NULL for get_result\n");
+        (void)printf("  PASS: Stub returns NULL for get_result\n");
     } else {
         printf("  FAIL: Stub should return NULL\n");
     }
@@ -304,7 +304,7 @@ static void test_stubs(void)
     dk_fi_run_all_tests();
     dk_fi_deinit();
 
-    printf("  PASS: All injector stubs compile and run safely\n");
+    (void)printf("  PASS: All injector stubs compile and run safely\n");
 }
 
 #endif /* DK_FAULT_INJECT_ENABLE */
@@ -315,10 +315,10 @@ static void test_stubs(void)
 
 int main(void)
 {
-    printf("========================================\n");
-    printf("yuleDKCS Fault Injection Test Suite\n");
+    (void)printf("========================================\n");
+    (void)printf("yuleDKCS Fault Injection Test Suite\n");
     printf("Build: DK_FAULT_INJECT_ENABLE = %d\n", DK_FAULT_INJECT_ENABLE);
-    printf("========================================\n");
+    (void)printf("========================================\n");
 
 #if DK_FAULT_INJECT_ENABLE
     /* Framework unit tests */
@@ -349,15 +349,15 @@ int main(void)
     test_run_all_integration();
 
     /* Final summary */
-    printf("\n========================================\n");
-    printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);
-    printf("========================================\n");
+    (void)printf("\n========================================\n");
+    (void)printf("Results: %d passed, %d failed\n", tests_passed, tests_failed);
+    (void)printf("========================================\n");
 
     return (tests_failed > 0) ? 1 : 0;
 
 #else /* Stubs */
     test_stubs();
-    printf("\n  STUB mode: PASS (no injection code active)\n");
+    (void)printf("\n  STUB mode: PASS (no injection code active)\n");
     return 0;
 #endif
 }

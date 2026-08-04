@@ -169,7 +169,7 @@ int32_t iccoa_dk_run(void)
  * @note [V-16] 当 no_downgrade 置位时，禁止从 DK4.0 (HMAC)
  *       降级到 DK3.0 (XOR)。记录审计事件并返回错误。
  */
-int32_t iccoa_set_version(uint8_t version)
+static int32_t iccoa_set_version(uint8_t version)
 {
     if (version != 3 && version != 4) return ICCOA_ERR_PARAM;
 
@@ -191,7 +191,7 @@ int32_t iccoa_set_version(uint8_t version)
  * @note [V-16] 启用后阻止从 DK4.0 (HMAC) 降级到 DK3.0 (XOR)。
  *       默认在 DK4.0 模式下启用。
  */
-void iccoa_set_no_downgrade(uint8_t enable)
+static void iccoa_set_no_downgrade(uint8_t enable)
 {
     g_ctx.no_downgrade = enable;
     if (enable) {
@@ -205,7 +205,7 @@ void iccoa_set_no_downgrade(uint8_t enable)
  * @brief 查询是否检测到降级尝试
  * @return 1=检测到降级攻击, 0=未检测
  */
-uint8_t iccoa_is_downgrade_attempted(void)
+static uint8_t iccoa_is_downgrade_attempted(void)
 {
     return g_ctx.downgrade_attempted;
 }
@@ -213,7 +213,7 @@ uint8_t iccoa_is_downgrade_attempted(void)
 /**
  * @brief 清除降级尝试标志
  */
-void iccoa_clear_downgrade_flag(void)
+static void iccoa_clear_downgrade_flag(void)
 {
     g_ctx.downgrade_attempted = 0;
 }
@@ -221,7 +221,7 @@ void iccoa_clear_downgrade_flag(void)
 /**
  * @brief 获取当前协议版本
  */
-uint8_t iccoa_get_version(void)
+static uint8_t iccoa_get_version(void)
 {
     return g_ctx.version;
 }

@@ -148,7 +148,7 @@ int32_t icce_edge_init(void)
         return ICCE_OK;
     }
 
-    memset(&g_engine, 0, sizeof(g_engine));
+    (void)memset(&g_engine, 0, sizeof(g_engine));
 
     /* Initialize the dynamic condition pool */
     edge_condition_pool_init();
@@ -265,7 +265,7 @@ int32_t icce_edge_init(void)
     g_engine.current_distance_mm = -1;
     g_engine.current_rssi        = -127;
     g_engine.current_zone        = ICCE_ZONE_NONE;
-    memset(&g_engine.vehicle_status, 0, sizeof(g_engine.vehicle_status));
+    (void)memset(&g_engine.vehicle_status, 0, sizeof(g_engine.vehicle_status));
 
     /* Initialize moving averages */
     for (uint8_t i = 0; i < RSSI_MA_SAMPLES; i++) {
@@ -373,16 +373,16 @@ int32_t icce_edge_process_trigger(icce_trigger_e trigger, const void *data, uint
 
     /* Populate trigger data from caller */
     trigger_data_t tdata;
-    memset(&tdata, 0, sizeof(tdata));
+    (void)memset(&tdata, 0, sizeof(tdata));
     tdata.distance_mm = g_engine.current_distance_mm;
     tdata.rssi        = g_engine.current_rssi;
     tdata.zone        = g_engine.current_zone;
-    memcpy(&tdata.vehicle, &g_engine.vehicle_status, sizeof(icce_vehicle_status_t));
+    (void)memcpy(&tdata.vehicle, &g_engine.vehicle_status, sizeof(icce_vehicle_status_t));
 
     /* If caller provided data, overlay it */
     if (data && len > 0) {
         if (trigger == ICCE_TRIGGER_VEHICLE_STATE && len >= sizeof(icce_vehicle_status_t)) {
-            memcpy(&tdata.vehicle, data, sizeof(icce_vehicle_status_t));
+            (void)memcpy(&tdata.vehicle, data, sizeof(icce_vehicle_status_t));
         }
     }
 
@@ -786,7 +786,7 @@ int32_t icce_edge_update_vehicle_state(const icce_vehicle_status_t *status)
     bool gear_changed   = (status->gear_position != g_engine.vehicle_status.gear_position);
 
     /* Update stored state */
-    memcpy(&g_engine.vehicle_status, status, sizeof(icce_vehicle_status_t));
+    (void)memcpy(&g_engine.vehicle_status, status, sizeof(icce_vehicle_status_t));
 
     /* Only evaluate if something changed and we're in MONITORING */
     if (!engine_changed && !lock_changed && !door_changed && !gear_changed) {

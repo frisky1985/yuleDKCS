@@ -96,7 +96,7 @@ static int32_t st25r501_read_reg(uint8_t reg, uint8_t *val)
 
 static int32_t st25r501_write_reg16(uint8_t reg, uint16_t val)
 {
-    st25r501_write_reg(reg, (uint8_t)(val >> 8));
+    (void)st25r501_write_reg(reg, (uint8_t)(val >> 8));
     return st25r501_write_reg(reg + 1, (uint8_t)(val & 0xFF));
 }
 
@@ -122,10 +122,10 @@ ccc_status_t nfc_st25r501_init(void)
     st25r501_write_reg(ST25R501_REG_IO_CFG1, 0x08);   /* SPI + IRQ mode */
 
     /* Enable field detection interrupt */
-    st25r501_write_reg(ST25R501_REG_OP_CTRL, 0x20);
+    (void)st25r501_write_reg(ST25R501_REG_OP_CTRL, 0x20);
 
     /* Initialize default LPCD config */
-    memcpy(&g_lpcd_cfg, &g_default_lpcd, sizeof(g_lpcd_cfg));
+    (void)memcpy(&g_lpcd_cfg, &g_default_lpcd, sizeof(g_lpcd_cfg));
 
     g_nfc_state = NFC_STATE_IDLE;
     g_nfc_pwr_state = NFC_PWR_OFF;
@@ -138,16 +138,16 @@ ccc_status_t nfc_st25r501_init(void)
  * @brief Enter Low Power Card Detection mode
  * @note Average current ~10uA with 64ms polling interval
  */
-ccc_status_t nfc_enter_lpcd(const nfc_lpcd_config_t *cfg)
+static ccc_status_t nfc_enter_lpcd(const nfc_lpcd_config_t *cfg)
 {
     if (cfg) {
-        memcpy(&g_lpcd_cfg, cfg, sizeof(g_lpcd_cfg));
+        (void)memcpy(&g_lpcd_cfg, cfg, sizeof(g_lpcd_cfg));
     }
     
     /* Configure LPCD timing */
     uint8_t timing = ((g_lpcd_cfg.poll_interval_ms / 16) << 4) | 
                     g_lpcd_cfg.sense_dur_ms;
-    st25r501_write_reg(ST25R501_REG_LPCD_TIMER, timing);
+    (void)st25r501_write_reg(ST25R501_REG_LPCD_TIMER, timing);
     
     /* Configure field thresholds */
     st25r501_write_reg16(ST25R501_REG_RF_UPPER, g_lpcd_cfg.field_upper_mv * 4);
@@ -170,14 +170,14 @@ ccc_status_t nfc_enter_lpcd(const nfc_lpcd_config_t *cfg)
 /**
  * @brief Exit LPCD mode, enter full power
  */
-ccc_status_t nfc_exit_lpcd(void)
+static ccc_status_t nfc_exit_lpcd(void)
 {
     /* Disable LPCD */
-    st25r501_write_reg(ST25R501_REG_LPCD_CFG, 0x00);
+    (void)st25r501_write_reg(ST25R501_REG_LPCD_CFG, 0x00);
     
     /* Resume normal NFC-F operation */
-    st25r501_write_reg(ST25R501_REG_MODE_DEF, 0x03);
-    st25r501_write_reg(ST25R501_REG_FIELD_ON, 0x01);
+    (void)st25r501_write_reg(ST25R501_REG_MODE_DEF, 0x03);
+    (void)st25r501_write_reg(ST25R501_REG_FIELD_ON, 0x01);
     
     g_lpcd_active = false;
     g_nfc_pwr_state = NFC_PWR_ACTIVE;
@@ -191,10 +191,10 @@ ccc_status_t nfc_exit_lpcd(void)
  * @note Call periodically in LPCD poll loop
  * @return true if NFC field detected
  */
-bool nfc_lpcd_field_detect(void)
+static bool nfc_lpcd_field_detect(void)
 {
     uint8_t status = 0;
-    st25r501_read_reg(ST25R501_REG_LPCD_STATUS, &status);
+    (void)st25r501_read_reg(ST25R501_REG_LPCD_STATUS, &status);
     return (status & 0x01) != 0;  /* Bit 0: Field detected */
 }
 
@@ -202,20 +202,20 @@ bool nfc_lpcd_field_detect(void)
  * @brief Get current RSSI in LPCD mode
  * @return RSSI value (0-63)
  */
-uint8_t nfc_lpcd_get_rssi(void)
+static uint8_t nfc_lpcd_get_rssi(void)
 {
     uint8_t rssi = 0;
-    st25r501_read_reg(ST25R501_REG_LPCD_STATUS, &rssi);
+    (void)st25r501_read_reg(ST25R501_REG_LPCD_STATUS, &rssi);
     return (rssi >> 1) & 0x3F;
 }
 
 /**
  * @brief Power down NFC
  */
-ccc_status_t nfc_power_down(void)
+static ccc_status_t nfc_power_down(void)
 {
-    st25r501_write_reg(ST25R501_REG_LPCD_CFG, 0x00);
-    st25r501_write_reg(ST25R501_REG_FIELD_OFF, 0x00);
+    (void)st25r501_write_reg(ST25R501_REG_LPCD_CFG, 0x00);
+    (void)st25r501_write_reg(ST25R501_REG_FIELD_OFF, 0x00);
     
     g_lpcd_active = false;
     g_nfc_pwr_state = NFC_PWR_OFF;
@@ -227,7 +227,7 @@ ccc_status_t nfc_power_down(void)
 /**
  * @brief Get power state
  */
-nfc_power_state_e nfc_get_power_state(void)
+static nfc_power_state_e nfc_get_power_state(void)
 {
     return g_nfc_pwr_state;
 }
@@ -235,7 +235,7 @@ nfc_power_state_e nfc_get_power_state(void)
 /**
  * @brief Check if in LPCD mode
  */
-bool nfc_is_lpcd_active(void)
+static bool nfc_is_lpcd_active(void)
 {
     return g_lpcd_active;
 }
@@ -264,14 +264,14 @@ ccc_status_t nfc_start_listen(void)
     if (g_lpcd_active) {
         nfc_exit_lpcd();
     }
-    st25r501_write_reg(ST25R501_REG_FIELD_ON, 0x01);
+    (void)st25r501_write_reg(ST25R501_REG_FIELD_ON, 0x01);
     g_nfc_state = NFC_STATE_FIELD_DETECT;
     return CCC_OK;
 }
 
 ccc_status_t nfc_stop_listen(void)
 {
-    st25r501_write_reg(ST25R501_REG_FIELD_OFF, 0x00);
+    (void)st25r501_write_reg(ST25R501_REG_FIELD_OFF, 0x00);
     g_nfc_state = NFC_STATE_IDLE;
     return CCC_OK;
 }
@@ -282,8 +282,8 @@ ccc_status_t nfc_send(const uint8_t *data, uint16_t len)
     if (g_lpcd_active) return CCC_ERR_BUSY;
 
     uint8_t header[2] = { ST25R501_CMD_FIFO_WRITE, (uint8_t)len };
-    spi_transfer(2, header, NULL, 2);
-    spi_transfer(2, data, NULL, len);
+    (void)spi_transfer(2, header, NULL, 2);
+    (void)spi_transfer(2, data, NULL, len);
 
     return CCC_OK;
 }
@@ -295,10 +295,10 @@ ccc_status_t nfc_recv(uint8_t *buf, uint16_t *len, uint32_t timeout_ms)
 
     uint8_t header[2] = { ST25R501_CMD_FIFO_READ, 0x00 };
     uint8_t rx_len = 0;
-    spi_transfer(2, header, &rx_len, 1);
+    (void)spi_transfer(2, header, &rx_len, 1);
     if (rx_len > 0) {
         *len = rx_len;
-        spi_transfer(2, NULL, buf, rx_len);
+        (void)spi_transfer(2, NULL, buf, rx_len);
     }
     return CCC_OK;
 }

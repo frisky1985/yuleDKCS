@@ -282,9 +282,9 @@ ccc_status_t sec_store_key(const uint8_t *key_id, const uint8_t *key_data, uint1
     uint16_t blob_len = 16 + key_len + 1 + 4;
     uint8_t *blob = (uint8_t *)pvPortMalloc(blob_len);
     if (!blob) return CCC_ERR_NO_MEM;
-    memset(blob, 0, blob_len);
-    memcpy(blob, key_id, 16);
-    memcpy(blob + 16, key_data, key_len);
+    (void)memset(blob, 0, blob_len);
+    (void)memcpy(blob, key_id, 16);
+    (void)memcpy(blob + 16, key_data, key_len);
     blob[16 + key_len] = 0x01; /* 版本 1 */
 
     /* CRC32 校验 (简化) */
@@ -389,7 +389,7 @@ ccc_status_t sec_load_key(const uint8_t *key_id, uint8_t *key_data, uint16_t *ke
         return CCC_ERR_INVALID_PARAM;
     }
 
-    memcpy(key_data, blob + 16, data_len);
+    (void)memcpy(key_data, blob + 16, data_len);
     *key_len = data_len;
 
     sec_secure_zero(blob, blob_read_len);
@@ -459,13 +459,13 @@ ccc_status_t sec_scp03_open(scp03_channel_t *ch)
     crypto_random_register_se050(se050_rng_via_scp03);
 
     /* 填充 scp03_channel_t (兼容原 API 接口) */
-    memset(ch, 0, sizeof(*ch));
-    memcpy(ch->enc_key, g_scp03_session.s_enc, 16);
-    memcpy(ch->mac_key, g_scp03_session.s_mac, 16);
-    memcpy(ch->dek_key, g_scp03_session.s_rmac, 16);
-    memcpy(ch->host_challenge, g_scp03_session.host_challenge, 8);
-    memcpy(ch->card_challenge, g_scp03_session.card_challenge, 8);
-    memcpy(ch->seq_counter, g_scp03_session.seq_counter, 2);
+    (void)memset(ch, 0, sizeof(*ch));
+    (void)memcpy(ch->enc_key, g_scp03_session.s_enc, 16);
+    (void)memcpy(ch->mac_key, g_scp03_session.s_mac, 16);
+    (void)memcpy(ch->dek_key, g_scp03_session.s_rmac, 16);
+    (void)memcpy(ch->host_challenge, g_scp03_session.host_challenge, 8);
+    (void)memcpy(ch->card_challenge, g_scp03_session.card_challenge, 8);
+    (void)memcpy(ch->seq_counter, g_scp03_session.seq_counter, 2);
     ch->chain_mode = 0x01; /* C-MAC only (no encryption at SCP03 layer) */
 
     return CCC_OK;
@@ -490,7 +490,7 @@ ccc_status_t sec_scp03_close(scp03_channel_t *ch)
     se050_scp03_close_session(&g_scp03_session);
 
     /* 零化输出缓冲区 */
-    memset(ch, 0, sizeof(*ch));
+    (void)memset(ch, 0, sizeof(*ch));
     return CCC_OK;
 }
 
@@ -568,7 +568,7 @@ ccc_status_t sec_encrypt(const uint8_t *in, uint32_t len, uint8_t *out, uint32_t
     }
 
     /* 组装输出: IV || Ciphertext || Tag */
-    memcpy(out, iv, 12);
+    (void)memcpy(out, iv, 12);
     memcpy(out + 12 + len, tag, 16);
     *out_len = 12 + len + 16;
 
