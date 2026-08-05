@@ -1,0 +1,753 @@
+{
+  "metadata": {
+    "firmware_version": "unknown",
+    "hardware_config": "S32K312-EVB",
+    "tester": "auto",
+    "start_time": "2026-07-16T12:31:52.339250+00:00",
+    "end_time": "2026-07-16T12:31:52.352213+00:00",
+    "duration_seconds": 0.012963
+  },
+  "summary": {
+    "total": 37,
+    "passed": 37,
+    "failed": 0,
+    "error": 0,
+    "not_run": 0,
+    "pass_rate": 100.0,
+    "p0_pass_rate": 100.0,
+    "p1_pass_rate": 100.0
+  },
+  "results": [
+    {
+      "test_id": "HIL-PM-01",
+      "name": "休眠电流测量",
+      "domain": "PM",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "sleep_current_ua": 57.3,
+        "measurement_duration_s": 300,
+        "threshold_ua": 100
+      },
+      "details": "Sleep current: 57µA (threshold: 100µA)"
+    },
+    {
+      "test_id": "HIL-SE-01",
+      "name": "SCP03 标准建链",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_ms": 88.4,
+        "p95_ms": 114.2,
+        "min_ms": 57.7,
+        "max_ms": 114.2
+      },
+      "details": "SCP03 establishment P95=114ms, avg=88ms"
+    },
+    {
+      "test_id": "HIL-BLE-01",
+      "name": "BLE 标准连接",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_connection_time_ms": 1063.9,
+        "min_ms": 684.4,
+        "max_ms": 1432.0,
+        "success_rate_pct": 100.0,
+        "total_attempts": 10
+      },
+      "details": "Avg connection time: 1064ms, rate: 100%"
+    },
+    {
+      "test_id": "HIL-BLE-02",
+      "name": "RSSI 阈值测试",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "distances": [
+          {
+            "distance_m": 0.1,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -17.3,
+              -21.0,
+              -19.2,
+              -20.4,
+              -24.4
+            ],
+            "rssi_avg": -20.5
+          },
+          {
+            "distance_m": 1,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -38.6,
+              -40.1,
+              -38.1,
+              -40.5,
+              -42.0
+            ],
+            "rssi_avg": -39.9
+          },
+          {
+            "distance_m": 5,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -53.1,
+              -57.2,
+              -50.6,
+              -55.2,
+              -48.5
+            ],
+            "rssi_avg": -52.9
+          },
+          {
+            "distance_m": 10,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -60.4,
+              -63.2,
+              -61.0,
+              -69.7,
+              -61.5
+            ],
+            "rssi_avg": -63.2
+          },
+          {
+            "distance_m": 20,
+            "success_rate_pct": 100.0,
+            "rssi_values": [
+              -62.8,
+              -64.2,
+              -67.5,
+              -67.7,
+              -58.6
+            ],
+            "rssi_avg": -64.2
+          }
+        ]
+      },
+      "details": "0.1m: 100% (RSSI=-20.5dBm); 1m: 100% (RSSI=-39.9dBm); 5m: 100% (RSSI=-52.9dBm); 10m: 100% (RSSI=-63.2dBm); 20m: 100% (RSSI=-64.2dBm)"
+    },
+    {
+      "test_id": "HIL-BLE-03",
+      "name": "断线重连",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "reconnect_scenarios": [
+          {
+            "delay_before_reconnect_s": 3,
+            "avg_reconnect_ms": 1227.7,
+            "success_rate_pct": 100.0
+          },
+          {
+            "delay_before_reconnect_s": 5,
+            "avg_reconnect_ms": 1146.8,
+            "success_rate_pct": 100.0
+          },
+          {
+            "delay_before_reconnect_s": 10,
+            "avg_reconnect_ms": 1324.6,
+            "success_rate_pct": 100.0
+          }
+        ]
+      },
+      "details": "delay=3s: avg=1228ms, rate=100%; delay=5s: avg=1147ms, rate=100%; delay=10s: avg=1325ms, rate=100%"
+    },
+    {
+      "test_id": "HIL-BLE-05",
+      "name": "BLE GATT MTU 协商",
+      "domain": "BLE",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "mtu_bytes": 512
+      },
+      "details": "GATT MTU negotiated: 512 bytes (PASS: ≥512)"
+    },
+    {
+      "test_id": "HIL-SE-02",
+      "name": "SCP03 建链失败(错误密钥)",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "error_code": "SW69 84",
+        "auth_rejected": true,
+        "secure_channel_established": false
+      },
+      "details": "Wrong key → SW69 84, channel not established"
+    },
+    {
+      "test_id": "HIL-SE-03",
+      "name": "密钥注入与签名",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "key_injected": true,
+        "sign_time_ms": 21.8,
+        "verify_passed": true
+      },
+      "details": "Key injected: ✅, Sign time: 22ms, Verify: ✅"
+    },
+    {
+      "test_id": "HIL-SE-04",
+      "name": "密钥更新",
+      "domain": "SE050",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "old_key_before_update": true,
+        "update_time_ms": 51.6,
+        "update_success": true,
+        "new_key_verify": true,
+        "old_key_rotated": true
+      },
+      "details": "Update: ✅, New key verify: ✅, Old key: ✅ rotated"
+    },
+    {
+      "test_id": "HIL-SE-05",
+      "name": "密钥删除",
+      "domain": "SE050",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "delete_success": true,
+        "sign_with_deleted_key": false,
+        "reinject_success": true,
+        "resign_success": true,
+        "reinject_time_ms": 80.6
+      },
+      "details": "Delete: ✅, Sign w/deleted: KEY NOT FOUND, Re-inject: ✅ (81ms), Re-sign: ✅"
+    },
+    {
+      "test_id": "HIL-UL-01",
+      "name": "BLE 解锁 < 1s",
+      "domain": "UNLOCK",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_ms": 705.9,
+        "p95_ms": 824.3,
+        "min_ms": 577.8,
+        "max_ms": 824.3,
+        "total_runs": 20
+      },
+      "details": "BLE unlock P95=824ms, avg=706ms"
+    },
+    {
+      "test_id": "HIL-NFC-01",
+      "name": "NFC 标准刷卡解锁",
+      "domain": "NFC",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_ms": 295.4,
+        "min_ms": 201.8,
+        "max_ms": 428.0,
+        "p95_ms": 428.0,
+        "total_runs": 20,
+        "successes": 20
+      },
+      "details": "NFC unlock P95=428ms (req: <500ms), avg=295ms"
+    },
+    {
+      "test_id": "HIL-NFC-02",
+      "name": "NFC 多卡共存",
+      "domain": "NFC",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "total_cards": 3,
+        "successful_reads": 3,
+        "cards": [
+          {
+            "card": "Card-A",
+            "success": true
+          },
+          {
+            "card": "Card-B",
+            "success": true
+          },
+          {
+            "card": "Phone-X",
+            "success": true
+          }
+        ]
+      },
+      "details": "3/3 cards read successfully"
+    },
+    {
+      "test_id": "HIL-NFC-03",
+      "name": "NFC 超时处理",
+      "domain": "NFC",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "interrupt_result": "TIMEOUT",
+        "recovery_time_ms": 328.7,
+        "recovery_success": true
+      },
+      "details": "Interrupted: TIMEOUT, Recovery: ✅ (329ms)"
+    },
+    {
+      "test_id": "HIL-NFC-04",
+      "name": "NFC 场强与距离",
+      "domain": "NFC",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "distance_results": [
+          {
+            "distance_cm": 0,
+            "success_rate_pct": 100
+          },
+          {
+            "distance_cm": 1,
+            "success_rate_pct": 100
+          },
+          {
+            "distance_cm": 2,
+            "success_rate_pct": 100
+          },
+          {
+            "distance_cm": 3,
+            "success_rate_pct": 100
+          },
+          {
+            "distance_cm": 4,
+            "success_rate_pct": 99.1
+          },
+          {
+            "distance_cm": 5,
+            "success_rate_pct": 62.6
+          },
+          {
+            "distance_cm": 6,
+            "success_rate_pct": 73.2
+          },
+          {
+            "distance_cm": 7,
+            "success_rate_pct": 5.6
+          },
+          {
+            "distance_cm": 8,
+            "success_rate_pct": 12.6
+          },
+          {
+            "distance_cm": 9,
+            "success_rate_pct": 9.3
+          },
+          {
+            "distance_cm": 10,
+            "success_rate_pct": 8.7
+          }
+        ]
+      },
+      "details": "0-4cm: 100%, 4-6cm: 68%, >6cm: 9%"
+    },
+    {
+      "test_id": "HIL-UL-02",
+      "name": "NFC 解锁 < 500ms",
+      "domain": "UNLOCK",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_ms": 299.4,
+        "p95_ms": 372.1,
+        "min_ms": 182.6,
+        "max_ms": 372.1
+      },
+      "details": "NFC unlock P95=372ms, avg=299ms"
+    },
+    {
+      "test_id": "HIL-UL-04",
+      "name": "解锁失败重试机制",
+      "domain": "UNLOCK",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "auto_retries": 3,
+        "retry_interval_ms": 500,
+        "final_status": "FAILED_NO_KEY"
+      },
+      "details": "Retried 3x at 500ms intervals, final: FAILED_NO_KEY"
+    },
+    {
+      "test_id": "HIL-UWB-01",
+      "name": "1m 近距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.1,
+      "measurements": {
+        "actual_mm": 1000,
+        "mean_mm": 1000.1,
+        "std_dev_mm": 14.5,
+        "bias_mm": 0.1,
+        "max_error_mm": 32.0
+      },
+      "details": "Bias=0mm, Std=15mm, MaxErr=32mm"
+    },
+    {
+      "test_id": "HIL-UWB-02",
+      "name": "5m 中距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "actual_mm": 5000,
+        "mean_mm": 4999.4,
+        "std_dev_mm": 42.4,
+        "bias_mm": -0.6
+      },
+      "details": "Bias=-1mm, Std=42mm"
+    },
+    {
+      "test_id": "HIL-UWB-03",
+      "name": "10m 远距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "actual_mm": 10000,
+        "mean_mm": 9995.1,
+        "std_dev_mm": 86.6,
+        "bias_mm": -4.9
+      },
+      "details": "Bias=-5mm, Std=87mm"
+    },
+    {
+      "test_id": "HIL-UWB-04",
+      "name": "20m 极限距离测距稳定性",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.1,
+      "measurements": {
+        "actual_mm": 20000,
+        "valid_samples": 89,
+        "dropouts": 11,
+        "success_rate_pct": 89.0,
+        "mean_mm": 20023.0,
+        "std_dev_mm": 121.1,
+        "bias_mm": 23.0
+      },
+      "details": "Success rate: 89%, Bias=23mm"
+    },
+    {
+      "test_id": "HIL-UL-03",
+      "name": "UWB 自动解锁",
+      "domain": "UNLOCK",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "trigger_distance_m": 2.0,
+        "unlock_time_ms": 601.2
+      },
+      "details": "Triggered at 2.0m, unlock in 601ms"
+    },
+    {
+      "test_id": "HIL-VS-01",
+      "name": "状态变更推送",
+      "domain": "VS",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_push_delay_ms": 331.8,
+        "max_push_delay_ms": 423.1,
+        "total_changes": 10
+      },
+      "details": "Status push delay: avg=332ms, max=423ms"
+    },
+    {
+      "test_id": "HIL-VS-02",
+      "name": "离线缓冲",
+      "domain": "VS",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "buffered_events": 43,
+        "buffer_capacity": 100,
+        "sync_time_ms": 2098.8,
+        "sync_complete": true
+      },
+      "details": "Buffered 43/100 events, synced in 2099ms"
+    },
+    {
+      "test_id": "HIL-VS-03",
+      "name": "状态变更频控",
+      "domain": "VS",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "raw_events": 50,
+        "actual_pushes": 12,
+        "reduction_factor": 4.2
+      },
+      "details": "50 raw events → 12 pushes (reduction: 4.2x)"
+    },
+    {
+      "test_id": "HIL-WK-01",
+      "name": "BLE 唤醒",
+      "domain": "WAKEUP",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_wakeup_latency_ms": 27.2,
+        "max_wakeup_latency_ms": 40.1
+      },
+      "details": "BLE wakeup: avg=27ms, max=40ms"
+    },
+    {
+      "test_id": "HIL-WK-02",
+      "name": "NFC 唤醒",
+      "domain": "WAKEUP",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_wakeup_latency_ms": 14.4,
+        "max_wakeup_latency_ms": 27.7
+      },
+      "details": "NFC wakeup: avg=14ms, max=28ms"
+    },
+    {
+      "test_id": "HIL-WK-03",
+      "name": "定时唤醒",
+      "domain": "WAKEUP",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "wakeups": [
+          {
+            "target_ms": 5000,
+            "actual_ms": 5004.4,
+            "deviation_ms": 4.4
+          },
+          {
+            "target_ms": 10000,
+            "actual_ms": 9998.6,
+            "deviation_ms": 1.4
+          },
+          {
+            "target_ms": 30000,
+            "actual_ms": 30000.8,
+            "deviation_ms": 0.8
+          }
+        ],
+        "max_deviation_ms": 4.4,
+        "threshold_ms": 10
+      },
+      "details": "Max timer deviation: 4.4ms"
+    },
+    {
+      "test_id": "HIL-PM-02",
+      "name": "BLE 唤醒延迟",
+      "domain": "PM",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_wakeup_ms": 28.9,
+        "max_wakeup_ms": 42.7
+      },
+      "details": "BLE wakeup delay: avg=29ms, max=43ms"
+    },
+    {
+      "test_id": "HIL-FI-01",
+      "name": "BLE 通信异常",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "fault_injected": true,
+        "error_detected": true,
+        "system_crashed": false,
+        "error_code": "BLE_COMM_ERROR",
+        "recovery_triggered": true
+      },
+      "details": "BLE fault injected → detected: ✅, crash: ❌, recovery: ✅"
+    },
+    {
+      "test_id": "HIL-FI-02",
+      "name": "SE050 通信故障",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "fault_injected": true,
+        "error_detected": true,
+        "system_crashed": false,
+        "error_code": "HARDWARE_ERROR_SE",
+        "graceful_handling": true
+      },
+      "details": "SE050 fault → detected: ✅, crash: ❌, graceful: ✅"
+    },
+    {
+      "test_id": "HIL-FI-03",
+      "name": "NFC 通信故障",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "fault_injected": true,
+        "transaction_aborted": true,
+        "system_crashed": false,
+        "error_code": "NFC_COMM_ERROR"
+      },
+      "details": "NFC fault → aborted: ✅, crash: ❌, error: NFC_COMM_ERROR"
+    },
+    {
+      "test_id": "HIL-FI-04",
+      "name": "电源掉电恢复",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "power_lost": true,
+        "power_restored": true,
+        "system_booted": true,
+        "nvm_data_intact": true,
+        "se050_keys_intact": true
+      },
+      "details": "Power loss → boot: ✅, NVM: ✅, SE050: ✅"
+    },
+    {
+      "test_id": "HIL-FI-05",
+      "name": "非法状态机转换",
+      "domain": "FI",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "illegal_transition_detected": true,
+        "state_rolled_back": true,
+        "error_reported": true
+      },
+      "details": "Illegal transition → detected: ✅, rollback: ✅"
+    },
+    {
+      "test_id": "HIL-FI-06",
+      "name": "签名绕过攻击模拟",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "bypass_injected": true,
+        "security_log_alert": true,
+        "unlock_rejected": true
+      },
+      "details": "Signature bypass → alert: ✅, unlock rejected: ✅"
+    },
+    {
+      "test_id": "HIL-PM-03",
+      "name": "低电量模式",
+      "domain": "PM",
+      "priority": "P2",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "voltage_tests": [
+          {
+            "voltage_v": 12.0,
+            "ble_unlock_enabled": true,
+            "nfc_unlock_enabled": true,
+            "operational_mode": "FULL"
+          },
+          {
+            "voltage_v": 10.5,
+            "ble_unlock_enabled": true,
+            "nfc_unlock_enabled": true,
+            "operational_mode": "FULL"
+          },
+          {
+            "voltage_v": 9.0,
+            "ble_unlock_enabled": false,
+            "nfc_unlock_enabled": true,
+            "operational_mode": "NFC_ONLY"
+          },
+          {
+            "voltage_v": 6.0,
+            "ble_unlock_enabled": false,
+            "nfc_unlock_enabled": true,
+            "operational_mode": "NFC_ONLY"
+          }
+        ]
+      },
+      "details": "12.0V: FULL; 10.5V: FULL; 9.0V: NFC_ONLY; 6.0V: NFC_ONLY"
+    },
+    {
+      "test_id": "HIL-BLE-04",
+      "name": "多设备并发连接",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "devices_connected": 4,
+        "all_successful": true,
+        "connections": [
+          {
+            "device_id": "PHONE-01",
+            "connection_ms": 1063.9,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-02",
+            "connection_ms": 1467.2,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-03",
+            "connection_ms": 1281.4,
+            "successful": true
+          },
+          {
+            "device_id": "PHONE-04",
+            "connection_ms": 1451.0,
+            "successful": true
+          }
+        ]
+      },
+      "details": "4 devices connected: ✅ all"
+    }
+  ],
+  "failures": []
+}

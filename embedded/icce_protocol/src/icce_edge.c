@@ -378,6 +378,11 @@ int32_t icce_edge_process_trigger(icce_trigger_e trigger, const void *data, uint
     tdata.rssi        = g_engine.current_rssi;
     tdata.zone        = g_engine.current_zone;
     (void)memcpy(&tdata.vehicle, &g_engine.vehicle_status, sizeof(icce_vehicle_status_t));
+    tdata.distance_mm = g_engine.current_distance_mm;
+    tdata.rssi        = g_engine.current_rssi;
+    tdata.zone        = g_engine.current_zone;
+    memcpy(&tdata.vehicle, &g_engine.vehicle_status, sizeof(icce_vehicle_status_t));
+>>>>>>> origin/master
 
     /* If caller provided data, overlay it */
     if (data && len > 0) {
@@ -386,7 +391,8 @@ int32_t icce_edge_process_trigger(icce_trigger_e trigger, const void *data, uint
         }
     }
 
-    uint32_t now = sys_tick_get_ms();
+    uint32_t now = g_engine.last_tick;
+
 
     /* Find best matching rule */
     int32_t  best_idx = -1;

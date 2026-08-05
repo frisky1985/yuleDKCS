@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_wdgm.a CMakeFiles/bsw_wdgm.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/wdgm/src/Wdgm.c.obj CMakeFiles/bsw_wdgm.dir/src/dk_wdgm_cfg.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_wdgm.a

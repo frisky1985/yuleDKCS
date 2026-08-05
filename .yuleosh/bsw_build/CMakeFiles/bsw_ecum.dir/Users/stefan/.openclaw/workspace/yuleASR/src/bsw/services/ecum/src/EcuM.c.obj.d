@@ -1,0 +1,19 @@
+CMakeFiles/bsw_ecum.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/ecum/src/EcuM.c.obj: \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/ecum/src/EcuM.c \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/ecum/include/EcuM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Std_Types.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/ecum/include/EcuM_Cfg.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det_Cfg.h \
+ /Users/stefan/yuleDKCS/embedded/bsw_integration/include/Compiler.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det_MemMap.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/bswm/include/BswM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/schm/include/SchM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/nvm/include/NvM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/nvm/include/NvM_Cfg.h \
+ /Users/stefan/yuleDKCS/embedded/bsw_integration/include/MemMap.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/wdgm/include/WdgM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/ecual/wdgif/include/WdgIf.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/comm/include/ComM.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/comm/include/ComM_Cfg.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/comm/include/ComM.h

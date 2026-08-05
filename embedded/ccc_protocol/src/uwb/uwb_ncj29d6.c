@@ -5,6 +5,9 @@
 
 #include "ccc_digital_key.h"
 
+/* Forward declarations */
+static distance_zone_e classify_distance_impl(uint16_t dist_cm);
+
 /* NCJ29D6 SPI Commands */
 #define NCJ29D6_CMD_INIT            0x01
 #define NCJ29D6_CMD_CREATE_SESSION  0x10
@@ -23,9 +26,11 @@ typedef struct {
     distance_zone_e last_zone;
 } uwb_session_entry_t;
 
-static uwb_session_entry_t g_sessions[UWB_MAX_SESSIONS];
-static distance_threshold_t g_threshold;
-static uwb_zone_cb_t g_zone_cb = NULL;
+/* IRQ handler ncj29d6_irq_handler() reads/writes sessions and calls zone_cb;
+ * all these globals are volatile to prevent compiler misoptimization [EMB-P1-01] */
+static uwb_session_entry_t volatile g_sessions[UWB_MAX_SESSIONS];
+static distance_threshold_t volatile g_threshold;
+static uwb_zone_cb_t volatile g_zone_cb = NULL;
 
 extern int32_t spi_transfer(uint8_t dev, const uint8_t *tx, uint8_t *rx, uint16_t len);
 extern void    gpio_write(uint8_t port, uint8_t pin, uint8_t val);
@@ -51,7 +56,8 @@ ccc_status_t uwb_ncj29d6_init(void)
 
     ncj29d6_send_cmd(NCJ29D6_CMD_INIT, NULL, 0);
 
-    memset(g_sessions, 0, sizeof(g_sessions));
+    /* Cast away volatile for one-time init; ISR-only fields are safe */
+    memset((void*)g_sessions, 0, sizeof(g_sessions));
     return CCC_OK;
 }
 
@@ -160,7 +166,8 @@ distance_zone_e uwb_get_zone(uint32_t session_id)
 ccc_status_t uwb_set_threshold(const distance_threshold_t *th)
 {
     if (!th) return CCC_ERR_INVALID_PARAM;
-    memcpy(&g_threshold, th, sizeof(g_threshold));
+    /* g_threshold is volatile (accessed by IRQ); cast for one-time set [EMB-P1-01] */
+    memcpy((void*)&g_threshold, th, sizeof(g_threshold));
     return CCC_OK;
 }
 

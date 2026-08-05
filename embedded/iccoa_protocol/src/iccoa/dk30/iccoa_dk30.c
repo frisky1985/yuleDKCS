@@ -53,22 +53,9 @@ static int32_t handle_bind_request(const uint8_t *payload, uint16_t len)
     /* Parse phone public key from payload */
     /* Generate vehicle key pair via SE050 */
     /* Build bind response with vehicle public key */
-    uint8_t rsp_payload[128] = {0};
-    /* Read vehicle public key from SE050 and fill response */
-    extern int se050_key_get_public_key(uint8_t *pub_key_out);
-    extern int se050_ecdsa_sign(const uint8_t *hash, uint16_t hash_len,
-                                 uint8_t *sig_out, uint16_t *sig_len);
-    uint8_t veh_pubkey[64] = {0};
-    if (se050_key_get_public_key(veh_pubkey) == 0) {
-        memcpy(rsp_payload, veh_pubkey, 64);
-        /* Sign the phone public key to prove authenticity */
-        uint8_t sig[72] = {0};
-        uint16_t sig_len = sizeof(sig);
-        if (se050_ecdsa_sign(payload, len, sig, &sig_len) == 0) {
-            memcpy(rsp_payload + 64, sig, sig_len);
-            return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 64 + sig_len);
-        }
-    }
+    static uint8_t rsp_payload[128];
+    memset(rsp_payload, 0, sizeof(rsp_payload));
+    /* TODO: Fill with vehicle public key + signature */
     return iccoa_dk30_send_response(ICCOA_CMD_BIND_RSP, rsp_payload, 64);
 }
 
@@ -158,54 +145,15 @@ int32_t iccoa_dk30_process(const uint8_t *raw, uint16_t len)
     case ICCOA_CMD_BIND_REQ:
         return handle_bind_request(payload, payload_len);
     case ICCOA_CMD_UNBIND_REQ:
-        /* Handle unbind: verify signature → clear local keys → notify cloud */
-        {
-            if (payload_len < 72) return ICCOA_ERR_PARAM;
-            /* Verify unbind request signature */
-            extern int se050_verify_ecdsa(const uint8_t *pub_key, const uint8_t *hash,
-                                           const uint8_t *sig, uint16_t sig_len);
-            uint8_t hash_buf[32] = {0};
-            extern int se050_sha256(const uint8_t *data, uint16_t len, uint8_t *hash_out);
-            se050_sha256(payload, 72, hash_buf);
-            /* The vehicle's own public key is used for verification */
-            extern int se050_key_get_public_key(uint8_t *pub_key_out);
-            uint8_t veh_pubkey[64] = {0};
-            se050_key_get_public_key(veh_pubkey);
-            if (se050_verify_ecdsa(veh_pubkey, hash_buf, payload, 72) == 0) {
-                /* Signature valid — clear local binding */
-                g_seq_num = 0;
-                g_last_seq_num = 0;
-                /* Notify cloud service of unbind (stub) */
-                /* cloud_notify_unbind(peer_id); */
-                uint8_t rsp[2] = {0x00, 0x00}; /* success */
-                return iccoa_dk30_send_response(ICCOA_CMD_UNBIND_RSP, rsp, 2);
-            }
-            uint8_t rsp[2] = {0x01, 0x00}; /* auth failure */
-            return iccoa_dk30_send_response(ICCOA_CMD_UNBIND_RSP, rsp, 2);
-        }
+        /* TODO: Handle unbind */
+        break;
     case ICCOA_CMD_AUTH_REQ:
         return handle_auth_request(payload, payload_len);
     case ICCOA_CMD_CTRL_REQ:
         return handle_ctrl_request(payload, payload_len);
     case ICCOA_CMD_KEY_SHARE:
-        /* Handle key share: parse share token → verify → write new key */
-        {
-            if (payload_len < 16) return ICCOA_ERR_PARAM;
-            /* Share token format: [share_token(16) + valid_hours(2)] */
-            /* Verify share token (HMAC/sealed) via SE050 */
-            extern int se050_verify_share_token(const uint8_t *token, uint16_t token_len);
-            extern int se050_key_derive_shared(const uint8_t *seed, uint16_t seed_len,
-                                                 uint8_t *key_out);
-            if (se050_verify_share_token(payload, payload_len) == 0) {
-                /* Token valid — derive and store the shared key */
-                uint8_t derived_key[32] = {0};
-                se050_key_derive_shared(payload, payload_len, derived_key);
-                uint8_t rsp[2] = {0x00, 0x00};
-                return iccoa_dk30_send_response(ICCOA_CMD_KEY_SHARE_ACK, rsp, 2);
-            }
-            uint8_t rsp[2] = {0x01, 0x00}; /* verification failed */
-            return iccoa_dk30_send_response(ICCOA_CMD_KEY_SHARE_ACK, rsp, 2);
-        }
+        /* TODO: Handle key share */
+        break;
     default:
         break;
     }

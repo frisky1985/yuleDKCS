@@ -1,0 +1,14 @@
+{
+  "session": "test-mock-fix",
+  "reviewer": "小马",
+  "timestamp": "2026-07-07T20:56:57.139421",
+  "status": "skipped",
+  "summary": {
+    "message": "MISRA report not found — CI MISRA check may not have been executed.",
+    "total_violations": 0,
+    "trend_available": false
+  },
+  "recommendations": [
+    "Run CI Layer 1 MISRA check first to generate report data."
+  ]
+}

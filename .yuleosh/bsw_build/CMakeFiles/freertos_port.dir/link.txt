@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libfreertos_port.a CMakeFiles/freertos_port.dir/Users/stefan/yuleDKCS/embedded/freertos_port/src/port.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libfreertos_port.a

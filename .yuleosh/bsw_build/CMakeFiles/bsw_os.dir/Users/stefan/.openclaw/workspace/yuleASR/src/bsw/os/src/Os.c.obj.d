@@ -1,0 +1,24 @@
+CMakeFiles/bsw_os.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/src/Os.c.obj: \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/src/Os.c \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Os.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Std_Types.h \
+ /Users/stefan/yuleDKCS/embedded/bsw_integration/include/MemMap.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Os_Internal.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Os.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/FreeRTOS.h \
+ /Users/stefan/yuleDKCS/embedded/freertos_port/include/FreeRTOSConfig.h \
+ /opt/homebrew/Cellar/arm-none-eabi-gcc/16.1.0/lib/gcc/arm-none-eabi/16.1.0/include/stddef.h \
+ /Users/stefan/yuleDKCS/embedded/freertos_port/include/projdefs.h \
+ /Users/stefan/yuleDKCS/embedded/freertos_port/include/portmacro.h \
+ /Users/stefan/yuleDKCS/embedded/freertos_port/include/FreeRTOSConfig.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/task.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/timers.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/queue.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/semphr.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/event_groups.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/os/include/Std_Types.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det_Cfg.h \
+ /Users/stefan/yuleDKCS/embedded/bsw_integration/include/Compiler.h \
+ /Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/det/include/Det_MemMap.h \
+ /Users/stefan/yuleDKCS/embedded/freestanding_includes/string.h

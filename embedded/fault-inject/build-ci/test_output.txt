@@ -1,0 +1,114 @@
+========================================
+yuleDKCS Fault Injection Test Suite
+Build: DK_FAULT_INJECT_ENABLE = 1
+========================================
+
+[Unit] Framework Init/Deinit
+  PASS: Result count starts at 0 after init
+  PASS: Result count 0 after deinit
+
+[Unit] Fault Enable/Disable
+  PASS: No faults initially active
+  PASS: Fault active after enable
+  PASS: Double enable keeps fault active
+  PASS: Fault inactive after disable
+  PASS: Cleared: ICCE fault inactive
+  PASS: Cleared: CCC fault inactive
+
+[Unit] Result Storage
+  PASS: Two results recorded
+  PASS: Result 0 fault_id = 1
+  PASS: Result 1 fault_id = 2
+  PASS: Result 2 is NULL (out of range)
+  PASS: Result 0 protocol = ICCE
+  PASS: Result 0 status = PASSED
+  PASS: Result 1 protocol = CCC
+  PASS: Result 1 status = FAILED
+
+[ICCE] Signature Forgery Detection
+  PASS: ICCE sign forgery fault enabled
+  PASS: Forgery test produced at least 2 results
+
+[ICCE] Certificate Expiry Detection
+  PASS: Cert expired test produced >= 2 results
+
+[ICCE] Illegal State Transition Detection
+  PASS: Illegal transition test produced >= 2 results
+
+[ICCE] Communication Timeout Detection
+  PASS: Comm timeout test produced >= 2 results
+
+[ICCE] Distance Spoof Detection
+  PASS: Distance spoof test produced >= 1 result
+
+[CCC] Secure Channel Failure Detection
+  PASS: SCP03 fail test produced >= 1 result
+
+[CCC] Certificate Verify Anomaly
+  PASS: Cert verify anomaly test produced >= 1 result
+
+[CCC] NFC OOB Corruption Detection
+  PASS: NFC OOB corrupt test produced >= 1 result
+
+[CCC] BLE Encryption Failure Detection
+  PASS: BLE encrypt fail test produced >= 1 result
+
+[ICCOA] Handshake Failure Detection
+  PASS: Handshake fail test produced >= 1 result
+
+[ICCOA] Key Derive Error Detection
+  PASS: Key derive error test produced >= 1 result
+
+[ICCOA] Downgrade Attack Detection
+  PASS: Downgrade attack test produced >= 1 result
+
+[ICCOA] Permission Bypass Detection
+  PASS: Permission bypass test produced >= 1 result
+
+[Integration] Running all fault injection tests via dk_fi_run_all_tests()
+
+=== yuleDKCS Fault Injection Test Suite ===
+Running with DK_FAULT_INJECT_ENABLE = 1
+
+--- ICCE Tests ---
+
+--- CCC Tests ---
+
+--- ICCOA Tests ---
+
+===== DK Fault Injection Test Report =====
+ID    Protocol Test Name                                Status
+------ -------- ---------------------------------------- ----------
+[  0] ICCE     ICCE-Signature-Forgery                   PASS
+[  1] ICCE     ICCE-Signature-Forgery-Recovery          PASS
+[  2] ICCE     ICCE-Cert-Expired                        PASS
+[  3] ICCE     ICCE-Cert-Expired-Recovery               PASS
+[  4] ICCE     ICCE-Illegal-Transition-FarToInterior    FAIL
+[  5] ICCE     ICCE-Illegal-Transition                  PASS
+[  6] ICCE     ICCE-Comm-Timeout                        PASS
+[  7] ICCE     ICCE-Comm-Timeout-Recovery               PASS
+[  8] ICCE     ICCE-Distance-Spoof-Caught               FAIL
+[  9] ICCE     ICCE-Distance-Spoof                      PASS
+[ 10] CCC      CCC-Secure-Channel-Fail                  PASS
+[ 11] CCC      CCC-Cert-Verify-Anomaly                  PASS
+[ 12] CCC      CCC-NFC-OOB-Corrupt                      PASS
+[ 13] CCC      CCC-BLE-Encrypt-Fail                     PASS
+[ 14] CCC      CCC-Illegal-State-Transition             PASS
+[ 15] CCC      CCC-Illegal-State                        PASS
+[ 16] ICCOA    ICCOA-Handshake-Fail                     PASS
+[ 17] ICCOA    ICCOA-Key-Derive-Error                   PASS
+[ 18] ICCOA    ICCOA-Downgrade-Protection-Bypass        FAIL
+[ 19] ICCOA    ICCOA-Downgrade-Attack                   FAIL
+[ 20] ICCOA    ICCOA-Permission-Bypass-Detected         FAIL
+[ 21] ICCOA    ICCOA-Permission-Bypass                  PASS
+[ 22] ICCOA    ICCOA-HMAC-Tamper                        FAIL
+
+Total: 23 | Passed: 17 | Failed: 6 | Errors: 0
+============================================
+
+  Total results from run_all: 23
+  PASS: run_all_tests() produced results
+
+========================================
+Results: 31 passed, 0 failed
+========================================

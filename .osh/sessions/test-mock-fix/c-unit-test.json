@@ -1,0 +1,15 @@
+{
+  "step": "c-unit-test",
+  "agent": "小克",
+  "session": "test-mock-fix",
+  "timestamp": "2026-07-07T20:56:57.136648",
+  "c_files": 53,
+  "c_header_files": 28,
+  "c_test_files": 6,
+  "test_runner": "gcc-compile-check",
+  "returncode": 1,
+  "output": "\n/Users/stefan/yuleDKCS/embedded/tests/test/test_ccc_dk_core.c:15:10: fatal error: 'unity.h' file not found\n   15 | #include \"unity.h\"\n      |          ^~~~~~~~~\n1 error generated.\n/Users/stefan/yuleDKCS/embedded/tests/test/test_iccoa_dk_core.c:14:10: fatal error: 'unity.h' file not found\n   14 | #include \"unity.h\"\n      |          ^~~~~~~~~\n1 error generated.\n/Users/stefan/yuleDKCS/embedded/tests/test/test_iccoa_ble.c:8:10: fatal error: 'unity.h' file not found\n    8 | #include \"unity.h\"\n      |          ^~~~~~~~~\n1 error generated.\n/Users/stefan/yuleDKCS/embedded/tests/test/test_unified.c:4:50: warning: '/*' within block comment [-Wcomment]\n    4 |  * Maps to integration test cases from test_suite/*.md:\n      |                                                  ^\n/Users/stefan/yuleDKCS/embedded/tests/test/test_unified.c:18:10: fatal error: 'unity.h' file not found\n   18 | #include \"unity.h\"\n      |          ^~~~~~~~~\n1 warning and 1 error generated.\n",
+  "passed": 0,
+  "failed": 6,
+  "status": "failed"
+}

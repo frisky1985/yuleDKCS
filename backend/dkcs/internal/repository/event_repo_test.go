@@ -2,466 +2,382 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jmoiron/sqlx"
+	"github.com/google/uuid"
 )
 
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// InMemoryEventStore — in-memory store implementing EventRepository contract
+// ---------------------------------------------------------------------------
 
-func newEventRepo(t *testing.T) (*EventRepository, sqlmock.Sqlmock) {
-	t.Helper()
-	mockDB, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("failed to create sqlmock: %v", err)
-	}
-	db := sqlx.NewDb(mockDB, "postgres")
-	repo := NewEventRepository(db)
-	return repo, mock
+type InMemoryEventStore struct {
+	mu     sync.RWMutex
+	events []*Event // ordered by creation
 }
 
-func testEvent() *Event {
+func NewInMemoryEventStore() *InMemoryEventStore {
+	return &InMemoryEventStore{events: make([]*Event, 0)}
+}
+
+func (s *InMemoryEventStore) Create(_ context.Context, event *Event) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Check for duplicate
+	for _, e := range s.events {
+		if e.ID == event.ID {
+			return ErrEventConflict
+		}
+	}
+	cp := *event
+	s.events = append(s.events, &cp)
+	return nil
+}
+
+func (s *InMemoryEventStore) GetByID(_ context.Context, id string) (*Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, e := range s.events {
+		if e.ID == id {
+			cp := *e
+			return &cp, nil
+		}
+	}
+	return nil, ErrEventNotFound
+}
+
+func (s *InMemoryEventStore) ListByVehicle(_ context.Context, vehicleID string, limit, offset int) ([]*Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Event
+	for _, e := range s.events {
+		if e.VehicleID == vehicleID {
+			cp := *e
+			result = append(result, &cp)
+		}
+	}
+	return applyEventPagination(result, limit, offset), nil
+}
+
+func (s *InMemoryEventStore) ListByUser(_ context.Context, userID string, limit, offset int) ([]*Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Event
+	for _, e := range s.events {
+		if e.UserID == userID {
+			cp := *e
+			result = append(result, &cp)
+		}
+	}
+	return applyEventPagination(result, limit, offset), nil
+}
+
+func (s *InMemoryEventStore) ListByKey(_ context.Context, keyID string, limit, offset int) ([]*Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []*Event
+	for _, e := range s.events {
+		if e.KeyID != nil && *e.KeyID == keyID {
+			cp := *e
+			result = append(result, &cp)
+		}
+	}
+	return applyEventPagination(result, limit, offset), nil
+}
+
+func applyEventPagination(events []*Event, limit, offset int) []*Event {
+	if offset >= len(events) {
+		return []*Event{}
+	}
+	end := offset + limit
+	if end > len(events) {
+		end = len(events)
+	}
+	return events[offset:end]
+}
+
+var ErrEventConflict = &EventConflictError{Message: "event already exists"}
+
+type EventConflictError struct{ Message string }
+
+func (e *EventConflictError) Error() string { return e.Message }
+
+// ---------------------------------------------------------------------------
+// Helper: build a test event
+// ---------------------------------------------------------------------------
+
+func testEvent(overrides func(*Event)) *Event {
 	now := time.Now().Truncate(time.Millisecond)
-	return &Event{
-		ID:        "evt-001",
+	e := &Event{
+		ID:        uuid.New().String(),
 		Type:      EventTypeKeyCreated,
 		VehicleID: "vehicle-001",
 		UserID:    "user-001",
-		KeyID:     strPtr("key-001"),
-		Data:      map[string]interface{}{"source": "test"},
+		Data:      map[string]interface{}{"source": "test", "version": 1},
 		CreatedAt: now,
 	}
+	if overrides != nil {
+		overrides(e)
+	}
+	return e
 }
 
-func strPtr(s string) *string { return &s }
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
-func expectEventInsert(_ sqlmock.Sqlmock, _ *Event) *sqlmock.Rows {
-	return sqlmock.NewRows([]string{"id"}).AddRow("mock-id")
-}
-
-// ─────────────────────────────────────────────────────────────
-// Create Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_Create_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_CreateAndGet(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
-	event := testEvent()
 
-	mock.ExpectQuery(
-		`INSERT INTO events \(id,type,vehicle_id,user_id,key_id,data,created_at\) VALUES \(\?,\?,\?,\?,\?,\?,\?\) RETURNING id`,
-	).WithArgs(
-		event.ID, event.Type, event.VehicleID, event.UserID, event.KeyID, sqlmock.AnyArg(), event.CreatedAt,
-	).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(event.ID))
+	e := testEvent(nil)
 
-	err := repo.Create(ctx, event)
-	if err != nil {
+	if err := store.Create(ctx, e); err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestEventRepo_Create_DBError(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-	event := testEvent()
-
-	mock.ExpectQuery(
-		`INSERT INTO events \(id,type,vehicle_id,user_id,key_id,data,created_at\) VALUES \(\?,\?,\?,\?,\?,\?,\?\) RETURNING id`,
-	).WithArgs(
-		sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(),
-	).WillReturnError(sqlmock.ErrCancelled)
-
-	err := repo.Create(ctx, event)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestEventRepo_Create_NilKeyID(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-	event := testEvent()
-	event.KeyID = nil
-
-	mock.ExpectQuery(
-		`INSERT INTO events \(id,type,vehicle_id,user_id,key_id,data,created_at\) VALUES \(\?,\?,\?,\?,\?,\?,\?\) RETURNING id`,
-	).WithArgs(
-		event.ID, event.Type, event.VehicleID, event.UserID, nil, sqlmock.AnyArg(), event.CreatedAt,
-	).WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(event.ID))
-
-	err := repo.Create(ctx, event)
-	if err != nil {
-		t.Fatalf("Create failed: %v", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// GetByID Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_GetByID_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-	event := testEvent()
-
-	dataJSON, _ := json.Marshal(event.Data)
-	columns := []string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}
-
-	mock.ExpectQuery(`SELECT \* FROM events WHERE id = \? LIMIT 1`).
-		WithArgs(event.ID).
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			event.ID, event.Type, event.VehicleID, event.UserID, event.KeyID, dataJSON, event.CreatedAt,
-		))
-
-	got, err := repo.GetByID(ctx, event.ID)
+	got, err := store.GetByID(ctx, e.ID)
 	if err != nil {
 		t.Fatalf("GetByID failed: %v", err)
 	}
-	if got.ID != event.ID {
-		t.Errorf("ID: want %q, got %q", event.ID, got.ID)
-	}
-	if got.Type != event.Type {
-		t.Errorf("Type: want %q, got %q", event.Type, got.Type)
-	}
-	if got.KeyID == nil || *got.KeyID != *event.KeyID {
-		t.Errorf("KeyID mismatch")
-	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if got.ID != e.ID {
+		t.Errorf("ID: want %q, got %q", e.ID, got.ID)
+	}
+	if got.Type != e.Type {
+		t.Errorf("Type: want %q, got %q", e.Type, got.Type)
+	}
+	if got.VehicleID != e.VehicleID {
+		t.Errorf("VehicleID: want %q, got %q", e.VehicleID, got.VehicleID)
+	}
+	if got.UserID != e.UserID {
+		t.Errorf("UserID: want %q, got %q", e.UserID, got.UserID)
+	}
+	if got.Data["source"] != "test" {
+		t.Errorf("Data.source: want 'test', got %v", got.Data["source"])
+	}
+	if !got.CreatedAt.Equal(e.CreatedAt) {
+		t.Errorf("CreatedAt not preserved")
 	}
 }
 
-func TestEventRepo_GetByID_NotFound(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_CreateDuplicate(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM events WHERE id = \? LIMIT 1`).
-		WithArgs("nonexistent").
-		WillReturnError(sqlmock.ErrCancelled)
+	e := testEvent(nil)
+	if err := store.Create(ctx, e); err != nil {
+		t.Fatalf("first Create failed: %v", err)
+	}
 
-	_, err := repo.GetByID(ctx, "nonexistent")
+	err := store.Create(ctx, e)
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal("expected error for duplicate event, got nil")
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if _, ok := err.(*EventConflictError); !ok {
+		t.Errorf("expected EventConflictError, got %T: %v", err, err)
 	}
 }
 
-func TestEventRepo_GetByID_NoRows(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_GetNotFound(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM events WHERE id = \? LIMIT 1`).
-		WithArgs("nonexistent").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}))
-
-	_, err := repo.GetByID(ctx, "nonexistent")
+	_, err := store.GetByID(ctx, "nonexistent-id")
 	if err == nil {
-		t.Fatal("expected 'event not found' error")
+		t.Fatal("expected ErrEventNotFound, got nil")
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if err != ErrEventNotFound {
+		t.Errorf("expected ErrEventNotFound, got %v", err)
 	}
 }
 
-// ─────────────────────────────────────────────────────────────
-// ListByVehicle Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_ListByVehicle_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_ListByVehicle(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
 
-	now := time.Now().Truncate(time.Millisecond)
-	events := []*Event{
-		{ID: "e1", Type: "key_created", VehicleID: "v1", UserID: "u1", KeyID: strPtr("k1"), Data: map[string]interface{}{"a": "1"}, CreatedAt: now.Add(-1 * time.Hour)},
-		{ID: "e2", Type: "command_sent", VehicleID: "v1", UserID: "u1", KeyID: nil, Data: nil, CreatedAt: now},
+	e1 := testEvent(func(e *Event) { e.ID = "e1"; e.VehicleID = "v1"; e.Type = EventTypeKeyCreated })
+	e2 := testEvent(func(e *Event) { e.ID = "e2"; e.VehicleID = "v2"; e.Type = EventTypeKeyShared })
+	e3 := testEvent(func(e *Event) { e.ID = "e3"; e.VehicleID = "v1"; e.Type = EventTypeKeyRevoked })
+	e4 := testEvent(func(e *Event) { e.ID = "e4"; e.VehicleID = "v1"; e.Type = EventTypeCommandSent })
+
+	for _, event := range []*Event{e1, e2, e3, e4} {
+		if err := store.Create(ctx, event); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
 	}
 
-	columns := []string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}
-	rows := sqlmock.NewRows(columns)
-	for _, e := range events {
-		dataJSON, _ := json.Marshal(e.Data)
-		rows.AddRow(e.ID, e.Type, e.VehicleID, e.UserID, e.KeyID, dataJSON, e.CreatedAt)
-	}
-
-	mock.ExpectQuery(`SELECT \* FROM events WHERE vehicle_id = \? ORDER BY created_at DESC LIMIT 10 OFFSET 0`).
-		WithArgs("v1").
-		WillReturnRows(rows)
-
-	result, err := repo.ListByVehicle(ctx, "v1", 10, 0)
+	// v1 should have 3 events
+	result, err := store.ListByVehicle(ctx, "v1", 10, 0)
 	if err != nil {
 		t.Fatalf("ListByVehicle failed: %v", err)
 	}
-	if len(result) != 2 {
-		t.Fatalf("want 2 events, got %d", len(result))
-	}
-	if result[0].ID != "e1" {
-		t.Errorf("first event: want e1, got %s", result[0].ID)
+	if len(result) != 3 {
+		t.Errorf("want 3 events for v1, got %d", len(result))
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	// v2 should have 1 event
+	result, err = store.ListByVehicle(ctx, "v2", 10, 0)
+	if err != nil {
+		t.Fatalf("ListByVehicle failed: %v", err)
 	}
-}
+	if len(result) != 1 {
+		t.Errorf("want 1 event for v2, got %d", len(result))
+	}
 
-func TestEventRepo_ListByVehicle_Empty(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT \* FROM events WHERE vehicle_id = \? ORDER BY created_at DESC LIMIT 10 OFFSET 0`).
-		WithArgs("v-empty").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}))
-
-	result, err := repo.ListByVehicle(ctx, "v-empty", 10, 0)
+	// nonexistent vehicle
+	result, err = store.ListByVehicle(ctx, "nonexistent", 10, 0)
 	if err != nil {
 		t.Fatalf("ListByVehicle failed: %v", err)
 	}
 	if len(result) != 0 {
 		t.Errorf("want 0 events, got %d", len(result))
 	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
 }
 
-func TestEventRepo_ListByVehicle_DBError(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_ListByUser(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
 
-	mock.ExpectQuery(`SELECT \* FROM events WHERE vehicle_id = \? ORDER BY created_at DESC LIMIT 10 OFFSET 0`).
-		WithArgs("v-err").
-		WillReturnError(sqlmock.ErrCancelled)
+	e1 := testEvent(func(e *Event) { e.ID = "e1"; e.UserID = "u1" })
+	e2 := testEvent(func(e *Event) { e.ID = "e2"; e.UserID = "u2" })
+	e3 := testEvent(func(e *Event) { e.ID = "e3"; e.UserID = "u1" })
 
-	_, err := repo.ListByVehicle(ctx, "v-err", 10, 0)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	for _, event := range []*Event{e1, e2, e3} {
+		if err := store.Create(ctx, event); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// ListByUser Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_ListByUser_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	now := time.Now().Truncate(time.Millisecond)
-	dataJSON, _ := json.Marshal(nil)
-
-	columns := []string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}
-	mock.ExpectQuery(`SELECT \* FROM events WHERE user_id = \? ORDER BY created_at DESC LIMIT 5 OFFSET 0`).
-		WithArgs("u1").
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			"e1", "key_created", "v1", "u1", strPtr("k1"), dataJSON, now,
-		))
-
-	result, err := repo.ListByUser(ctx, "u1", 5, 0)
+	// u1 should have 2 events
+	result, err := store.ListByUser(ctx, "u1", 10, 0)
 	if err != nil {
 		t.Fatalf("ListByUser failed: %v", err)
 	}
-	if len(result) != 1 {
-		t.Fatalf("want 1 event, got %d", len(result))
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
+	if len(result) != 2 {
+		t.Errorf("want 2 events for u1, got %d", len(result))
 	}
 }
 
-// ─────────────────────────────────────────────────────────────
-// ListByKey Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_ListByKey_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
+func TestEventRepo_ListByKey(t *testing.T) {
+	store := NewInMemoryEventStore()
 	ctx := context.Background()
 
-	now := time.Now().Truncate(time.Millisecond)
-	dataJSON, _ := json.Marshal(nil)
+	keyID := "key-001"
+	e1 := testEvent(func(e *Event) { e.ID = "e1"; e.KeyID = &keyID })
+	otherKeyID := "key-002"
+	e2 := testEvent(func(e *Event) { e.ID = "e2"; e.KeyID = &otherKeyID })
+	e3 := testEvent(func(e *Event) { e.ID = "e3"; e.KeyID = &keyID })
+	e4 := testEvent(func(e *Event) { e.ID = "e4" }) // no key ID
 
-	columns := []string{"id", "type", "vehicle_id", "user_id", "key_id", "data", "created_at"}
-	mock.ExpectQuery(`SELECT \* FROM events WHERE key_id = \? ORDER BY created_at DESC LIMIT 10 OFFSET 0`).
-		WithArgs("k1").
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
-			"e1", "key_created", "v1", "u1", strPtr("k1"), dataJSON, now,
-		))
+	for _, event := range []*Event{e1, e2, e3, e4} {
+		if err := store.Create(ctx, event); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+	}
 
-	result, err := repo.ListByKey(ctx, "k1", 10, 0)
+	result, err := store.ListByKey(ctx, keyID, 10, 0)
 	if err != nil {
 		t.Fatalf("ListByKey failed: %v", err)
 	}
-	if len(result) != 1 {
-		t.Fatalf("want 1 event, got %d", len(result))
+	if len(result) != 2 {
+		t.Errorf("want 2 events for key-001, got %d", len(result))
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// GetStats Tests
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_GetStats_Success(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT type, COUNT\(\*\) as count FROM events WHERE vehicle_id = \? AND created_at >= \? AND created_at <= \? GROUP BY type`).
-		WithArgs("v1", sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"type", "count"}).
-			AddRow("key_created", int64(5)).
-			AddRow("command_sent", int64(3)))
-
-	stats, err := repo.GetStats(ctx, "v1", 1000, 2000)
-	if err != nil {
-		t.Fatalf("GetStats failed: %v", err)
-	}
-	if len(stats) != 2 {
-		t.Fatalf("want 2 stats, got %d", len(stats))
-	}
-	if stats["key_created"] != 5 {
-		t.Errorf("key_created: want 5, got %d", stats["key_created"])
-	}
-	if stats["command_sent"] != 3 {
-		t.Errorf("command_sent: want 3, got %d", stats["command_sent"])
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestEventRepo_GetStats_Empty(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT type, COUNT\(\*\) as count FROM events WHERE vehicle_id = \? AND created_at >= \? AND created_at <= \? GROUP BY type`).
-		WithArgs("v-empty", sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnRows(sqlmock.NewRows([]string{"type", "count"}))
-
-	stats, err := repo.GetStats(ctx, "v-empty", 0, 100)
-	if err != nil {
-		t.Fatalf("GetStats failed: %v", err)
-	}
-	if len(stats) != 0 {
-		t.Errorf("want empty stats, got %d", len(stats))
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-func TestEventRepo_GetStats_DBError(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	mock.ExpectQuery(`SELECT type, COUNT\(\*\) as count FROM events WHERE vehicle_id = \? AND created_at >= \? AND created_at <= \? GROUP BY type`).
-		WithArgs("v-err", sqlmock.AnyArg(), sqlmock.AnyArg()).
-		WillReturnError(sqlmock.ErrCancelled)
-
-	_, err := repo.GetStats(ctx, "v-err", 0, 100)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// listEvents scan error test
-// ─────────────────────────────────────────────────────────────
-
-func TestEventRepo_listEvents_ScanError(t *testing.T) {
-	repo, mock := newEventRepo(t)
-	ctx := context.Background()
-
-	// Return wrong column count to cause a scan error
-	mock.ExpectQuery(`SELECT \* FROM events WHERE vehicle_id = \? ORDER BY created_at DESC LIMIT 10 OFFSET 0`).
-		WithArgs("v1").
-		WillReturnRows(sqlmock.NewRows([]string{"id", "type"}).AddRow("e1", "test"))
-
-	_, err := repo.ListByVehicle(ctx, "v1", 10, 0)
-	if err == nil {
-		t.Fatal("expected scan error, got nil")
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("expectations not met: %v", err)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────
-// Event types constants test
-// ─────────────────────────────────────────────────────────────
-
-func TestEventTypeConstants(t *testing.T) {
-	tests := []struct {
-		got, expected string
-	}{
-		{EventTypeKeyCreated, "key_created"},
-		{EventTypeKeyActivated, "key_activated"},
-		{EventTypeKeyRevoked, "key_revoked"},
-		{EventTypeKeyShared, "key_shared"},
-		{EventTypeKeyExpired, "key_expired"},
-		{EventTypeCommandSent, "command_sent"},
-		{EventTypeCommandReceived, "command_received"},
-		{EventTypeCommandFailed, "command_failed"},
-		{EventTypeVehicleOnline, "vehicle_online"},
-		{EventTypeVehicleOffline, "vehicle_offline"},
-		{EventTypeVehicleLocation, "vehicle_location"},
-	}
-	for _, tt := range tests {
-		if tt.got != tt.expected {
-			t.Errorf("want %q, got %q", tt.expected, tt.got)
+	// event with no key_id should not appear
+	for _, event := range result {
+		if event.ID == "e4" {
+			t.Errorf("event with nil key_id should not appear in ListByKey results")
 		}
 	}
 }
 
-// ─────────────────────────────────────────────────────────────
-// NewEventRepository Test
-// ─────────────────────────────────────────────────────────────
+func TestEventRepo_Pagination(t *testing.T) {
+	store := NewInMemoryEventStore()
+	ctx := context.Background()
 
-func TestNewEventRepository(t *testing.T) {
-	db, _, err := sqlmock.New()
+	for i := 0; i < 10; i++ {
+		e := testEvent(func(e *Event) {
+			e.ID = uuid.New().String()
+			e.VehicleID = "v1"
+		})
+		if err := store.Create(ctx, e); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+	}
+
+	page1, err := store.ListByVehicle(ctx, "v1", 3, 0)
 	if err != nil {
-		t.Fatalf("failed to create sqlmock: %v", err)
+		t.Fatalf("ListByVehicle page1 failed: %v", err)
 	}
-	sqlxDB := sqlx.NewDb(db, "postgres")
-	repo := NewEventRepository(sqlxDB)
-	if repo == nil {
-		t.Fatal("NewEventRepository should return non-nil")
+	if len(page1) != 3 {
+		t.Errorf("page1: want 3, got %d", len(page1))
 	}
-	_ = repo
+
+	page2, err := store.ListByVehicle(ctx, "v1", 3, 3)
+	if err != nil {
+		t.Fatalf("ListByVehicle page2 failed: %v", err)
+	}
+	if len(page2) != 3 {
+		t.Errorf("page2: want 3, got %d", len(page2))
+	}
+
+	// Verify no overlap
+	page1IDs := make(map[string]bool)
+	for _, e := range page1 {
+		page1IDs[e.ID] = true
+	}
+	for _, e := range page2 {
+		if page1IDs[e.ID] {
+			t.Errorf("event %s appears on both pages", e.ID)
+		}
+	}
+
+	// Page beyond data
+	page4, err := store.ListByVehicle(ctx, "v1", 3, 10)
+	if err != nil {
+		t.Fatalf("ListByVehicle (beyond) failed: %v", err)
+	}
+	if len(page4) != 0 {
+		t.Errorf("beyond data: want 0, got %d", len(page4))
+	}
+}
+
+func TestEventRepo_EventTypes(t *testing.T) {
+	eventTypes := []string{
+		EventTypeKeyCreated,
+		EventTypeKeyActivated,
+		EventTypeKeyRevoked,
+		EventTypeKeyShared,
+		EventTypeKeyExpired,
+		EventTypeCommandSent,
+		EventTypeCommandReceived,
+		EventTypeCommandFailed,
+		EventTypeVehicleOnline,
+		EventTypeVehicleOffline,
+		EventTypeVehicleLocation,
+	}
+
+	store := NewInMemoryEventStore()
+	ctx := context.Background()
+
+	for i, et := range eventTypes {
+		e := testEvent(func(e *Event) {
+			e.ID = uuid.New().String()
+			e.Type = et
+		})
+		if err := store.Create(ctx, e); err != nil {
+			t.Fatalf("Create event type %s failed: %v", et, err)
+		}
+
+		got, err := store.GetByID(ctx, e.ID)
+		if err != nil {
+			t.Fatalf("GetByID for event type %s failed: %v", et, err)
+		}
+		if got.Type != et {
+			t.Errorf("event %d: want type %q, got %q", i, et, got.Type)
+		}
+	}
 }

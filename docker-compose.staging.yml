@@ -1,0 +1,151 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────
+# yuleDKCS Staging Deployment
+# 预发布环境 — 接近生产但更轻量，便于预验收测试
+# ─────────────────────────────────────────────────────────
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ── Hub Service ─────────────────────────────────────
+  hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/usr/local/bin/hub-server"]
+    # ⚠️ Staging: 不暴露端口到宿主机，仅内部网络
+    # ports:
+    #   - "8080:8080"
+    #   - "9090:9090"
+    environment:
+      - HUB_VERSION=0.1.0-staging
+      - LOG_LEVEL=debug          # staging: debug 日志便于调试
+      - GIN_MODE=debug           # staging: debug 模式
+      - JWT_SECRET=staging-jwt-secret-do-not-use-in-prod
+      - DB_DSN=postgres://postgres:password@postgres:5432/yuledkcs_staging?sslmode=disable
+      - REDIS_ADDR=redis:6379
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 60s               # staging: 降低频率
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    logging: *default-logging
+    # staging: 添加资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ── PostgreSQL ──────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: yuledkcs_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: staging-password
+    # ports:
+    #   - "5432:5432"              # staging: 不暴露
+    volumes:
+      - staging-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d yuledkcs_staging"]
+      interval: 15s               # staging: 降低频率
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ── Redis ───────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    # ports:
+    #   - "6379:6379"              # staging: 不暴露
+    volumes:
+      - staging-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
+
+  # ── Zookeeper ───────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    # ports:
+    #   - "2181:2181"              # staging: 不暴露
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 256M
+
+  # ── Kafka ───────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6
+    depends_on:
+      - zookeeper
+    # ports:
+    #   - "9092:9092"              # staging: 不暴露
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_RETENTION_HOURS: 48  # staging: 减少日志留存
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+volumes:
+  staging-pgdata:
+    driver: local
+  staging-redis-data:
+    driver: local

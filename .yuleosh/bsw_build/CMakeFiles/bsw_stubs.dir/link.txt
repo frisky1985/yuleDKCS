@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_stubs.a CMakeFiles/bsw_stubs.dir/src/bsw_stubs.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_stubs.a

@@ -1,0 +1,2 @@
+/opt/homebrew/bin/arm-none-eabi-ar qc libbsw_ecum.a CMakeFiles/bsw_ecum.dir/Users/stefan/.openclaw/workspace/yuleASR/src/bsw/services/ecum/src/EcuM.c.obj CMakeFiles/bsw_ecum.dir/src/dk_ecum_callouts.c.obj
+/opt/homebrew/bin/arm-none-eabi-ranlib libbsw_ecum.a

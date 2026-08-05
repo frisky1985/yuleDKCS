@@ -1,8 +1,10 @@
 /**
  * @file crypto_types.h
+ * @module EMB-BSW-CRYPTO-TYPES (ASPICE SWE.4)
  * @brief 国密算法层 — 公共类型与错误码定义
  * @version 1.0
  * @date 2026-05-28
+ * Layer: BSW (Basic Software Layer)
  *
  * ICCE 数字钥匙国密算法层基础类型。
  * 所有 SM 算法文件统一包含此头文件。

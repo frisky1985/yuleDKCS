@@ -1,0 +1,3248 @@
+{
+  "schema_version": "1.0.0",
+  "build_id": "yuledkcs-v2.0.0-beta-20260716",
+  "generated_at": "2026-07-16T13:40:00+08:00",
+  "generated_by": "yuleosh-autodiagnosis",
+  "evidence_pack_version": "2.0.0",
+  "files": [
+    {
+      "path": "architecture-assessment.md",
+      "sha256": "4e50f1bb66b50660c19b0c02f77808937f10921c8e7036ca473a05f23c648bde",
+      "size_bytes": 22778,
+      "category": "architecture"
+    },
+    {
+      "path": "architecture-refactor-plan.md",
+      "sha256": "7a833d5664f7d29397efda077f4ae963f1c4251c9ce6b428a556bdecd0f063a2",
+      "size_bytes": 3984,
+      "category": "architecture"
+    },
+    {
+      "path": "audit-v2/acceptance-matrix.md",
+      "sha256": "3247b7cc235a139e92622783bdbbe1e94305c6cff88e209a023f30af3fabcbb1",
+      "size_bytes": 370,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/audit-manifest.json",
+      "sha256": "d5bb8c24f87e31f9999cb9d7d243c338b925a05e435e8455bacfb93d88bfaa94",
+      "size_bytes": 40556,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/c-coverage.json",
+      "sha256": "b00a91cdc036f42b49f67e10b71eba53e0d42651a55c386b02d31a396a40ea12",
+      "size_bytes": 2450,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/ci-config.yaml",
+      "sha256": "6d9c7eb6017c776ca1f304b6b58d8b4360aa1c966c7a97413d7f4776263656c9",
+      "size_bytes": 6669,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/code-coverage-report.md",
+      "sha256": "e4ed361f634ead602c195ac30389aee98e77908bd6b1077a81fd27de0e149a86",
+      "size_bytes": 117,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/compliance-pack.zip",
+      "sha256": "8ec3e8361c373284ca9ea34877e4f36537949e8fcd52f8a3bbfd4d36f1d3279e",
+      "size_bytes": 17196,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/docsync-evidence.json",
+      "sha256": "43c8485700dd9af35eed9753e682fea33737c91ea6590d223ef7d02a1af57034",
+      "size_bytes": 8011,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/layer1-0b01609d.json",
+      "sha256": "c5548aa0999be4a0142b75a5d7069a75a495243b30c9211baf145a6141de4199",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-634a0021.json",
+      "sha256": "e320a8ad6749fe12c9e7732569bac706141d0de7f55e9200ee0020770b91503e",
+      "size_bytes": 3069,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-72088274.json",
+      "sha256": "c30a75e8ff539f5dd48fcbea04201c09abf6e1910f203f3e2d708c38f325ec34",
+      "size_bytes": 2441,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-8a5b8665.json",
+      "sha256": "133c85d234b86446f29dd8f803e1394788f0b876066fdcf0275cb00a3ed9a84f",
+      "size_bytes": 2505,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-8b54b365.json",
+      "sha256": "c1194cdaa70c32bd1bfee3bd8a9f098c9dc70cb19b130843d00219e4952a99b4",
+      "size_bytes": 2440,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-983f3630.json",
+      "sha256": "874fa5fcfd7022b1cf6d80db24fe675a44c582a698347a44f6f9df09e8347d8e",
+      "size_bytes": 2501,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-9a12c2f5.json",
+      "sha256": "fc7fe486418e6f013fbaad954bcbc80c43d66f016f96050970ed3836d05fe0ad",
+      "size_bytes": 2821,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-a3ffce95.json",
+      "sha256": "b99d1c3d9d4246b0b45508e5384f4a2723705d58ba139c908e9fbe86a1a94638",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-be94beaa.json",
+      "sha256": "cf3f3fe132a204ee9f6c8ec6a2515a5c0ab4469034ca0fcbbdb90b657865be02",
+      "size_bytes": 2441,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer1-c5e468d0.json",
+      "sha256": "f836451cd62c01a0d1bb3f4d4dea1922e3490f20fd8e87e529a4f34be755d462",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-0549c1bb.json",
+      "sha256": "41a6b1f93cc4bfc38141b0bb56a5f96ebf135734c37ae1b91d77b606dec763ad",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-0b01609d.json",
+      "sha256": "768f6065a09d8173d96acf3448ac33f0258f61a77e262d67651e7d9b459cd3a3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-170a875c.json",
+      "sha256": "4ed8b151a7f954041cb683230ccbff2521a126d8c2a56983e7b18e5fc5cd1273",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-3006e385.json",
+      "sha256": "090349633ca45e658cf97629695dcec94b5c677a15bb17f576026a8d96e2b230",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-36e6765c.json",
+      "sha256": "5e63c945d1ab2c7eca17ba861790f96e4dd1bcd77b0bbb84f91cf0d7dfed3616",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-46c36b71.json",
+      "sha256": "5b68ec96cedc37cf2ba188e31cea7871fa399b390f27549adad670739f3ac1f3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-5bc59dae.json",
+      "sha256": "4de1bab2aa2bd59b8dabc18de0409eae7df207d73d8a04f844d4f011bb79a9f0",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-634a0021.json",
+      "sha256": "f8966f05f61be2d515923de6592f1abf8ecdce5e92dc8768ca8ea00aad245ac9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-72088274.json",
+      "sha256": "69442cc8a201757efa69b3616ca8aae35648bbd663a73c50ce31ee94a0818230",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-8a5b8665.json",
+      "sha256": "23cac7a104a124c3794f8072134f91b26609ee382ed8f487c3561efb01225cf6",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-8b54b365.json",
+      "sha256": "b8e3fde3696f5b14f41f49c805c9ab04a4ef59b6ae5535878756944643e3c883",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-983f3630.json",
+      "sha256": "14e8014a3a22b2af7f088c5669d996332e0ccf413eb684bbef56087464cb20b3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-99c43af2.json",
+      "sha256": "a14f5ee396b7caa1855a3e35e599b309155e8a498b30c99592a3ad07853b8f41",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-9a12c2f5.json",
+      "sha256": "141e84f5bc5a8d5772ab478cc703642d05fcd033f4ab60a7dae97352b3c991c9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-a3ffce95.json",
+      "sha256": "5135177de6c2bfc0d0705bf45599355940974b3ca79b16214a9ef8d4bdcf15d2",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-be94beaa.json",
+      "sha256": "649324986d07e0f9c346c2597c4d8982242cf146520561467d4edeae8187005c",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-c5e468d0.json",
+      "sha256": "4726a8ba08d18e80162e20f85c4b3b6b54149831a2ad83a4cee8b56282411ceb",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/layer25-ce04e92f.json",
+      "sha256": "37e09b257e7ae0b22158c0e58823e0de7aa8e72cfdc40fe8177c418bff35d6c9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/manifest.json",
+      "sha256": "7cb4ce520365cdc32ffdf4f42d11c63876d799bc8ea658dc98983ea803d21464",
+      "size_bytes": 1835,
+      "category": "deployment"
+    },
+    {
+      "path": "audit-v2/misra-report.json",
+      "sha256": "22f4b01cb06ec581941d738fd8e52faec6032ede86a1061c1e1a8902f81e0bac",
+      "size_bytes": 28340,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/requirement-coverage.md",
+      "sha256": "3558ef95108262d07fd548a1dcdf184a3cf219df1c8e8772564cb3e7e02e3473",
+      "size_bytes": 226,
+      "category": "test"
+    },
+    {
+      "path": "audit-v2/review-log-summary.md",
+      "sha256": "c4b0e7d2dc23b0f3355224924e6249074e94cd7ee55d86c27d00913686a19da0",
+      "size_bytes": 520,
+      "category": "review"
+    },
+    {
+      "path": "audit-v2/review-log.json",
+      "sha256": "5e17c55229c91ec5fa381f089ae350695cc3d5c28bd1fab61a3d74bc67a6c952",
+      "size_bytes": 1013,
+      "category": "review"
+    },
+    {
+      "path": "audit-v2/traceability-matrix.json",
+      "sha256": "4f3ba73f4f8a66600f72c6cd26335e10f63407a6771702e4598d7cdfb71c1c5c",
+      "size_bytes": 354,
+      "category": "spec"
+    },
+    {
+      "path": "audit-v2/traceability-matrix.md",
+      "sha256": "2cc6e6dd941e787e344d4430752212197045b79461d302e1c49a1801ff1079f6",
+      "size_bytes": 310,
+      "category": "spec"
+    },
+    {
+      "path": "audit-v2/traceability-report.json",
+      "sha256": "5cd9a82700c00ee43ecfe14c8a530a5bb2573f17744a8f213bd7f915d8084603",
+      "size_bytes": 936433,
+      "category": "test"
+    },
+    {
+      "path": "audit/acceptance-matrix.md",
+      "sha256": "3247b7cc235a139e92622783bdbbe1e94305c6cff88e209a023f30af3fabcbb1",
+      "size_bytes": 370,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/audit-manifest.json",
+      "sha256": "e218e84aa3e080efc53f34fc2ff7cf825547f55d13d2f1d8b8c68ac879ba4b0e",
+      "size_bytes": 40556,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/c-coverage.json",
+      "sha256": "b00a91cdc036f42b49f67e10b71eba53e0d42651a55c386b02d31a396a40ea12",
+      "size_bytes": 2450,
+      "category": "test"
+    },
+    {
+      "path": "audit/ci-config.yaml",
+      "sha256": "6d9c7eb6017c776ca1f304b6b58d8b4360aa1c966c7a97413d7f4776263656c9",
+      "size_bytes": 6669,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/code-coverage-report.md",
+      "sha256": "e4ed361f634ead602c195ac30389aee98e77908bd6b1077a81fd27de0e149a86",
+      "size_bytes": 117,
+      "category": "test"
+    },
+    {
+      "path": "audit/compliance-pack.zip",
+      "sha256": "8ec3e8361c373284ca9ea34877e4f36537949e8fcd52f8a3bbfd4d36f1d3279e",
+      "size_bytes": 17196,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/docsync-evidence.json",
+      "sha256": "30c9e060f776bfd766c408cdc43ceb7282bc3c1022b0b6b260836df47e7e80bb",
+      "size_bytes": 8011,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/layer1-0b01609d.json",
+      "sha256": "c5548aa0999be4a0142b75a5d7069a75a495243b30c9211baf145a6141de4199",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-634a0021.json",
+      "sha256": "e320a8ad6749fe12c9e7732569bac706141d0de7f55e9200ee0020770b91503e",
+      "size_bytes": 3069,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-72088274.json",
+      "sha256": "c30a75e8ff539f5dd48fcbea04201c09abf6e1910f203f3e2d708c38f325ec34",
+      "size_bytes": 2441,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-8a5b8665.json",
+      "sha256": "133c85d234b86446f29dd8f803e1394788f0b876066fdcf0275cb00a3ed9a84f",
+      "size_bytes": 2505,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-8b54b365.json",
+      "sha256": "c1194cdaa70c32bd1bfee3bd8a9f098c9dc70cb19b130843d00219e4952a99b4",
+      "size_bytes": 2440,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-983f3630.json",
+      "sha256": "874fa5fcfd7022b1cf6d80db24fe675a44c582a698347a44f6f9df09e8347d8e",
+      "size_bytes": 2501,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-9a12c2f5.json",
+      "sha256": "fc7fe486418e6f013fbaad954bcbc80c43d66f016f96050970ed3836d05fe0ad",
+      "size_bytes": 2821,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-a3ffce95.json",
+      "sha256": "b99d1c3d9d4246b0b45508e5384f4a2723705d58ba139c908e9fbe86a1a94638",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-be94beaa.json",
+      "sha256": "cf3f3fe132a204ee9f6c8ec6a2515a5c0ab4469034ca0fcbbdb90b657865be02",
+      "size_bytes": 2441,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer1-c5e468d0.json",
+      "sha256": "f836451cd62c01a0d1bb3f4d4dea1922e3490f20fd8e87e529a4f34be755d462",
+      "size_bytes": 2602,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-0549c1bb.json",
+      "sha256": "41a6b1f93cc4bfc38141b0bb56a5f96ebf135734c37ae1b91d77b606dec763ad",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-0b01609d.json",
+      "sha256": "768f6065a09d8173d96acf3448ac33f0258f61a77e262d67651e7d9b459cd3a3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-170a875c.json",
+      "sha256": "4ed8b151a7f954041cb683230ccbff2521a126d8c2a56983e7b18e5fc5cd1273",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-3006e385.json",
+      "sha256": "090349633ca45e658cf97629695dcec94b5c677a15bb17f576026a8d96e2b230",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-36e6765c.json",
+      "sha256": "5e63c945d1ab2c7eca17ba861790f96e4dd1bcd77b0bbb84f91cf0d7dfed3616",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-46c36b71.json",
+      "sha256": "5b68ec96cedc37cf2ba188e31cea7871fa399b390f27549adad670739f3ac1f3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-5bc59dae.json",
+      "sha256": "4de1bab2aa2bd59b8dabc18de0409eae7df207d73d8a04f844d4f011bb79a9f0",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-634a0021.json",
+      "sha256": "f8966f05f61be2d515923de6592f1abf8ecdce5e92dc8768ca8ea00aad245ac9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-72088274.json",
+      "sha256": "69442cc8a201757efa69b3616ca8aae35648bbd663a73c50ce31ee94a0818230",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-8a5b8665.json",
+      "sha256": "23cac7a104a124c3794f8072134f91b26609ee382ed8f487c3561efb01225cf6",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-8b54b365.json",
+      "sha256": "b8e3fde3696f5b14f41f49c805c9ab04a4ef59b6ae5535878756944643e3c883",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-983f3630.json",
+      "sha256": "14e8014a3a22b2af7f088c5669d996332e0ccf413eb684bbef56087464cb20b3",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-99c43af2.json",
+      "sha256": "a14f5ee396b7caa1855a3e35e599b309155e8a498b30c99592a3ad07853b8f41",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-9a12c2f5.json",
+      "sha256": "141e84f5bc5a8d5772ab478cc703642d05fcd033f4ab60a7dae97352b3c991c9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-a3ffce95.json",
+      "sha256": "5135177de6c2bfc0d0705bf45599355940974b3ca79b16214a9ef8d4bdcf15d2",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-be94beaa.json",
+      "sha256": "649324986d07e0f9c346c2597c4d8982242cf146520561467d4edeae8187005c",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-c5e468d0.json",
+      "sha256": "4726a8ba08d18e80162e20f85c4b3b6b54149831a2ad83a4cee8b56282411ceb",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/layer25-ce04e92f.json",
+      "sha256": "37e09b257e7ae0b22158c0e58823e0de7aa8e72cfdc40fe8177c418bff35d6c9",
+      "size_bytes": 508,
+      "category": "test"
+    },
+    {
+      "path": "audit/manifest.json",
+      "sha256": "7cb4ce520365cdc32ffdf4f42d11c63876d799bc8ea658dc98983ea803d21464",
+      "size_bytes": 1835,
+      "category": "deployment"
+    },
+    {
+      "path": "audit/misra-report.json",
+      "sha256": "22f4b01cb06ec581941d738fd8e52faec6032ede86a1061c1e1a8902f81e0bac",
+      "size_bytes": 28340,
+      "category": "test"
+    },
+    {
+      "path": "audit/requirement-coverage.md",
+      "sha256": "3558ef95108262d07fd548a1dcdf184a3cf219df1c8e8772564cb3e7e02e3473",
+      "size_bytes": 226,
+      "category": "test"
+    },
+    {
+      "path": "audit/review-log-summary.md",
+      "sha256": "c4b0e7d2dc23b0f3355224924e6249074e94cd7ee55d86c27d00913686a19da0",
+      "size_bytes": 520,
+      "category": "review"
+    },
+    {
+      "path": "audit/review-log.json",
+      "sha256": "5e17c55229c91ec5fa381f089ae350695cc3d5c28bd1fab61a3d74bc67a6c952",
+      "size_bytes": 1013,
+      "category": "review"
+    },
+    {
+      "path": "audit/traceability-matrix.json",
+      "sha256": "4f3ba73f4f8a66600f72c6cd26335e10f63407a6771702e4598d7cdfb71c1c5c",
+      "size_bytes": 354,
+      "category": "spec"
+    },
+    {
+      "path": "audit/traceability-matrix.md",
+      "sha256": "2cc6e6dd941e787e344d4430752212197045b79461d302e1c49a1801ff1079f6",
+      "size_bytes": 310,
+      "category": "spec"
+    },
+    {
+      "path": "audit/traceability-report.json",
+      "sha256": "5cd9a82700c00ee43ecfe14c8a530a5bb2573f17744a8f213bd7f915d8084603",
+      "size_bytes": 936433,
+      "category": "test"
+    },
+    {
+      "path": "bsw-build-verify-report.md",
+      "sha256": "eb1cfa37b82140a3d9188feb9855b477a0a147dca53409f20b2a8407bc9bc097",
+      "size_bytes": 6752,
+      "category": "test"
+    },
+    {
+      "path": "bsw-phase1-report.md",
+      "sha256": "cf520770e4956bdfba6608703866a02fafd8de16dbe8f875f95012e17e3601d1",
+      "size_bytes": 11945,
+      "category": "test"
+    },
+    {
+      "path": "bsw-phase2-report.md",
+      "sha256": "7b79a80db2dff1928bd1ae9470ce86228c1afa421dba306fd0096e6962e7625b",
+      "size_bytes": 8788,
+      "category": "test"
+    },
+    {
+      "path": "bsw-phase3-report.md",
+      "sha256": "c912e4805b712c2d10645260c19f21d01e53f209ec37f68ffdc12069b249d27f",
+      "size_bytes": 8562,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeCache.txt",
+      "sha256": "4d8b5f7d125095aff5b0af7a921b2a4a7a3d248135d8cdd6afdacfbe6ce56aec",
+      "size_bytes": 13481,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/4.3.4/CMakeCCompiler.cmake",
+      "sha256": "93948e4b2af62bbc69f3df73248b613e4e218dac0d69d569603b6a9514469791",
+      "size_bytes": 2984,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/4.3.4/CMakeDetermineCompilerABI_C.bin",
+      "sha256": "cf9c4c8e5b71a2ba9f1bf600983c340780a8b151fc8e50ece650edaa4c5b5b57",
+      "size_bytes": 1676,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/4.3.4/CMakeSystem.cmake",
+      "sha256": "dd7991cc359a017d8c7b2c7f83c617b5dca004d452e0ec12280ff45e69c6a786",
+      "size_bytes": 418,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/4.3.4/CompilerIdC/CMakeCCompilerId.c",
+      "sha256": "fdf6ba6324e3b29e4268e3ab04f9eb181809b98fe6a52f48fbd526b331e66e02",
+      "size_bytes": 28668,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/4.3.4/CompilerIdC/CMakeCCompilerId.o",
+      "sha256": "86e74cacd03f89ce86d9659889c6bf45540a8b093ecd8fad7b6a861e1eef8963",
+      "size_bytes": 1692,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/CMakeConfigureLog.yaml",
+      "sha256": "6f8446d531dddaebadb459dbe54ec8ff20e8e6a8fc2888259550ad59b697eefc",
+      "size_bytes": 61125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/CMakeDirectoryInformation.cmake",
+      "sha256": "25ba377004efd4015651f622f2fdf6e8e2b2a86387c663343acae79829587bda",
+      "size_bytes": 663,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/CMakeRuleHashes.txt",
+      "sha256": "bd693096a9d757da35bd59f3cb4f5ce5a0755f6dc96f95a2fee749713b0afb9a",
+      "size_bytes": 750,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/InstallScripts.json",
+      "sha256": "bea4c2a77b3a1cd6b5f62f84ca4010d63367be2fb77cce4e5b4f11d27fc4d2d4",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Makefile.cmake",
+      "sha256": "9c10b2396837b56ba7b7469731d6ab3cc0e3e5c0fae8eb55d8036dcd8b6e95f7",
+      "size_bytes": 3346,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Makefile2",
+      "sha256": "aa93c3a389dd785565305529bb02e8f3bdb4c3ce5d290e29f89a4570337789fc",
+      "size_bytes": 65876,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/23",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/24",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/27",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/28",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/3",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/35",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/36",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/37",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/4",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/5",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/56",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/57",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/58",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/59",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/60",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/61",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/62",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/63",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/64",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/68",
+      "sha256": "2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d",
+      "size_bytes": 5,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/Progress/count.txt",
+      "sha256": "2a62cf402cd3396aa00f55f892f4545f308f74d01c8caa0f2837b1982f821595",
+      "size_bytes": 3,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/TargetDirectories.txt",
+      "sha256": "956a6465854b735d2bc386d3dd9127a5e22d86cb1ce6c298cf951bf623d0e861",
+      "size_bytes": 2500,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/DependInfo.cmake",
+      "sha256": "5b3a771ab55ef512c76edbfe72e499879ec766134fd4c7253a64242e847ad2da",
+      "size_bytes": 769,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/build.make",
+      "sha256": "313879cc3bd4aedbef7bccdeb4db7499f18c7bef313e8cda546f4e6fcfd408a2",
+      "size_bytes": 5212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/cmake_clean.cmake",
+      "sha256": "3bcbe16755ec6494f64756ef5df65e4e765b8fc42ff236141456f3471c4f3dc9",
+      "size_bytes": 340,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/cmake_clean_target.cmake",
+      "sha256": "ce16e9b24e5b23a82bf438e59762f22e863f2bab294b65e23fc90fc17dc956ef",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/compiler_depend.make",
+      "sha256": "9aac3a1780c9295e2200fa1ee10b0f991fa5398638f452f1d6d493ca9e5687d0",
+      "size_bytes": 116,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/compiler_depend.ts",
+      "sha256": "dee8e3780bf4f094aaac180552310fb6a106193ed1bdb121b88279286a14f6c7",
+      "size_bytes": 120,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/depend.make",
+      "sha256": "aca670f122638959ccdb43bae08d32970f0efc7cee5d93476ea609157e1fec43",
+      "size_bytes": 97,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/flags.make",
+      "sha256": "f9f89f0aa23a77ce021231c99061953c6fa2ee8e16990634f7c5e407faf10c07",
+      "size_bytes": 2222,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/link.txt",
+      "sha256": "8132ffa4f0d12570bc9b39eb719e151effdd09b48b0c7bd1b77a4ea170f60c7e",
+      "size_bytes": 166,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/progress.make",
+      "sha256": "c06e644090b09d41eaddf59d10bcf03c6db6499eb51fa0d03e5128e5a165cc3c",
+      "size_bytes": 43,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/src/dk_os_tasks.c.obj",
+      "sha256": "cb09641800b9832ad80ce8383936ffa07b232fa9064c162d20f9ede0d2130c7d",
+      "size_bytes": 41176,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_app_tasks.dir/src/dk_os_tasks.c.obj.d",
+      "sha256": "4142659a5790a76573ff70570bc2a1c5610b6acae6bf00366e4cb7a2cd0fe348",
+      "size_bytes": 804,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/DependInfo.cmake",
+      "sha256": "6aaa45b93a30b15e2fe9ac6eaf83447342bc918ac54b33d6ac7171a2d3dcea5d",
+      "size_bytes": 1190,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/build.make",
+      "sha256": "bba6519222c417e0de485b370ab0966cf445815deb04a6fcba4d80c74535cedf",
+      "size_bytes": 8546,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/cmake_clean.cmake",
+      "sha256": "83fc281a7f5b6cd2bf64e1c1101bd579f3a4247abc9cc6f4c98d57aff64ae41d",
+      "size_bytes": 651,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/cmake_clean_target.cmake",
+      "sha256": "a62eca6b52aef38fe3477c54addf46fac3a09a34ef4c47a7ac10c2ea91963b96",
+      "size_bytes": 40,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/compiler_depend.internal",
+      "sha256": "9a47df61c380f1651ccac3643d0eb99b38f6da14fd1eae50a112bcf428305b1f",
+      "size_bytes": 1325,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/compiler_depend.make",
+      "sha256": "94a47e0cffc86da237e5301783fd2d2aa6a0677cc0a2612ed86ad6d415f577d9",
+      "size_bytes": 2145,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/compiler_depend.ts",
+      "sha256": "cdb0fff7bd7e9ce17e62edbf0508ced98a264a23bdbd7cbcb05e47167534dbae",
+      "size_bytes": 115,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/depend.make",
+      "sha256": "835cb08cc2e4b26a08ebf4d29a67e243b5d3ae39180c846f8d93b6983c2309bd",
+      "size_bytes": 92,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/link.txt",
+      "sha256": "9f2c8687413381a0685b762983a757392df71543637230a5938f76ba7228d6f2",
+      "size_bytes": 314,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_bswm.dir/progress.make",
+      "sha256": "d6541a3ca7c900616d6e5c3f362d1ac99bb56d3b66ffbce42d7191e480146dba",
+      "size_bytes": 64,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/DependInfo.cmake",
+      "sha256": "9f67e527b33ca4477a91da78ddc3a953102bee74eefa46c27ff860bed49a871f",
+      "size_bytes": 1041,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/build.make",
+      "sha256": "4e09153edc6281a7869142997503db6c6422b705876cb799d4e50d328ededeec",
+      "size_bytes": 7455,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/cmake_clean.cmake",
+      "sha256": "d39e5e2707b8bea33e1641eca3725b1fc5e59615eb09daa2726a3acb02ed32e0",
+      "size_bytes": 516,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/cmake_clean_target.cmake",
+      "sha256": "714f6488b6c77d09153014d79e0ef1f4faa5954eb59bee533726cfe22c716a13",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/compiler_depend.make",
+      "sha256": "0f8d38e39c0ee25e67a2d4bd563ab0ec2f1cb921a50f51e59f883c5d49826bc4",
+      "size_bytes": 110,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/compiler_depend.ts",
+      "sha256": "facde7fffb7e380e5e5da3e7262bd0c93e522e27e544e8a8aeb3eb1c9e9be2ff",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/depend.make",
+      "sha256": "2d6a5a757dfe055753d6e435e1672c6d7d155187cd98379e6e18432ca421466b",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/flags.make",
+      "sha256": "4c1e221d9cd6c8930631aaa3484cb4b2231ac9eff3c00ca361a1d7b3463b27bd",
+      "size_bytes": 1966,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/link.txt",
+      "sha256": "9af3136d1d15935d6d5fe3cdecfc6730211ec2c432a370a78a4e84c461e4a45c",
+      "size_bytes": 246,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_com.dir/progress.make",
+      "sha256": "e04282eb7de230a401a2a252578b4813c88ed237050b40070d21629f29e9e2b5",
+      "size_bytes": 64,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/DependInfo.cmake",
+      "sha256": "055e7ce2f9eff7b4208a7eea8ddc9d3c033863bce10ff8e91494ffbc17e8012c",
+      "size_bytes": 1067,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/build.make",
+      "sha256": "b58e71a869649643967504f930e5997a1e5664265891e7f45d5d6c0f56233c31",
+      "size_bytes": 7695,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/cmake_clean.cmake",
+      "sha256": "710b3ebc9a85a767aa8ab72461548f05c4880db2c2da51686d168d0b50130734",
+      "size_bytes": 542,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/cmake_clean_target.cmake",
+      "sha256": "50f95d4c35f01f27f8fbebe59ee8c2dc3931ba4044a977034fc84e3612a42934",
+      "size_bytes": 41,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/compiler_depend.make",
+      "sha256": "2c241f77ecfab16081905980deb659bab4cb7f46b51fffa3d840ed4a27a0afc8",
+      "size_bytes": 112,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/compiler_depend.ts",
+      "sha256": "08260344ccf9469ef57a2aacb93b8239efdee04da1010dd6403bcef9a9513fc1",
+      "size_bytes": 116,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/depend.make",
+      "sha256": "c4ffd2f3883c44b86b099d24c4702e4570e21c4e87b5e9dbd6c68bcb7e52855a",
+      "size_bytes": 93,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/link.txt",
+      "sha256": "3d5a53093abed715e43a8e3999cc20016c958f0c5117a67b268d87d6342d3e45",
+      "size_bytes": 260,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_cryif.dir/progress.make",
+      "sha256": "ba4ede96f18a46bd912225d7967ce77bfb926392dca33465c84b91eeb424b7c5",
+      "size_bytes": 66,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/DependInfo.cmake",
+      "sha256": "8d64e2b287f396279daad4ce68a6ff2ae3efb6a5d743fd3d0b8430bd1ea5bc4c",
+      "size_bytes": 1225,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/build.make",
+      "sha256": "59094b56d6971789d7082e8528f2baa8ad9418b01f0ba4dabeb52e8363eb4755",
+      "size_bytes": 9225,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/cmake_clean.cmake",
+      "sha256": "a3bf9a4eeae7deeccf3ae859f92075591d31f9b039bef9553710a5053d7417f1",
+      "size_bytes": 624,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/cmake_clean_target.cmake",
+      "sha256": "af52020db92e18153a4d3c61a383eb35cf6bb6f9860fd78b2ef40a662e41af3a",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/compiler_depend.make",
+      "sha256": "92f38a5255d1dba8b3bdae53b288fd959f388925b938182cefdfef743fac525c",
+      "size_bytes": 110,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/compiler_depend.ts",
+      "sha256": "d50cce21935ac4cd8af45b8c9862247b2527a6b12abcf739a069f96de313ed52",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/depend.make",
+      "sha256": "9b905a5d49d1803f3099b010fb4e6b399fa1d22fce8dc309fdf42f0a8d4d7d9b",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/flags.make",
+      "sha256": "e85aff92070041e4f0627443b8eb4b490a63cc6794bc6733f908a0eb7db0942a",
+      "size_bytes": 2030,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/link.txt",
+      "sha256": "7bc8b4f0b0dbd348c4ded421c10e37030074d321ac21c24cfdd34bfc9caf12b4",
+      "size_bytes": 295,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_csm.dir/progress.make",
+      "sha256": "41e0bff7b67e82ea11a025ac21d1c6bd16be2f5601a4128476d42204f7589106",
+      "size_bytes": 89,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/DependInfo.cmake",
+      "sha256": "385187d5e84f07aa4ef28fed7b341457cfb3cbffc832cadc0029c71dbe077e5f",
+      "size_bytes": 1041,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/build.make",
+      "sha256": "598e4fffb186834d8d6eddb9f59d6c065a9430a4690eac9c35acef1f832b2c05",
+      "size_bytes": 7455,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/cmake_clean.cmake",
+      "sha256": "8387c78014e248c0c1cc798e185b085fb6f5644ceed6852a5c9343c570efcc19",
+      "size_bytes": 516,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/cmake_clean_target.cmake",
+      "sha256": "4540ac9c9aa6f87172d2a5111d07b7f580142e5565d5a99f9eeb44f91a318e08",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/compiler_depend.make",
+      "sha256": "0163df39a41a4ddcb157e393e1f4a245f8da67b3574123c2b05ec6154b614e94",
+      "size_bytes": 110,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/compiler_depend.ts",
+      "sha256": "9cf865d0f84c7b21dbb34e49b0ab3996f625afabc380241be597fc9c374a237e",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/depend.make",
+      "sha256": "6d15fad2578a7fdf2d8d0526535bad57b9bdc033de99d24e82be3175435fc3b3",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/flags.make",
+      "sha256": "8b31752707778062adbb1595939141c1e04105a18a6bef5e910469b4729b76ca",
+      "size_bytes": 1925,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/link.txt",
+      "sha256": "56b1abf175c04c66f1cb829b2cedcf1f908682bbc0eb78d2a2542627502e3682",
+      "size_bytes": 246,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dcm.dir/progress.make",
+      "sha256": "f7e5022238c7c56779a485496797eb5d4bcd252c4f39221932aa26a30a38b383",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/DependInfo.cmake",
+      "sha256": "b149118e54b66fd8d0942858c00a545715d22ec70d4ac26eb76ec5d530604b30",
+      "size_bytes": 1340,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/build.make",
+      "sha256": "07bf149eb2cd8952f9d8a628a29997b3ea10195bcb18ba41251f4771107afed5",
+      "size_bytes": 10063,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/cmake_clean.cmake",
+      "sha256": "f6ccfca261511bb552847245f1f5005814f0e7fdbfdb3b99b8372f968e9bdd2b",
+      "size_bytes": 732,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/cmake_clean_target.cmake",
+      "sha256": "9678ced57f8ea9c93997a443c3b8735521cbffcdeaa9f0a2bc89b3aec3bcaa7e",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/compiler_depend.make",
+      "sha256": "e70c75368d4fd19760ea4e04767da90d2e71560c26a93cafeae3be58d1b4bb16",
+      "size_bytes": 110,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/compiler_depend.ts",
+      "sha256": "865ae455f65f3c9895005a2a5d483bb7c3d1acf3260aad345b864b9b92695e89",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/depend.make",
+      "sha256": "0bb1566d491a5e509a547c17e3bef40d282bd21c94e1894ba8b3c3c842f4e079",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/flags.make",
+      "sha256": "4ca204eac54fc03c252fb89fe1bbbb0166c0a2b7d639c6e41805abe0421c70d0",
+      "size_bytes": 1793,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/link.txt",
+      "sha256": "17495548b014b8f4e2cd954af162576f27a48a0a69c172a062ff258e71e19120",
+      "size_bytes": 349,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dem.dir/progress.make",
+      "sha256": "61a27a3ab11e42a098f53bb2fe2fc527cf723977a361724fa9a69d04540565f7",
+      "size_bytes": 89,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/DependInfo.cmake",
+      "sha256": "bce0e597dd915787f56e62510108047f933dfba87e22f1148540a3d4ae38d9c9",
+      "size_bytes": 872,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/build.make",
+      "sha256": "be776ea037fdcb8386e6bd989b653673adc152ce16860b454785ad4479645271",
+      "size_bytes": 5780,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/cmake_clean.cmake",
+      "sha256": "2b4b0f4864d6189b568ef8d21f0863511051bcdfc94f171d36004a9f681f504a",
+      "size_bytes": 418,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/cmake_clean_target.cmake",
+      "sha256": "6fa5935d66c87e8620cc58d6ee204206150facc18022dd88877cff12fe1fb0ba",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/compiler_depend.internal",
+      "sha256": "cfaedb587bdbbc1a9c1ca29ccf674db0892521bb09d978a7252ae4fff162103c",
+      "size_bytes": 660,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/compiler_depend.make",
+      "sha256": "c00c4aca9fd703b56c3ff3bb205901c5b14169d1f31f63b4d9906784bf91bf9d",
+      "size_bytes": 1142,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/compiler_depend.ts",
+      "sha256": "8e1ee54a6a5a88253ccf91f2dd23dcb7c036d6aca70e9286e98e3f79a4f15615",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/depend.make",
+      "sha256": "4b45346b5adbed2ea24ba2ab2bbb2d607aa9b9011d6fa444a02ddea0e151d006",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/link.txt",
+      "sha256": "fce60f7f7ed0ba0cb287cd73d075d51a0cb596c462ba28585381af4020d9631e",
+      "size_bytes": 202,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_det.dir/progress.make",
+      "sha256": "ee9cd79d65ecdb9e54c02a17ee0613876b658fbb822290ef8875c7fca1f29716",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/DependInfo.cmake",
+      "sha256": "db80a11e9054cbaf500fdb7fbf8bd5bbd3092d3c0e85b65295fc4fd064d1667b",
+      "size_bytes": 783,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/build.make",
+      "sha256": "781e58bf41bddb607e6365418738f19f6f0eec30e318c29de726bac29aa25649",
+      "size_bytes": 5236,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/cmake_clean.cmake",
+      "sha256": "4e81b2fcad70543bfa1b6ca651d093e660a5a89d0cd58afd972117e014ab10fa",
+      "size_bytes": 342,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/cmake_clean_target.cmake",
+      "sha256": "7ccac2fc19c5ca1c25c438650b606f803a43c4ed0084297a61946fcf8e22efa2",
+      "size_bytes": 43,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/compiler_depend.make",
+      "sha256": "648d61a8d748aa76691b32035815e760f9294139b9260176c294509253c78a8d",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/compiler_depend.ts",
+      "sha256": "7f5d93dcbb482df86ef828d18140c3bae8ef6d5e222ce939c2126a6907106316",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/depend.make",
+      "sha256": "40aa113c6ee91e98fb99106a70ddc49f543efacdfc86d9d362384225fb28337a",
+      "size_bytes": 95,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/link.txt",
+      "sha256": "9c0c16a676b1dd39731f20e8b666929755c3498efd6e6ddc271fa2846e683cbe",
+      "size_bytes": 166,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_dk_diag.dir/progress.make",
+      "sha256": "13edc2d35699afef62e07393ec9d25fb4dda4777492c588a5b2839d7cd3f1a43",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/DependInfo.cmake",
+      "sha256": "d736031d8d525b458ecf60258da0f142dabf8a4eb33cc9b908b3b3675afad46f",
+      "size_bytes": 1069,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/build.make",
+      "sha256": "140706d14f0e825b5109e2e3758855a8d58116b44ae813cf8ffd48fe833bc874",
+      "size_bytes": 7670,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/cmake_clean.cmake",
+      "sha256": "fed18481539b5638696ba54f324fd77ec0c90e3d2330cc2cbda811d94e7accf5",
+      "size_bytes": 539,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/cmake_clean_target.cmake",
+      "sha256": "bc7efe8fdec6c3c1c4fcce03c845fcb1cf5df99a09d1526194bcbfa87df66062",
+      "size_bytes": 40,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/compiler_depend.internal",
+      "sha256": "49ea9c37f3d56265d81c62a4ecde3b86014c554600ebcf2169182c3b2f611c18",
+      "size_bytes": 2107,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/compiler_depend.make",
+      "sha256": "2ef0f676b3b641386c5a001b60887e35f9120778725fadafd6964378d2e23995",
+      "size_bytes": 3742,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/compiler_depend.ts",
+      "sha256": "e42467a78f39d3f8c283944a533622f4aa55eb46d8e2b389c5b9ed345a9fee16",
+      "size_bytes": 115,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/depend.make",
+      "sha256": "9b7d7c3b3324345ef8df23142d099ee372b1a7224c7185fd204e735e8482deea",
+      "size_bytes": 92,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/flags.make",
+      "sha256": "f9f89f0aa23a77ce021231c99061953c6fa2ee8e16990634f7c5e407faf10c07",
+      "size_bytes": 2222,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/link.txt",
+      "sha256": "b7beccdb3a91172c417fa3fa49c85f3a1c0ba00fced73c4ec2c3a08dd29056b8",
+      "size_bytes": 258,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/progress.make",
+      "sha256": "ec50a62f3843f8236f2586095f180249b6f57c2537d29be4bfc7f83bd9694c96",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/src/dk_ecum_callouts.c.obj",
+      "sha256": "4f13ceba9c7fcd145d71356039e3ea8fdd98367ca22b7cee27d50afbff9fb0ce",
+      "size_bytes": 40972,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_ecum.dir/src/dk_ecum_callouts.c.obj.d",
+      "sha256": "419e0bad9527c30c0cdbe234b30dee844431b5b8ed46b22584714eb0dd43a983",
+      "size_bytes": 659,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/DependInfo.cmake",
+      "sha256": "1f7e64f4ad532ed21c9b31f16c40426470b7d6418f140466317a3ba0ff01c7d1",
+      "size_bytes": 837,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/build.make",
+      "sha256": "dfe92b2d9eb9c04200e8cfd243ea64d6b8ffa838b67022651992af4cae9dbcd4",
+      "size_bytes": 5623,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/cmake_clean.cmake",
+      "sha256": "e86aab0f62d2d2a083d25b6f4e10f846377680929f36f2b3a4def63fdd90ecee",
+      "size_bytes": 402,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/cmake_clean_target.cmake",
+      "sha256": "8ebd77f8f4d9d08f4fcbd7f2d62ddd28fea07f13b96a91e7a7cf5ba98bcfbec7",
+      "size_bytes": 41,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/compiler_depend.make",
+      "sha256": "774cbaf690e08a8900b9357dd407053965cf5b378a4380795821d28affc8af3d",
+      "size_bytes": 112,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/compiler_depend.ts",
+      "sha256": "ec1f60f05d73eee3053dcc9475a8abf06cf94b1678e359b9d0434a4cdf50346f",
+      "size_bytes": 116,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/depend.make",
+      "sha256": "d0ca6ba3961e58d922ab8366f744aaa1337d6031eb80c7938ae934ae3937356f",
+      "size_bytes": 93,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/link.txt",
+      "sha256": "4a2d5c2c4edf0dccba83156b2bcc124e8176b7aacd49571f82e0e7f11e26ca9f",
+      "size_bytes": 195,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_memif.dir/progress.make",
+      "sha256": "e11d5c79987b3f707479d332624cf23003c6a52ee73afae7b023cdae748c2dcd",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/DependInfo.cmake",
+      "sha256": "3e6a849bd7f7e1e433c83788cd1cdf085f664a9c1b63ecb24ac917d2b801b27f",
+      "size_bytes": 1041,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/build.make",
+      "sha256": "8d3dc484c591e50808db82ec3edcf10ce9f452bbae69433f26ffee3e1cf5d6df",
+      "size_bytes": 7455,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/cmake_clean.cmake",
+      "sha256": "f66ed420ddd8f6898762dedf72d035880c21ba8aa64c3d5b433515eb5d753ae3",
+      "size_bytes": 516,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/cmake_clean_target.cmake",
+      "sha256": "999fb3b2d325850adcde146aba80f352c78c3229ee6673fa23a8e8f1bf8ab61c",
+      "size_bytes": 39,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/compiler_depend.make",
+      "sha256": "ffb8b539e7a5ba4f925b61948e48d6e04f9c1e36da6ce4b17ccaa5466429419d",
+      "size_bytes": 110,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/compiler_depend.ts",
+      "sha256": "d246a1b030e9058395ae9f0e13a61727bc38bb736d9b5c6e0ccf96f54a2fab22",
+      "size_bytes": 114,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/depend.make",
+      "sha256": "9b3af6f0e23fa18ddc5bab35766d4a2e3b005c10ab7e29a2e2e44615f5705edd",
+      "size_bytes": 91,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/flags.make",
+      "sha256": "a8c94a5604cb5575d42d5231c6751d3a9a07234d113d8125f2096fbdc7d8dafe",
+      "size_bytes": 1787,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/link.txt",
+      "sha256": "6ecda26a93d61bc417cc3832e3860e492cb446654db3e9909a3175f576a72879",
+      "size_bytes": 246,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_nvm.dir/progress.make",
+      "sha256": "a239fdea6ef55ca261817651fb404b8eb2b6d8adff104670978ae36cf72600fa",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/DependInfo.cmake",
+      "sha256": "b237785f0b2713aed88ab1c416c769d5d6fa5f0bf9d634c051a2e361c71bd53c",
+      "size_bytes": 1001,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/build.make",
+      "sha256": "e228bd7cda6f70bb9ed65f3fb0d671cad3995cbc490bf77362ef9eb60f4b5ebf",
+      "size_bytes": 7164,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/cmake_clean.cmake",
+      "sha256": "50b24384b2a733d524cf257666aef20d53a73a3c8b47fbb3d3fcf7a240ef33b4",
+      "size_bytes": 485,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/cmake_clean_target.cmake",
+      "sha256": "b9190d178922f04f6251504dc5e54e9696ab10ccd32f6a7c374d91e0e91149a6",
+      "size_bytes": 38,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/compiler_depend.internal",
+      "sha256": "fe1da8bbce19c6708437269b8d6abb2b35674a6cb4e84dee5dfe19bce50bbab4",
+      "size_bytes": 2983,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/compiler_depend.make",
+      "sha256": "a665b7730c9659ba0d455ac393d2900e564b7fa12431ff3299dca9ed7dbf8c16",
+      "size_bytes": 4856,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/compiler_depend.ts",
+      "sha256": "201f0c958512a46fab6a32dd689811f1094538541f4cf7b5bfa768e947ac2246",
+      "size_bytes": 113,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/depend.make",
+      "sha256": "39f237456a9bac9cde56d3785a557692bb949975279a15794d35c2e18901f5a0",
+      "size_bytes": 90,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/link.txt",
+      "sha256": "f4fd2684ce3a5f6d2ca23e3c47b3354ef57eb1af44b9c9725078d239975b891a",
+      "size_bytes": 230,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/progress.make",
+      "sha256": "d494cc6e1bad754aa376aa9f117e5c3447315a3f03d4f2798adda493a3df2230",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/src/dk_os_cfg.c.obj",
+      "sha256": "97b7a57a8f8c905cc3f6ceec1c99b467312987e99beaca7ec374db206de97867",
+      "size_bytes": 49748,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_os.dir/src/dk_os_cfg.c.obj.d",
+      "sha256": "c0bfbebdc392bade3e5253510beedda314a68a5f1498bba0b90e9f3108024e04",
+      "size_bytes": 1599,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/DependInfo.cmake",
+      "sha256": "8d9bf09504d1690819baca05dce4d3ab806e7cddbf7aef75b2e7ce2dfd61d144",
+      "size_bytes": 1057,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/build.make",
+      "sha256": "ce4d57d87812e78261cc9f53172f47aea1dd6c1a72ceec0fbb586134a6cfc560",
+      "size_bytes": 7594,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/cmake_clean.cmake",
+      "sha256": "c00f6df703cdb91dc110ac167437a67694922a1c4f0db6446ed62f2828341b2e",
+      "size_bytes": 531,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/cmake_clean_target.cmake",
+      "sha256": "eb98d6f946eb357ad62ccbc0f14ccfcded4f3e58cd33337ab83782b1787f4a42",
+      "size_bytes": 40,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/compiler_depend.make",
+      "sha256": "6781d42f4783aefc09f45df2f2503c0c2dc128950f74db4b022d255870b23fb2",
+      "size_bytes": 111,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/compiler_depend.ts",
+      "sha256": "41fd3bea1078a656c326cc10497043ecf96be454ffc166268ce98a9b724db1c5",
+      "size_bytes": 115,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/depend.make",
+      "sha256": "470f4cb98a59fc47a09362507f9e75a661f777ffda92ab7fa3bf0e50e5f16fe3",
+      "size_bytes": 92,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/link.txt",
+      "sha256": "83f91d377c2eefef583185f04a1dede72003ab9c3dc473abb3b0c0088bd6f312",
+      "size_bytes": 254,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_pdur.dir/progress.make",
+      "sha256": "ad17764b140628c6c362ea495141f9a1fde9c3207b0a4e2f3daba48dc71c92ad",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/build.make",
+      "sha256": "aed17f48ad76bdf8a987c49f43c87a9ffb87e6ceb9d4262a03b456d0c7c28db7",
+      "size_bytes": 2974,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/cmake_clean.cmake",
+      "sha256": "b46ca4742e6e6f220b520a4aff925824d9dccdd0975128b70fa469b41f016977",
+      "size_bytes": 210,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/compiler_depend.make",
+      "sha256": "5c7b9b11d3f5d0879455528417557ac0ded485cec2c252e261fa89ec30fae6f2",
+      "size_bytes": 124,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/compiler_depend.ts",
+      "sha256": "b39a36ae47b1ca2f66abb8d8d3a46fb06f343d200013a0a276279db9e7a7ce0e",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_all.dir/progress.make",
+      "sha256": "025590a6753f19c90a2e1e921a94c46cb0463042b64083b25502ea7301012180",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/build.make",
+      "sha256": "ad809cf1f5778235b4d1f828188353ac5460941ec46df7dec23101dd178e8531",
+      "size_bytes": 3076,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/cmake_clean.cmake",
+      "sha256": "4b2bccf3de64cbbf44126e2d3e9f682128d5f4dbbbbbfc01ac79e1440c26aa98",
+      "size_bytes": 214,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/compiler_depend.make",
+      "sha256": "684990865258a8b4503135484b42b0c91a054d379951a118191094de72ad41c3",
+      "size_bytes": 126,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/compiler_depend.ts",
+      "sha256": "d825be7ee3994c8c1a11cfd77fd1e30180cd6622dc2f5ce1010c3528f3017d08",
+      "size_bytes": 120,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_clean.dir/progress.make",
+      "sha256": "cdada46a0f8df0ad41594a52d0fd048c5faa3f986d1b21f4d277b16f1c3ca615",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/build.make",
+      "sha256": "fbcdda5e72be5fb6ca138dbbc5f39efc6b34e5fe1383b7fe945efe96261edf4f",
+      "size_bytes": 3450,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/cmake_clean.cmake",
+      "sha256": "be6d053df0e4c78d4e21f5fe662d4cb967093d477726263d774e8c46604d154d",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/compiler_depend.make",
+      "sha256": "762776b7097660e8a75b0678ad9123f4232ea399a14107f84b99c913341c4f27",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/compiler_depend.ts",
+      "sha256": "de9e0128a5c744126cf5f48e763a01b7ddea2479a96c67003011d54ada40d7c4",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_info.dir/progress.make",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/build.make",
+      "sha256": "a18e30ca6fb00c248619151d965a223ff5639ec051468c1649b29001266334f5",
+      "size_bytes": 3021,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/cmake_clean.cmake",
+      "sha256": "07ebf7de1681bded90f5ce8ca8f9866cd8d6617844abf3e1c94702cf3308978f",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/compiler_depend.make",
+      "sha256": "b3756e0df68e6ec1e72775f2f33273413cd70d1154201ae50e760e019f80539f",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/compiler_depend.ts",
+      "sha256": "dd56a23c234e682513135c93c710cd32dfeae2acf1a4a78b4002c75d509f8f03",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase1_size.dir/progress.make",
+      "sha256": "be68116e5e102cafaef10bb8e94189906757e8ddb3d5f0b526ea87f16c94ceca",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/build.make",
+      "sha256": "f7a0b2e1cb6c8c016ed27714f6a47c86ef08838ad38331acda3cf1b0d92616a6",
+      "size_bytes": 2973,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/cmake_clean.cmake",
+      "sha256": "c0e8149868f0fbb6e68969dcf365be2777376e22b2d69a9538593f83a66cc903",
+      "size_bytes": 210,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/compiler_depend.make",
+      "sha256": "bbfdd3dc316aa74c022f949fe096acfbabb5412547221c22ee84a47e70391b7f",
+      "size_bytes": 124,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/compiler_depend.ts",
+      "sha256": "e05da6d7f5583bfda3d70ccbc76a29ba36af2347dc6d83545ad844cdf4ba74b8",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_all.dir/progress.make",
+      "sha256": "5f6735af5406ef23742abdb4b361bb1ec375ea74ba7df87139f349139f89ac5c",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/build.make",
+      "sha256": "1a7fd98fd9a164f93189eadc196b2741e575a54f096d04f7484eedaaacb5589f",
+      "size_bytes": 3076,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/cmake_clean.cmake",
+      "sha256": "a765a0828b1afaf890e4e8491e2ce317662427ed910834613ae759d55ffdd0aa",
+      "size_bytes": 214,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/compiler_depend.make",
+      "sha256": "f2b6fe27484e44bad7041be7f00bfccdc6edd48b304acdd4b97915f4468e44ea",
+      "size_bytes": 126,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/compiler_depend.ts",
+      "sha256": "195f321b1e802066bbc73afaf702b76ea4e5ce2eba69b91a61ba66f3a86cd709",
+      "size_bytes": 120,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_clean.dir/progress.make",
+      "sha256": "e6dcc94dd65d430f956ae3cb5cac4c48046602afccbac2a8be8c95079acb3fe7",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/build.make",
+      "sha256": "62c66622eaef4ceeeee991e0db2066c72d4bd7ecdd3796049a79c8a0097692f4",
+      "size_bytes": 3618,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/cmake_clean.cmake",
+      "sha256": "da9c2acc630349407c7fd7880a8875aeb7d6c4dd441080e45e5d430333f5ff4a",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/compiler_depend.make",
+      "sha256": "2a001efc211d3df1adf43b2d7368805db5da6ca0bbb3f3524426b0fd5e123b42",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/compiler_depend.ts",
+      "sha256": "a1720da7ed8e5b730a458358257b5f92f027ce5d6b25b82544b850f7f1cb4e5b",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_info.dir/progress.make",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/build.make",
+      "sha256": "ce6fcd78e57cc65a3b58d75d746f766e47a007f4a6371826b777804e059079c0",
+      "size_bytes": 3058,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/cmake_clean.cmake",
+      "sha256": "88cbad3fe82783e59a21cc14ebf544135cae282dc6a166d2f506897776ee25af",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/compiler_depend.make",
+      "sha256": "8cb15f77dc901158d2342c4b0805b17a5f4c36702a474631f624825b7488aa8f",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/compiler_depend.ts",
+      "sha256": "48bc456533125b1d25a8f07675410b478c8090fddaa4191cf496825b06207a27",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase2_size.dir/progress.make",
+      "sha256": "05da321653d61d6faecdf4aaa90bfd7d1bf2fcc8c353b6fb740632c3494af585",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/build.make",
+      "sha256": "2a52379d1777b53444f79cc8f509672bd1f8b2de58105a1be657d0ec98a5ab55",
+      "size_bytes": 2982,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/cmake_clean.cmake",
+      "sha256": "a904cc219487e18206ba82afd4291c025b02b4679116f9274059740c657392aa",
+      "size_bytes": 210,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/compiler_depend.make",
+      "sha256": "381d0ba8881bb41731225f72df3a99316de67aa5c36d9b788e8901c1738d0a1f",
+      "size_bytes": 124,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/compiler_depend.ts",
+      "sha256": "28380b53d8429e98187189bb7a2b412c192acb5c1b03aad52aaaedeaf5261fa4",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_all.dir/progress.make",
+      "sha256": "7f407abbd7a4860512261dd96ab4a5bfae827bb8aabcb880972f9dcdd0c3cef2",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/build.make",
+      "sha256": "e7e2b96a5859a88505f26118851e51fc62bfc336f0df305649a0f6d7b148bc44",
+      "size_bytes": 3076,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/cmake_clean.cmake",
+      "sha256": "a9c896494fc2c8b9ffa378193e5b1d31ab87a0b891b498bfe3e705a88dc92392",
+      "size_bytes": 214,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/compiler_depend.make",
+      "sha256": "2cf8110b959144ad7e073fafef3d76464f703c3b212e1fab8244bd3b5b522eb7",
+      "size_bytes": 126,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/compiler_depend.ts",
+      "sha256": "f95d7a8218e292fe75b0137a6df6babe16d341f3d4521669db7fb9d221a5110d",
+      "size_bytes": 120,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_clean.dir/progress.make",
+      "sha256": "b27c78f76e22b61ea2870c99c3251d0b6db13a53dbe500712132185e1f48b57d",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/build.make",
+      "sha256": "6e457411d9c98e4ea956094df02c0dc788c81fb23ec8582bbfb4afdef011b427",
+      "size_bytes": 3637,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/cmake_clean.cmake",
+      "sha256": "57205012d13f594e4556209273019b9ea8df9031b5f9ec0daf2e97f14d10acd9",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/compiler_depend.make",
+      "sha256": "1fae97e4154ab47a436ee3e4302fc0e0d60e6a8f60ef58cf0b8442dda9732bcf",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/compiler_depend.ts",
+      "sha256": "69ea77af71c1701634e7f960ed78e8c38954c0eb28b7363cfa4044d96e5c49e2",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_info.dir/progress.make",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/DependInfo.cmake",
+      "sha256": "b2ca23380b5c9dd7f07b120e32fb11a157a4def74d801994559b1c8c88f92f55",
+      "size_bytes": 585,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/build.make",
+      "sha256": "aaeac14bcadcf2982d6c622578c62cae892021b7dc26d3b01c42f12962d290fb",
+      "size_bytes": 3021,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/cmake_clean.cmake",
+      "sha256": "9b6a28d5cb82809fd9e16c18384c37c33ab75f138ce7cb192954d16972a8bb65",
+      "size_bytes": 212,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/compiler_depend.make",
+      "sha256": "166e8bbbdec4ba680241c8126424f180c83cfd695c4ff383837c53cd08b805ff",
+      "size_bytes": 125,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/compiler_depend.ts",
+      "sha256": "94474199544702f54577aac54c84a01c598624f467922280e75df70055bcf5aa",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_phase3_size.dir/progress.make",
+      "sha256": "771fd532e4b8c1693871a8f969cc91a056cde72431c36f453441fa6b19a4f95d",
+      "size_bytes": 23,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/DependInfo.cmake",
+      "sha256": "3624bd6d9b33fe1c030b844ca31264b8735fb9a039eb059df457ca4b9e0878c9",
+      "size_bytes": 1143,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/build.make",
+      "sha256": "113e3e182d7def788d2ee111ebce6998b6b5c72e0f33c6ea0d6e2ec16bda571b",
+      "size_bytes": 8811,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/cmake_clean.cmake",
+      "sha256": "8506e56a7a25493fe08021dfb8bae087238a16f29e0126d929c4fabc984d6ca1",
+      "size_bytes": 563,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/cmake_clean_target.cmake",
+      "sha256": "d165f95e38e3adb6a0dad7d1abdb8dbb5100c0d97a7dfb0953c9314950b3e48c",
+      "size_bytes": 44,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/compiler_depend.make",
+      "sha256": "59b3da0707a18106507639670687f5b2d503f3410f17379f6c1207c29261ff61",
+      "size_bytes": 115,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/compiler_depend.ts",
+      "sha256": "533bbe9d2c8f37f13075775388fc8fa434d13cf921863721f9272cc3d0aff297",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/depend.make",
+      "sha256": "87d28581c01301ced323874be43cc07215651c3d63df915d15d53b0ad113ec3d",
+      "size_bytes": 96,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/link.txt",
+      "sha256": "f73d94d7c3b41a2d88bf5394056ba77181c3d860fb3ca3962a78877da834a298",
+      "size_bytes": 267,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_platform.dir/progress.make",
+      "sha256": "7eb945fc917c8e2d6e715fae33df1dfefbd2d587397941b13ad6cd4b672c99f2",
+      "size_bytes": 89,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/DependInfo.cmake",
+      "sha256": "4473dc26756c1668da4b030058e96eb8160edb3a22fa1d2805af19a39e1c8690",
+      "size_bytes": 755,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/build.make",
+      "sha256": "454a2405d6ee29d04ae7b0611ebf98813509e64ff9f3c01e0bdceb394eca3291",
+      "size_bytes": 4994,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/cmake_clean.cmake",
+      "sha256": "e6e630d8f9c7909990368fd4881a97fd44a5ea22cdf0367b28e49db9b8f9c5d3",
+      "size_bytes": 316,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/cmake_clean_target.cmake",
+      "sha256": "3039efdf0dbd597f3a0c8c3e173ece52eba49ca8ff8aa1eccf61af9e7c2176e6",
+      "size_bytes": 41,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/compiler_depend.make",
+      "sha256": "c9d40fb2ce3ef17f91461f42a22eb049ef674638b4c08a2fb1b20db69ddfaaaa",
+      "size_bytes": 112,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/compiler_depend.ts",
+      "sha256": "1c64173690ea66eabe8c465238482f38d2a02c9c5bb9bde64c8d55d047f25e50",
+      "size_bytes": 116,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/depend.make",
+      "sha256": "7b2a73592ee4aca5a0d99fd89a1dc513aedf656c3915e6e3acd0f057a238b322",
+      "size_bytes": 93,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/link.txt",
+      "sha256": "c1fd6fd4c179066ca91f69f4578dc9c6e835e1d436f30084fa0e508fc3c085c2",
+      "size_bytes": 152,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/progress.make",
+      "sha256": "03048fd810f7fc3581c761f8a164262091027d1692f41f44a8ee58507211cb47",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/src/bsw_stubs.c.obj",
+      "sha256": "2cc946de78b6e18e1a3e3eb94c6bc9841742ddec998510bd47207e777d9655fc",
+      "size_bytes": 40740,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_stubs.dir/src/bsw_stubs.c.obj.d",
+      "sha256": "8250b390b42e84e50dede0ac5102f5f88b85d8c135ac9e6b8125a3882124aeb6",
+      "size_bytes": 835,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/DependInfo.cmake",
+      "sha256": "67132d33dd6bbc9978103a172c509c39637620de4037e6c70c428fdb45822b05",
+      "size_bytes": 1054,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/build.make",
+      "sha256": "56e17249960e47fb55581e132b8029183dff5fca52ec15345583ae63b815ed0e",
+      "size_bytes": 7575,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/cmake_clean.cmake",
+      "sha256": "99993f02462f43599421a8ab76580ede5de58c48dad1ff213f25cdce697ce03b",
+      "size_bytes": 529,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/cmake_clean_target.cmake",
+      "sha256": "a4315c6636375720e69da9096d5373809fa5b56a75972abbad9ae06ca747ee25",
+      "size_bytes": 40,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/compiler_depend.internal",
+      "sha256": "abfdd85ebcbe53b53eeceb331aca716163fcde74c3cec83fcd9bb98bc3785293",
+      "size_bytes": 1326,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/compiler_depend.make",
+      "sha256": "d6a588cf708bace616d84daa04a769260b6b8eab8b492f22f4ebaa3242933367",
+      "size_bytes": 2217,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/compiler_depend.ts",
+      "sha256": "68b12193df6d3ae798c8f8de7d5d9c027d4bb8be4e3fa2e9d93c7ea0ded261bc",
+      "size_bytes": 115,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/depend.make",
+      "sha256": "5cfe553b17aeae16b295d622e0160c8b90c673257b7f1bb54206c1a9aa4d70ae",
+      "size_bytes": 92,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/link.txt",
+      "sha256": "7119a38e840256290db0bef0626531c6e84e00d87d3c3914cda4fdcf33acaa3e",
+      "size_bytes": 253,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/progress.make",
+      "sha256": "9a7060d3cd50bedf7e3bc7f180a103f1d68146ba05eb4a2b5cd6b57bbe875972",
+      "size_bytes": 67,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/src/dk_wdgm_cfg.c.obj",
+      "sha256": "f29cce365aebeb68b1b3f50392529f8f3a7d3d9ba4038ee1ca3fd54314ca8b0d",
+      "size_bytes": 29600,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/bsw_wdgm.dir/src/dk_wdgm_cfg.c.obj.d",
+      "sha256": "b6f7329a7dbfb9b04e2304e3a47ded97b6e74977e2da6ee0bf8d0927dceea3bd",
+      "size_bytes": 428,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/cmake.check_cache",
+      "sha256": "a26189e394421da57f45706a07713c5720acd200a41711b0c0c590c3c63371c4",
+      "size_bytes": 85,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/DependInfo.cmake",
+      "sha256": "ca0715c1b7e7324e08c3a86ed0ed7f4fefa3bcec5cbfa80dfe2a94860154f0ae",
+      "size_bytes": 836,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/Users/stefan/yuleDKCS/embedded/freertos_port/src/port.c.obj",
+      "sha256": "16fdf8ca0630ca8b4bfc4f2ff660d11f1455f332ab3c27f444973e5594f03a71",
+      "size_bytes": 38792,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/Users/stefan/yuleDKCS/embedded/freertos_port/src/port.c.obj.d",
+      "sha256": "a4c90c609491baa89f28516f83d1b999c3717b23bd987ff54d48a0ea0e988732",
+      "size_bytes": 1195,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/build.make",
+      "sha256": "7d56d774b00dbeb94495bb9c74556bf2977621998e40717f45217cfeb5f99f7e",
+      "size_bytes": 5746,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/cmake_clean.cmake",
+      "sha256": "12960be50f3c2b856d8e9c40461cca056284aaec930edc2d4bb324953e1fc1ac",
+      "size_bytes": 416,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/cmake_clean_target.cmake",
+      "sha256": "7af3e44d21e95c19d647e51eefdf0fa4d7b61e8cac53f71fc0960a14d102fcbe",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/compiler_depend.internal",
+      "sha256": "38490927d7e058ab5ea566a784c3718b9dc4719a69a1dfa6e0f585a54d556b01",
+      "size_bytes": 1050,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/compiler_depend.make",
+      "sha256": "d622058d4826981146ba1edcc4341e22d74e16595a88e3f3d4480b96ee514d83",
+      "size_bytes": 1956,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/compiler_depend.ts",
+      "sha256": "ed0646acbfb7dd719d463c57a369c58662a34e90b92270c18f44b2efe566bfa5",
+      "size_bytes": 120,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/depend.make",
+      "sha256": "ba9ae32108722ad5cd6bbb93f5f0a08a5c837881bd92f4157711d4aae80a5aad",
+      "size_bytes": 97,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/link.txt",
+      "sha256": "b0c0982ea992635ce3287086491f63983d780de6086179e880814b52d90ef96a",
+      "size_bytes": 204,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/freertos_port.dir/progress.make",
+      "sha256": "7c1b90527bb58825e88272adb2e50ef9b7aa3cf48328e66eb9444ad1e84e1af4",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/DependInfo.cmake",
+      "sha256": "4151313a07e3605ae6c1bfdc3ffcdee77d1e25e90bd5266035980bfe7f56f1d1",
+      "size_bytes": 839,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/Users/stefan/yuleDKCS/embedded/mcal_stubs/src/mcal_stubs.c.obj",
+      "sha256": "31c20df4c800550ff5174a9609dad7ce32f7b52e3784cfc091aba833f2ca2741",
+      "size_bytes": 44984,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/Users/stefan/yuleDKCS/embedded/mcal_stubs/src/mcal_stubs.c.obj.d",
+      "sha256": "5f1c93f89d578d9d6a107e8c77ac31d4bc42d158ed0060b6034b55e23d6157a5",
+      "size_bytes": 945,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/build.make",
+      "sha256": "58042f0bdb4499ed99757364d560b096bfa7c81e2d0cdea089b9ed8f7e06452e",
+      "size_bytes": 5668,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/cmake_clean.cmake",
+      "sha256": "15d3e5b34cd2ab2db3a17a2dda0672685c9e469331b56bbfd4fdc3bb5b1a6a51",
+      "size_bytes": 407,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/cmake_clean_target.cmake",
+      "sha256": "d4b5954c1f2226728b880c635a02b93b75e5022de38ca325c2bd7c8c7c1eb5aa",
+      "size_bytes": 42,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/compiler_depend.internal",
+      "sha256": "51c9f5c6d757e341630db2e0864a38575d2854c4810fa95eaea1dc14d6cd8f5e",
+      "size_bytes": 1018,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/compiler_depend.make",
+      "sha256": "050cf520ebf345692c1044fd5f0035c76315e8d2fb9eb2d60c71f4882ff193e2",
+      "size_bytes": 1896,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/compiler_depend.ts",
+      "sha256": "793e6dbc3ccf12d42ecbab92e2d422b6e98aa17f394179c4d58e309f3672ccea",
+      "size_bytes": 117,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/depend.make",
+      "sha256": "717777413291a8da7f2f4a52314cc2ed3541b9e38dbda8fd4a7d4aec2e6e3c38",
+      "size_bytes": 94,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/flags.make",
+      "sha256": "e06ad7a791ef4a2ea26ce2cee436234550550d0261e5c6921d457309d1bf6265",
+      "size_bytes": 1757,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/link.txt",
+      "sha256": "497f41d09e0ef7c8edd2b1a905e95eb6b709323cf5fa8fd97ba23af3f78838de",
+      "size_bytes": 198,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/mcal_stubs.dir/progress.make",
+      "sha256": "31cdbed2ff2d7f3c3105479f30ad1dbab2d00d164afde07e76f3e13fa2c2fbb9",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/progress.marks",
+      "sha256": "2a62cf402cd3396aa00f55f892f4545f308f74d01c8caa0f2837b1982f821595",
+      "size_bytes": 3,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/DependInfo.cmake",
+      "sha256": "b0c7e26a4c395729532f870271a06795dce396b719a5c70be0ce6760dda023b1",
+      "size_bytes": 768,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/build.make",
+      "sha256": "b91e64acd9ab6d619bb46cca8764ef1c138907fdc86f02beeec863d38cbc3bac",
+      "size_bytes": 5141,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/cmake_clean.cmake",
+      "sha256": "7ee77e2ca3b0e592e8f0e6fd0903f663bf5b95245b86b2a7833d858a65879d54",
+      "size_bytes": 332,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/cmake_clean_target.cmake",
+      "sha256": "bf2957bcfe096f4419a875d1d73badaeac75283843141f2299beb001f8402515",
+      "size_bytes": 43,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/compiler_depend.internal",
+      "sha256": "0e0ce240c068aeaad360a0582753348a90b58470b2f81a4a6857cb7c0f4ef864",
+      "size_bytes": 1054,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/compiler_depend.make",
+      "sha256": "3ce7b4c91fdf946e82192636d21b19392bec4fe229a6e2bfd51423c17d636b2d",
+      "size_bytes": 2011,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/compiler_depend.ts",
+      "sha256": "5730b9ee8011bb172d2f4a02001b53bc869e0a75d95b45e3f23f1942866ce53e",
+      "size_bytes": 118,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/depend.make",
+      "sha256": "f1e4e2fe2eb0592c049f614d7a5d8d860ea4b0b2ec175675188a345c54a2dba9",
+      "size_bytes": 95,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/flags.make",
+      "sha256": "691ca760bf1d2cc332dabcda62632741085e409f605e16304c001b6c088a2f2d",
+      "size_bytes": 1812,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/link.txt",
+      "sha256": "b6c1ea711dd503cb2621e1098f625ec545e528a5ac965a8aa0ddb6406e7d4313",
+      "size_bytes": 161,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/mcal/rtd_adapter.c.obj",
+      "sha256": "c49ec3699123e873a97e79270b957b0cfa657b10f6048cb46af059aa149a89bf",
+      "size_bytes": 59708,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/mcal/rtd_adapter.c.obj.d",
+      "sha256": "d317d1e736128a45009c0ee2db1c3fe8f448259f051daca29ffa6e5b0efe88d9",
+      "size_bytes": 1047,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/rtd_adapter.dir/progress.make",
+      "sha256": "cf490d2a492d2da4caf320276475eba83f2f223ecd40c8fe145203e3f30490f9",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/DependInfo.cmake",
+      "sha256": "7e5f49cbd66f8b12bae8896bfed1af45738530664b02275222963cf48f5176ae",
+      "size_bytes": 1252,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/Users/stefan/yuleDKCS/embedded/mcal_stubs/src/mcal_stubs.c.obj",
+      "sha256": "9cc2c58853253e828a8625d23aa24782eadb2386560146dc30ba52de13939d42",
+      "size_bytes": 40628,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/Users/stefan/yuleDKCS/embedded/mcal_stubs/src/mcal_stubs.c.obj.d",
+      "sha256": "615f1efe51055551d7ec6bf6802f8f62ffe9ad4d2d2c671c3bfc3cd12abd6408",
+      "size_bytes": 951,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/build.make",
+      "sha256": "c0091d05dd0d5e1cf23846c69a8f8c0a0ee733e84cb9a992a88ebef7d9ea7ae3",
+      "size_bytes": 9666,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/cmake_clean.cmake",
+      "sha256": "3a0b2ee4e24e32e77364d737fcf3a59014d16710ee15b61e538e60a363a282a7",
+      "size_bytes": 679,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/compiler_depend.internal",
+      "sha256": "205bbdb40833d801c48004cb3c926651f35a99da7fffbe56ff8bc081e57ebcd1",
+      "size_bytes": 2954,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/compiler_depend.make",
+      "sha256": "838354d9273388d859c65030e10bbe108ecdcce30747f970bad17fdf2e495649",
+      "size_bytes": 4122,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/compiler_depend.ts",
+      "sha256": "6884b72ca84cc2efcdb81530fa6ccf9a2bbbb9674d833d80090872ab600d1ad9",
+      "size_bytes": 123,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/depend.make",
+      "sha256": "f6ead5d6e14993892c1674ccf023c759ac1520b4cbe2dc4165bc39eaa8d6aa2f",
+      "size_bytes": 100,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/flags.make",
+      "sha256": "9cc79629080405c0bd96cce6fa0d048e501093ff4221bb024afd61c32a72bd25",
+      "size_bytes": 1863,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/link.txt",
+      "sha256": "97b992da64fcdda6e3c80241f2559037b2c6f8b8cca44aec98629304216afe7c",
+      "size_bytes": 452,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/mcal/rtd_adapter.c.obj",
+      "sha256": "036017668ac43d34444b74478c0cc88a35583c9ce9cc2ec1b2b48d455198ec35",
+      "size_bytes": 59760,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/mcal/rtd_adapter.c.obj.d",
+      "sha256": "7d7f32c94435298b503ec8d8006dfd1232d37d7d6cc79098ce962e3ea8f59055",
+      "size_bytes": 1052,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/mcal/test_rtd_adapter.c.obj",
+      "sha256": "5b6de7e190e08bc22b732a66a6b243184591325dbcbb1c25961eeeaa89073603",
+      "size_bytes": 52224,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/mcal/test_rtd_adapter.c.obj.d",
+      "sha256": "64f73158e4e42c6c69ada1e783ff09804eff873dec260736211be7efae1552ad",
+      "size_bytes": 1062,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/test_rtd_adapter.dir/progress.make",
+      "sha256": "25499c00f17009a4616edccd1aa502b114d5a962221e17b234133d4cff3d06d2",
+      "size_bytes": 89,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/DependInfo.cmake",
+      "sha256": "25112ea1b83872e5e5d7e5a22ba65a8f996191451bcbbcf44cdb32163dce58f6",
+      "size_bytes": 754,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/build.make",
+      "sha256": "f9da658536441129d0f72f548628a7ffd34a6d302b55eb2857da6ccdc1eae4aa",
+      "size_bytes": 6104,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/cmake_clean.cmake",
+      "sha256": "17b90d271ec3137e24a0cea060ebe08ce889d727cd30f422a091bd3a99261f6c",
+      "size_bytes": 333,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/compiler_depend.make",
+      "sha256": "d92238ac68163b73089e0803eca65c154aee5ebe848a736a6a5aeff868eb2caa",
+      "size_bytes": 119,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/compiler_depend.ts",
+      "sha256": "d91af837e3fce9e519fd2d30b4ddb119001cc794e9c007f769848841cd30194e",
+      "size_bytes": 123,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/depend.make",
+      "sha256": "4f8526ef542c65b1eb94a2b16e00128bcb71157779b7a0d710a0ededbd0395a6",
+      "size_bytes": 100,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/flags.make",
+      "sha256": "c9a26e7365e3da9745b4358ae25767fd354b6317911ff19199d2fcd3f10e741c",
+      "size_bytes": 2277,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/link.txt",
+      "sha256": "d6840f2e89071240a8fae36c536917c15873a54f5985f7aa740882a2f72379e8",
+      "size_bytes": 735,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/progress.make",
+      "sha256": "f79420905304378050eb5ec5579853da30bb204ee5af08dacefb8ad0800ac03d",
+      "size_bytes": 45,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj",
+      "sha256": "85d622063ee9a8f7887ad0c3691516c2bb9400a146dccd96a438c4fc02ebac02",
+      "size_bytes": 49728,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/src/main.c.obj.d",
+      "sha256": "647cef8f998f28f780037bc79e25a424e98636e668bb4fe4d9c89a18c9f9c1c8",
+      "size_bytes": 1036,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj",
+      "sha256": "18e4ec310eea5fb862dbd960a9462e8413f95f0681644d883421e3b7082fee60",
+      "size_bytes": 29404,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/CMakeFiles/yuleDKCS_bsw.elf.dir/src/syscalls.c.obj.d",
+      "sha256": "066529c3e62c8bcdfe38621855faa4fff48af9a031979bf04ef9907a7446c0d7",
+      "size_bytes": 194,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/Makefile",
+      "sha256": "8385496d25177705200e8043bef212ed595f873ed232fd58c923f5eb26df43d8",
+      "size_bytes": 72869,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/cmake_install.cmake",
+      "sha256": "5163f089274c23e6d00639fbac6405208fa12de5c7179853bb9d2d61af175958",
+      "size_bytes": 2014,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_app_tasks.a",
+      "sha256": "b4a40dafca171a08efbceb51b5212cdc9d32d72a7fa4af38eb82b321fe447064",
+      "size_bytes": 41516,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_bswm.a",
+      "sha256": "1aa7b2e91a8579599ab8fa75482f44958d9cb90eab55e3c0b4c75fcb914a33fc",
+      "size_bytes": 62040,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_det.a",
+      "sha256": "e8c95f4bb2cf23878adc58ecb969d1d6407639f0a2598c91e487cbe85c9077b5",
+      "size_bytes": 35662,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_ecum.a",
+      "sha256": "3b4438c9929faad1fb6e87c92e2865c727d784b5a95485583468305e895097f3",
+      "size_bytes": 120780,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_os.a",
+      "sha256": "c1225c5753560bad6a2c5738030ddce908e590d9e578be8ddba36c3d262cd799",
+      "size_bytes": 124006,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_stubs.a",
+      "sha256": "2848e7ddbade2c1c9dd6815fe72a53822a4bca9e1d51440d5cb9daa19289c672",
+      "size_bytes": 41006,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libbsw_wdgm.a",
+      "sha256": "a5707db04b21dbec41eea6acb21bc1a23296e93e76d031fbd378168149215766",
+      "size_bytes": 71346,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libfreertos_port.a",
+      "sha256": "c1d2ae2acd10e7ca2c14ff188aea502f7a40c8bb963fcdd92ddbd0296cb1b140",
+      "size_bytes": 39178,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/libmcal_stubs.a",
+      "sha256": "74607346cc8ac3d2eebf39bafe4deccf4210c685170f5e25a88fbeacb6a211a3",
+      "size_bytes": 46028,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/librtd_adapter.a",
+      "sha256": "d7f50e51cf2961c9d298e573afaac26d0b1ec94b9f5c8cff8fdbf34a5706b42b",
+      "size_bytes": 61030,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/yuleDKCS_bsw.bin",
+      "sha256": "eb2fd0286f59cd12362f1e4a687b60e87d9369a4af78fc8151d143433cbd106b",
+      "size_bytes": 14420,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/yuleDKCS_bsw.dis",
+      "sha256": "cb5d2565d8781e2544f459a854f6f95c9aaed1aa5bf0c7cd494a6d86e890ed14",
+      "size_bytes": 358251,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/yuleDKCS_bsw.elf",
+      "sha256": "80daf7a1adf7a6121461f97a23b199657a03621577c65ee85b79ec2cf4e10a9a",
+      "size_bytes": 153984,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/yuleDKCS_bsw.hex",
+      "sha256": "ad901a6d3915389abdaaecaa05f1ce70a3c9208718403c2993d53122813ea799",
+      "size_bytes": 40600,
+      "category": "test"
+    },
+    {
+      "path": "bsw_build/yuleDKCS_bsw.map",
+      "sha256": "0b48067a764b680dd19b5f336b2480bced662595e4ce206d72b300f873261f8d",
+      "size_bytes": 36361,
+      "category": "test"
+    },
+    {
+      "path": "ci-evidence-report.md",
+      "sha256": "de0ff84297310f4b507b066065ba7847b27d69a11550f8bfeccb0f2784f7a439",
+      "size_bytes": 6148,
+      "category": "test"
+    },
+    {
+      "path": "ci-mobile-plan.md",
+      "sha256": "f05dc4300a914ebd89fa29cfdfdf54dd43fed2038b8eb5ee08ce9c3dda78b8e0",
+      "size_bytes": 7397,
+      "category": "deployment"
+    },
+    {
+      "path": "ci-pipeline.yaml",
+      "sha256": "f34e0240bc857a2e7e1620166323a194db75c400c3506d608a4ab8bb99b9bb0c",
+      "size_bytes": 3130,
+      "category": "deployment"
+    },
+    {
+      "path": "clear-blockers-report.md",
+      "sha256": "9f314ddc3512452de4eb5c116df95cb5b161812716da3a552b4f32dc5d49c159",
+      "size_bytes": 6224,
+      "category": "test"
+    },
+    {
+      "path": "compatibility-matrix.md",
+      "sha256": "32951b0d4a9be4924d5b23f5927f6075dcb822ed3ceae0caff68e07ebcb33abf",
+      "size_bytes": 4067,
+      "category": "test"
+    },
+    {
+      "path": "demo-api-samples.md",
+      "sha256": "7bbf4a5434d1bf1bc327966d343ba431125040e869d814ad87eaaf9647754289",
+      "size_bytes": 17719,
+      "category": "test"
+    },
+    {
+      "path": "demo-flow.md",
+      "sha256": "ce76ec2ac20382e25be8de03ef52be955c21d763129c3e44884e5a5980905ed9",
+      "size_bytes": 15749,
+      "category": "test"
+    },
+    {
+      "path": "docker-integration-config.md",
+      "sha256": "1b3ccae1d68f6869b91ee52b3add381af429a00b6625460cbed0dd01a708e38c",
+      "size_bytes": 3255,
+      "category": "test"
+    },
+    {
+      "path": "dogfood-report.md",
+      "sha256": "20472062a2cb93b10e8084caaf711fd02ad2ef366973cac2f47aa2f071919f4b",
+      "size_bytes": 10992,
+      "category": "test"
+    },
+    {
+      "path": "e2e-yulerun-report.md",
+      "sha256": "66fc56a488ac77cb29e461d803fe6d54513f0c6f31f2f24f78ea2b7c70148857",
+      "size_bytes": 7769,
+      "category": "test"
+    },
+    {
+      "path": "embedded-toolchain-report.md",
+      "sha256": "aab569518d8cb4433de70e283c8d7ed9cc2c5b33bb87a4c67a4a1556e328ae67",
+      "size_bytes": 5676,
+      "category": "test"
+    },
+    {
+      "path": "evidence/audit-manifest.json",
+      "sha256": "627a92464e9477ca7f28511108185077eb81a34c8325ddf046f6e298bb31b1fa",
+      "size_bytes": 3065,
+      "category": "deployment"
+    },
+    {
+      "path": "evidence/coverage/dkcs-repo-round2.out",
+      "sha256": "01e3a4bd4f51fad8c5dcbee06fb444360f83995751363ab399f52ed05088c33f",
+      "size_bytes": 15219,
+      "category": "test"
+    },
+    {
+      "path": "evidence/coverage/hub-service-round2.out",
+      "sha256": "5d0520d748d132d867bd6db9a64a4b44c3c90d72818d860c22ebae219f047611",
+      "size_bytes": 27045,
+      "category": "test"
+    },
+    {
+      "path": "evidence/traceability/traceability-report.json",
+      "sha256": "a5375aa1de574aed269c198ea07c38e711247b8ebe0f772911dd3e4a25087ae7",
+      "size_bytes": 72886,
+      "category": "test"
+    },
+    {
+      "path": "fix-P0-01-cover-check-ci.md",
+      "sha256": "9454a161e36d52819b2933f339f43ad6bc9f743b419ddb0f4206d76a58973e98",
+      "size_bytes": 673,
+      "category": "test"
+    },
+    {
+      "path": "fix-P0-02-ota-tests.md",
+      "sha256": "80becf13bc433067d20dabf81a325afd8960e2052ea2906142cf7a2b7ac88c40",
+      "size_bytes": 1280,
+      "category": "test"
+    },
+    {
+      "path": "fix-P0-03-secure-boot-test.md",
+      "sha256": "33a5494a13cb2e50b204a1ee4b1d549d53bba0a0326657510c1afdbd027a2322",
+      "size_bytes": 1413,
+      "category": "test"
+    },
+    {
+      "path": "fix-P0-04-swiftlint-force-cast-try.md",
+      "sha256": "1dcde1cc1ecc501c2b073efef2d86706713e992c09325883739dbc3d2ec65762",
+      "size_bytes": 946,
+      "category": "test"
+    },
+    {
+      "path": "fix-doc-report.md",
+      "sha256": "53631fc82dae9d3cdd116b6c3cdedc46f5b325ed60577a94ed0acdcdc9469e79",
+      "size_bytes": 3388,
+      "category": "test"
+    },
+    {
+      "path": "fix-embedded-p0-report.md",
+      "sha256": "807612093cdafc27997eddf383ba05d5e2e78811dfb4e60b7223f3cbc04c0d6a",
+      "size_bytes": 8319,
+      "category": "test"
+    },
+    {
+      "path": "fix-isr-cve-report.md",
+      "sha256": "c86a4b74930c265a37f4cd7783ff0ad7c08a6d62b31c9234724547215472f1d7",
+      "size_bytes": 5717,
+      "category": "test"
+    },
+    {
+      "path": "fix-kafka-report.md",
+      "sha256": "c12af2b97758737c1c98278f65a1bc26ced1cbedbc6f0e09f26534eb4bb3ac3d",
+      "size_bytes": 5164,
+      "category": "test"
+    },
+    {
+      "path": "fix-logger-report.md",
+      "sha256": "a7cad96ca1de93bde2c5d785c2abf2b0bde005f1a5277ec4cb5ab64e8802e8ae",
+      "size_bytes": 5321,
+      "category": "test"
+    },
+    {
+      "path": "fix-summary-P3.5-P0.md",
+      "sha256": "5e4e0aee28400387003abdcfa33f88d85371aec5ceffa7fdbdbf3d64aeb67d8f",
+      "size_bytes": 3181,
+      "category": "test"
+    },
+    {
+      "path": "full-benchmark-report.md",
+      "sha256": "672f22587de557a85543378be2500d306746032f92a90afdd1980d07cf0be833",
+      "size_bytes": 7969,
+      "category": "test"
+    },
+    {
+      "path": "icce-sm-crypto-report.md",
+      "sha256": "19013446c4fad4e943af5dbfaf43ae43219fdb9734254a0a1fa6e9aef1fe1f92",
+      "size_bytes": 12428,
+      "category": "test"
+    },
+    {
+      "path": "ingeek-benchmark.md",
+      "sha256": "b0f636058795904f33a7b54541e59d58c877a2d2075676760f25a344b4002b63",
+      "size_bytes": 7042,
+      "category": "test"
+    },
+    {
+      "path": "integration-test-report.md",
+      "sha256": "15bde413e4e0254f7f852472f3e5e683d3012c67c834a82efeba75078947dcb5",
+      "size_bytes": 3427,
+      "category": "test"
+    },
+    {
+      "path": "phase2-docs-report.md",
+      "sha256": "de571170a3e84111e6e07ff99cd47cfd745c9c557efb9c98673afddb29874072",
+      "size_bytes": 10415,
+      "category": "test"
+    },
+    {
+      "path": "phase2-formal-review.md",
+      "sha256": "1faf599bbd46bde0a8cc23127271b71a5351ffe85b8636835b98207a327d33e9",
+      "size_bytes": 17373,
+      "category": "review"
+    },
+    {
+      "path": "phase3-execution-report.md",
+      "sha256": "3536cf7db4abf1089c5dc8e14055a6dcaee7615428c140bfd182ac7de6179afe",
+      "size_bytes": 4093,
+      "category": "test"
+    },
+    {
+      "path": "phase3-full-review.md",
+      "sha256": "ded714c3cd1906960ff31123da721ab45d660188e0e1bb343a5fb54d7f11a498",
+      "size_bytes": 20595,
+      "category": "review"
+    },
+    {
+      "path": "phase3-integration-report.md",
+      "sha256": "d75d00d2c7408e5c59d6edcc9f204229c0dbb2087b5dabc893a1a61f973d8c2b",
+      "size_bytes": 5843,
+      "category": "test"
+    },
+    {
+      "path": "phase3-quality-tracker.md",
+      "sha256": "6a7627b8c8f565ff2b559382f84f9f75526b8c6680343624cf4199ccfd44881b",
+      "size_bytes": 5774,
+      "category": "test"
+    },
+    {
+      "path": "pipeline-report.md",
+      "sha256": "9623bc5a03b5c1162cbc108ba6097341508858075d37638cfcb64028f5cef055",
+      "size_bytes": 6387,
+      "category": "test"
+    },
+    {
+      "path": "production-audit-embedded.md",
+      "sha256": "bc519d3da89b7b0af18ca6369f48ee517c3e335751db5994e3ccce53025fec01",
+      "size_bytes": 19943,
+      "category": "review"
+    },
+    {
+      "path": "production-audit-go.md",
+      "sha256": "c86c15054fd0c1f76130c6ddcd2e4c4cec29c032856a4b1606a6bc9dbae491f8",
+      "size_bytes": 16309,
+      "category": "review"
+    },
+    {
+      "path": "production-audit-spec-doc.md",
+      "sha256": "1ed4c5ad4446a702be1f3acb547448cfa198906e200f9d649abd88c52d723611",
+      "size_bytes": 20287,
+      "category": "review"
+    },
+    {
+      "path": "production-readiness-audit.md",
+      "sha256": "56dcb64a65096855838da5539057b8d4ca72d09e84c98f42fcfd2b03f0468ac0",
+      "size_bytes": 9119,
+      "category": "review"
+    },
+    {
+      "path": "project-context.md",
+      "sha256": "41adff3b222cb2e756867a08d2a3214c7e6e81a4c5dc441ac4ef3e5fd9036b2c",
+      "size_bytes": 3026,
+      "category": "test"
+    },
+    {
+      "path": "refactor-dut-report.md",
+      "sha256": "0ba2fcbbc090afa6004b1584f76708cb16239aadca4c0496a03592f813204dd4",
+      "size_bytes": 3159,
+      "category": "test"
+    },
+    {
+      "path": "refactor-oms-report.md",
+      "sha256": "e9089ba1e5eb19d7d829e7a5a32353210ccf3f7599f4b3d937af9c3a12d9d4aa",
+      "size_bytes": 3164,
+      "category": "test"
+    },
+    {
+      "path": "refactor-security-diag-report.md",
+      "sha256": "46946df27a15c8aadb231c383c67ecfc5415cd4f1e28c7dfcdb8a6c70cd4754b",
+      "size_bytes": 5205,
+      "category": "test"
+    },
+    {
+      "path": "refactor-tune-report.md",
+      "sha256": "69d84ccecfc3f65c471b326ff9e20be7bd9575f0d1c62f43f5360a32229e463d",
+      "size_bytes": 3436,
+      "category": "test"
+    },
+    {
+      "path": "report-embedded-p1-fixes.md",
+      "sha256": "d7fd5997e040d606f157dc953c494484d68bc04029caf298296d28f5be01e157",
+      "size_bytes": 4061,
+      "category": "test"
+    },
+    {
+      "path": "report-go-coverage.md",
+      "sha256": "43d8f0d094ca57a7085aa72159943b2d7a2946878a27faa3af68efc9845ae5dc",
+      "size_bytes": 2580,
+      "category": "test"
+    },
+    {
+      "path": "report-misra-cppcheck.md",
+      "sha256": "fac4e558951c6696af62bb93b3107fbc5ead519305dce4677c1a7a29594b681f",
+      "size_bytes": 3225,
+      "category": "safety"
+    },
+    {
+      "path": "reports/coverage-round2-report.md",
+      "sha256": "ce87f2393800d36605a0ada7bdb1d69f646532d2d6627ff24cfa11b385961d72",
+      "size_bytes": 4166,
+      "category": "test"
+    },
+    {
+      "path": "reports/selftest-history.json",
+      "sha256": "e14cff452fd9c60670df743037111c3f00aa4ba169caa942e1cc63b1eafe955c",
+      "size_bytes": 490,
+      "category": "test"
+    },
+    {
+      "path": "reports/traceability-report.json",
+      "sha256": "cfa63df1776f13ff25b8b412257547d9f4e5a45d47a9702992a5eb84d1e1799e",
+      "size_bytes": 72886,
+      "category": "test"
+    },
+    {
+      "path": "rtd-integration-framework.md",
+      "sha256": "d6689853e82c61e13f8d3d453e98d7bc2beae4e0af88905605bf9c32a8afe601",
+      "size_bytes": 7628,
+      "category": "test"
+    },
+    {
+      "path": "safety-concept.md",
+      "sha256": "887fdf6e7e167ae21aaa59bf87eac88558f0d24b87216b54deafd4b07b0f6ba5",
+      "size_bytes": 6113,
+      "category": "safety"
+    },
+    {
+      "path": "schedule.md",
+      "sha256": "93eb3c49e957ff431e649bcbe97734a7e79c434ee5e0ebf4de24ca6bdef11183",
+      "size_bytes": 9552,
+      "category": "test"
+    },
+    {
+      "path": "spec-contract.md",
+      "sha256": "9666b4195fc14d8f80023656242d77d5dd1e30b670ea52ccf3085e8235efb319",
+      "size_bytes": 33389,
+      "category": "spec"
+    },
+    {
+      "path": "sprint-report-p3.5-remediation.md",
+      "sha256": "cbfc0c99d64cc5775b066c8cf4e36a9b5a3a324c41fc82cfd09ad823329b9830",
+      "size_bytes": 7309,
+      "category": "test"
+    },
+    {
+      "path": "stack-audit-report.md",
+      "sha256": "ed8b9c13294ca48a436e0d2b97220b5a902a4ac72103f94218d01079990cb44e",
+      "size_bytes": 8973,
+      "category": "test"
+    },
+    {
+      "path": "stack-fix-report.md",
+      "sha256": "98d82ae915e185ba2b921c9e789ca77da097e99961e6be31e90bb4aba68698b7",
+      "size_bytes": 9022,
+      "category": "test"
+    },
+    {
+      "path": "startup-analysis.md",
+      "sha256": "8bd759afcdb7834c56f7ddd581bdd7628a84108e2285d02f2724d5870b07bd66",
+      "size_bytes": 17822,
+      "category": "architecture"
+    },
+    {
+      "path": "store.db",
+      "sha256": "1f5ba4f32e9b9f1beabda575fa8ba0dbd01a5fd12b77942c997f4e6e0b31027c",
+      "size_bytes": 118784,
+      "category": "test"
+    },
+    {
+      "path": "tech-debt.md",
+      "sha256": "225e75356762192ba3f4a71c0ab62c473cc73cf374f9fe5a8915b57d4a0be2dc",
+      "size_bytes": 4766,
+      "category": "test"
+    },
+    {
+      "path": "traceability-matrix.md",
+      "sha256": "73120cf9ef756098cf311a4c7760f7e3f3e9952ebc766cdbb594e23fd9f9411e",
+      "size_bytes": 51479,
+      "category": "spec"
+    },
+    {
+      "path": "vla-fix-correction.md",
+      "sha256": "15d53d219fe7ff7ceff681b13e690826b62af4292cea60fe10227f59ca2eca4f",
+      "size_bytes": 2597,
+      "category": "test"
+    },
+    {
+      "path": "yuleDKCS-phase2-summary.md",
+      "sha256": "76021c1ab379cdabafd2b86495b7699598cb088a22af9c888f673cccb25ca6fa",
+      "size_bytes": 5117,
+      "category": "test"
+    },
+    {
+      "path": "yuleosh-efficiency-whitepaper.md",
+      "sha256": "c843feaf2d1600c8ca73a40bf844731b7e7480b2511e1d84d6be08197a42e02e",
+      "size_bytes": 22726,
+      "category": "test"
+    }
+  ],
+  "summary": {
+    "total_files": 535,
+    "total_size_bytes": 5467869,
+    "categories": {
+      "architecture": 3,
+      "deployment": 15,
+      "test": 499,
+      "review": 10,
+      "spec": 6,
+      "safety": 2
+    }
+  },
+  "traceability": {
+    "spec_contract": ".yuleosh/spec-contract.md",
+    "requirements_total": 115,
+    "test_files_mapped": 499,
+    "review_reports": [
+      "audit-v2/review-log-summary.md",
+      "audit-v2/review-log.json",
+      "audit/review-log-summary.md",
+      "audit/review-log.json",
+      "phase2-formal-review.md",
+      "phase3-full-review.md",
+      "production-audit-embedded.md",
+      "production-audit-go.md",
+      "production-audit-spec-doc.md",
+      "production-readiness-audit.md"
+    ]
+  }
+}
