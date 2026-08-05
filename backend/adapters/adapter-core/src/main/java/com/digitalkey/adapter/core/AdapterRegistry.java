@@ -109,7 +109,10 @@ public class AdapterRegistry {
     public TspAdapter getAdapterByProtocol(String protocol) {
         String normalized = protocol.toLowerCase();
         return adapters.values().stream()
-            .filter(a -> a.getClass().getSimpleName().toLowerCase().contains(normalized))
+            .filter(a -> {
+                String name = a.getAdapterName();
+                return name != null && name.toLowerCase().contains(normalized);
+            })
             .findFirst()
             .orElse(null);
     }
