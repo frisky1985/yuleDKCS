@@ -29,6 +29,24 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
 )
 
+// kafkaEventBusAdapter adapts mq.KafkaProducer to service.EventBus.
+// This keeps the service layer free of mq imports while allowing
+// main.go to inject the real Kafka producer.
+type kafkaEventBusAdapter struct {
+	producer *mq.KafkaProducer
+}
+
+func (a *kafkaEventBusAdapter) PublishKeyEvent(ctx context.Context, eventType string, keyID string, ownerID string, targetID string) error {
+	event := mq.KeyEvent{
+		EventType: eventType,
+		KeyID:     keyID,
+		OwnerID:   ownerID,
+		TargetID:  targetID,
+		Timestamp: time.Now().UnixMilli(),
+	}
+	return a.producer.PublishKeyEvent(ctx, event)
+}
+
 func main() {
 	// Load configuration
 	cfg := config.Load()
@@ -111,6 +129,9 @@ func main() {
 	// Initialize services
 	eventService := service.NewEventService(eventRepo, log, telemetry)
 	keyService := service.NewKeyService(keyRepo, vehicleRepo, log, telemetry)
+	if kafkaProducer != nil {
+		keyService.WithEventBus(&kafkaEventBusAdapter{producer: kafkaProducer})
+	}
 	commandService := service.NewCommandService(keyRepo, vehicleRepo, log, telemetry, eventService)
 
 	// Create gRPC server with interceptors

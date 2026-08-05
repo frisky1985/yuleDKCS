@@ -54,8 +54,10 @@ ccc_status_t ble_register_uwb_wake_cb(void (*cb)(int reason));
 bool         ble_is_lp_mode(void);
 ble_power_state_e ble_get_power_state(void);
 
+#ifndef TEST_LIB_MODE
 void setUp(void) {}
 void tearDown(void) {}
+#endif /* TEST_LIB_MODE */
 
 /* ========================================================================
  *  CCC_CORE_001 — 初始化和连接管理
@@ -864,4 +866,6 @@ int run_ccc_core_tests(void)
     UNITY_END();
 }
 
+#ifndef TEST_CCC_NO_MAIN
 int main(void) { return run_ccc_core_tests(); }
+#endif /* TEST_CCC_NO_MAIN */

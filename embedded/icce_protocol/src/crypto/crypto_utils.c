@@ -311,7 +311,7 @@ void fp_add(bn256_t *r, const bn256_t *a, const bn256_t *b)
     bn256_t sum;
     uint32_t carry = bn256_add(&sum, a, b);
     if (carry || bn256_cmp(&sum, &SM2_P) >= 0) {
-        bn256_sub(&sum, &sum, &SM2_P);
+        (void)bn256_sub(&sum, &sum, &SM2_P);
     }
     bn256_copy(r, &sum);
 }
@@ -321,7 +321,7 @@ void fp_sub(bn256_t *r, const bn256_t *a, const bn256_t *b)
     bn256_t diff;
     uint32_t borrow = bn256_sub(&diff, a, b);
     if (borrow) {
-        bn256_add(&diff, &diff, &SM2_P);
+        (void)bn256_add(&diff, &diff, &SM2_P);
     }
     bn256_copy(r, &diff);
 }
@@ -385,7 +385,7 @@ void fn_add(bn256_t *r, const bn256_t *a, const bn256_t *b)
     bn256_t sum;
     uint32_t carry = bn256_add(&sum, a, b);
     if (carry || bn256_cmp(&sum, &SM2_N) >= 0) {
-        bn256_sub(&sum, &sum, &SM2_N);
+        (void)bn256_sub(&sum, &sum, &SM2_N);
     }
     bn256_copy(r, &sum);
 }
@@ -395,7 +395,7 @@ void fn_sub(bn256_t *r, const bn256_t *a, const bn256_t *b)
     bn256_t diff;
     uint32_t borrow = bn256_sub(&diff, a, b);
     if (borrow) {
-        bn256_add(&diff, &diff, &SM2_N);
+        (void)bn256_add(&diff, &diff, &SM2_N);
     }
     bn256_copy(r, &diff);
 }
@@ -420,7 +420,7 @@ static void fn_mul_reduce(bn256_t *r, const uint32_t t[16])
     for (int i = 0; i < 3; i++) {
         uint32_t b = bn256_sub(&rem, &rem, &SM2_N);
         if (b) {
-            bn256_add(&rem, &rem, &SM2_N);
+            (void)bn256_add(&rem, &rem, &SM2_N);
             break;
         }
         bn256_copy(&rem, &rem);
@@ -642,7 +642,7 @@ void ec_point_mul_base(bn256_t *rx, bn256_t *ry, const bn256_t *k)
         }
     }
 
-    ec_point_to_affine(rx, ry, &result);
+    (void)ec_point_to_affine(rx, ry, &result);
 }
 
 /* 标量乘: r = k * P */
@@ -868,8 +868,8 @@ static void ctr_drbg_update(const uint8_t provided_data[48])
     }
 
     /* Key = temp[0:32], V = temp[32:48] */
-    memcpy(g_ctr_drbg.Key, temp, 32);
-    memcpy(g_ctr_drbg.V, temp + 32, 16);
+    (void)memcpy(g_ctr_drbg.Key, temp, 32);
+    (void)memcpy(g_ctr_drbg.V, temp + 32, 16);
 
     crypto_secure_zero(temp, sizeof(temp));
 }
@@ -883,13 +883,13 @@ static int ctr_drbg_init(const uint8_t *entropy, size_t entropy_len,
     if (!entropy || entropy_len < 48) return -1;
 
     /* 清空状态 */
-    memset(&g_ctr_drbg, 0, sizeof(g_ctr_drbg));
+    (void)memset(&g_ctr_drbg, 0, sizeof(g_ctr_drbg));
 
     /* 种子材料 = entropy || nonce */
     uint8_t seed_material[48];
-    memset(seed_material, 0, 48);
+    (void)memset(seed_material, 0, 48);
     size_t copy = (entropy_len < 48) ? entropy_len : 48;
-    memcpy(seed_material, entropy, copy);
+    (void)memcpy(seed_material, entropy, copy);
     if (nonce && nonce_len > 0) {
         size_t off = (copy < 48) ? copy : 48 - nonce_len;
         for (size_t i = 0; i < nonce_len && (off + i) < 48; i++) {
@@ -930,7 +930,7 @@ static int ctr_drbg_generate(uint8_t *buf, size_t len)
         ctr_drbg_aes256_encrypt(g_ctr_drbg.Key, g_ctr_drbg.V, block);
 
         size_t todo = (remaining < 16) ? remaining : 16;
-        memcpy(out, block, todo);
+        (void)memcpy(out, block, todo);
         out += todo;
         remaining -= todo;
     }
@@ -946,7 +946,7 @@ static int ctr_drbg_generate(uint8_t *buf, size_t len)
  * ========================================================================
  * 顶层抽象: 按编译配置选择 TRNG → CTR_DRBG → DEBUG_LCG
  */
-int hsm_get_random_bytes(uint8_t *buf, size_t len)  /* [P0-1] */
+static int hsm_get_random_bytes(uint8_t *buf, size_t len)  /* [P0-1] */
 {
     if (!buf || len == 0) return -1;
 
@@ -980,14 +980,14 @@ int hsm_get_random_bytes(uint8_t *buf, size_t len)  /* [P0-1] */
             /* 无 TRNG 时用退化熵 (可用于开发测试, 生产应有 TRNG) */
             volatile uint32_t tick = 0;
             for (volatile int i = 0; i < 100; i++) tick++;
-            memset(entropy, 0, 48);
+            (void)memset(entropy, 0, 48);
             store_be32(entropy, (uint32_t)(uintptr_t)buf ^ tick);
             store_be32(entropy + 4, (uint32_t)(uintptr_t)entropy);
             store_be32(entropy + 8, tick ^ 0xA5A5A5A5);
         }
 #endif
         uint8_t nonce[16];
-        memset(nonce, 0, sizeof(nonce));
+        (void)memset(nonce, 0, sizeof(nonce));
         store_be32(nonce, (uint32_t)(uintptr_t)g_ctr_drbg.V);
 
         if (ctr_drbg_init(entropy, 48, nonce, 16) != 0) {

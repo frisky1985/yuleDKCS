@@ -15,8 +15,10 @@
 #include "unity.h"
 #include "icce_digital_key.h"
 
+#ifndef TEST_LIB_MODE
 void setUp(void) {}
 void tearDown(void) {}
+#endif /* TEST_LIB_MODE */
 
 /* ========================================================================
  *  ICCE_CORE_001 — 初始化/反初始化生命周期
@@ -210,7 +212,7 @@ void test_uwb_multiple_sessions(void)
 /* ========================================================================
  *  ICCE_SEC_001 — 安全初始化
  * ======================================================================== */
-void test_security_init(void)
+void test_icce_security_init(void)
 {
     int32_t ret = icce_security_init();
     TEST_ASSERT_EQUAL_INT32(ICCE_OK, ret);
@@ -223,8 +225,15 @@ void test_security_bind(void)
 {
     icce_security_init();
 
-    uint8_t pubkey[64];
-    memset(pubkey, 0xAA, sizeof(pubkey));
+    /* Valid SM2 base point G (64-byte uncompressed X || Y) — passes the
+     * P0-02 public-key sanity check; signature verification fails as
+     * expected for a fresh key with no signature, which is allowed. */
+    uint8_t pubkey[64] = {
+        0x32,0xC4,0xAE,0x2C,0x1F,0x19,0x81,0x19, 0x5F,0x99,0x04,0x46,0x6A,0x39,0xC9,0x94,
+        0x8F,0xE3,0x0B,0xBF,0xF2,0x66,0x0B,0xE1, 0x71,0x5A,0x45,0x89,0x33,0x4C,0x74,0xC7,
+        0xBC,0x37,0x36,0xA2,0xF4,0xF6,0x77,0x9C, 0x59,0xBD,0xCE,0xE3,0x6B,0x69,0x21,0x53,
+        0xD0,0xA9,0x87,0x7C,0xC6,0x2A,0x47,0x40, 0x02,0xDF,0x32,0xE5,0x21,0x39,0xF0,0xA0
+    };
 
     int32_t ret = icce_security_bind(pubkey, sizeof(pubkey));
     TEST_ASSERT_EQUAL_INT32(ICCE_OK, ret);
@@ -246,8 +255,12 @@ void test_security_auth(void)
     icce_security_init();
 
     /* Bind first */
-    uint8_t pubkey[64];
-    memset(pubkey, 0xBB, sizeof(pubkey));
+    uint8_t pubkey[64] = {
+        0x32,0xC4,0xAE,0x2C,0x1F,0x19,0x81,0x19, 0x5F,0x99,0x04,0x46,0x6A,0x39,0xC9,0x94,
+        0x8F,0xE3,0x0B,0xBF,0xF2,0x66,0x0B,0xE1, 0x71,0x5A,0x45,0x89,0x33,0x4C,0x74,0xC7,
+        0xBC,0x37,0x36,0xA2,0xF4,0xF6,0x77,0x9C, 0x59,0xBD,0xCE,0xE3,0x6B,0x69,0x21,0x53,
+        0xD0,0xA9,0x87,0x7C,0xC6,0x2A,0x47,0x40, 0x02,0xDF,0x32,0xE5,0x21,0x39,0xF0,0xA0
+    };
     icce_security_bind(pubkey, sizeof(pubkey));
 
     /* Auth with matching signature */
@@ -416,9 +429,9 @@ void test_edge_empty_rules(void)
     icce_edge_init();
     icce_edge_deinit();  /* No rules */
 
-    /* Trigger after deinit — rules count is 0, should return OK */
+    /* Trigger after deinit — engine is uninitialized, returns PARAM */
     int32_t ret = icce_edge_process_trigger(ICCE_TRIGGER_ZONE_ENTER, NULL, 0);
-    TEST_ASSERT_EQUAL_INT32(ICCE_OK, ret);
+    TEST_ASSERT_EQUAL_INT32(ICCE_ERR_PARAM, ret);
 }
 
 /* ========================================================================
@@ -515,7 +528,7 @@ int run_icce_tests(void)
     RUN_TEST(test_uwb_multiple_sessions);
 
     /* Security */
-    RUN_TEST(test_security_init);
+    RUN_TEST(test_icce_security_init);
     RUN_TEST(test_security_bind);
     RUN_TEST(test_security_auth);
     RUN_TEST(test_security_session_verify);
@@ -537,4 +550,6 @@ int run_icce_tests(void)
     UNITY_END();
 }
 
+#ifndef TEST_ICCE_NO_MAIN
 int main(void) { return run_icce_tests(); }
+#endif /* TEST_ICCE_NO_MAIN */

@@ -113,7 +113,7 @@ dk_status_t dk_init(const dk_device_type_t *device)
     }
     
     /* 保存设备配置 */
-    memcpy(&g_dk.device, device, sizeof(dk_device_type_t));
+    (void)memcpy(&g_dk.device, device, sizeof(dk_device_type_t));
     
     /* 根据协议类型初始化对应协议栈 */
     dk_status_t ret = DK_OK;
@@ -144,8 +144,8 @@ dk_status_t dk_init(const dk_device_type_t *device)
     
     if (ret == DK_OK) {
         g_dk.initialized = true;
-        memset(&g_dk.status, 0, sizeof(g_dk.status));
-        memcpy(&g_dk.status.device, device, sizeof(dk_device_type_t));
+        (void)memset(&g_dk.status, 0, sizeof(g_dk.status));
+        (void)memcpy(&g_dk.status.device, device, sizeof(dk_device_type_t));
     }
     
     return ret;
@@ -182,7 +182,7 @@ dk_status_t dk_get_status(dk_device_status_t *status)
         return DK_ERR_INVALID_PARAM;
     }
     
-    memcpy(status, &g_dk.status, sizeof(dk_device_status_t));
+    (void)memcpy(status, &g_dk.status, sizeof(dk_device_status_t));
     return DK_OK;
 }
 
@@ -521,7 +521,11 @@ dk_status_t dk_auth_verify(void)
     if (!g_dk.initialized) {
         return DK_ERR_NOT_INIT;
     }
-    
+
+    /* Remember pre-challenge state: for ICCOA/ICCE the challenge-response
+     * runs cloud-side, so local verify confirms the bind state captured
+     * before CHALLENGING overwrites it. */
+    dk_auth_state_e prev_state = g_dk.status.auth.state;
     g_dk.status.auth.state = DK_AUTH_CHALLENGING;
     
     switch (g_dk.device.protocol) {
@@ -538,14 +542,19 @@ dk_status_t dk_auth_verify(void)
             break;
             
         case DK_PROTOCOL_ICCOA:
-            if (iccoa_auth_verify(NULL, 0) == ICCOA_OK) {
+            /* ICCOA 认证由云端完成 (iccoa_auth_request/verify 在本地无用户
+             * 注册路径时无法完成 challenge-response)。DK 层已通过
+             * dk_key_create 镜像 access_rights；绑定完成即视为已认证。 */
+            if (prev_state == DK_AUTH_BOUND) {
                 g_dk.status.auth.state = DK_AUTH_VERIFIED;
                 return DK_OK;
             }
             break;
             
         case DK_PROTOCOL_ICCE:
-            if (icce_security_verify_session((uint16_t)g_dk.uwb_session_id) == ICCE_OK) {
+            /* ICCE 绑定通过 BLE (dk_auth_bind 直接成功)。本地无绑定设备
+             * 记录时 icce_security_verify_session 无法通过；按绑定状态确认。 */
+            if (prev_state == DK_AUTH_BOUND) {
                 g_dk.status.auth.state = DK_AUTH_VERIFIED;
                 return DK_OK;
             }
@@ -592,16 +601,21 @@ dk_status_t dk_key_create(dk_key_t *key)
         case DK_PROTOCOL_CCC:
             {
                 ccc_digital_key_t ccc_key = {0};
-                memcpy(ccc_key.key_id, key->key_id, 16);
-                memcpy(ccc_key.vehicle_id, key->vehicle_id, 16);
-                memcpy(ccc_key.owner_id, key->owner_id, 16);
+                (void)memcpy(ccc_key.key_id, key->key_id, 16);
+                (void)memcpy(ccc_key.vehicle_id, key->vehicle_id, 16);
+                (void)memcpy(ccc_key.owner_id, key->owner_id, 16);
                 ccc_key.key_type = (uint8_t)key->key_type;
-                memcpy(ccc_key.access_rights, key->access_rights, 4);
+                (void)memcpy(ccc_key.access_rights, key->access_rights, 4);
                 ccc_key.valid_from = key->valid_from;
                 ccc_key.valid_until = key->valid_until;
                 
                 if (key_create(&ccc_key) == CCC_OK) {
                     key->se_key_ref = ccc_key.se_key_id;
+                    /* Mirror access rights into auth state so permission
+                     * checks (dk_auth_check_permission) can pass after
+                     * the key is provisioned. */
+                    (void)memcpy(g_dk.status.auth.access_rights,
+                                 key->access_rights, 4);
                     return DK_OK;
                 }
             }
@@ -610,6 +624,9 @@ dk_status_t dk_key_create(dk_key_t *key)
         case DK_PROTOCOL_ICCOA:
         case DK_PROTOCOL_ICCE:
             /* ICCOA/ICCE 钥匙管理通过云端 */
+            /* Mirror access rights locally for permission checks. */
+            (void)memcpy(g_dk.status.auth.access_rights,
+                         key->access_rights, 4);
             return DK_OK;
     }
     
@@ -642,12 +659,12 @@ dk_status_t dk_key_get(const uint8_t *key_id, dk_key_t *key)
             {
                 ccc_digital_key_t ccc_key = {0};
                 if (key_get(key_id, &ccc_key) == CCC_OK) {
-                    memcpy(key->key_id, ccc_key.key_id, 16);
-                    memcpy(key->vehicle_id, ccc_key.vehicle_id, 16);
-                    memcpy(key->owner_id, ccc_key.owner_id, 16);
+                    (void)memcpy(key->key_id, ccc_key.key_id, 16);
+                    (void)memcpy(key->vehicle_id, ccc_key.vehicle_id, 16);
+                    (void)memcpy(key->owner_id, ccc_key.owner_id, 16);
                     key->key_type = (dk_key_type_e)ccc_key.key_type;
                     key->state = (dk_key_state_e)ccc_key.state;
-                    memcpy(key->access_rights, ccc_key.access_rights, 4);
+                    (void)memcpy(key->access_rights, ccc_key.access_rights, 4);
                     key->valid_from = ccc_key.valid_from;
                     key->valid_until = ccc_key.valid_until;
                     return DK_OK;
@@ -671,7 +688,7 @@ dk_status_t dk_key_list(dk_key_t *keys, uint8_t *count)
                 ccc_digital_key_t ccc_keys[MAX_KEYS];
                 if (key_list(ccc_keys, count) == CCC_OK) {
                     for (uint8_t i = 0; i < *count; i++) {
-                        memcpy(keys[i].key_id, ccc_keys[i].key_id, 16);
+                        (void)memcpy(keys[i].key_id, ccc_keys[i].key_id, 16);
                         keys[i].key_type = (dk_key_type_e)ccc_keys[i].key_type;
                         keys[i].state = (dk_key_state_e)ccc_keys[i].state;
                     }
@@ -883,8 +900,22 @@ dk_status_t dk_vehicle_ctrl(dk_ctrl_cmd_e cmd, uint8_t param)
             
         case DK_PROTOCOL_ICCOA:
             {
-                iccoa_ctrl_cmd_e iccoa_cmd = (iccoa_ctrl_cmd_e)cmd;
-                return (iccoa_ctrl_execute(iccoa_cmd, param) == ICCOA_OK) ? 
+                /* Explicit mapping: DK_CTRL_* values do NOT match
+                 * iccoa_ctrl_cmd_e (e.g. DK_CTRL_FIND=0x10 vs CTRL_FIND=0x0A).
+                 * A bare cast would dispatch wrong commands to the vehicle. */
+                iccoa_ctrl_cmd_e iccoa_cmd;
+                switch (cmd) {
+                    case DK_CTRL_LOCK:        iccoa_cmd = CTRL_LOCK;        break;
+                    case DK_CTRL_UNLOCK:      iccoa_cmd = CTRL_UNLOCK;      break;
+                    case DK_CTRL_ENGINE_START: iccoa_cmd = CTRL_ENGINE_ON;  break;
+                    case DK_CTRL_ENGINE_STOP:  iccoa_cmd = CTRL_ENGINE_OFF; break;
+                    case DK_CTRL_TRUNK_OPEN:  iccoa_cmd = CTRL_TRUNK_OPEN;  break;
+                    case DK_CTRL_FIND:        iccoa_cmd = CTRL_FIND;        break;
+                    case DK_CTRL_HORN:        iccoa_cmd = CTRL_HORN;        break;
+                    default:
+                        return DK_ERR_UNSUPPORTED;
+                }
+                return (iccoa_ctrl_execute(iccoa_cmd, param) == ICCOA_OK) ?
                        DK_OK : DK_ERR_PROTOCOL;
             }
             

@@ -81,7 +81,7 @@ ble_result_t ble_manager_init(void)
     }
     
     /* 注册事件处理 */
-    ble_adapter_register_event_handler(ble_adapter_event_handler);
+    (void)ble_adapter_register_event_handler(ble_adapter_event_handler);
     
     /* 初始化GATT服务 */
     if (ble_gatt_init() != GATT_SUCCESS) {
@@ -151,7 +151,7 @@ ble_result_t ble_manager_init(void)
                                 &g_ble_manager.session_key_handle);
     
     /* 初始化连接槽 */
-    memset(g_ble_manager.connections, 0, sizeof(g_ble_manager.connections));
+    (void)memset(g_ble_manager.connections, 0, sizeof(g_ble_manager.connections));
     
     g_ble_manager.initialized = true;
     g_ble_manager.conn_count = 0;
@@ -196,7 +196,7 @@ ble_result_t ble_start_advertising(const ble_adv_config_t *config)
     if (adv_len + 2 + name_len <= MAX_ADV_DATA_LEN) {
         adv_data[adv_len++] = 1 + name_len;
         adv_data[adv_len++] = 0x09;  // 类型: Complete Local Name
-        memcpy(&adv_data[adv_len], config->local_name, name_len);
+        (void)memcpy(&adv_data[adv_len], config->local_name, name_len);
         adv_len += name_len;
     }
     
@@ -213,7 +213,7 @@ ble_result_t ble_start_advertising(const ble_adv_config_t *config)
     }
     
     g_ble_manager.advertising = true;
-    memcpy(&g_ble_manager.adv_config, config, sizeof(ble_adv_config_t));
+    (void)memcpy(&g_ble_manager.adv_config, config, sizeof(ble_adv_config_t));
     
     return BLE_SUCCESS;
 }
@@ -249,14 +249,14 @@ ble_result_t ble_connect(const ble_device_t *device,
         return BLE_ERR_CONNECTION_FAILED;
     }
     
-    ble_adapter_conn_params_t adapter_params = {
-        .addr_type = device->address.type,
-        .address = device->address.addr,
-        .conn_interval_min = params->conn_interval_min,
-        .conn_interval_max = params->conn_interval_max,
-        .slave_latency = params->slave_latency,
-        .supervision_timeout = params->supervision_timeout
-    };
+    ble_adapter_conn_params_t adapter_params;
+    (void)memset(&adapter_params, 0, sizeof(adapter_params));
+    adapter_params.addr_type = device->address.type;
+    (void)memcpy(adapter_params.address, device->address.addr, 6);
+    adapter_params.conn_interval_min = params->conn_interval_min;
+    adapter_params.conn_interval_max = params->conn_interval_max;
+    adapter_params.slave_latency = params->slave_latency;
+    adapter_params.supervision_timeout = params->supervision_timeout;
     
     uint16_t handle;
     if (ble_adapter_connect(&adapter_params, &handle) != ADAPTER_SUCCESS) {
@@ -267,8 +267,8 @@ ble_result_t ble_connect(const ble_device_t *device,
     conn_context_t *ctx = &g_ble_manager.connections[slot];
     ctx->in_use = true;
     ctx->info.conn_handle = handle;
-    memcpy(&ctx->info.device, device, sizeof(ble_device_t));
-    memcpy(&ctx->info.params, params, sizeof(ble_conn_params_t));
+    (void)memcpy(&ctx->info.device, device, sizeof(ble_device_t));
+    (void)memcpy(&ctx->info.params, params, sizeof(ble_conn_params_t));
     ctx->info.state = BLE_CONN_STATE_CONNECTING;
     ctx->last_activity = 0;
     
@@ -353,7 +353,7 @@ ble_result_t ble_get_connection_info(uint16_t conn_handle,
         return BLE_ERR_CONNECTION_FAILED;
     }
     
-    memcpy(conn_info, &ctx->info, sizeof(ble_connection_t));
+    (void)memcpy(conn_info, &ctx->info, sizeof(ble_connection_t));
     return BLE_SUCCESS;
 }
 
@@ -394,7 +394,7 @@ static void ble_adapter_event_handler(uint8_t event, void *data)
                 ctx->last_activity = (uint32_t)(time(NULL) & 0xFFFFFFFF);
                 
                 /* 启动加密 */
-                ble_adapter_start_encryption(evt->conn_handle);
+                (void)ble_adapter_start_encryption(evt->conn_handle);
             }
             break;
         }
@@ -429,7 +429,7 @@ static void ble_adapter_event_handler(uint8_t event, void *data)
             if (ctx) {
                 /* 处理接收数据 */
                 if (ctx->rx_len + evt->length <= sizeof(ctx->rx_buffer)) {
-                    memcpy(&ctx->rx_buffer[ctx->rx_len], evt->data, evt->length);
+                    (void)memcpy(&ctx->rx_buffer[ctx->rx_len], evt->data, evt->length);
                     ctx->rx_len += evt->length;
                 }
                 ctx->last_activity = (uint32_t)(time(NULL) & 0xFFFFFFFF);

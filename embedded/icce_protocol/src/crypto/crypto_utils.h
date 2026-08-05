@@ -200,6 +200,8 @@ static inline void store_be64(uint8_t *p, uint64_t v)
 /** 左环移 (32位字) */
 static inline uint32_t rotl32(uint32_t x, int n)
 {
+    /* n == 0 would shift by 32 (undefined behaviour); guard it. */
+    if (n == 0) return x;
     return (x << n) | (x >> (32 - n));
 }
 

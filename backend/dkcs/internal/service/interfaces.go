@@ -38,3 +38,11 @@ type Telemetry interface {
 	IncCounter(name string, labels map[string]string)
 	RecordDuration(name string, d time.Duration)
 }
+
+// EventBus defines the interface for publishing key lifecycle events.
+// The concrete adapter in cmd/dkcs/main.go bridges this to mq.KafkaProducer.
+// Event emission is expected to be optional — implementors should
+// handle internal errors gracefully and never block the caller indefinitely.
+type EventBus interface {
+	PublishKeyEvent(ctx context.Context, eventType string, keyID string, ownerID string, targetID string) error
+}

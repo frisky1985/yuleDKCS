@@ -16,6 +16,7 @@
  */
 
 #include "sm3.h"
+#include "crypto_utils.h"
 
 /* ========================================================================
  *  SM3 初始值 IV
@@ -197,7 +198,7 @@ int sm3_update(sm3_ctx_t *ctx, const uint8_t *data, size_t len)
         size_t space = SM3_BLOCK_SIZE - ctx->block_len;
         size_t copy  = (len < space) ? len : space;
 
-        memcpy(ctx->block + ctx->block_len, data, copy);
+        (void)memcpy(ctx->block + ctx->block_len, data, copy);
         ctx->block_len += (uint32_t)copy;
         data += copy;
         len  -= copy;
@@ -214,20 +215,23 @@ int sm3_final(sm3_ctx_t *ctx, uint8_t hash[SM3_DIGEST_SIZE])
 {
     if (!ctx || !hash) return CRYPTO_ERR_NULL_PTR;
 
+    /* 保存原始消息长度 (填充不应计入长度字段) */
+    uint64_t orig_bits = ctx->total_bits;
+
     /* 填充: 先补 0x80, 再补 0x00 直到剩余 8 字节存长度 */
     uint8_t pad = 0x80;
-    sm3_update(ctx, &pad, 1);
+    (void)sm3_update(ctx, &pad, 1);
 
     /* 补 0 直到 block 内剩余 8 字节 */
     while (ctx->block_len != (SM3_BLOCK_SIZE - 8)) {
         uint8_t zero = 0;
-        sm3_update(ctx, &zero, 1);
+        (void)sm3_update(ctx, &zero, 1);
     }
 
-    /* 写入总位数 (大端 64 位) */
+    /* 写入原始消息总位数 (大端 64 位) */
     uint8_t bits[8];
-    store_be64(bits, ctx->total_bits);
-    sm3_update(ctx, bits, 8);
+    store_be64(bits, orig_bits);
+    (void)sm3_update(ctx, bits, 8);
 
     /* 输出 state → hash */
     for (int i = 0; i < 8; i++) {
@@ -271,7 +275,7 @@ int sm3_hmac(const uint8_t *key, size_t klen,
 
     /* 密钥长于分组则先哈希 */
     if (klen > SM3_BLOCK_SIZE) {
-        sm3_hash(key, klen, effective_key);
+        (void)sm3_hash(key, klen, effective_key);
         effective_klen = SM3_DIGEST_SIZE;
     } else {
         if (klen > 0) memcpy(effective_key, key, klen);
@@ -294,16 +298,16 @@ int sm3_hmac(const uint8_t *key, size_t klen,
     }
 
     /* H(k_ipad || message) */
-    sm3_init(&ctx);
-    sm3_update(&ctx, k_ipad, SM3_BLOCK_SIZE);
-    sm3_update(&ctx, data, dlen);
-    sm3_final(&ctx, tmp_hash);
+    (void)sm3_init(&ctx);
+    (void)sm3_update(&ctx, k_ipad, SM3_BLOCK_SIZE);
+    (void)sm3_update(&ctx, data, dlen);
+    (void)sm3_final(&ctx, tmp_hash);
 
     /* H(k_opad || H(k_ipad || message)) */
-    sm3_init(&ctx);
-    sm3_update(&ctx, k_opad, SM3_BLOCK_SIZE);
-    sm3_update(&ctx, tmp_hash, SM3_DIGEST_SIZE);
-    sm3_final(&ctx, mac);
+    (void)sm3_init(&ctx);
+    (void)sm3_update(&ctx, k_opad, SM3_BLOCK_SIZE);
+    (void)sm3_update(&ctx, tmp_hash, SM3_DIGEST_SIZE);
+    (void)sm3_final(&ctx, mac);
 
     crypto_secure_zero(k_ipad, sizeof(k_ipad));
     crypto_secure_zero(k_opad, sizeof(k_opad));

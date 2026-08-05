@@ -9,16 +9,19 @@
 #define NCJ29D6_SPI_CMD_WRITE   0x02
 #define NCJ29D6_IRQ_PIN         GPIO_PIN_4
 
-static icce_uwb_session_t g_sessions[ICCE_UWB_MAX_RANGING_SESSIONS];
-static icce_uwb_ranging_cb_t g_ranging_cb = NULL;
-static uint8_t g_session_count = 0;
+/* IRQ handler icce_uwb_irq_handler() accesses these; volatile prevents
+ * compiler from caching values across ISR boundaries [EMB-P1-01] */
+static icce_uwb_session_t volatile g_sessions[ICCE_UWB_MAX_RANGING_SESSIONS];
+static icce_uwb_ranging_cb_t volatile g_ranging_cb = NULL;
+static uint8_t volatile g_session_count = 0;
 
 int32_t icce_uwb_init(void)
 {
     /* NCJ29D6 SPI3 init @ 16MHz */
     /* Load FiRa MAC config */
     /* Set default channel 9, preamble code 11 */
-    memset(g_sessions, 0, sizeof(g_sessions));
+    /* Cast away volatile for one-time init; IRQ not active yet [EMB-P1-01] */
+    (void)memset((void*)g_sessions, 0, sizeof(g_sessions));
     g_ranging_cb = NULL;
     g_session_count = 0;
     return ICCE_OK;
@@ -29,7 +32,7 @@ int32_t icce_uwb_deinit(void)
     /* Stop all active sessions */
     for (uint8_t i = 0; i < g_session_count; i++) {
         if (g_sessions[i].session_id != 0) {
-            icce_uwb_stop_session(g_sessions[i].session_id);
+            (void)icce_uwb_stop_session(g_sessions[i].session_id);
         }
     }
     g_session_count = 0;
@@ -69,8 +72,8 @@ int32_t icce_uwb_stop_session(uint16_t session_id)
     int32_t idx = find_session(session_id);
     if (idx < 0) return ICCE_ERR_NOT_FOUND;
 
-    /* De-session NCJ29D6 */
-    memset(&g_sessions[idx], 0, sizeof(icce_uwb_session_t));
+    /* De-session NCJ29D6 — cast volatile away for one-time cleanup; IRQ not touching this slot */
+    (void)memset((void*)&g_sessions[idx], 0, sizeof(icce_uwb_session_t));
 
     /* Compact array */
     for (uint8_t i = idx; i < g_session_count - 1; i++) {
@@ -86,7 +89,8 @@ int32_t icce_uwb_get_ranging(uint16_t session_id, icce_uwb_session_t *out)
     if (idx < 0) return ICCE_ERR_NOT_FOUND;
     if (!out) return ICCE_ERR_PARAM;
 
-    memcpy(out, &g_sessions[idx], sizeof(icce_uwb_session_t));
+    /* Copy from volatile array; caller gets a non-volatile snapshot [EMB-P1-01] */
+    (void)memcpy(out, (const void*)&g_sessions[idx], sizeof(icce_uwb_session_t));
     return ICCE_OK;
 }
 
@@ -98,7 +102,7 @@ int32_t icce_uwb_register_cb(icce_uwb_ranging_cb_t cb)
 }
 
 /* Called from SPI IRQ when ranging data is ready */
-void icce_uwb_irq_handler(void)
+static void icce_uwb_irq_handler(void)
 {
     /* Read ranging result from NCJ29D6 */
     /* Update g_sessions[] with new distance/angle */

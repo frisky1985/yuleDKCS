@@ -94,7 +94,7 @@ cache_result_t cache_init(const cache_config_t *config)
     }
     
     /* 初始化实例 */
-    memset(&g_cache, 0, sizeof(cache_manager_t));
+    (void)memset(&g_cache, 0, sizeof(cache_manager_t));
     
     g_cache.type = config->type;
     g_cache.policy = config->policy;
@@ -146,7 +146,7 @@ cache_result_t cache_get(const uint8_t *key, uint16_t key_len,
     }
     
     /* 复制数据 */
-    memcpy(value, entry->value, entry->value_len);
+    (void)memcpy(value, entry->value, entry->value_len);
     *value_len = entry->value_len;
     
     /* 更新访问统计 */
@@ -194,7 +194,7 @@ cache_result_t cache_set(const uint8_t *key, uint16_t key_len,
             return CACHE_ERR_STORAGE_FULL;
         }
         
-        memcpy(entry->value, value, value_len);
+        (void)memcpy(entry->value, value, value_len);
         entry->value_len = value_len;
         
         uint32_t current_time = get_current_time();
@@ -228,7 +228,7 @@ cache_result_t cache_set(const uint8_t *key, uint16_t key_len,
         }
         
         /* 初始化新项 */
-        memcpy(entry->key, key, key_len);
+        (void)memcpy(entry->key, key, key_len);
         entry->key_len = key_len;
         
         entry->value = (uint8_t*)malloc(value_len);
@@ -236,7 +236,7 @@ cache_result_t cache_set(const uint8_t *key, uint16_t key_len,
             return CACHE_ERR_STORAGE_FULL;
         }
         
-        memcpy(entry->value, value, value_len);
+        (void)memcpy(entry->value, value, value_len);
         entry->value_len = value_len;
         
         uint32_t current_time = get_current_time();
@@ -271,7 +271,7 @@ cache_result_t cache_set(const uint8_t *key, uint16_t key_len,
     if (g_cache.enable_sync && 
         (g_cache.type == CACHE_TYPE_PERSISTENT || 
          g_cache.type == CACHE_TYPE_SECURE)) {
-        save_to_storage(entry);
+        (void)save_to_storage(entry);
         g_cache.sync_count++;
     }
     
@@ -338,7 +338,7 @@ cache_result_t cache_clear(void)
     }
     
     /* 清空哈希表 */
-    memset(g_cache.hash_table, 0, sizeof(g_cache.hash_table));
+    (void)memset(g_cache.hash_table, 0, sizeof(g_cache.hash_table));
     
     /* 清空LRU链表 */
     g_cache.lru_head = NULL;
@@ -403,7 +403,7 @@ cache_result_t cache_sync(void)
     /* 同步所有项到存储 */
     for (int i = 0; i < MAX_CACHE_ITEMS; i++) {
         if (g_cache.item_pool[i].in_use) {
-            save_to_storage(&g_cache.item_pool[i]);
+            (void)save_to_storage(&g_cache.item_pool[i]);
         }
     }
     
@@ -519,7 +519,7 @@ static void evict_lru(void)
     
     cache_entry_t *entry = g_cache.lru_tail;
     
-    cache_delete(entry->key, entry->key_len);
+    (void)cache_delete(entry->key, entry->key_len);
     g_cache.eviction_count++;
 }
 
@@ -566,7 +566,7 @@ static int32_t load_from_storage(cache_entry_t *entry)
 
 static uint32_t get_current_time(void)
 {
-    /* Get current UTC timestamp for cache freshness */\n    entry->timestamp = (uint32_t)(time(NULL) & 0xFFFFFFFF);
+    /* TODO: 实际时间获取 */
     return 0;
 }
 

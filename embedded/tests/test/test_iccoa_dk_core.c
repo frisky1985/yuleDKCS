@@ -14,8 +14,10 @@
 #include "unity.h"
 #include "iccoa_digital_key.h"
 
+#ifndef TEST_LIB_MODE
 void setUp(void) {}
 void tearDown(void) {}
+#endif /* TEST_LIB_MODE */
 
 /* Extern declarations for BLE HAL event callbacks (defined in iccoa_ble.c) */
 void hal_ble_on_connect(uint16_t conn_handle, const uint8_t *peer_addr);
@@ -81,7 +83,7 @@ void test_iccoa_auth_verify(void)
 
     /* 验证需满足 user_id(16) + signature(≥32) */
     uint8_t response[48]; /* 16+32 */
-    memset(response, 0xAB, sizeof(response));
+    (void)memset(response, 0xAB, sizeof(response));
     ret = iccoa_auth_verify(response, sizeof(response));
     /* 取决于 stub 实现 */
     TEST_ASSERT_TRUE(ret == ICCOA_OK || ret == ICCOA_ERR_DENIED);
@@ -157,7 +159,7 @@ void test_iccoa_dk30_checksum(void)
 
     /* 构建 DK30 帧 header + payload, 计算 checksum */
     uint8_t frame_buf[32];
-    memset(frame_buf, 0, sizeof(frame_buf));
+    (void)memset(frame_buf, 0, sizeof(frame_buf));
     frame_buf[0] = DK30_SOP;    /* sop */
     frame_buf[1] = ICCOA_CMD_BIND_REQ; /* cmd_id */
     frame_buf[2] = 0x00;        /* seq_num lo */
@@ -239,7 +241,7 @@ void test_iccoa_vehicle_status(void)
     iccoa_service_init();
 
     iccoa_vehicle_status_t status;
-    memset(&status, 0, sizeof(status));
+    (void)memset(&status, 0, sizeof(status));
     int32_t ret = iccoa_service_get_status(&status);
     TEST_ASSERT_EQUAL_INT32(ICCOA_OK, ret);
 

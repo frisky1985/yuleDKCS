@@ -42,19 +42,19 @@ static int sm2_compute_ZA(const uint8_t public_key[SM2_PUBLIC_KEY_SIZE],
     entla[0] = (uint8_t)(entla_val >> 8);
     entla[1] = (uint8_t)(entla_val & 0xFF);
 
-    sm3_init(&ctx);
-    sm3_update(&ctx, entla, 2);
-    sm3_update(&ctx, user_id, user_id_len);
+    (void)sm3_init(&ctx);
+    (void)sm3_update(&ctx, entla, 2);
+    (void)sm3_update(&ctx, user_id, user_id_len);
 
     /* a, b, Gx, Gy — 大端字节 */
     uint8_t buf[32];
-    bn256_to_bytes(&SM2_A, buf);  sm3_update(&ctx, buf, 32);
-    bn256_to_bytes(&SM2_B, buf);  sm3_update(&ctx, buf, 32);
-    bn256_to_bytes(&SM2_GX, buf); sm3_update(&ctx, buf, 32);
-    bn256_to_bytes(&SM2_GY, buf); sm3_update(&ctx, buf, 32);
+    (void)bn256_to_bytes(&SM2_A, buf);  sm3_update(&ctx, buf, 32);
+    (void)bn256_to_bytes(&SM2_B, buf);  sm3_update(&ctx, buf, 32);
+    (void)bn256_to_bytes(&SM2_GX, buf); sm3_update(&ctx, buf, 32);
+    (void)bn256_to_bytes(&SM2_GY, buf); sm3_update(&ctx, buf, 32);
 
     /* 公钥 X || Y */
-    sm3_update(&ctx, public_key, SM2_PUBLIC_KEY_SIZE);
+    (void)sm3_update(&ctx, public_key, SM2_PUBLIC_KEY_SIZE);
 
     return sm3_final(&ctx, za);
 }
@@ -72,9 +72,9 @@ static int sm2_msg_to_hash(const uint8_t public_key[SM2_PUBLIC_KEY_SIZE],
     if (ret != CRYPTO_SUCCESS) return ret;
 
     sm3_ctx_t ctx;
-    sm3_init(&ctx);
-    sm3_update(&ctx, za, SM3_DIGEST_SIZE);
-    sm3_update(&ctx, msg, msg_len);
+    (void)sm3_init(&ctx);
+    (void)sm3_update(&ctx, za, SM3_DIGEST_SIZE);
+    (void)sm3_update(&ctx, msg, msg_len);
     return sm3_final(&ctx, hash);
 }
 
@@ -112,7 +112,7 @@ int sm2_sign_hash(const uint8_t d[SM2_PRIVATE_KEY_SIZE],
     while (max_attempts-- > 0) {
         /* 生成随机 k ∈ [1, n-1] */
         uint8_t k_bytes[32];
-        crypto_random_bytes(k_bytes, 32);
+        (void)crypto_random_bytes(k_bytes, 32);
         /* 确保 k < n */
         bn256_from_bytes(&k, k_bytes);
         if (bn256_cmp(&k, &SM2_N) >= 0 || bn256_is_zero(&k)) {
@@ -309,7 +309,7 @@ static int sm2_kdf(const uint8_t *z, size_t zlen, size_t klen,
         if (ret != CRYPTO_SUCCESS) return ret;
 
         size_t todo = (klen - offset < SM3_DIGEST_SIZE) ? (klen - offset) : SM3_DIGEST_SIZE;
-        memcpy(key + offset, hash, todo);
+        (void)memcpy(key + offset, hash, todo);
         offset += todo;
         ct++;
     }
@@ -344,7 +344,7 @@ int sm2_key_exchange_initiator(
 
     /* 1. 生成临时密钥对 (rA, RA) */
     uint8_t rA_bytes[32];
-    crypto_random_bytes(rA_bytes, 32);
+    (void)crypto_random_bytes(rA_bytes, 32);
     bn256_t rA;
     bn256_from_bytes(&rA, rA_bytes);
     if (bn256_cmp(&rA, &SM2_N) >= 0 || bn256_is_zero(&rA)) {
@@ -410,13 +410,27 @@ int sm2_key_exchange_initiator(
     bn256_to_bytes(&Uy, yU);
 
     uint8_t z_buf[32 + 32 + SM3_DIGEST_SIZE + SM3_DIGEST_SIZE];
-    memcpy(z_buf, xU, 32);
-    memcpy(z_buf + 32, yU, 32);
-    memcpy(z_buf + 64, ZA, SM3_DIGEST_SIZE);
-    memcpy(z_buf + 64 + SM3_DIGEST_SIZE, ZB, SM3_DIGEST_SIZE);
+    (void)memcpy(z_buf, xU, 32);
+    (void)memcpy(z_buf + 32, yU, 32);
+    (void)memcpy(z_buf + 64, ZA, SM3_DIGEST_SIZE);
+    (void)memcpy(z_buf + 64 + SM3_DIGEST_SIZE, ZB, SM3_DIGEST_SIZE);
 
     ret = sm2_kdf(z_buf, sizeof(z_buf), SM2_SHARED_SECRET_SIZE, shared_secret);
+
+    /* [P0-04 FIX] 清除临时私钥和中间缓冲区 (发起方) */
+    crypto_secure_zero(rA_bytes, sizeof(rA_bytes));
+    crypto_secure_zero(xU, sizeof(xU));
+    crypto_secure_zero(yU, sizeof(yU));
+    crypto_secure_zero(ZA, sizeof(ZA));
+    crypto_secure_zero(ZB, sizeof(ZB));
     crypto_secure_zero(z_buf, sizeof(z_buf));
+
+    if (ret != CRYPTO_SUCCESS) {
+        /* [P0-04 FIX] 错误路径清除 ephemeral_private (已写入输出参数) */
+        crypto_secure_zero(ephemeral_private, SM2_PRIVATE_KEY_SIZE);
+        crypto_secure_zero(ephemeral_public, SM2_PUBLIC_KEY_SIZE);
+        crypto_secure_zero(shared_secret, SM2_SHARED_SECRET_SIZE);
+    }
 
     return ret;
 }
@@ -455,12 +469,14 @@ int sm2_key_exchange_responder(
 
     /* 2. 临时密钥 rB (响应方自己生成) */
     uint8_t rB_bytes[32];
-    crypto_random_bytes(rB_bytes, 32);
+    (void)crypto_random_bytes(rB_bytes, 32);
     bn256_t rB;
     bn256_from_bytes(&rB, rB_bytes);
     if (bn256_cmp(&rB, &SM2_N) >= 0 || bn256_is_zero(&rB)) {
         rB.w[7] |= 1;
     }
+    /* [P0-04 FIX] 清除局部随机缓冲区 (已在 bn256_t 中备份) */
+    crypto_secure_zero(rB_bytes, sizeof(rB_bytes));
 
     /* 3. tB = (dB + rB) mod n */
     bn256_t dB, tB;
@@ -506,13 +522,24 @@ int sm2_key_exchange_responder(
     bn256_to_bytes(&Vy, yV);
 
     uint8_t z_buf[32 + 32 + SM3_DIGEST_SIZE + SM3_DIGEST_SIZE];
-    memcpy(z_buf, xV, 32);
-    memcpy(z_buf + 32, yV, 32);
-    memcpy(z_buf + 64, ZA, SM3_DIGEST_SIZE);
-    memcpy(z_buf + 64 + SM3_DIGEST_SIZE, ZB, SM3_DIGEST_SIZE);
+    (void)memcpy(z_buf, xV, 32);
+    (void)memcpy(z_buf + 32, yV, 32);
+    (void)memcpy(z_buf + 64, ZA, SM3_DIGEST_SIZE);
+    (void)memcpy(z_buf + 64 + SM3_DIGEST_SIZE, ZB, SM3_DIGEST_SIZE);
 
     ret = sm2_kdf(z_buf, sizeof(z_buf), SM2_SHARED_SECRET_SIZE, shared_secret);
+
+    /* [P0-04 FIX] 清除中间缓冲区 (响应方) */
+    crypto_secure_zero(ZA, sizeof(ZA));
+    crypto_secure_zero(ZB, sizeof(ZB));
     crypto_secure_zero(z_buf, sizeof(z_buf));
+    crypto_secure_zero(xV, sizeof(xV));
+    crypto_secure_zero(yV, sizeof(yV));
+
+    if (ret != CRYPTO_SUCCESS) {
+        /* [P0-04 FIX] 错误路径清除共享密钥 */
+        crypto_secure_zero(shared_secret, SM2_SHARED_SECRET_SIZE);
+    }
 
     return ret;
 }

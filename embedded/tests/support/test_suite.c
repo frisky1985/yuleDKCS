@@ -8,6 +8,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Unity hooks — defined once for the merged suite. Individual test files
+ * skip their own copies when compiled with TEST_LIB_MODE. */
+void setUp(void) {}
+void tearDown(void) {}
+
 /* Test runners from each test module */
 extern int run_iccoa_core_tests(void);
 extern int run_iccoa_ble_tests(void);

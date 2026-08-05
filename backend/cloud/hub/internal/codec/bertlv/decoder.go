@@ -20,6 +20,8 @@ var (
 	ErrTagNotMatch     = errors.New("Tag不匹配")
 	ErrInvalidTag       = errors.New("无效的Tag标签")
 	ErrInvalidLength    = errors.New("无效的Length长度")
+	ErrTruncatedData    = errors.New("数据截断: 意外EOF")
+	ErrLengthOverflow   = errors.New("长度值溢出或过大")
 )
 
 // Decoder BERTLV解码器
@@ -67,9 +69,9 @@ func (d *Decoder) Decode() (*TLV, error) {
 		return nil, &DecodeError{Offset: int(offset), Err: err}
 	}
 	
-	// 检查数据长度
+	// [EMB-P1-07 FIX] 检查数据长度: 防止EOF截断攻击
 	if d.reader.Len() < length {
-		return nil, &DecodeError{Offset: int(offset), Err: ErrBufferTooShort}
+		return nil, &DecodeError{Offset: int(offset), Err: ErrTruncatedData}
 	}
 	
 	// 读取Value
@@ -77,7 +79,7 @@ func (d *Decoder) Decode() (*TLV, error) {
 	if length > 0 {
 		value = make([]byte, length)
 		if _, err := io.ReadFull(d.reader, value); err != nil {
-			return nil, &DecodeError{Offset: int(offset), Err: ErrUnexpectedEnd}
+			return nil, &DecodeError{Offset: int(offset), Err: ErrTruncatedData}
 		}
 	} else {
 		value = make([]byte, 0)
@@ -206,16 +208,25 @@ func (d *Decoder) readTag() (Tag, error) {
 	
 	// 检查后续字节 (高两位为11表示有多字节Tag)
 	if firstByte&0x1F == 0x1F {
+		// [EMB-P1-07 FIX] 限制多字节Tag的续延字节数 (最大4字节Tag)
+		var continuationCount int
 		for {
 			if d.reader.Len() == 0 {
-				return 0, ErrInvalidTag
+				return 0, ErrTruncatedData
 			}
 			nextByte, err := d.reader.ReadByte()
 			if err != nil {
-				return 0, ErrInvalidTag
+				return 0, ErrTruncatedData
 			}
 			tag = (tag << 8) | Tag(nextByte)
-			// 高两位不为10则继续读取
+			
+			continuationCount++
+			// [EMB-P1-07 FIX] EOF截断防护: 最多3个续延字节 (4字节Tag上限)
+			if continuationCount > 3 {
+				return 0, ErrInvalidTag
+			}
+			
+			// 最高位为0表示续延结束
 			if nextByte&0x80 == 0 {
 				break
 			}
@@ -237,23 +248,35 @@ func (d *Decoder) readLength() (int, error) {
 		return int(firstByte), nil
 	}
 	
-	// 长格式: 0x81-0x84表示后续字节数
+	// [EMB-P1-07 FIX] 长格式: 0x81-0x84表示后续字节数
 	lengthBytes := int(firstByte & 0x7F)
+	
+	// 0x80 是无限长度编码 (不支持)
+	if lengthBytes == 0 {
+		return 0, ErrInvalidLength
+	}
+	
+	// 最多3个长度字节 (理论上支持4个,但为防滥用限制)
 	if lengthBytes > 3 {
 		return 0, ErrInvalidLength
 	}
 	
 	if d.reader.Len() < lengthBytes {
-		return 0, ErrBufferTooShort
+		return 0, ErrTruncatedData
 	}
 	
 	length := 0
 	for i := 0; i < lengthBytes; i++ {
 		b, err := d.reader.ReadByte()
 		if err != nil {
-			return 0, ErrBufferTooShort
+			return 0, ErrTruncatedData
 		}
 		length = (length << 8) | int(b)
+	}
+	
+	// [EMB-P1-07 FIX] 负长度或过大的长度检查 (防止整数溢出和OOM)
+	if length < 0 || length > 65536 {
+		return 0, ErrLengthOverflow
 	}
 	
 	return length, nil

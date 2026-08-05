@@ -8,8 +8,10 @@
 #include "unity.h"
 #include "iccoa_digital_key.h"
 
+#ifndef TEST_LIB_MODE
 void setUp(void) {}
 void tearDown(void) {}
+#endif /* TEST_LIB_MODE */
 
 /* Extern: BLE HAL event callbacks from iccoa_ble.c */
 void hal_ble_on_connect(uint16_t conn_handle, const uint8_t *peer_addr);
@@ -70,7 +72,7 @@ void test_ble_send(void)
 
     /* Large payload within MTU */
     uint8_t big[240];
-    memset(big, 0xAB, sizeof(big));
+    (void)memset(big, 0xAB, sizeof(big));
     ret = iccoa_ble_send(big, sizeof(big));
     TEST_ASSERT_EQUAL_INT32(ICCOA_OK, ret);
 

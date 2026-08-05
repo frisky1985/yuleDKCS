@@ -44,7 +44,13 @@ ICCE_SRCS  := $(ICCE_SRC)/icce_dk_core.c \
               $(ICCE_SRC)/icce_security.c \
               $(ICCE_SRC)/icce_uwb.c \
               $(ICCE_SRC)/icce_vehicle.c \
-              $(ICCE_SRC)/icce_zone.c
+              $(ICCE_SRC)/icce_zone.c \
+              $(ICCE_SRC)/decision/edge_condition.c \
+              $(ICCE_SRC)/crypto/crypto_engine.c \
+              $(ICCE_SRC)/crypto/crypto_utils.c \
+              $(ICCE_SRC)/crypto/sm2.c \
+              $(ICCE_SRC)/crypto/sm3.c \
+              $(ICCE_SRC)/crypto/sm4.c
 
 UNI_SRC_FILE := $(UNI_SRC)/dk_unified.c
 
@@ -63,6 +69,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/system_architecture \
             -I$(ROOT)/ccc_protocol/src/logger \
             -I$(ROOT)/icce_protocol/src/crypto \
+            -I$(ROOT)/icce_protocol/src/decision \
             -I$(VENDOR)/unity
 
 # Real dk_logger.h declares dk_logger_log with va_list but DK_LOG macro
@@ -70,6 +77,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
 CFLAGS   := -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
             -Wno-unused-function -Wno-return-type -Wno-format -g -O0 \
             -Wno-implicit-function-declaration \
+            -DCONFIG_ENABLE_CRYPTO -DUSE_SM_CRYPTO \
             -DUNIT_TEST -DTEST_MODE -DBLE_SUPERVISION_TIMEOUT_MS=4000 \
             -DKW47A_CS_PORT=0 -DKW47A_CS_PIN=4 \
             -DKW47A_RST_PORT=0 -DKW47A_RST_PIN=1 \
@@ -132,9 +140,15 @@ $(BUILD)/test_suite.o: $(TEST_ALL) | $(BUILD)
 # Non-main test objects (for linking into combined binaries)
 #---------------------------------------------------------------------------
 $(BUILD)/test_iccoa_dk_core_lib.o: $(TEST_DIR)/test_iccoa_dk_core.c | $(BUILD)
-	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_iccoa_ble_lib.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
-	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_ccc_lib.o: $(TEST_DIR)/test_ccc_dk_core.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_CCC_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_icce_lib.o: $(TEST_DIR)/test_icce.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_unified_lib.o: $(TEST_DIR)/test_unified.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_UNIFIED_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
@@ -163,6 +177,9 @@ test_icce: $(BUILD)/test_icce.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
           $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+          $(BUILD)/edge_condition.o \
+          $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/stubs_hal.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
@@ -177,12 +194,17 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
               $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
               $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+              $(BUILD)/edge_condition.o \
+              $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+              $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
               $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
+          $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
+          $(BUILD)/test_unified_lib.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
@@ -192,6 +214,9 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
           $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
+          $(BUILD)/edge_condition.o \
+          $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@

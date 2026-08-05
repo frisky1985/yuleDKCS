@@ -156,7 +156,7 @@ static int32_t dk40_alloc_session(const uint8_t *peer_id)
             extern int se050_rng(uint8_t *out, uint16_t len);
             se050_rng(g_sessions[i].token, DK40_SESSION_TK_LEN);
 
-            memcpy(g_sessions[i].peer_id, peer_id, 16);
+            (void)memcpy(g_sessions[i].peer_id, peer_id, 16);
             g_sessions[i].state = SESSION_STATE_BIND_PENDING;
             g_sessions[i].last_activity = (uint32_t)time(NULL); /* get system timestamp via time() */
             g_sessions[i].last_msg_id = 0;
@@ -175,7 +175,7 @@ static int32_t dk40_alloc_session(const uint8_t *peer_id)
 static void dk40_free_session(int idx)
 {
     if (idx >= 0 && idx < DK40_MAX_SESSIONS) {
-        memset(&g_sessions[idx], 0, sizeof(dk40_session_t));
+        (void)memset(&g_sessions[idx], 0, sizeof(dk40_session_t));
         g_sessions[idx].state = SESSION_STATE_IDLE;
     }
 }
@@ -206,7 +206,7 @@ static int32_t dk40_start_uwb_ranging(uint8_t session_idx, const dk40_uwb_config
 /**
  * @brief 处理 UWB 测距结果回调
  */
-void dk40_uwb_result_cb(uint8_t session_id, int16_t distance_cm, uint8_t zone)
+static void dk40_uwb_result_cb(uint8_t session_id, int16_t distance_cm, uint8_t zone)
 {
     if (session_id < DK40_MAX_SESSIONS) {
         g_sessions[session_id].last_distance = distance_cm;
@@ -217,7 +217,7 @@ void dk40_uwb_result_cb(uint8_t session_id, int16_t distance_cm, uint8_t zone)
         notify[0] = ICCOA_V4_NOTIFY;
         notify[1] = zone;
         *(int16_t *)(notify + 2) = distance_cm;
-        iccoa_dk40_send_response(ICCOA_V4_NOTIFY, notify, 4);
+        (void)iccoa_dk40_send_response(ICCOA_V4_NOTIFY, notify, 4);
     }
 }
 
@@ -238,7 +238,7 @@ static int32_t handle_session_open(const iccoa_dk40_frame_t *req, uint8_t *rsp_p
     if (idx < 0) return idx;
 
     /* Response: [session_token(4)] + [server_nonce(12)] */
-    memcpy(rsp_payload, g_sessions[idx].token, DK40_SESSION_TK_LEN);
+    (void)memcpy(rsp_payload, g_sessions[idx].token, DK40_SESSION_TK_LEN);
     extern int se050_rng(uint8_t *out, uint16_t len);
     se050_rng(rsp_payload + 4, DK40_NONCE_LEN);
     *rsp_len = 4 + DK40_NONCE_LEN;
@@ -572,9 +572,9 @@ int32_t iccoa_dk40_init(void)
 {
     if (g_initialized) return ICCOA_OK;
 
-    memset(g_sessions, 0, sizeof(g_sessions));
-    memset(&g_uwb_cfg, 0, sizeof(g_uwb_cfg));
-    memset(&g_key_ctx, 0, sizeof(g_key_ctx));
+    (void)memset(g_sessions, 0, sizeof(g_sessions));
+    (void)memset(&g_uwb_cfg, 0, sizeof(g_uwb_cfg));
+    (void)memset(&g_key_ctx, 0, sizeof(g_key_ctx));
 
     /* 初始化主密钥 (从 SE050 加载) */
     extern int se050_key_get_master_key(uint8_t *key_out);
@@ -615,8 +615,9 @@ int32_t iccoa_dk40_process(const uint8_t *raw, uint16_t len)
     if (ret != ICCOA_OK) return ret;
 
     /* 准备响应 */
-    uint8_t rsp_payload[ICCOA_MAX_PAYLOAD];
+    static uint8_t rsp_payload[ICCOA_MAX_PAYLOAD];
     uint16_t rsp_len = 0;
+    (void)memset(rsp_payload, 0, sizeof(rsp_payload));
 
     /* 分发处理 */
     switch (req->msg_type) {
@@ -673,7 +674,7 @@ int32_t iccoa_dk40_send_response(iccoa_v4_cmd_e cmd, const uint8_t *payload, uin
     frame.payload_len = len;
 
     if (len > 0 && payload) {
-        memcpy(frame.payload, payload, len);
+        (void)memcpy(frame.payload, payload, len);
     }
 
     /* 计算 HMAC */

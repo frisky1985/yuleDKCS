@@ -71,7 +71,7 @@ int32_t icce_vehicle_ctrl(icce_action_e action, uint8_t param)
 int32_t icce_vehicle_get_status(icce_vehicle_status_t *status)
 {
     if (!status) return ICCE_ERR_PARAM;
-    memcpy(status, &g_status, sizeof(icce_vehicle_status_t));
+    (void)memcpy(status, &g_status, sizeof(icce_vehicle_status_t));
     return ICCE_OK;
 }
 

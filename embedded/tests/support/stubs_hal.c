@@ -186,7 +186,87 @@ int32_t icce_ble_deinit(void) { return ICCE_OK; }
 int32_t icce_ble_start_adv(void) { return ICCE_OK; }
 int32_t icce_ble_stop_adv(void) { return ICCE_OK; }
 int32_t icce_ble_send(const uint8_t *data, uint16_t len) { (void)data;(void)len; return ICCE_OK; }
-int32_t icce_ble_register_cb(icce_ble_recv_cb_t cb) { (void)cb; return ICCE_OK; }
+int32_t icce_ble_register_cb(void (*cb)(const uint8_t *data, uint16_t len)) { (void)cb; return ICCE_OK; }
 
 /* se05x_rng — referenced by icce crypto_utils.c (if compiled) */
 int se05x_rng(uint8_t *buf, size_t len) { (void)buf;(void)len; return 0; }
+
+/* ========================================================================
+ *  ICCE storage driver mock — edge_condition.c (decision/)
+ *  Key-based KV stub matching real cache/storage_driver.h API.
+ * ======================================================================== */
+#include "storage_driver.h"
+
+#define STUB_STORAGE_SLOTS 8
+#define STUB_STORAGE_KEY_MAX 32
+#define STUB_STORAGE_VAL_MAX 512
+
+static struct {
+    uint8_t  key[STUB_STORAGE_KEY_MAX];
+    uint16_t key_len;
+    uint8_t  val[STUB_STORAGE_VAL_MAX];
+    uint32_t val_len;
+    uint8_t  used;
+} g_stub_kv[STUB_STORAGE_SLOTS];
+
+int32_t storage_init(uint8_t *handle)
+{
+    (void)handle;
+    memset(g_stub_kv, 0, sizeof(g_stub_kv));
+    return STORAGE_SUCCESS;
+}
+
+static int32_t stub_kv_find(const uint8_t *key, uint16_t key_len)
+{
+    for (int i = 0; i < STUB_STORAGE_SLOTS; i++) {
+        if (g_stub_kv[i].used && g_stub_kv[i].key_len == key_len &&
+            memcmp(g_stub_kv[i].key, key, key_len) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int32_t storage_write(uint8_t handle, const uint8_t *key, uint16_t key_len,
+                      const uint8_t *data, uint32_t data_len)
+{
+    (void)handle;
+    if (key == NULL || key_len == 0 || key_len > STUB_STORAGE_KEY_MAX) return STORAGE_ERR;
+    if (data == NULL || data_len > STUB_STORAGE_VAL_MAX) return STORAGE_ERR;
+    int idx = stub_kv_find(key, key_len);
+    if (idx < 0) {
+        for (idx = 0; idx < STUB_STORAGE_SLOTS; idx++) {
+            if (!g_stub_kv[idx].used) break;
+        }
+        if (idx == STUB_STORAGE_SLOTS) return STORAGE_ERR;  /* full */
+        g_stub_kv[idx].used = 1;
+        g_stub_kv[idx].key_len = key_len;
+        memcpy(g_stub_kv[idx].key, key, key_len);
+    }
+    memcpy(g_stub_kv[idx].val, data, data_len);
+    g_stub_kv[idx].val_len = data_len;
+    return STORAGE_SUCCESS;
+}
+
+int32_t storage_read(uint8_t handle, const uint8_t *key, uint16_t key_len,
+                     uint8_t *data, uint32_t *data_len)
+{
+    (void)handle;
+    if (key == NULL || key_len == 0 || data == NULL || data_len == NULL) return STORAGE_ERR;
+    int idx = stub_kv_find(key, key_len);
+    if (idx < 0) return STORAGE_ERR;
+    if (*data_len < g_stub_kv[idx].val_len) return STORAGE_ERR;
+    memcpy(data, g_stub_kv[idx].val, g_stub_kv[idx].val_len);
+    *data_len = g_stub_kv[idx].val_len;
+    return STORAGE_SUCCESS;
+}
+
+int32_t storage_delete(uint8_t handle, const uint8_t *key, uint16_t key_len)
+{
+    (void)handle;
+    if (key == NULL || key_len == 0) return STORAGE_ERR;
+    int idx = stub_kv_find(key, key_len);
+    if (idx < 0) return STORAGE_ERR;
+    memset(&g_stub_kv[idx], 0, sizeof(g_stub_kv[idx]));
+    return STORAGE_SUCCESS;
+}

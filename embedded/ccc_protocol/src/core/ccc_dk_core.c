@@ -81,7 +81,7 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
  * ------------------------------------------------------------------- */
 ccc_status_t ccc_dk_init(void)
 {
-    memset(&g_status, 0, sizeof(g_status));
+    (void)memset(&g_status, 0, sizeof(g_status));
     g_status.state = STATE_INIT;
 
     /* Init NFC */
@@ -193,6 +193,6 @@ main_state_e ccc_dk_get_state(void)
 ccc_status_t ccc_dk_get_status(system_status_t *status)
 {
     if (!status) return CCC_ERR_INVALID_PARAM;
-    memcpy(status, &g_status, sizeof(*status));
+    (void)memcpy(status, &g_status, sizeof(*status));
     return CCC_OK;
 }

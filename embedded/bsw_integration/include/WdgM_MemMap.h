@@ -1,0 +1,41 @@
+/**
+ * @file WdgM_MemMap.h
+ * @brief WdgM Memory Mapping Stub — yuleDKCS BSW Phase 1
+ *
+ * 与 MemMap.h 类似, 专门为 WdgM 模块提供内存段标记。
+ * 实际产品由 NXP S32 SDK 的 MemMap.h 提供。
+ *
+ * 支持的标记:
+ *   WDGM_START_SEC_CODE
+ *   WDGM_STOP_SEC_CODE
+ *   WDGM_START_SEC_CONFIG_DATA_UNSPECIFIED
+ *   WDGM_STOP_SEC_CONFIG_DATA_UNSPECIFIED
+ *   WDGM_START_SEC_VAR_CLEARED_UNSPECIFIED
+ *   WDGM_STOP_SEC_VAR_CLEARED_UNSPECIFIED
+ */
+
+#ifndef WDGM_MEMMAP_H
+#define WDGM_MEMMAP_H
+
+/* 代码段 */
+#if defined(WDGM_START_SEC_CODE)
+    #undef WDGM_START_SEC_CODE
+#elif defined(WDGM_STOP_SEC_CODE)
+    #undef WDGM_STOP_SEC_CODE
+#endif
+
+/* 配置数据段 (只读) */
+#if defined(WDGM_START_SEC_CONFIG_DATA_UNSPECIFIED)
+    #undef WDGM_START_SEC_CONFIG_DATA_UNSPECIFIED
+#elif defined(WDGM_STOP_SEC_CONFIG_DATA_UNSPECIFIED)
+    #undef WDGM_STOP_SEC_CONFIG_DATA_UNSPECIFIED
+#endif
+
+/* 未初始化变量段 */
+#if defined(WDGM_START_SEC_VAR_CLEARED_UNSPECIFIED)
+    #undef WDGM_START_SEC_VAR_CLEARED_UNSPECIFIED
+#elif defined(WDGM_STOP_SEC_VAR_CLEARED_UNSPECIFIED)
+    #undef WDGM_STOP_SEC_VAR_CLEARED_UNSPECIFIED
+#endif
+
+#endif /* WDGM_MEMMAP_H */

@@ -230,7 +230,7 @@ int32_t iccoa_dk30_send_response(iccoa_cmd_e cmd, const uint8_t *payload, uint16
     frame.payload_len = len;
 
     if (len > 0 && payload) {
-        memcpy(frame.payload, payload, len);
+        (void)memcpy(frame.payload, payload, len);
     }
 
     frame.checksum = iccoa_dk30_checksum((const uint8_t *)&frame + 1, 4 + len);
