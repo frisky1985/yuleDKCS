@@ -65,9 +65,12 @@
 #include <string.h>
 
 /* ========================================================================
+ * SE050 SCP03 secure channel implementation.
+ * ======================================================================== */
 
 /* SE050 I2C address (used for session close RESET) */
 #define SE050_I2C_ADDR          0x48U
+/*
  *  Internal: AES-128 ECB (FIPS 197) — Standalone, no OpenSSL dependency
  * ========================================================================
  * Pure C AES-128 implementation. Only used for SCP03 key derivation
@@ -1167,7 +1170,7 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
     uint16_t cmd_len;
     uint8_t mac_input[5 + SCP03_MAX_APDU_DATA + SCP03_CMAC_SIZE + 1]; /* for CMAC computation */
     uint16_t mac_input_len;
-    uint8_t mac_full[SCP03_CMAC_SIZE];   /* 16-byte CMAC full output */
+    uint8_t mac_full[SCP03_BLOCK_SIZE]; /* 16-byte CMAC full output */
     uint16_t i;
     uint16_t resp_data_len;
     uint16_t sw;

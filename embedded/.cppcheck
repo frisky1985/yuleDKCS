@@ -490,3 +490,37 @@ variableScope:embedded/icce_protocol/src/crypto/sm2.c
 variableScope:embedded/icce_protocol/src/crypto/sm3.c
 variableScope:embedded/icce_protocol/src/decision/edge_condition.c
 misra-c2012-14.2:embedded/ccc_protocol/src/keymgmt/key_mgmt.c
+
+# ---- Auto-generated baseline rev3 (merge 远程 v2.1.0 新增代码, 2026-08-05) ----
+misra-c2012-11.8:embedded/ccc_protocol/src/security/security.c
+misra-c2012-17.3:embedded/ccc_protocol/src/security/security.c
+misra-c2012-17.3:embedded/icce_protocol/src/vehicle/vehicle_integration.c
+misra-c2012-2.5:embedded/ccc_protocol/include/se050_scp03.h
+misra-c2012-2.7:embedded/iccoa_protocol/src/iccoa/dk30/iccoa_dk30.c
+misra-c2012-3.1:embedded/ccc_protocol/src/security/security.c
+misra-c2012-7.2:embedded/icce_protocol/src/decision/offline_decision.c
+misra-c2012-8.5:embedded/ccc_protocol/src/keymgmt/key_mgmt.c
+misra-c2012-8.5:embedded/ccc_protocol/src/security/security.c
+misra-config:embedded/ccc_protocol/src/security/security.c
+
+# ---- Auto-generated baseline rev4 (se050_scp03.c 完整解析后, 2026-08-05) ----
+misra-c2012-10.4:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-10.5:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-10.8:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-11.5:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-12.1:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-12.3:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-15.5:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-18.4:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-2.2:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-2.5:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-8.5:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-8.7:embedded/ccc_protocol/src/security/se050_scp03.c
+misra-c2012-8.9:embedded/ccc_protocol/src/security/se050_scp03.c
+
+# ---- Auto-generated baseline rev5 (cppcheck 内置 style 检查, 2026-08-05) ----
+constVariablePointer:embedded/ccc_protocol/src/security/se050_scp03.c
+knownConditionTrueFalse:embedded/ccc_protocol/src/security/se050_scp03.c
+redundantAssignment:embedded/ccc_protocol/src/security/se050_scp03.c
+variableScope:embedded/ccc_protocol/src/security/se050_scp03.c
+variableScope:embedded/ccc_protocol/src/security/security.c

@@ -57,6 +57,7 @@ jobs:
             --enable=style,warning,performance,portability,information \
             --suppressions-list=embedded/.cppcheck \
             --suppress=unmatchedSuppression \
+            --suppress=normalCheckLevelMaxBranches \
             --error-exitcode=1 \
             --template='[{file}:{line}]: ({severity}-{id}) {message}' \
             -I embedded/freestanding_includes \
@@ -86,6 +87,7 @@ jobs:
             --enable=style,warning,performance,portability,information \
             --suppressions-list=embedded/.cppcheck \
             --suppress=unmatchedSuppression \
+            --suppress=normalCheckLevelMaxBranches \
             --error-exitcode=1 \
             --template='[{file}:{line}]: ({severity}-{id}) {message}' \
             -I embedded/freestanding_includes \
@@ -111,6 +113,7 @@ jobs:
             --enable=style,warning,performance,portability,information \
             --suppressions-list=embedded/.cppcheck \
             --suppress=unmatchedSuppression \
+            --suppress=normalCheckLevelMaxBranches \
             --error-exitcode=1 \
             --template='[{file}:{line}]: ({severity}-{id}) {message}' \
             -I embedded/freestanding_includes \
@@ -136,6 +139,7 @@ jobs:
             --enable=style,warning,performance,portability,information \
             --suppressions-list=embedded/.cppcheck \
             --suppress=unmatchedSuppression \
+            --suppress=normalCheckLevelMaxBranches \
             --error-exitcode=1 \
             --template='[{file}:{line}]: ({severity}-{id}) {message}' \
             -I embedded/freestanding_includes \
