@@ -1,10 +1,13 @@
-     1|# Build
-     2|build/
-     3|cmake-build-*/
-     4|*.o
-     5|*.a
-     6|*.so
-     7|*.exe
+# Build
+build/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.exe
+
+# Java / Maven
+**/target/
      8|
      9|# IDE
     10|.idea/
