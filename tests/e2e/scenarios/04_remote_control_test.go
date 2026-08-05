@@ -18,6 +18,7 @@ import (
 // Note: In E2E without cloud, this simulates the remote control
 // as a direct car command (simulating cloud relay).
 func TestRemoteControl(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 04: Remote Control (远程控车)")
 	log.Printf("═══════════════════════════════════════")

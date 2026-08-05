@@ -14,6 +14,7 @@ import (
 //  3. Friend attempts BLE unlock → REJECTED
 //  4. Revoked key cannot access vehicle
 func TestKeyRevocation(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 06: Key Revocation (钥匙吊销)")
 	log.Printf("═══════════════════════════════════════")

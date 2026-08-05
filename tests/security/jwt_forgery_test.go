@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +35,16 @@ func TestJWTSecurity(t *testing.T) {
 	}
 
 	apiBase := getAPIGateway(t)
+
+	// Skip when the API gateway is not running (integration test).
+	if os.Getenv("API_GATEWAY_ADDR") == "" {
+		conn, err := net.DialTimeout("tcp", apiBase, 500*time.Millisecond)
+		if err != nil {
+			t.Skipf("API gateway not reachable at %s — skipping integration test", apiBase)
+		}
+		conn.Close()
+	}
+
 	realSecret := getJWTSecret()
 
 	t.Run("jwt_alg_none_bypass", func(t *testing.T) {

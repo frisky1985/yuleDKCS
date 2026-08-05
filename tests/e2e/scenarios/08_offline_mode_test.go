@@ -14,6 +14,7 @@ import (
 //  3. Car allows unlock (local key cache)
 //  4. Cloud reconnects → sync events
 func TestOfflineMode(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 08: Offline Mode (离线模式)")
 	log.Printf("═══════════════════════════════════════")

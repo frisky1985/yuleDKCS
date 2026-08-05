@@ -8,6 +8,7 @@ package security
 
 import (
 	"log"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -22,6 +23,16 @@ func TestBLEMalformedICCECCCICCOA(t *testing.T) {
 	log.Printf("════════════════════════════════════════════════")
 
 	carAddr := getCarAddr(t)
+
+	// Skip when no car simulator is reachable (integration test).
+	if os.Getenv("CARSIM_ADDR") == "" {
+		conn, err := net.DialTimeout("tcp", carAddr, 500*time.Millisecond)
+		if err != nil {
+			t.Skipf("car simulator not reachable at %s — skipping integration test", carAddr)
+		}
+		conn.Close()
+	}
+
 	phone, err := client.NewMobileClient("sec_ble_001", "sec_user_001",
 		uint32(proto.ProtoICCE), uint32(proto.ProtoICCE))
 	if err != nil {

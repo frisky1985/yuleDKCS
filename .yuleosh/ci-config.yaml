@@ -1,0 +1,60 @@
+# yuleDKCS CI 配置 — yuleOSH 工具链
+# 覆盖: Go 后端 (backend/dkcs + backend/cloud/hub) + Embedded C MISRA + Java 适配器
+# 配合 misra-rules.yaml + .cppcheck_suppressions 使用
+project:
+  language: mixed   # go | python | c | mixed — 覆盖自动检测（yuleDKCS 是 Go+C+Java 混合）
+
+ci:
+  layers: [1, 2, 3]
+  layer_dependencies:
+    2: [1]
+    3: [1, 2]
+
+coverage:
+  threshold_line: 15.0
+  threshold_condition: 10.0
+  strict: false
+  c_fail_under: 70
+
+docsync:
+  enabled: false
+
+misra:
+  enabled: true
+  addon: misra
+  fail_on_required: true
+  fail_on_violation: false
+  fail_on_advisory: false
+  fail_threshold: 10
+  violations_per_kloc: 2.0
+  cppcheck_std: c99
+  active_profile: safety
+  # rule_texts_path 必须为空 — misra.py 的 --rule-texts 只接受 MISRA 文档
+  # Appendix A 文本格式，YAML 会导致 "rule-texts-file not found" 全量误报。
+  # misra-rules.yaml 仍用于报告增强（load_rule_definitions），但不传给 cppcheck。
+  rule_texts_path: ""
+  # 扫描目录: yuleDKCS 的 C 代码在 embedded/ (非默认 src/benchmark/ref)
+  scan_dirs: [embedded]
+  # 额外 include 目录（自动检测只找 **/include/，找不到 freestanding_includes）
+  include_paths:
+    - embedded/freestanding_includes
+  exclude_paths:
+    - "**/build/**"
+    - "**/*test*/**"
+    - "*build-scan*"
+    - "*CMakeFiles*"
+    - "*CMakeCCompilerId*"
+    - "embedded/fault-inject/**"
+  profiles:
+    safety:
+      block_on: [mandatory, required]
+      rules: [mandatory, required, advisory]
+  code_categories:
+    business:
+      paths: ["embedded/**"]
+      action: enforce
+      block_on: true
+    third_party:
+      paths: ["third_party/**", "vendor/**", "lib/**", "Drivers/**", "Middlewares/**", "CMSIS/**"]
+      action: alert
+      block_on: false

@@ -14,6 +14,7 @@ import (
 //  3. Car detects seq/ts mismatch
 //  4. Replay blocked, alarm triggered
 func TestSecurityReplay(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 07: Security - Replay Protection (安全防重放)")
 	log.Printf("═══════════════════════════════════════")

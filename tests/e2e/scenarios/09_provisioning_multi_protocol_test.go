@@ -10,6 +10,7 @@ import (
 )
 
 func TestMultiProtocolKeyProvisioning(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 09: 三协议钥匙开通验证")
 	log.Printf("═══════════════════════════════════════")
@@ -63,6 +64,7 @@ func TestMultiProtocolKeyProvisioning(t *testing.T) {
 }
 
 func TestKeySharingAcrossProtocols(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 10: 跨协议钥匙分享验证")
 	log.Printf("═══════════════════════════════════════")

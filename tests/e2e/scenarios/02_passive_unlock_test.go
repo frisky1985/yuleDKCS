@@ -15,6 +15,7 @@ import (
 //  4. Car verifies signature → UNLOCK
 //  5. Verify latency < 1s
 func TestPassiveUnlock(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 02: Passive Unlock (被动无感解锁)")
 	log.Printf("═══════════════════════════════════════")

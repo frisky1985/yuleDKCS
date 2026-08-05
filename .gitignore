@@ -95,3 +95,10 @@ frontend/ios/Pods/
     58|*.key
     59|*.pem
     60|
+# yuleOSH runtime artifacts
+tests/e2e/carsim/carsim
+.osh/ci/
+.osh/evidence/
+.osh/store.db
+.yuleosh/store.db
+*.dump

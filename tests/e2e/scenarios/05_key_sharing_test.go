@@ -15,6 +15,7 @@ import (
 //  4. Friend can unlock vehicle
 //  5. Owner key still active
 func TestKeySharing(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 05: Key Sharing (钥匙分享)")
 	log.Printf("═══════════════════════════════════════")

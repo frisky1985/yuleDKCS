@@ -1,0 +1,57 @@
+{
+  "report_type": "incremental",
+  "generated_at": "2026-08-05T22:54:00.009048",
+  "project_dir": "/Users/stefan/.openclaw/workspace/yuleDKCS",
+  "layers": [
+    {
+      "layer": 2,
+      "status": "passed",
+      "commit": "37b95c7",
+      "started_at": "2026-08-05T22:53:58.865828",
+      "completed_at": "2026-08-05T22:54:00.007064",
+      "stages_summary": {
+        "total": 5,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 4
+      },
+      "stages": [
+        {
+          "name": "cross-compile",
+          "status": "skipped",
+          "detail": "No src/cross/hello.c"
+        },
+        {
+          "name": "static-analysis",
+          "status": "passed",
+          "detail": ""
+        },
+        {
+          "name": "sil-tests",
+          "status": "skipped",
+          "detail": "No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make"
+        },
+        {
+          "name": "integration-tests",
+          "status": "skipped",
+          "detail": "No integration tests"
+        },
+        {
+          "name": "memory-safety",
+          "status": "skipped",
+          "detail": "No ASan tests"
+        }
+      ],
+      "coverage": null,
+      "errors": []
+    }
+  ],
+  "misra": {
+    "total_violations": 0,
+    "required": 0,
+    "advisory": 0,
+    "violations_per_kloc": 0.0,
+    "rules_violated": 0,
+    "files_affected": 0
+  }
+}

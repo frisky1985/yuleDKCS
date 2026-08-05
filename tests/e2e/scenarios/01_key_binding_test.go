@@ -18,6 +18,7 @@ import (
 //
 // Flow: Connect → BLE Pair → SCP03 → Write Key → Verify
 func TestKeyBinding(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 01: Key Binding (密钥绑定)")
 	log.Printf("═══════════════════════════════════════")

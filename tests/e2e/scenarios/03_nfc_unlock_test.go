@@ -16,6 +16,7 @@ import (
 //  4. Vehicle verifies → UNLOCK
 //  5. Event logged
 func TestNFCUnlock(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 03: NFC Unlock (NFC 刷卡解锁)")
 	log.Printf("═══════════════════════════════════════")

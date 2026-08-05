@@ -1,0 +1,29 @@
+{
+  "status": "warning",
+  "tracking_results": {
+    "status": "warning",
+    "rule_results": [],
+    "changed_files": [],
+    "summary": "No sync gate rules defined (docs/.sync-gate.yaml not found or empty)",
+    "generated_at": "2026-08-05T21:44:59.568441"
+  },
+  "schema_results": [
+    {
+      "rule": "schema-architecture",
+      "severity": "info",
+      "message": "No architecture YAML documents found matching ['docs/architecture/**/*.yaml', 'docs/architecture/**/*.yml']"
+    },
+    {
+      "rule": "schema-interface",
+      "severity": "info",
+      "message": "No interface YAML documents found matching ['docs/interfaces/**/*.yaml', 'docs/interfaces/**/*.yml']"
+    },
+    {
+      "rule": "schema-requirement",
+      "severity": "info",
+      "message": "No requirement YAML documents found matching ['docs/requirements/**/*.yaml', 'docs/requirements/**/*.yml']"
+    }
+  ],
+  "summary": "Sync gate: warning | 3 total, 0 error(s), 0 warning(s)",
+  "generated_at": "2026-08-05T21:44:59.568437"
+}

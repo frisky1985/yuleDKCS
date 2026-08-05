@@ -10,6 +10,7 @@ import (
 
 // TestStatusSyncStrategies verifies vehicle status sync strategies.
 func TestStatusSyncStrategies(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 12: 车况同步策略验证")
 	log.Printf("═══════════════════════════════════════")

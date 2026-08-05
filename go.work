@@ -8,4 +8,5 @@ use (
 	backend/cloud/hub/tests/stress
 	backend/dkcs
 	backend/dkcs/proto
+	tests/security
 )

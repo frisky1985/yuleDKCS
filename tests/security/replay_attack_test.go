@@ -24,6 +24,8 @@ package security
 
 import (
 	"log"
+	"net"
+	"os"
 	"testing"
 	"time"
 
@@ -36,6 +38,16 @@ func TestSimulatedReplay(t *testing.T) {
 	log.Printf("════════════════════════════════════════════════════")
 
 	carAddr := getCarAddr(t)
+
+	// Skip when no car simulator is reachable (e.g. plain CI without
+	// the CARSIM docker service) — this is an integration test.
+	if os.Getenv("CARSIM_ADDR") == "" {
+		conn, err := net.DialTimeout("tcp", carAddr, 500*time.Millisecond)
+		if err != nil {
+			t.Skipf("car simulator not reachable at %s — skipping integration test", carAddr)
+		}
+		conn.Close()
+	}
 
 	// Setup phone with bound key
 	phone, err := client.NewMobileClient("sec_replay_001", "user_owner_001", 3, 4)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestExtendedVehicleControl(t *testing.T) {
+	requireCarSim(t)
 	log.Printf("═══════════════════════════════════════")
 	log.Printf("📋 Test 11: 完整车控逻辑验证")
 	log.Printf("═══════════════════════════════════════")
