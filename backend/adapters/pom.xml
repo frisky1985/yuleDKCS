@@ -24,8 +24,8 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.2.5</spring-boot.version>
-        <grpc.version>1.62.2</grpc.version>
-        <protobuf.version>3.25.4</protobuf.version>
+        <grpc.version>1.75.0</grpc.version>
+        <protobuf.version>3.25.5</protobuf.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
         <micrometer.version>1.13.4</micrometer.version>
         <!-- Mockito >= 5.18 required for JDK 26 bytecode support -->
