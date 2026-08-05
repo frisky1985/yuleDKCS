@@ -24,10 +24,11 @@ cmake-build-*/
     21|*.apk
     22|*.aab
     23|
-    24|# iOS
-    25|frontend/ios/Pods/
-    26|fronting/ios/*.xcworkspace/
-    27|*.xcuserdata
+# iOS
+frontend/ios/Pods/
+frontend/ios/.build/
+frontend/ios/*.xcworkspace/
+*.xcuserdata
     28|
     29|# Go
     30|vendor/
