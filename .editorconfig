@@ -1,0 +1,31 @@
+# yuleDKCS 编码规范声明 (EditorConfig)
+# ASPICE SWE.3.BP1 证据: 源代码遵循已定义的编码规范
+# 配套: .golangci.yml (Go lint), misra-rules.yaml (MISRA C:2023), docs/design/CODE-REVIEW-V2.md
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[*.{c,h}]
+indent_style = space
+indent_size = 4
+max_line_length = 100
+
+[*.{py,sh,yml,yaml}]
+indent_style = space
+indent_size = 4
+
+[*.{json,md}]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab

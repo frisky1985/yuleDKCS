@@ -1,1217 +1,310 @@
 {
-  "generated_at": "2026-07-07T17:11:25.866022",
-  "project": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH",
+  "generated_at": "2026-08-06T18:33:03.377398",
+  "project": "/Users/stefan/.openclaw/workspace/yuleDKCS",
   "artifacts": [
     {
       "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-0b01609d.json",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer1-2107f7f.json",
       "layer": 1,
-      "status": "failed",
+      "status": "passed",
       "stages": [
         {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-26T14:34:49.140901"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-26T14:34:49.141979"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "22 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-26T14:34:49.142709"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 168 modules, 134 tests (ratio 79.8%)",
-          "timestamp": "2026-06-26T14:34:49.161710"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-26T14:34:49.410132"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-26T14:34:49.465316"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-26T14:34:49.472434"
-        },
-        {
-          "name": "misra-check",
-          "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-26T14:34:49.490763"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-26T14:34:50.848985"
-        },
-        {
-          "name": "coverage",
-          "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-26T14:36:50.862830"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-26T14:36:51.093866"
-        },
-        {
-          "name": "c-coverage-gate",
-          "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-06-26T14:36:51.124914"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-634a0021.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType; [misra-rules] suppress-mmio-1.severity: value 'suppress' not in ['required', 'advisory']; [misra-rules] suppress-mmio-2.severity: value 'suppress' not in ['required', 'advisory']; [misra-rules] suppress-rtos-1.severity: value 'suppress' not in ['required', 'advisory']; [misra-rules] suppress-debug-1.severity: value 'suppress' not in ['required', 'advisory']",
-          "timestamp": "2026-06-29T01:25:19.756103"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-29T01:25:19.756465"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "23 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-29T01:25:19.757183"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 177 modules, 139 tests (ratio 78.5%)",
-          "timestamp": "2026-06-29T01:25:19.771345"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-29T01:25:20.022080"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-29T01:25:20.048393"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-29T01:25:20.055808"
-        },
-        {
-          "name": "misra-check",
-          "status": "failed",
-          "detail": "25 business-code violation(s) >= threshold 10; 149.7 business-code violations/kloc > limit 2.0",
-          "timestamp": "2026-06-29T01:25:21.264779"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-29T01:25:27.467630"
-        },
-        {
-          "name": "coverage",
-          "status": "failed",
-          "detail": "coverage run returned non-zero (-9): ",
-          "timestamp": "2026-06-29T01:25:52.884691"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-29T01:25:53.120426"
-        },
-        {
-          "name": "c-coverage-gate",
-          "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-06-29T01:25:53.137730"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-72088274.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-23T09:31:27.518977"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-23T09:31:27.519377"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "22 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-23T09:31:27.520123"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 166 modules, 132 tests (ratio 79.5%)",
-          "timestamp": "2026-06-23T09:31:27.542129"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-23T09:31:28.215180"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "warning",
-          "detail": "Sync gate: failed | 5 total, 2 error(s), 0 warning(s)",
-          "timestamp": "2026-06-23T09:31:28.243735"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-23T09:31:28.251518"
-        },
-        {
-          "name": "misra-check",
-          "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-23T09:31:28.272804"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-23T09:31:29.594531"
-        },
-        {
-          "name": "coverage",
-          "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-23T09:33:29.611004"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-23T09:33:29.619315"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-8a5b8665.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-19T19:53:58.283349"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-19T19:53:58.283699"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "21 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-19T19:53:58.284374"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 157 modules, 127 tests (ratio 80.9%)",
-          "timestamp": "2026-06-19T19:53:58.304342"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-19T19:53:58.554824"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "warning",
-          "detail": "Sync gate: failed | 4 total, 1 error(s), 0 warning(s)",
-          "timestamp": "2026-06-19T19:53:58.583012"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-19T19:53:58.589766"
-        },
-        {
-          "name": "misra-check",
-          "status": "failed",
-          "detail": "67 violation(s) >= threshold 10; 398.8 violations/kloc > limit 2.0",
-          "timestamp": "2026-06-19T19:53:59.209859"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=80\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-19T19:54:05.085515"
-        },
-        {
-          "name": "coverage",
-          "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-19T19:56:05.094814"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-19T19:56:05.100326"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-8b54b365.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-19T15:34:29.880757"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-19T15:34:29.881111"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "21 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-19T15:34:29.881796"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 155 modules, 127 tests (ratio 81.9%)",
-          "timestamp": "2026-06-19T15:34:29.893661"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-19T15:34:30.149979"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-19T15:34:30.181444"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-19T15:34:30.189130"
-        },
-        {
-          "name": "misra-check",
-          "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-19T15:34:30.211354"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=80\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-19T15:34:35.434967"
-        },
-        {
-          "name": "coverage",
-          "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-19T15:36:35.454226"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-19T15:36:35.461726"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-983f3630.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
+          "name": "go-build",
           "status": "passed",
           "detail": "",
-          "timestamp": "2026-07-05T20:23:35.003127"
+          "timestamp": "2026-08-06T11:17:59.553312"
         },
         {
-          "name": "spec-validation",
+          "name": "go-vet",
           "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-07-05T20:23:35.003659"
+          "detail": "",
+          "timestamp": "2026-08-06T11:18:01.044282"
         },
         {
-          "name": "architecture-review",
+          "name": "go-test",
           "status": "passed",
-          "detail": "26 modules: adapter, alm, api, autosar, ci, cli",
-          "timestamp": "2026-07-05T20:23:35.004263"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "808 reqs, 232 modules, 219 tests (ratio 94.4%)",
-          "timestamp": "2026-07-05T20:23:35.027438"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-07-05T20:23:35.268947"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "warning",
-          "detail": "Sync gate: failed | 4 total, 1 error(s), 0 warning(s)",
-          "timestamp": "2026-07-05T20:23:35.307943"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-07-05T20:23:35.315782"
+          "detail": "",
+          "timestamp": "2026-08-06T11:18:03.192569"
         },
         {
           "name": "misra-check",
-          "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-07-05T20:23:35.348182"
-        },
-        {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-07-05T20:23:41.995927"
-        },
-        {
-          "name": "coverage",
-          "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-07-05T20:25:42.009307"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-07-05T20:25:42.214760"
-        },
-        {
-          "name": "c-coverage-gate",
           "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-07-05T20:25:42.232528"
+          "detail": "1 MISRA violation(s) (0 required, 0 advisory) \u2014 see .yuleosh/reports/misra-report.json",
+          "timestamp": "2026-08-06T11:18:18.943158"
         }
       ]
     },
     {
       "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-9a12c2f5.json",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer1-37b95c7.json",
       "layer": 1,
-      "status": "failed",
+      "status": "passed",
       "stages": [
         {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-29T02:32:17.542716"
-        },
-        {
-          "name": "spec-validation",
+          "name": "go-build",
           "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-29T02:32:17.543924"
+          "detail": "",
+          "timestamp": "2026-08-05T22:53:37.709848"
         },
         {
-          "name": "architecture-review",
+          "name": "go-vet",
           "status": "passed",
-          "detail": "23 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-29T02:32:17.544787"
+          "detail": "",
+          "timestamp": "2026-08-05T22:53:39.009485"
         },
         {
-          "name": "requirements-trace",
+          "name": "go-test",
           "status": "passed",
-          "detail": "805 reqs, 198 modules, 145 tests (ratio 73.2%)",
-          "timestamp": "2026-06-29T02:32:17.565729"
-        },
-        {
-          "name": "plan-lint",
-          "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-29T02:32:18.251233"
-        },
-        {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-29T02:32:18.312916"
-        },
-        {
-          "name": "clang-tidy",
-          "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-29T02:32:18.321318"
+          "detail": "",
+          "timestamp": "2026-08-05T22:53:40.755977"
         },
         {
           "name": "misra-check",
+          "status": "passed",
+          "detail": "No MISRA violations",
+          "timestamp": "2026-08-05T22:53:56.605902"
+        }
+      ]
+    },
+    {
+      "type": "ci-layer-result",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer2-2107f7f.json",
+      "layer": 2,
+      "status": "passed",
+      "stages": [
+        {
+          "name": "cross-compile",
           "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-29T02:32:18.341318"
+          "detail": "No src/cross/hello.c",
+          "timestamp": "2026-08-06T11:18:19.241783"
         },
         {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-29T02:32:26.234510"
-        },
-        {
-          "name": "coverage",
-          "status": "failed",
-          "detail": "coverage run returned non-zero (1): Traceback (most recent call last):\n  File \"/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/coverage/cmdline.py\", line 1043, in do_run\n    runner.run()\n    ~~~~~~~~~~^^\n",
-          "timestamp": "2026-06-29T02:32:29.467644"
-        },
-        {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-29T02:32:29.726650"
-        },
-        {
-          "name": "c-coverage-gate",
+          "name": "static-analysis",
           "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-06-29T02:32:29.762943"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-a3ffce95.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-29T20:53:59.708699"
+          "detail": "",
+          "timestamp": "2026-08-06T11:18:20.345064"
         },
         {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-29T20:53:59.709067"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "23 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-29T20:53:59.709826"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "805 reqs, 198 modules, 180 tests (ratio 90.9%)",
-          "timestamp": "2026-06-29T20:53:59.724970"
-        },
-        {
-          "name": "plan-lint",
+          "name": "sil-tests",
           "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-29T20:53:59.985137"
+          "detail": "No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make",
+          "timestamp": "2026-08-06T11:18:20.345267"
         },
         {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-29T20:54:00.017662"
-        },
-        {
-          "name": "clang-tidy",
+          "name": "integration-tests",
           "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-29T20:54:00.026856"
+          "detail": "No integration tests",
+          "timestamp": "2026-08-06T11:18:20.345293"
         },
         {
-          "name": "misra-check",
+          "name": "memory-safety",
           "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-29T20:54:00.047380"
-        },
+          "detail": "No ASan tests",
+          "timestamp": "2026-08-06T11:18:20.345307"
+        }
+      ]
+    },
+    {
+      "type": "ci-layer-result",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer2-2c1f7c4.json",
+      "layer": 2,
+      "status": "passed",
+      "stages": [
         {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-29T20:54:08.531659"
-        },
-        {
-          "name": "coverage",
+          "name": "cross-compile",
           "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-29T20:56:08.548626"
+          "detail": "No src/cross/hello.c",
+          "timestamp": "2026-08-06T18:32:23.913849"
         },
         {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-29T20:56:09.247186"
-        },
-        {
-          "name": "c-coverage-gate",
+          "name": "static-analysis",
           "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-06-29T20:56:09.285662"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-be94beaa.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-19T15:19:28.931285"
+          "detail": "",
+          "timestamp": "2026-08-06T18:32:25.007191"
         },
         {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-19T15:19:28.931574"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "21 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-19T15:19:28.932212"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 155 modules, 127 tests (ratio 81.9%)",
-          "timestamp": "2026-06-19T15:19:28.947665"
-        },
-        {
-          "name": "plan-lint",
+          "name": "sil-tests",
           "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-19T15:19:29.197212"
+          "detail": "No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make",
+          "timestamp": "2026-08-06T18:32:25.007421"
         },
         {
-          "name": "docsync-gate",
-          "status": "warning",
-          "detail": "Sync gate: failed | 4 total, 1 error(s), 0 warning(s)",
-          "timestamp": "2026-06-19T15:19:29.234554"
+          "name": "integration-tests",
+          "status": "passed",
+          "detail": "",
+          "timestamp": "2026-08-06T18:32:25.473163"
         },
         {
-          "name": "clang-tidy",
+          "name": "memory-safety",
           "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-19T15:19:29.241388"
-        },
+          "detail": "No ASan tests",
+          "timestamp": "2026-08-06T18:32:25.473279"
+        }
+      ]
+    },
+    {
+      "type": "ci-layer-result",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer2-37b95c7.json",
+      "layer": 2,
+      "status": "passed",
+      "stages": [
         {
-          "name": "misra-check",
+          "name": "cross-compile",
           "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-19T15:19:29.268544"
+          "detail": "No src/cross/hello.c",
+          "timestamp": "2026-08-05T22:53:58.887733"
         },
         {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=80\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-19T15:19:34.684765"
+          "name": "static-analysis",
+          "status": "passed",
+          "detail": "",
+          "timestamp": "2026-08-05T22:54:00.006796"
         },
         {
-          "name": "coverage",
+          "name": "sil-tests",
           "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-19T15:21:34.697544"
+          "detail": "No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make",
+          "timestamp": "2026-08-05T22:54:00.007015"
         },
         {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-19T15:21:34.702999"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer1-c5e468d0.json",
-      "layer": 1,
-      "status": "failed",
-      "stages": [
-        {
-          "name": "yaml-validation",
-          "status": "failed",
-          "detail": "[misra-rules] misra-c2023-3.2.description: expected str, got NoneType",
-          "timestamp": "2026-06-29T00:54:43.178957"
-        },
-        {
-          "name": "spec-validation",
-          "status": "passed",
-          "detail": "0 missing, 3 req keywords found",
-          "timestamp": "2026-06-29T00:54:43.179251"
-        },
-        {
-          "name": "architecture-review",
-          "status": "passed",
-          "detail": "23 modules: adapter, alm, api, ci, cli, compliance",
-          "timestamp": "2026-06-29T00:54:43.179971"
-        },
-        {
-          "name": "requirements-trace",
-          "status": "passed",
-          "detail": "793 reqs, 175 modules, 136 tests (ratio 77.7%)",
-          "timestamp": "2026-06-29T00:54:43.196142"
-        },
-        {
-          "name": "plan-lint",
+          "name": "integration-tests",
           "status": "skipped",
-          "detail": "No task/plan files found",
-          "timestamp": "2026-06-29T00:54:43.437305"
+          "detail": "No integration tests",
+          "timestamp": "2026-08-05T22:54:00.007041"
         },
         {
-          "name": "docsync-gate",
-          "status": "passed",
-          "detail": "Sync gate: passed | 3 total, 0 error(s), 0 warning(s)",
-          "timestamp": "2026-06-29T00:54:43.462971"
-        },
-        {
-          "name": "clang-tidy",
+          "name": "memory-safety",
           "status": "skipped",
-          "detail": "clang-tidy not installed",
-          "timestamp": "2026-06-29T00:54:43.469579"
-        },
+          "detail": "No ASan tests",
+          "timestamp": "2026-08-05T22:54:00.007054"
+        }
+      ]
+    },
+    {
+      "type": "ci-layer-result",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer3-2107f7f.json",
+      "layer": 3,
+      "status": "passed",
+      "stages": [
         {
-          "name": "misra-check",
+          "name": "e2e-tests",
           "status": "skipped",
-          "detail": "No C/C++ source files found",
-          "timestamp": "2026-06-29T00:54:43.486535"
+          "detail": "no Python tests collected",
+          "timestamp": "2026-08-06T11:18:21.222170"
         },
         {
-          "name": "unit-tests",
-          "status": "failed",
-          "detail": "tests/test_ui_auth_smoke.py: ...\nERROR: Coverage failure: total of 1 is less than fail-under=60\n                                                                         [100%]\n================================ tests coverage =====",
-          "timestamp": "2026-06-29T00:54:52.188494"
-        },
-        {
-          "name": "coverage",
+          "name": "version-check",
           "status": "skipped",
-          "detail": "Coverage run timed out",
-          "timestamp": "2026-06-29T00:56:52.202059"
+          "detail": "No pyproject.toml",
+          "timestamp": "2026-08-06T11:18:21.222252"
         },
         {
-          "name": "c-coverage",
-          "status": "warning",
-          "detail": "lcov/gcov may not be installed",
-          "timestamp": "2026-06-29T00:56:52.436966"
-        },
-        {
-          "name": "c-coverage-gate",
+          "name": "evidence-pack",
           "status": "passed",
-          "detail": "line_rate=99.2% >= 70%",
-          "timestamp": "2026-06-29T00:56:52.471368"
+          "detail": "Compliance pack generated",
+          "timestamp": "2026-08-06T11:18:27.280969"
         }
       ]
     },
     {
       "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-0549c1bb.json",
-      "layer": 25,
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/ci/layer3-37b95c7.json",
+      "layer": 3,
       "status": "passed",
       "stages": [
         {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-29T13:41:42.708116"
+          "name": "e2e-tests",
+          "status": "skipped",
+          "detail": "no Python tests collected",
+          "timestamp": "2026-08-05T22:54:21.468814"
         },
         {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-29T13:41:42.819503"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-0b01609d.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-26T14:36:46.285401"
+          "name": "version-check",
+          "status": "skipped",
+          "detail": "No pyproject.toml",
+          "timestamp": "2026-08-05T22:54:21.468928"
         },
         {
-          "name": "hil-tests",
+          "name": "evidence-pack",
           "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-26T14:36:46.395870"
+          "detail": "Compliance pack generated",
+          "timestamp": "2026-08-05T22:54:21.500007"
         }
       ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-170a875c.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-26T14:24:40.294057"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-26T14:24:40.404496"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-3006e385.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T14:01:26.505161"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T14:01:26.616117"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-36e6765c.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T19:40:16.457977"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T19:40:16.568402"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-46c36b71.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-26T17:29:48.410435"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-26T17:29:48.520909"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-5bc59dae.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-20T01:13:48.050101"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-20T01:13:48.170428"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-634a0021.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-29T01:52:31.210457"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-29T01:52:31.320940"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-72088274.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-23T10:13:39.239459"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-23T10:13:39.349945"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-8a5b8665.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T20:02:36.634016"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T20:02:36.743176"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-8b54b365.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T15:36:30.604491"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T15:36:30.709938"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-983f3630.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-07-05T20:28:26.564917"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-07-05T20:28:26.675795"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-99c43af2.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T15:00:44.784420"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T15:00:44.895165"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-9a12c2f5.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-29T11:11:58.150723"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-29T11:11:58.261213"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-a3ffce95.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-29T21:00:52.769375"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-29T21:00:52.871117"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-be94beaa.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-19T15:19:57.371269"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-19T15:19:57.481758"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-c5e468d0.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-29T00:55:22.664147"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-29T00:55:22.774626"
-        }
-      ]
-    },
-    {
-      "type": "ci-layer-result",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/ci/layer25-ce04e92f.json",
-      "layer": 25,
-      "status": "passed",
-      "stages": [
-        {
-          "name": "target-detect",
-          "status": "passed",
-          "detail": "mock mode",
-          "timestamp": "2026-06-26T14:30:13.936592"
-        },
-        {
-          "name": "hil-tests",
-          "status": "passed",
-          "detail": "3 test(s) passed",
-          "timestamp": "2026-06-26T14:30:14.047052"
-        }
-      ]
-    },
-    {
-      "type": "c-coverage",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.yuleosh/reports/c-coverage.json",
-      "line_rate": 99.19,
-      "branch_rate": 71.05,
-      "total_files": 7
     },
     {
       "type": "docsync-gate",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.yuleosh/reports/docsync-evidence.json",
-      "status": "failed",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/reports/docsync-evidence.json",
+      "status": "warning",
       "rule_results": []
     },
     {
       "type": "misra-report",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.yuleosh/reports/misra-report.json",
-      "total_violations": 25,
-      "total_rules_violated": 7
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/reports/misra-report.json",
+      "total_violations": 0,
+      "total_rules_violated": 0
     },
     {
       "type": "evidence-zip",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/compliance-pack.zip"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/compliance-pack.zip"
     },
     {
       "type": "ci-config",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.yuleosh/ci-config.yaml"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/ci-config.yaml"
     },
     {
       "type": "traceability-report",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.yuleosh/reports/traceability-report.json",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/reports/traceability-report.json",
       "coverage_summary": {
-        "requirements_total": 184,
-        "test_coverage_pct": 19.6,
-        "code_coverage": "184/184",
-        "review_coverage": "0/184",
-        "total_gaps": 332,
-        "orphaned_tests": 0
+        "requirements_total": 135,
+        "test_coverage_pct": 65.2,
+        "code_coverage": "0/135",
+        "review_coverage": "8/135",
+        "total_gaps": 309,
+        "orphaned_tests": 3
       }
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/acceptance-matrix.md"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/acceptance-matrix.md"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/code-coverage-report.md"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/aspice-gap-report.md"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/compliance-pack.zip"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/code-coverage-report.md"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/manifest.json"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/compliance-pack.zip"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/requirement-coverage.md"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/requirement-coverage.md"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/review-log-summary.md"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/review-log-summary.md"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/review-log.json"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/review-log.json"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/traceability-matrix.json"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/traceability-matrix.json"
     },
     {
       "type": "evidence-artifact",
-      "source": "/Users/stefan/.openclaw/workspace/tasks/yuleOSH/.osh/evidence/traceability-matrix.md"
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.osh/evidence/traceability-matrix.md"
+    },
+    {
+      "type": "audit-evidence-zip",
+      "source": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/audit-evidence-20260806.zip",
+      "size_bytes": 118742
     }
-  ]
+  ],
+  "zip_path": "/Users/stefan/.openclaw/workspace/yuleDKCS/.yuleosh/audit-evidence-20260806.zip"
 }

@@ -1,6 +1,6 @@
 # CI Report Summary
 
-> Generated: 2026-08-06T11:18:20.346857
+> Generated: 2026-08-06T18:32:25.475217
 > Project: /Users/stefan/.openclaw/workspace/yuleDKCS
 > Type: Incremental
 
@@ -10,7 +10,7 @@
 
 | Layer | Status | Passed | Failed | Skipped | Errors |
 |:------|:-------|------:|------:|--------:|:-------|
-| L2 | ✅ passed | 1 | 0 | 4 | — |
+| L2 | ✅ passed | 2 | 0 | 3 | — |
 
 ### Layer L2 — Stage Details
 
@@ -19,7 +19,7 @@
 | cross-compile | ⏭️ | No src/cross/hello.c |
 | static-analysis | ✅ |  |
 | sil-tests | ⏭️ | No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make |
-| integration-tests | ⏭️ | No integration tests |
+| integration-tests | ✅ |  |
 | memory-safety | ⏭️ | No ASan tests |
 
 ## MISRA C:2023

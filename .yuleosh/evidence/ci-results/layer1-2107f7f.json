@@ -1,0 +1,35 @@
+{
+  "layer": 1,
+  "commit": "2107f7f",
+  "status": "passed",
+  "started_at": "2026-08-06T11:17:54.454156",
+  "completed_at": "2026-08-06T11:18:18.943323",
+  "stages": [
+    {
+      "name": "go-build",
+      "status": "passed",
+      "detail": "",
+      "timestamp": "2026-08-06T11:17:59.553312"
+    },
+    {
+      "name": "go-vet",
+      "status": "passed",
+      "detail": "",
+      "timestamp": "2026-08-06T11:18:01.044282"
+    },
+    {
+      "name": "go-test",
+      "status": "passed",
+      "detail": "",
+      "timestamp": "2026-08-06T11:18:03.192569"
+    },
+    {
+      "name": "misra-check",
+      "status": "passed",
+      "detail": "1 MISRA violation(s) (0 required, 0 advisory) \u2014 see .yuleosh/reports/misra-report.json",
+      "timestamp": "2026-08-06T11:18:18.943158"
+    }
+  ],
+  "coverage": null,
+  "errors": []
+}

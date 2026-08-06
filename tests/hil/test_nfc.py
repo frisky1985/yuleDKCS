@@ -1,4 +1,5 @@
 """
+Covers: REQ-028
 NFC 通信 — HIL 测试模块
 
 覆盖测试:

@@ -1,0 +1,41 @@
+{
+  "layer": 2,
+  "commit": "2107f7f",
+  "status": "passed",
+  "started_at": "2026-08-06T11:18:19.217147",
+  "completed_at": "2026-08-06T11:18:20.345317",
+  "stages": [
+    {
+      "name": "cross-compile",
+      "status": "skipped",
+      "detail": "No src/cross/hello.c",
+      "timestamp": "2026-08-06T11:18:19.241783"
+    },
+    {
+      "name": "static-analysis",
+      "status": "passed",
+      "detail": "",
+      "timestamp": "2026-08-06T11:18:20.345064"
+    },
+    {
+      "name": "sil-tests",
+      "status": "skipped",
+      "detail": "No prebuilt .elf found in tests/fixtures/prebuilt/. Compile with: cd tests/fixtures/hello-arm && make",
+      "timestamp": "2026-08-06T11:18:20.345267"
+    },
+    {
+      "name": "integration-tests",
+      "status": "skipped",
+      "detail": "No integration tests",
+      "timestamp": "2026-08-06T11:18:20.345293"
+    },
+    {
+      "name": "memory-safety",
+      "status": "skipped",
+      "detail": "No ASan tests",
+      "timestamp": "2026-08-06T11:18:20.345307"
+    }
+  ],
+  "coverage": null,
+  "errors": []
+}

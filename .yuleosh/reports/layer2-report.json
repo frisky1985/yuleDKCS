@@ -1,19 +1,19 @@
 {
   "report_type": "incremental",
-  "generated_at": "2026-08-06T11:18:20.346639",
+  "generated_at": "2026-08-06T18:32:25.475004",
   "project_dir": "/Users/stefan/.openclaw/workspace/yuleDKCS",
   "layers": [
     {
       "layer": 2,
       "status": "passed",
-      "commit": "2107f7f",
-      "started_at": "2026-08-06T11:18:19.217147",
-      "completed_at": "2026-08-06T11:18:20.345317",
+      "commit": "2c1f7c4",
+      "started_at": "2026-08-06T18:32:23.887913",
+      "completed_at": "2026-08-06T18:32:25.473296",
       "stages_summary": {
         "total": 5,
-        "passed": 1,
+        "passed": 2,
         "failed": 0,
-        "skipped": 4
+        "skipped": 3
       },
       "stages": [
         {
@@ -33,8 +33,8 @@
         },
         {
           "name": "integration-tests",
-          "status": "skipped",
-          "detail": "No integration tests"
+          "status": "passed",
+          "detail": ""
         },
         {
           "name": "memory-safety",

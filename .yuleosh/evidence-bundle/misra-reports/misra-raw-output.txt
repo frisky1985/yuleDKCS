@@ -1,0 +1,176 @@
+embedded/iccoa_protocol/src/ble/iccoa_ble.c:-1:0: information: Unmatched suppression: misra-c2012-5.8 [unmatchedSuppression]
+
+^
+embedded/iccoa_protocol/src/iccoa/iccoa_dk_core.c:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/iccoa_protocol/src/iccoa/dk40/iccoa_dk40.c:-1:0: information: Unmatched suppression: misra-c2012-5.8 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/core/ccc_dk_core.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/ble/ble_kw47a.c:-1:0: information: Unmatched suppression: misra-c2012-18.8 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/ble/ble_kw47a.c:-1:0: information: Unmatched suppression: misra-c2012-5.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/ble/ble_kw47a.c:-1:0: information: Unmatched suppression: misra-c2012-5.7 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/security/security.c:-1:0: information: Unmatched suppression: misra-c2012-18.8 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/security/security.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/keymgmt/key_mgmt.c:-1:0: information: Unmatched suppression: misra-c2012-18.8 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/keymgmt/key_mgmt.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/nfc/nfc_st25r501.c:-1:0: information: Unmatched suppression: misra-c2012-5.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/nfc/nfc_st25r501.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/nfc/nfc_st25r501.c:-1:0: information: Unmatched suppression: misra-c2012-5.7 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/uwb/uwb_ncj29d6.c:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/src/uwb/uwb_ncj29d6.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/unified_protocol/src/dk_unified.c:-1:0: information: Unmatched suppression: misra-c2012-15.1 [unmatchedSuppression]
+
+^
+embedded/unified_protocol/src/dk_unified.c:-1:0: information: Unmatched suppression: misra-c2012-8.6 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/icce_edge.c:-1:0: information: Unmatched suppression: knownConditionTrueFalse [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/icce_uwb.c:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/icce_dk_core.c:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-10.1 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-10.3 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-10.4 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-11.4 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-12.1 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-12.3 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-14.4 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-15.5 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-15.6 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-15.7 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-18.4 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-2.5 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-20.10 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-7.2 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: misra-c2012-8.9 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: knownConditionTrueFalse [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: normalCheckLevelMaxBranches [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/crypto_utils.c:-1:0: information: Unmatched suppression: unusedVariable [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/cache/cache_manager.c:-1:0: information: Unmatched suppression: misra-c2012-dir-4.12 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/cache/cache_manager.c:-1:0: information: Unmatched suppression: misra-c2012-21.21 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/vehicle/vehicle_integration.c:-1:0: information: Unmatched suppression: misra-c2012-7.2 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/vehicle/vehicle_integration.c:-1:0: information: Unmatched suppression: misra-c2012-15.6 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/vehicle/vehicle_integration.c:-1:0: information: Unmatched suppression: normalCheckLevelMaxBranches [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/decision/offline_decision.c:-1:0: information: Unmatched suppression: misra-c2012-dir-4.12 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/decision/offline_decision.c:-1:0: information: Unmatched suppression: unreadVariable [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/decision/edge_condition.c:-1:0: information: Unmatched suppression: misra-c2012-17.7 [unmatchedSuppression]
+
+^
+embedded/tests/*:-1:0: information: Unmatched suppression: misra-c2012-2.5 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/include/*:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/ccc_protocol/include/*:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/iccoa_protocol/include/*:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/unified_protocol/include/*:-1:0: information: Unmatched suppression: misra-c2012-8.7 [unmatchedSuppression]
+
+^
+embedded/iccoa_protocol/src/*:-1:0: information: Unmatched suppression: misra-c2012-dir-4.10 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/*:-1:0: information: Unmatched suppression: misra-c2012-10.8 [unmatchedSuppression]
+
+^
+embedded/icce_protocol/src/crypto/*:-1:0: information: Unmatched suppression: misra-c2012-20.7 [unmatchedSuppression]
+
+^
+embedded/tests/*:-1:0: information: Unmatched suppression: unusedFunction [unmatchedSuppression]
+
+^
+embedded/*/build/*:-1:0: information: Unmatched suppression: dollarInStringLiteral [unmatchedSuppression]
+
+^
+nofile:0:0: information: Active checkers: 309/1056 (use --checkers-report=<filename> to see details) [checkersReport]
+

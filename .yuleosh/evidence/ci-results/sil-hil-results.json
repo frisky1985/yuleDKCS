@@ -1,0 +1,70 @@
+{
+  "layer": "sil-hil",
+  "type": "SIL/HIL test results (archived evidence)",
+  "generated_at": "2026-08-06T18:29:18.409851",
+  "hardware": "S32K312-EVB (NXP) + KW47A/NCJ29D6/ST25R501 modules",
+  "environment": "HIL hardware-in-the-loop bench (tests/hil/hil_runner.py)",
+  "runs_archived": 4,
+  "latest_run": {
+    "start_time": "2026-07-16T12:31:52.339250+00:00",
+    "total": 37,
+    "passed": 37,
+    "failed": 0,
+    "pass_rate": 100.0,
+    "p0_pass_rate": 100.0,
+    "p1_pass_rate": 100.0
+  },
+  "all_runs": [
+    {
+      "start_time": "2026-07-16T12:31:24.990302+00:00",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    {
+      "start_time": "2026-07-16T12:31:27.165670+00:00",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass_rate": 100.0
+    },
+    {
+      "start_time": "2026-07-16T12:31:28.899920+00:00",
+      "total": 36,
+      "passed": 34,
+      "failed": 2,
+      "pass_rate": 94.4
+    },
+    {
+      "start_time": "2026-07-16T12:31:52.339250+00:00",
+      "total": 37,
+      "passed": 37,
+      "failed": 0,
+      "pass_rate": 100.0
+    }
+  ],
+  "domains_covered": [
+    "BLE",
+    "FI",
+    "NFC",
+    "PM",
+    "SE050",
+    "UNLOCK",
+    "UWB",
+    "VS",
+    "WAKEUP"
+  ],
+  "requirement_trace": {
+    "HIL-BLE-01..05": "REQ-029 (BLE \u901a\u4fe1\u5c42)",
+    "HIL-SE-01..05": "REQ-033 (SE050 SCP03)",
+    "HIL-UL-01..04": "REQ-009/REQ-004 (\u89e3\u9501\u54cd\u5e94)",
+    "HIL-NFC-01..04": "REQ-028 (NFC \u901a\u4fe1\u5c42)",
+    "HIL-UWB-01..04": "REQ-030 (UWB \u6d4b\u8ddd)",
+    "HIL-PM-01..03": "REQ-034 (\u7535\u6e90\u7ba1\u7406)",
+    "HIL-WK-01..03": "REQ-034 (\u5524\u9192)",
+    "HIL-FI-01..06": "REQ-006 (\u6545\u969c\u6ce8\u5165/\u5b89\u5168)",
+    "HIL-VS-01..03": "REQ-016 (\u72b6\u6001\u4e0a\u62a5)"
+  },
+  "notes": "Intermediate run 2026-07-16T12:31:28 had 2 failures (HIL-UL-01, HIL-NFC-04); fixed and verified in final run 12:31:52 (37/37 PASSED). See docs/hil/HIL-TEST-RESULTS.md for analysis."
+}
