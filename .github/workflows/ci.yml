@@ -192,6 +192,68 @@ jobs:
           only-new-issues: true
 
   # ═══════════════════════════════════════════════════════════════════════
+  # L2.5 — E2E 测试 (carsim + scenarios + security) — L2 通过后触发
+  # 需要 car simulator (TCP:18001)；carsim 不可达时测试自身 SKIP，
+  # 但本 job 显式启动 carsim，保证 E2E 真正执行（不静默跳过）。
+  # ═══════════════════════════════════════════════════════════════════════
+
+  l25-e2e:
+    name: L2.5 — E2E (carsim scenarios + security)
+    runs-on: ubuntu-latest
+    needs: [l2-integration-and-sast]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      # ── 构建 car simulator ──
+      - name: Build car simulator
+        working-directory: tests/e2e
+        run: |
+          GOWORK=off go build -o /tmp/car-simulator ./carsim/
+
+      # ── 启动 car simulator (后台) ──
+      - name: Start car simulator
+        run: |
+          /tmp/car-simulator > /tmp/carsim.log 2>&1 &
+          echo "carsim_pid=$!" >> $GITHUB_ENV
+          # 等待监听就绪
+          for i in $(seq 1 20); do
+            if nc -z localhost 18001 2>/dev/null; then
+              echo "✅ car simulator listening on :18001"
+              break
+            fi
+            sleep 0.5
+          done
+          nc -z localhost 18001 || { echo "❌ car simulator failed to start"; cat /tmp/carsim.log; exit 1; }
+
+      # ── E2E scenarios (12 组) ──
+      - name: E2E Scenarios (tests/e2e/scenarios)
+        working-directory: tests/e2e/scenarios
+        run: go test -count=1 -timeout 120s ./...
+
+      # ── Security tests (replay/jwt/rate-limit) ──
+      - name: Security Tests (tests/security)
+        working-directory: tests/security
+        run: go test -count=1 -timeout 120s ./...
+
+      # ── 清理 ──
+      - name: Stop car simulator
+        if: always()
+        run: |
+          if [ -n "$carsim_pid" ]; then kill "$carsim_pid" 2>/dev/null || true; fi
+
+      - name: Upload carsim log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carsim-log
+          path: /tmp/carsim.log
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════
   # L3 — Full Build + Docker Build (L2 通过后触发)
   # ═══════════════════════════════════════════════════════════════════════
 
