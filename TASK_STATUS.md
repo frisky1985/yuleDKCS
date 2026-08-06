@@ -85,6 +85,7 @@
 | 🟡 | postgres-exporter 部署 | ✅ **已完成 (2026-08-01)** | kustomize `deploy/k8s/postgres/exporter.yaml` (Deployment + Service :9187) + helm 同步; 独立 Deployment 与 StatefulSet 解耦; kubectl kustomize 33 文档渲染验证; 见 `deploy/k8s/README.md` |
 | 🟡 | JWKS kid 未命中防放大 | ✅ **已完成 (2026-08-01)** | oem 级刷新冷却 30s + kid 级负缓存（上限 1024/OEM 防内存撑爆）; 单飞并发去重保留; 4 单测含 -race, 24 passed |
 | 🟡 | tests/integration 预存 vet 错误 | ✅ **已完成 (2026-08-01)** | e2e_14 relay API 签名漂移修复 + e2e_11 Delete 终态语义隐性回归修复; integration **87 passed / 0 failed**, go vet exit 0 |
+| 🟡 | carsim replay 检测逻辑修复 | ✅ **已完成 (2026-08-06)** | `CheckAndIncrementSeq` 返回 false=replay 但 handler 当新 seq 漏过 → 真 replay 放行; 旧 ts 未参与判定; 修复后 security **18 passed** + scenarios **32 passed**（本地 carsim :18001 验证）|
 
 ---
 
