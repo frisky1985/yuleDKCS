@@ -1,14 +1,14 @@
 {
   "report_type": "incremental",
-  "generated_at": "2026-08-05T22:54:00.009048",
+  "generated_at": "2026-08-06T11:18:20.346639",
   "project_dir": "/Users/stefan/.openclaw/workspace/yuleDKCS",
   "layers": [
     {
       "layer": 2,
       "status": "passed",
-      "commit": "37b95c7",
-      "started_at": "2026-08-05T22:53:58.865828",
-      "completed_at": "2026-08-05T22:54:00.007064",
+      "commit": "2107f7f",
+      "started_at": "2026-08-06T11:18:19.217147",
+      "completed_at": "2026-08-06T11:18:20.345317",
       "stages_summary": {
         "total": 5,
         "passed": 1,
@@ -47,11 +47,11 @@
     }
   ],
   "misra": {
-    "total_violations": 0,
+    "total_violations": 1,
     "required": 0,
     "advisory": 0,
-    "violations_per_kloc": 0.0,
-    "rules_violated": 0,
-    "files_affected": 0
+    "violations_per_kloc": 1000.0,
+    "rules_violated": 1,
+    "files_affected": 1
   }
 }

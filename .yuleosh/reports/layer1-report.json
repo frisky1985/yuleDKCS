@@ -1,14 +1,14 @@
 {
   "report_type": "incremental",
-  "generated_at": "2026-08-05T22:53:56.606757",
+  "generated_at": "2026-08-06T11:18:18.944162",
   "project_dir": "/Users/stefan/.openclaw/workspace/yuleDKCS",
   "layers": [
     {
       "layer": 1,
       "status": "passed",
-      "commit": "37b95c7",
-      "started_at": "2026-08-05T22:53:34.910824",
-      "completed_at": "2026-08-05T22:53:56.605979",
+      "commit": "2107f7f",
+      "started_at": "2026-08-06T11:17:54.454156",
+      "completed_at": "2026-08-06T11:18:18.943323",
       "stages_summary": {
         "total": 4,
         "passed": 4,
@@ -34,7 +34,7 @@
         {
           "name": "misra-check",
           "status": "passed",
-          "detail": "No MISRA violations"
+          "detail": "1 MISRA violation(s) (0 required, 0 advisory) — see .yuleosh/reports/misra-report.json"
         }
       ],
       "coverage": null,
@@ -42,11 +42,11 @@
     }
   ],
   "misra": {
-    "total_violations": 0,
+    "total_violations": 1,
     "required": 0,
     "advisory": 0,
-    "violations_per_kloc": 0.0,
-    "rules_violated": 0,
-    "files_affected": 0
+    "violations_per_kloc": 1000.0,
+    "rules_violated": 1,
+    "files_affected": 1
   }
 }

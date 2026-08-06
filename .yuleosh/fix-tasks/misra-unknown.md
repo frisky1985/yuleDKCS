@@ -1,6 +1,6 @@
 # MISRA Fix Task: unknown
 
-> Generated: 2026-08-05T22:15:45.709718
+> Generated: 2026-08-06T11:18:18.914865
 > Severity: unknown
 > Spec Ref: 
 
@@ -12,14 +12,7 @@
 
 | # | File | Line | Col | Message |
 |--:|:-----|:----|:----|:--------|
-| 1 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 19 | 0 | The function 'Mcal_MemCopy' is never used. [unusedFunction] |
-| 2 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 28 | 0 | The function 'Mcal_MemSet' is never used. [unusedFunction] |
-| 3 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 36 | 0 | The function 'Mcal_MemCmp' is never used. [unusedFunction] |
-| 4 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 52 | 0 | The function 'Mcal_DisableInterrupts' is never used. [unusedFunction] |
-| 5 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 58 | 0 | The function 'Mcal_EnableInterrupts' is never used. [unusedFunction] |
-| 6 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 64 | 0 | The function 'Mcal_DataSyncBarrier' is never used. [unusedFunction] |
-| 7 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 70 | 0 | The function 'Mcal_DataMemBarrier' is never used. [unusedFunction] |
-| 8 | `/Users/stefan/.openclaw/workspace/yuleDKCS/embedded/mcal_stubs/include/Mcal.h` | 76 | 0 | The function 'Mcal_InstSyncBarrier' is never used. [unusedFunction] |
+| 1 | `nofile` | 0 | 0 | Active checkers: 309/1056 (use --checkers-report=<filename> to see details) [che |
 
 ## Fix Checklist
 

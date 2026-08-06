@@ -1,0 +1,2 @@
+rule_id,file,line,col,severity,message,spec_ref,impl_id,test_ref,check_method,auto_checkable,fix_status
+,nofile,0,0,information,Active checkers: 309/1056 (use --checkers-report=<filename> to see details) [checkersReport],,,,,True,unresolved

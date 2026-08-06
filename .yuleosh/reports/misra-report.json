@@ -1,6 +1,6 @@
 {
   "schema_version": "misra-report-v2",
-  "generated_at": "2026-08-05T22:53:56.438507",
+  "generated_at": "2026-08-06T11:18:18.691504",
   "tool_version": "Cppcheck 2.17.1 from cppcheck-wheel 1.5.1",
   "ruleset_version": "2023",
   "ci_environ": {
@@ -10,15 +10,58 @@
     "job_name": "",
     "workspace": ""
   },
-  "total_violations": 0,
-  "unique_rules": 0,
-  "affected_files": 0,
+  "total_violations": 1,
+  "unique_rules": 1,
+  "affected_files": 1,
   "total_source_lines": 0,
-  "by_severity": {},
-  "by_rule_type": {},
-  "density_per_kloc": 0.0,
-  "category_breakdown": {},
-  "groups": {},
+  "by_severity": {
+    "information": 1
+  },
+  "by_rule_type": {
+    "unknown": 1
+  },
+  "density_per_kloc": 1000.0,
+  "category_breakdown": {
+    "unknown": 1
+  },
+  "violations_raw": [
+    {
+      "file": "nofile",
+      "line": 0,
+      "column": 0,
+      "severity": "information",
+      "message": "Active checkers: 309/1056 (use --checkers-report=<filename> to see details) [checkersReport]",
+      "rule_id": null,
+      "rule_year": "2012",
+      "code_category": "business",
+      "category": "unknown",
+      "description": "",
+      "severity_category": "unknown",
+      "rule_type": "unknown"
+    }
+  ],
+  "groups": {
+    "unknown": {
+      "count": 1,
+      "violations": [
+        {
+          "file": "nofile",
+          "line": 0,
+          "column": 0,
+          "severity": "information",
+          "message": "Active checkers: 309/1056 (use --checkers-report=<filename> to see details) [checkersReport]",
+          "rule_id": null,
+          "rule_year": "2012",
+          "code_category": "business",
+          "category": "unknown",
+          "description": "",
+          "severity_category": "unknown",
+          "rule_type": "unknown"
+        }
+      ],
+      "total": 1
+    }
+  },
   "deviations": [],
   "excluded_rules": [],
   "excluded_files": []
