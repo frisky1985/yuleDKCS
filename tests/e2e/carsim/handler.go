@@ -561,34 +561,48 @@ func (h *Handler) handleReplayFrame(frame *proto.Frame) (*proto.Frame, error) {
 		return h.makeError(frame, 130, "decode replay: "+err.Error()), nil
 	}
 
-	// Check if the original SeqNum has already been seen (simulate replay detection)
+	// Replay detection: CheckAndIncrementSeq returns false when seq <= last seen
+	// (possible replay). A frame is also treated as a replay when its original
+	// timestamp falls outside the freshness window (±5s) — this catches the
+	// classic "same seq + old ts" attack even on the first sighting.
 	deviceID := fmt.Sprintf("replay_%d", req.OriginalSeq)
-	if h.vehicle.CheckAndIncrementSeq(deviceID, req.ReplayedSeq) {
-		// This specific logic: if seq <= last, it's a replay
-		h.vehicle.mu.RLock()
-		lastSeq := h.vehicle.LastSeqMap[deviceID]
-		h.vehicle.mu.RUnlock()
+	blocked := false
+	reason := ""
 
-		if req.ReplayedSeq <= lastSeq {
-			h.vehicle.TriggerAlarm()
-			h.vehicle.AddEvent(&VehicleEvent{
-				EventID:   fmt.Sprintf("evt_replay_%d", time.Now().UnixMilli()),
-				EventType: "replay_detect",
-				Source:    2,
-				Success:   false,
-				Timestamp: time.Now().UnixMilli(),
-				Detail:    fmt.Sprintf("replay: original_seq=%d replayed_seq=%d", req.OriginalSeq, req.ReplayedSeq),
-			})
-
-			log.Printf("[REPLAY_DETECT] 🚨 Replay attack blocked: seq=%d, original=%d", req.ReplayedSeq, req.OriginalSeq)
-			resp := &proto.ReplayPayload{
-				OriginalSeq: req.OriginalSeq,
-				ReplayedSeq: req.ReplayedSeq,
-				Blocked:     true,
-				Reason:      "duplicate sequence number",
-			}
-			return proto.NewFrame(proto.MsgTypeReplayDetect, encodePayload(resp)), nil
+	if !h.vehicle.CheckAndIncrementSeq(deviceID, req.ReplayedSeq) {
+		blocked = true
+		reason = "duplicate sequence number"
+	} else if req.OriginalTs > 0 {
+		now := time.Now().UnixMilli()
+		skew := now - req.OriginalTs
+		if skew < 0 {
+			skew = -skew
 		}
+		if skew > 5000 {
+			blocked = true
+			reason = "timestamp outside freshness window"
+		}
+	}
+
+	if blocked {
+		h.vehicle.TriggerAlarm()
+		h.vehicle.AddEvent(&VehicleEvent{
+			EventID:   fmt.Sprintf("evt_replay_%d", time.Now().UnixMilli()),
+			EventType: "replay_detect",
+			Source:    2,
+			Success:   false,
+			Timestamp: time.Now().UnixMilli(),
+			Detail:    fmt.Sprintf("replay: original_seq=%d replayed_seq=%d reason=%s", req.OriginalSeq, req.ReplayedSeq, reason),
+		})
+
+		log.Printf("[REPLAY_DETECT] 🚨 Replay attack blocked: seq=%d, original=%d, reason=%s", req.ReplayedSeq, req.OriginalSeq, reason)
+		resp := &proto.ReplayPayload{
+			OriginalSeq: req.OriginalSeq,
+			ReplayedSeq: req.ReplayedSeq,
+			Blocked:     true,
+			Reason:      reason,
+		}
+		return proto.NewFrame(proto.MsgTypeReplayDetect, encodePayload(resp)), nil
 	}
 
 	resp := &proto.ReplayPayload{
