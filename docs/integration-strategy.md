@@ -14,7 +14,7 @@
 |:-----|:---------|:-----|:-----------|
 | **S1 单元级** | 各组件内函数/方法 | CI L1 (go test + coverage 门禁) | REQ-019~023 |
 | **S2 协议层** | BERTLV 编解码 + 消息信封 + 签名完整性 | CI L2 契约层 (`tests/integration/`) | REQ-024~027, REQ-018 |
-| **S3 组件级** | Hub 内部组件（Gateway↔Token↔Service↔Adapter） | Go 集成套件 (backend/cloud/hub/tests/integration, 14 场景) | REQ-010~015, REQ-019~020 |
+| **S3 组件级** | Hub 内部组件（Gateway↔Token↔Service↔Adapter） | Go 集成套件 (backend/cloud/hub/tests/integration, 16 用例/15 编号) | REQ-010~015, REQ-019~020 |
 | **S4 系统级** | 手机↔车模拟器↔云 端到端 | `tests/e2e/` (carsim, 11 场景) | REQ-001~009 |
 | **S5 目标环境** | 车端嵌入式 + 硬件 | HIL (S32K312 EVB) | REQ-028~035, REQ-006, REQ-016 |
 

@@ -1,4 +1,4 @@
-// E2E-06: OTA 升级测试
+// E2E-15: OTA 升级测试
 //
 // 场景描述:
 //   GIVEN 车端 TCU 正在运行固件 v2.1.0
@@ -41,10 +41,10 @@ func hashOTAData(data []byte) string {
 	return string(h[:])
 }
 
-// TestE2E06_OTAUpdate tests OTA firmware update flow.
-func TestE2E06_OTAUpdate(t *testing.T) {
-	report := helpers.NewTestReport("E2E-06 OTA升级")
-	harness := suite.NewTestHarness("E2E-06")
+// TestE2E15_OTAUpdate tests OTA firmware update flow.
+func TestE2E15_OTAUpdate(t *testing.T) {
+	report := helpers.NewTestReport("E2E-15 OTA升级")
+	harness := suite.NewTestHarness("E2E-15")
 	harness.Start()
 
 	phone := suite.CreateDefaultPhone("xiaomi", "phone-ota-xm", "user-ota-xm", "iccoa_dk40")
@@ -57,7 +57,7 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	// ── Test 1: OT-SHALL-01 OTA 下载与安装正常流程 ──
-	t.Run("E2E-06-01: OT-SHALL-01 OTA正常升级流程", func(t *testing.T) {
+	t.Run("E2E-15-01: OT-SHALL-01 OTA正常升级流程", func(t *testing.T) {
 		start := time.Now()
 
 		// Simulate OTA package v2.2.0
@@ -88,11 +88,11 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 		status := tcu.GetOTAPackageStatus()
 		t.Logf("OTA final status: %s", status)
 
-		report.Record("E2E-06-01: OTA正常升级", true, time.Since(start), "", "E2E-06", "OTA")
+		report.Record("E2E-15-01: OTA正常升级", true, time.Since(start), "", "E2E-15", "OTA")
 	})
 
 	// ── Test 2: OT-SHALL-NOT-01 签名校验失败拒绝安装 ──
-	t.Run("E2E-06-02: OT-SHALL-NOT-01 签名校验失败拒绝", func(t *testing.T) {
+	t.Run("E2E-15-02: OT-SHALL-NOT-01 签名校验失败拒绝", func(t *testing.T) {
 		start := time.Now()
 
 		// Create OTA package with tampered data
@@ -115,11 +115,11 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 
 		t.Logf("OTA package with invalid hash correctly rejected")
 
-		report.Record("E2E-06-02: OTA签名校验失败拒绝", true, time.Since(start), "", "E2E-06", "OTA")
+		report.Record("E2E-15-02: OTA签名校验失败拒绝", true, time.Since(start), "", "E2E-15", "OTA")
 	})
 
 	// ── Test 3: OT-SHALL-02 空签名拒绝 ──
-	t.Run("E2E-06-03: OT-SHALL-02 无签名包拒绝", func(t *testing.T) {
+	t.Run("E2E-15-03: OT-SHALL-02 无签名包拒绝", func(t *testing.T) {
 		start := time.Now()
 
 		otaData := []byte("DKCS_TCU_FIRMWARE_v2.2.0_binary_data_no_sig")
@@ -137,22 +137,22 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 
 		t.Logf("OTA package without signature correctly rejected")
 
-		report.Record("E2E-06-03: OTA无签名包拒绝", true, time.Since(start), "", "E2E-06", "OTA")
+		report.Record("E2E-15-03: OTA无签名包拒绝", true, time.Since(start), "", "E2E-15", "OTA")
 	})
 
 	// ── Test 4: OT-SHALL-03 升级前状态检查 ──
-	t.Run("E2E-06-04: OT-SHALL-03 OTA状态查询", func(t *testing.T) {
+	t.Run("E2E-15-04: OT-SHALL-03 OTA状态查询", func(t *testing.T) {
 		start := time.Now()
 
 		// Verify idle state before any OTA
 		idleStatus := tcu.GetOTAPackageStatus()
 		assert.Equal(t, "IDLE", idleStatus, "OT-SHALL-03: Initial OTA status must be IDLE")
 
-		report.Record("E2E-06-04: OTA状态查询", true, time.Since(start), "", "E2E-06", "OTA")
+		report.Record("E2E-15-04: OTA状态查询", true, time.Since(start), "", "E2E-15", "OTA")
 	})
 
 	// ── Test 5: OT-SHALL-02 ECDSA 签名验证 ──
-	t.Run("E2E-06-05: OT-SHALL-02 ECDSA P-256签名验证", func(t *testing.T) {
+	t.Run("E2E-15-05: OT-SHALL-02 ECDSA P-256签名验证", func(t *testing.T) {
 		start := time.Now()
 
 		otaData := []byte("DKCS_TCU_FIRMWARE_v2.3.0_test_signing_data")
@@ -175,11 +175,11 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 		assert.False(t, tamperedValid, "Tampered data must not verify")
 
 
-		report.Record("E2E-06-05: ECDSA签名验证(crypto)", true, time.Since(start), "", "E2E-06", "OTA/CRYPTO")
+		report.Record("E2E-15-05: ECDSA签名验证(crypto)", true, time.Since(start), "", "E2E-15", "OTA/CRYPTO")
 	})
 
 	// ── Test 6: OT-SHALL-NOT-01 篡改数据检测 ──
-	t.Run("E2E-06-06: OT-SHALL-NOT-01 数据篡改检测", func(t *testing.T) {
+	t.Run("E2E-15-06: OT-SHALL-NOT-01 数据篡改检测", func(t *testing.T) {
 		start := time.Now()
 
 		// Original package
@@ -205,7 +205,7 @@ func TestE2E06_OTAUpdate(t *testing.T) {
 
 		t.Logf("Bit-flipped OTA data correctly rejected")
 
-		report.Record("E2E-06-06: OTA数据篡改检测", true, time.Since(start), "", "E2E-06", "OTA")
+		report.Record("E2E-15-06: OTA数据篡改检测", true, time.Since(start), "", "E2E-15", "OTA")
 	})
 
 	report.GenerateHTML("test-output/integration-report.html")

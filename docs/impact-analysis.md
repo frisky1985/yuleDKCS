@@ -4,7 +4,7 @@
 > **文档编号**: yuleDKCS-IA-001
 > **版本**: 1.0.0 | **日期**: 2026-08-06 | **状态**: ACTIVE
 > **过程域**: ASPICE SWE.1.BP3 (Evaluate impact of requirements)
-> **关联**: `docs/software-requirements.md` (SRS), `docs/impact-analysis-log.md` (变更日志)
+> **关联**: `docs/software-requirements.md` (SRS)；变更日志记录内联于本文档 §3（`docs/impact-analysis-log.md` 已并入本文档，不再单独维护）
 
 ---
 

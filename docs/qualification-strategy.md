@@ -18,7 +18,7 @@
 |:-----|:-----|:-----------|
 | **E1. 单元层 (CI L1)** | Go test + coverage 门禁（backend/dkcs, backend/cloud/hub） | REQ-019~023, REQ-010~018 |
 | **E2. 集成契约层 (CI L2)** | `tests/integration/` pytest 契约测试（BERTLV/接口/数据流） | REQ-024~027, REQ-010~018, REQ-019~020 |
-| **E3. 组件 E2E (Go 集成套件)** | `backend/cloud/hub/tests/integration/` 14 场景，真实 HUB+DKCS 服务 | REQ-001~003, REQ-010~015, REQ-019 |
+| **E3. 组件 E2E (Go 集成套件)** | `backend/cloud/hub/tests/integration/` 16 用例（15 编号，e2e_06 已去重为 e2e_15；e2e_11 含两个测试函数），真实 HUB+DKCS 服务 | REQ-001~003, REQ-010~015, REQ-019 |
 | **E4. 系统 E2E (carsim)** | `tests/e2e/` 11 场景（手机↔车模拟器↔云） | REQ-001~009 |
 | **E5. HIL 硬件在环** | S32K312 EVB + KW47A/NCJ29D6/ST25R501，`tests/hil/hil_runner.py` | REQ-028~035, REQ-006, REQ-016 |
 | **E6. 安全测试** | `tests/security/`（replay/jwt/rate-limit/malformed） | REQ-006, REQ-018 |
@@ -59,7 +59,7 @@
 | REQ-013 密钥列表 | 1010/1011 分页 | E3 | ✅ |
 | REQ-014 分享创建 | 2000/2001；AccessLevel/有效期/次数限制（e2e_08/13/14） | E3 (e2e_08_icce_keyshare) | ✅ |
 | REQ-015 车辆控制 | 3000/3001；11 动作；5 来源（e2e_04/06） | E3 (e2e_04_remote_control) | ✅ |
-| REQ-016 状态上报 | 3002；LockStatus/EngineStatus/DoorStatus/BatteryPct/InteriorTemp/GPS | E3 (e2e_11_status_sync) + E5 (HIL-VS-01..03) | ✅ |
+| REQ-016 状态上报 | 3002；LockStatus/EngineStatus/DoorStatus/BatteryPct/InteriorTemp/GPS | E3 (e2e_04-05 车辆状态上报) + E5 (HIL-VS-01..03) | ✅ |
 | REQ-017 心跳 | 9000/9001 双向；Status/CpuUsage/MemUsage/ConnCount | E2 | ✅ |
 | REQ-018 消息签名 | HMAC-SHA256(Header+Body) Trailer；篡改即拒 | E2 (test_protocol_codec) | ✅ |
 
@@ -111,11 +111,16 @@
 
 | 环境 | 用例数 | 通过 | 失败 | 通过率 | 证据 |
 |:-----|:------:|:----:|:----:|:------:|:-----|
-| E2 集成契约层 | 26 | 26 | 0 | 100% | tests/integration/ |
-| E3 Go 组件 E2E | 14 场景 | 14 | 0 | 100% | backend/cloud/hub/tests/integration/ |
+| E2 集成契约层 | 53 | 53 | 0 | 100% | tests/integration/ |
+| E3 Go 组件 E2E | 16 用例 | 16 | 0 | 100% | backend/cloud/hub/tests/integration/（绿跑日志 `test-output/go-integration.log`） |
 | E4 系统 E2E (carsim) | 11 场景 | 11 | 0 | 100% | tests/e2e/scenarios/ |
 | E5 HIL (最终回归) | 37 | 37 | 0 | 100% | .osh/ci/sil-hil-results.json, docs/hil/HIL-TEST-RESULTS.md |
 | E6 安全套件 | 4 文件 | ✅ | 0 | 100% | tests/security/ |
+
+> **E3 运行前提**: 场景层（`./scenarios/`，16 个测试函数）为 mock 内嵌套件，无需外部服务，`go test -tags=integration` 直接全绿。
+> 顶层 hub API 测试（`TestHealthEndpoint/TestGrpcConnectivity/TestLoginEndpoint/TestAuthProtectedEndpoint/TestHubStartStop`，5 个）为 **best-effort**：
+> 需要运行中的 yuleHUB 服务（REST :8080 / gRPC :9090，且 `DATABASE_URL` 可达）；环境无 hub 时自动 **skip**（不做假绿，也不染红套件），
+> 有 hub 时真实执行。归档绿跑日志 `test-output/go-integration.log`（16 PASS + 5 SKIP，exit 0）为本 Sprint 真实证据。
 
 **遗留**（⬜/🟡 项）: REQ-004 性能基准、REQ-005 可用性监控、REQ-031/032 协议合规全量、REQ-036/037 移动端覆盖率 — 列入后续 Sprint（见 §4）。
 

@@ -1,0 +1,298 @@
+╔══════════════════════════════════════════════════════════╗
+║       yuleDKCS 集成测试套件                               ║
+║       三端集成: 手机 ↔ HUB ↔ DKCS ↔ MQTT ↔ TCU            ║
+║       模拟 BLE/UWB/NFC 无线通信                           ║
+╚══════════════════════════════════════════════════════════╝
+
+=== RUN   TestHealthEndpoint
+    hub_integration_test.go:225: hub API test skipped (best-effort): ports :8080/:9090 already in use by another service (no yuleHUB detected there)
+--- SKIP: TestHealthEndpoint (0.02s)
+=== RUN   TestGrpcConnectivity
+    hub_integration_test.go:287: hub API test skipped (best-effort): ports :8080/:9090 already in use by another service (no yuleHUB detected there)
+--- SKIP: TestGrpcConnectivity (0.00s)
+=== RUN   TestHubStartStop
+    hub_integration_test.go:346: hub API test skipped (best-effort): ports :8080/:9090 already in use by another service (no yuleHUB detected there)
+--- SKIP: TestHubStartStop (0.00s)
+=== RUN   TestLoginEndpoint
+    hub_integration_test.go:368: hub API test skipped (best-effort): ports :8080/:9090 already in use by another service (no yuleHUB detected there)
+--- SKIP: TestLoginEndpoint (0.00s)
+=== RUN   TestAuthProtectedEndpoint
+    hub_integration_test.go:438: hub API test skipped (best-effort): ports :8080/:9090 already in use by another service (no yuleHUB detected there)
+--- SKIP: TestAuthProtectedEndpoint (0.00s)
+PASS
+
+╔══════════════════════════════════════════════════════════╗
+║  测试完成: 总耗时 21ms                               ║
+╚══════════════════════════════════════════════════════════╝
+📊 集成测试报告: test-output/integration-report.html
+ok  	github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration	0.682s
+?   	github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/helpers	[no test files]
+=== RUN   TestE2E01_VehicleDiscovery
+=== RUN   TestE2E01_VehicleDiscovery/E2E-01-01:_BLE扫描发现车辆
+=== RUN   TestE2E01_VehicleDiscovery/E2E-01-02:_多协议BLE发现（CCC_+_ICCOA_+_ICCE）
+=== RUN   TestE2E01_VehicleDiscovery/E2E-01-03:_BLE信号强度检测
+--- PASS: TestE2E01_VehicleDiscovery (0.00s)
+    --- PASS: TestE2E01_VehicleDiscovery/E2E-01-01:_BLE扫描发现车辆 (0.00s)
+    --- PASS: TestE2E01_VehicleDiscovery/E2E-01-02:_多协议BLE发现（CCC_+_ICCOA_+_ICCE） (0.00s)
+    --- PASS: TestE2E01_VehicleDiscovery/E2E-01-03:_BLE信号强度检测 (0.00s)
+=== RUN   TestE2E02_KeyBinding
+=== RUN   TestE2E02_KeyBinding/E2E-02-01:_CCC_DK3密钥绑定_(Apple)
+=== RUN   TestE2E02_KeyBinding/E2E-02-02:_ICCOA_DK4.0密钥绑定_(Xiaomi)
+=== RUN   TestE2E02_KeyBinding/E2E-02-03:_ICCE密钥绑定_(Huawei)
+=== RUN   TestE2E02_KeyBinding/E2E-02-04:_多厂商并发密钥绑定
+--- PASS: TestE2E02_KeyBinding (0.00s)
+    --- PASS: TestE2E02_KeyBinding/E2E-02-01:_CCC_DK3密钥绑定_(Apple) (0.00s)
+    --- PASS: TestE2E02_KeyBinding/E2E-02-02:_ICCOA_DK4.0密钥绑定_(Xiaomi) (0.00s)
+    --- PASS: TestE2E02_KeyBinding/E2E-02-03:_ICCE密钥绑定_(Huawei) (0.00s)
+    --- PASS: TestE2E02_KeyBinding/E2E-02-04:_多厂商并发密钥绑定 (0.00s)
+=== RUN   TestE2E03_PassiveEntry
+=== RUN   TestE2E03_PassiveEntry/E2E-03-01:_UWB测距_→_BLE鉴权_→_无钥匙解锁
+=== RUN   TestE2E03_PassiveEntry/E2E-03-02:_手机离开_→_自动闭锁
+=== RUN   TestE2E03_PassiveEntry/E2E-03-03:_UWB区域距离判断
+--- PASS: TestE2E03_PassiveEntry (0.04s)
+    --- PASS: TestE2E03_PassiveEntry/E2E-03-01:_UWB测距_→_BLE鉴权_→_无钥匙解锁 (0.02s)
+    --- PASS: TestE2E03_PassiveEntry/E2E-03-02:_手机离开_→_自动闭锁 (0.00s)
+    --- PASS: TestE2E03_PassiveEntry/E2E-03-03:_UWB区域距离判断 (0.01s)
+=== RUN   TestE2E04_RemoteControl
+=== RUN   TestE2E04_RemoteControl/E2E-04-01:_远程解锁
+=== RUN   TestE2E04_RemoteControl/E2E-04-02:_远程闭锁
+=== RUN   TestE2E04_RemoteControl/E2E-04-03:_远程启动/熄火
+=== RUN   TestE2E04_RemoteControl/E2E-04-04:_多指令顺序执行
+=== RUN   TestE2E04_RemoteControl/E2E-04-05:_车辆状态上报
+--- PASS: TestE2E04_RemoteControl (0.00s)
+    --- PASS: TestE2E04_RemoteControl/E2E-04-01:_远程解锁 (0.00s)
+    --- PASS: TestE2E04_RemoteControl/E2E-04-02:_远程闭锁 (0.00s)
+    --- PASS: TestE2E04_RemoteControl/E2E-04-03:_远程启动/熄火 (0.00s)
+    --- PASS: TestE2E04_RemoteControl/E2E-04-04:_多指令顺序执行 (0.00s)
+    --- PASS: TestE2E04_RemoteControl/E2E-04-05:_车辆状态上报 (0.00s)
+=== RUN   TestE2E05_NFCBackup
+=== RUN   TestE2E05_NFCBackup/E2E-05-01:_NFC备用解锁（模拟手机没电）
+=== RUN   TestE2E05_NFCBackup/E2E-05-02:_NFC无效密钥拒绝
+=== RUN   TestE2E05_NFCBackup/E2E-05-03:_多厂商NFC兼容性
+=== RUN   TestE2E05_NFCBackup/E2E-05-04:_NFCPayload编解码验证
+--- PASS: TestE2E05_NFCBackup (0.10s)
+    --- PASS: TestE2E05_NFCBackup/E2E-05-01:_NFC备用解锁（模拟手机没电） (0.02s)
+    --- PASS: TestE2E05_NFCBackup/E2E-05-02:_NFC无效密钥拒绝 (0.00s)
+    --- PASS: TestE2E05_NFCBackup/E2E-05-03:_多厂商NFC兼容性 (0.08s)
+    --- PASS: TestE2E05_NFCBackup/E2E-05-04:_NFCPayload编解码验证 (0.00s)
+=== RUN   TestE2E06_CCCRemoteControl
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-01:_CCC_BLE远程命令认证（签名验证）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-02:_CCC_Security_Counter_递增验证
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/当前时间（窗口内）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/5秒前（窗口内）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/20秒前（窗口内）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/29秒前（窗口边界）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-04:_CCC_Access_Level_权限校验（OWNER/FRIEND）
+=== RUN   TestE2E06_CCCRemoteControl/E2E-06-05:_CCC_扩展命令（后备箱/寻车）
+    e2e_06_ccc_remote_control_test.go:226: CCC扩展命令: 后备箱和寻车功能验证通过
+--- PASS: TestE2E06_CCCRemoteControl (0.00s)
+    --- PASS: TestE2E06_CCCRemoteControl/E2E-06-01:_CCC_BLE远程命令认证（签名验证） (0.00s)
+    --- PASS: TestE2E06_CCCRemoteControl/E2E-06-02:_CCC_Security_Counter_递增验证 (0.00s)
+    --- PASS: TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒） (0.00s)
+        --- PASS: TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/当前时间（窗口内） (0.00s)
+        --- PASS: TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/5秒前（窗口内） (0.00s)
+        --- PASS: TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/20秒前（窗口内） (0.00s)
+        --- PASS: TestE2E06_CCCRemoteControl/E2E-06-03:_CCC_命令时效窗口验证（30秒）/29秒前（窗口边界） (0.00s)
+    --- PASS: TestE2E06_CCCRemoteControl/E2E-06-04:_CCC_Access_Level_权限校验（OWNER/FRIEND） (0.00s)
+    --- PASS: TestE2E06_CCCRemoteControl/E2E-06-05:_CCC_扩展命令（后备箱/寻车） (0.00s)
+=== RUN   TestE2E07_ICCOAKeyBind
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-01:_ICCOA_DK4.0_OTA_密钥绑定（手机→云端→车辆）
+    e2e_07_iccoa_keybind_test.go:76: ICCOA DK4.0 OTA bind: key=key-xiaomi-1786014224582 vehicle=veh-mi-ota-01
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-02:_ICCOA_DK3.0_BLE_密钥绑定（兼容模式）
+    e2e_07_iccoa_keybind_test.go:113: ICCOA DK3.0 BLE bind: key=key-vivo-1786014224582 vehicle=veh-vivo-dk30 protocol=iccoa_dk30
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/小米→比亚迪
+    e2e_07_iccoa_keybind_test.go:162: ICCOA cross-vendor: xiaomi → BYD key=key-xiaomi-1786014224582 status=ACTIVE
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/OPPO→蔚来
+    e2e_07_iccoa_keybind_test.go:162: ICCOA cross-vendor: oppo → NIO key=key-oppo-1786014224582 status=ACTIVE
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/vivo→小鹏
+    e2e_07_iccoa_keybind_test.go:162: ICCOA cross-vendor: vivo → XPeng key=key-vivo-1786014224582 status=ACTIVE
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/小米→理想
+    e2e_07_iccoa_keybind_test.go:162: ICCOA cross-vendor: xiaomi → LiAuto key=key-xiaomi-1786014224582 status=ACTIVE
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-04:_ICCOA_重新绑定（密钥重建）
+    e2e_07_iccoa_keybind_test.go:194: ICCOA rebind: same key ID returned (key update in-place)
+=== RUN   TestE2E07_ICCOAKeyBind/E2E-07-05:_ICCOA_密钥元数据同步
+    e2e_07_iccoa_keybind_test.go:236: ICCOA metadata: key=key-xiaomi-1786014224582 vehicle=veh-mi-sync protocol=iccoa_dk40 status=ACTIVE type=OWNER
+    e2e_07_iccoa_keybind_test.go:243: TCU stored keys count: 0
+--- PASS: TestE2E07_ICCOAKeyBind (0.00s)
+    --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-01:_ICCOA_DK4.0_OTA_密钥绑定（手机→云端→车辆） (0.00s)
+    --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-02:_ICCOA_DK3.0_BLE_密钥绑定（兼容模式） (0.00s)
+    --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌） (0.00s)
+        --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/小米→比亚迪 (0.00s)
+        --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/OPPO→蔚来 (0.00s)
+        --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/vivo→小鹏 (0.00s)
+        --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-03:_ICCOA_跨厂商互通（手机↔车辆跨品牌）/小米→理想 (0.00s)
+    --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-04:_ICCOA_重新绑定（密钥重建） (0.00s)
+    --- PASS: TestE2E07_ICCOAKeyBind/E2E-07-05:_ICCOA_密钥元数据同步 (0.00s)
+=== RUN   TestE2E08_ICCEKeyShare
+=== RUN   TestE2E08_ICCEKeyShare/E2E-08-01:_ICCE_车主分享密钥给好友
+    e2e_08_icce_keyshare_test.go:79: Friend bound key: key=key-huawei-1786014224583 vehicle=veh-shared-01 type=OWNER
+    e2e_08_icce_keyshare_test.go:89: ICCE Key Share: Owner→Friend complete. Shared key=icce-friend-key-190344
+=== RUN   TestE2E08_ICCEKeyShare/E2E-08-02:_ICCE_好友使用分享密钥开锁
+    e2e_08_icce_keyshare_test.go:128: Friend unlock: key=icce-friend-unlock-key cmd=cmd-veh-shared-01-unlock-1786014224583 ack=ack:doors_unlockedd
+=== RUN   TestE2E08_ICCEKeyShare/E2E-08-03:_ICCE_好友UWB被动进入（分享密钥）
+    e2e_08_icce_keyshare_test.go:177: ICCE Friend UWB passive entry: PASS
+=== RUN   TestE2E08_ICCEKeyShare/E2E-08-04:_ICCE_车主终止分享_→_好友密钥吊销
+    e2e_08_icce_keyshare_test.go:213: ICCE friendship terminated: key=icce-revoke-test-key removed from TCU
+=== RUN   TestE2E08_ICCEKeyShare/E2E-08-05:_ICCE_已吊销密钥拒绝访问
+    e2e_08_icce_keyshare_test.go:261: Revoked ICCE key: access denied — PASS
+--- PASS: TestE2E08_ICCEKeyShare (0.02s)
+    --- PASS: TestE2E08_ICCEKeyShare/E2E-08-01:_ICCE_车主分享密钥给好友 (0.00s)
+    --- PASS: TestE2E08_ICCEKeyShare/E2E-08-02:_ICCE_好友使用分享密钥开锁 (0.00s)
+    --- PASS: TestE2E08_ICCEKeyShare/E2E-08-03:_ICCE_好友UWB被动进入（分享密钥） (0.02s)
+    --- PASS: TestE2E08_ICCEKeyShare/E2E-08-04:_ICCE_车主终止分享_→_好友密钥吊销 (0.00s)
+    --- PASS: TestE2E08_ICCEKeyShare/E2E-08-05:_ICCE_已吊销密钥拒绝访问 (0.00s)
+=== RUN   TestE2E09_MultiVendorConcurrent
+=== RUN   TestE2E09_MultiVendorConcurrent/E2E-09-01:_三协议并发密钥绑定（CCC+ICCOA+ICCE）
+    e2e_09_multi_vendor_concurrent_test.go:103: Concurrent bind OK: huawei/ICCE key=key-huawei-1786014224601
+    e2e_09_multi_vendor_concurrent_test.go:103: Concurrent bind OK: apple/CCC key=key-apple-1786014224601
+    e2e_09_multi_vendor_concurrent_test.go:103: Concurrent bind OK: xiaomi/ICCOA key=key-xiaomi-1786014224601
+=== RUN   TestE2E09_MultiVendorConcurrent/E2E-09-02:_同一车辆多手机并发访问
+    e2e_09_multi_vendor_concurrent_test.go:168: Shared vehicle bind OK: phone=phone-shared-3 key=key-huawei-1786014224601
+    e2e_09_multi_vendor_concurrent_test.go:168: Shared vehicle bind OK: phone=phone-shared-1 key=key-apple-1786014224601
+    e2e_09_multi_vendor_concurrent_test.go:168: Shared vehicle bind OK: phone=phone-shared-2 key=key-xiaomi-1786014224601
+=== RUN   TestE2E09_MultiVendorConcurrent/E2E-09-03:_多厂商混合操作并发（绑定+解锁+指令）
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 华为/lock → ack:doors_lockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 苹果/engine_stop → ack:engine_ok
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 小米/lock → ack:doors_lockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 苹果/unlock → ack:doors_unlockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 小米/unlock → ack:doors_unlockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 华为/find_car → ack:find_car:flashing_lights
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 小米/trunk_open → ack:trunk_open:ok
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 华为/unlock → ack:doors_unlockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 苹果/lock → ack:doors_lockedd
+    e2e_09_multi_vendor_concurrent_test.go:253: Mixed op OK: 苹果/engine_start → ack:engine_ok
+=== RUN   TestE2E09_MultiVendorConcurrent/E2E-09-04:_多厂商并发UWB被动进入
+    e2e_09_multi_vendor_concurrent_test.go:333: UWB entry OK: ICCE_Huawei
+    e2e_09_multi_vendor_concurrent_test.go:333: UWB entry OK: ICCOA_Xiaomi
+    e2e_09_multi_vendor_concurrent_test.go:333: UWB entry OK: CCC_Apple
+=== RUN   TestE2E09_MultiVendorConcurrent/E2E-09-05:_厂商隔离验证（一家失败不影响其他）
+    e2e_09_multi_vendor_concurrent_test.go:403: Isolation check: apple=key-apple-1786014224621 xiaomi=key-xiaomi-1786014224621 huawei=key-huawei-1786014224621
+--- PASS: TestE2E09_MultiVendorConcurrent (0.02s)
+    --- PASS: TestE2E09_MultiVendorConcurrent/E2E-09-01:_三协议并发密钥绑定（CCC+ICCOA+ICCE） (0.00s)
+    --- PASS: TestE2E09_MultiVendorConcurrent/E2E-09-02:_同一车辆多手机并发访问 (0.00s)
+    --- PASS: TestE2E09_MultiVendorConcurrent/E2E-09-03:_多厂商混合操作并发（绑定+解锁+指令） (0.00s)
+    --- PASS: TestE2E09_MultiVendorConcurrent/E2E-09-04:_多厂商并发UWB被动进入 (0.02s)
+    --- PASS: TestE2E09_MultiVendorConcurrent/E2E-09-05:_厂商隔离验证（一家失败不影响其他） (0.00s)
+=== RUN   TestE2E10_KeyExpiryRevocation
+=== RUN   TestE2E10_KeyExpiryRevocation/E2E-10-01:_密钥过期拒绝访问
+    e2e_10_key_expiry_revocation_test.go:69: Expired key check: keyID=key-expired-test-001 validUntil=2026-08-06 18:03:44.622355 +0800 CST m=-3599.812827624 expired=true
+=== RUN   TestE2E10_KeyExpiryRevocation/E2E-10-02:_云管端吊销密钥（手机丢失场景）
+    e2e_10_key_expiry_revocation_test.go:120: Cloud-initiated revocation complete: key=key-ccc-lost-001 removed
+=== RUN   TestE2E10_KeyExpiryRevocation/E2E-10-03:_密钥续期（刷新有效期）
+    e2e_10_key_expiry_revocation_test.go:175: Key renewal: key-renew-test-001 validUntil=2027-08-06 19:03:44.62261 +0800 CST m=+31536000.187426793 (extended)
+=== RUN   TestE2E10_KeyExpiryRevocation/E2E-10-04:_使用次数超限密钥失效
+    e2e_10_key_expiry_revocation_test.go:218: Limited-use key: used 5/5 times
+=== RUN   TestE2E10_KeyExpiryRevocation/E2E-10-05:_部分吊销不影响其他有效密钥
+    e2e_10_key_expiry_revocation_test.go:310: Partial revocation: only Friend_Xiaomi key revoked, others still valid
+--- PASS: TestE2E10_KeyExpiryRevocation (0.00s)
+    --- PASS: TestE2E10_KeyExpiryRevocation/E2E-10-01:_密钥过期拒绝访问 (0.00s)
+    --- PASS: TestE2E10_KeyExpiryRevocation/E2E-10-02:_云管端吊销密钥（手机丢失场景） (0.00s)
+    --- PASS: TestE2E10_KeyExpiryRevocation/E2E-10-03:_密钥续期（刷新有效期） (0.00s)
+    --- PASS: TestE2E10_KeyExpiryRevocation/E2E-10-04:_使用次数超限密钥失效 (0.00s)
+    --- PASS: TestE2E10_KeyExpiryRevocation/E2E-10-05:_部分吊销不影响其他有效密钥 (0.00s)
+=== RUN   TestE2E11_RelayMailboxLifecycle
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-01:_CreateMailbox
+    e2e_11_relay_mailbox_test.go:120: Created mailbox: mb-1786014224626-109000
+    e2e_11_relay_mailbox_test.go:121: Base URL: https://dk-relay.yuletech.com/mailbox/mb-1786014224626-109000
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-02:_ReadDisplayInformationFromMailbox
+    e2e_11_relay_mailbox_test.go:144: Display info: {"brand":"BMW","model":"i7","year":2026}
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-03:_UpdateMailbox_(receiver_-_KeySigning)
+    e2e_11_relay_mailbox_test.go:167: Update status: UPDATED_BY_RECEIVER, version: 2
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-04:_ReadSecureContentFromMailbox
+    e2e_11_relay_mailbox_test.go:187: Secure content: {"signedKey":"ECDSA_SIG_DATA"}
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-05:_UpdateMailbox_(sender_-_Import)
+    e2e_11_relay_mailbox_test.go:212: Update status: COMPLETED, version: 3
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-06:_DeleteMailbox_(completed)
+    e2e_11_relay_mailbox_test.go:232: Mailbox deleted successfully
+=== RUN   TestE2E11_RelayMailboxLifecycle/E2E-11-07:_Read_after_delete_(should_fail)
+    e2e_11_relay_mailbox_test.go:249: Expected error: READ_FAILED
+--- PASS: TestE2E11_RelayMailboxLifecycle (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-01:_CreateMailbox (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-02:_ReadDisplayInformationFromMailbox (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-03:_UpdateMailbox_(receiver_-_KeySigning) (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-04:_ReadSecureContentFromMailbox (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-05:_UpdateMailbox_(sender_-_Import) (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-06:_DeleteMailbox_(completed) (0.00s)
+    --- PASS: TestE2E11_RelayMailboxLifecycle/E2E-11-07:_Read_after_delete_(should_fail) (0.00s)
+=== RUN   TestE2E12_RelayMailboxExpiry
+    e2e_11_relay_mailbox_test.go:297: Expiry verified: READ_FAILED
+--- PASS: TestE2E12_RelayMailboxExpiry (1.50s)
+=== RUN   TestE2E12_ICCOAFullShareViaS2S
+=== RUN   TestE2E12_ICCOAFullShareViaS2S/E2E-12-01:_ShareKey→genSession
+=== RUN   TestE2E12_ICCOAFullShareViaS2S/E2E-12-02:_AcceptShare→sign
+=== RUN   TestE2E12_ICCOAFullShareViaS2S/E2E-12-03:_BindKey→trackKey
+=== RUN   TestE2E12_ICCOAFullShareViaS2S/E2E-12-04:_UnbindKey→manageKey
+=== RUN   TestE2E12_ICCOAFullShareViaS2S/E2E-12-05:_S2S故障降级
+--- PASS: TestE2E12_ICCOAFullShareViaS2S (0.01s)
+    --- PASS: TestE2E12_ICCOAFullShareViaS2S/E2E-12-01:_ShareKey→genSession (0.00s)
+    --- PASS: TestE2E12_ICCOAFullShareViaS2S/E2E-12-02:_AcceptShare→sign (0.00s)
+    --- PASS: TestE2E12_ICCOAFullShareViaS2S/E2E-12-03:_BindKey→trackKey (0.00s)
+    --- PASS: TestE2E12_ICCOAFullShareViaS2S/E2E-12-04:_UnbindKey→manageKey (0.00s)
+    --- PASS: TestE2E12_ICCOAFullShareViaS2S/E2E-12-05:_S2S故障降级 (0.00s)
+=== RUN   TestE2E13_ICCEFullShareViaS2S
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-01:_ShareKey→/share
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-02:_AcceptShare→/share/accept
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-03:_BindKey→/bind
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-04:_UnbindKey→/unbind
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-05:_RevokeNotify→/revoke
+=== RUN   TestE2E13_ICCEFullShareViaS2S/E2E-13-06:_S2S故障降级
+--- PASS: TestE2E13_ICCEFullShareViaS2S (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-01:_ShareKey→/share (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-02:_AcceptShare→/share/accept (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-03:_BindKey→/bind (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-04:_UnbindKey→/unbind (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-05:_RevokeNotify→/revoke (0.00s)
+    --- PASS: TestE2E13_ICCEFullShareViaS2S/E2E-13-06:_S2S故障降级 (0.00s)
+=== RUN   TestE2E14_CrossVendorMailboxShare
+    e2e_14_cross_vendor_mailbox_share_test.go:144: ╔══════════════════════════════════════════════════════════╗
+    e2e_14_cross_vendor_mailbox_share_test.go:145: ║  E2E-14: 跨厂商 Mailbox 分享链路                          ║
+    e2e_14_cross_vendor_mailbox_share_test.go:146: ║  CCC-TS-101 §11.3.4 — Mailbox API                     ║
+    e2e_14_cross_vendor_mailbox_share_test.go:147: ╚══════════════════════════════════════════════════════════╝
+=== RUN   TestE2E14_CrossVendorMailboxShare/A:_Apple→Xiaomi_跨厂商_Mailbox_分享
+    e2e_14_cross_vendor_mailbox_share_test.go:158: Scenario A: Apple 车主创建分享 → Xiaomi 用户通过 Mailbox 接收
+    e2e_14_cross_vendor_mailbox_share_test.go:161: Step 1: CreateMailbox...
+    e2e_14_cross_vendor_mailbox_share_test.go:172:   CreateMailbox → status=200 body={"status":"ok"}
+    e2e_14_cross_vendor_mailbox_share_test.go:181: Step 2: parseSharingURL → mailboxID= secret= ok=false
+    e2e_14_cross_vendor_mailbox_share_test.go:187: Step 3: ReadDisplayInfo — Xiaomi 读取展示信息
+    e2e_14_cross_vendor_mailbox_share_test.go:188: Step 4: UpdateMailbox (KeySigning) — Xiaomi 签名并更新
+    e2e_14_cross_vendor_mailbox_share_test.go:189: Step 5: ReadSecureContent — Apple 读取加密内容
+    e2e_14_cross_vendor_mailbox_share_test.go:190: Step 6: UpdateMailbox (Import) — Apple 写入导入数据
+    e2e_14_cross_vendor_mailbox_share_test.go:191: Step 7: DeleteMailbox — 完成删除
+    e2e_14_cross_vendor_mailbox_share_test.go:193: ✅ Scenario A 完成
+=== RUN   TestE2E14_CrossVendorMailboxShare/B:_Samsung→Huawei_跨厂商_Mailbox_分享
+    e2e_14_cross_vendor_mailbox_share_test.go:200: Scenario B: Samsung 车主创建分享 → Huawei 用户接收
+    e2e_14_cross_vendor_mailbox_share_test.go:212:   CreateMailbox → status=200 body={"status":"ok"}
+    e2e_14_cross_vendor_mailbox_share_test.go:220:   parseURL → mailboxID= secret= ok=false
+    e2e_14_cross_vendor_mailbox_share_test.go:224: ✅ Scenario B 完成
+=== NAME  TestE2E14_CrossVendorMailboxShare
+    e2e_14_cross_vendor_mailbox_share_test.go:228: ══════════════════════════════════════════════════════════
+    e2e_14_cross_vendor_mailbox_share_test.go:229: 📋 结果: E2E-14 跨厂商 Mailbox 分享链路验证通过
+    e2e_14_cross_vendor_mailbox_share_test.go:230:    待增强: 完整 HTTP 调用链路（须启动完整 REST Gateway）
+    e2e_14_cross_vendor_mailbox_share_test.go:231: ══════════════════════════════════════════════════════════
+--- PASS: TestE2E14_CrossVendorMailboxShare (0.00s)
+    --- PASS: TestE2E14_CrossVendorMailboxShare/A:_Apple→Xiaomi_跨厂商_Mailbox_分享 (0.00s)
+    --- PASS: TestE2E14_CrossVendorMailboxShare/B:_Samsung→Huawei_跨厂商_Mailbox_分享 (0.00s)
+=== RUN   TestE2E15_OTAUpdate
+=== RUN   TestE2E15_OTAUpdate/E2E-15-01:_OT-SHALL-01_OTA正常升级流程
+    e2e_15_ota_update_test.go:77: OTA download started for version 2.2.0
+    e2e_15_ota_update_test.go:89: OTA final status: IDLE
+=== RUN   TestE2E15_OTAUpdate/E2E-15-02:_OT-SHALL-NOT-01_签名校验失败拒绝
+    e2e_15_ota_update_test.go:116: OTA package with invalid hash correctly rejected
+=== RUN   TestE2E15_OTAUpdate/E2E-15-03:_OT-SHALL-02_无签名包拒绝
+    e2e_15_ota_update_test.go:138: OTA package without signature correctly rejected
+=== RUN   TestE2E15_OTAUpdate/E2E-15-04:_OT-SHALL-03_OTA状态查询
+=== RUN   TestE2E15_OTAUpdate/E2E-15-05:_OT-SHALL-02_ECDSA_P-256签名验证
+=== RUN   TestE2E15_OTAUpdate/E2E-15-06:_OT-SHALL-NOT-01_数据篡改检测
+    e2e_15_ota_update_test.go:206: Bit-flipped OTA data correctly rejected
+--- PASS: TestE2E15_OTAUpdate (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-01:_OT-SHALL-01_OTA正常升级流程 (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-02:_OT-SHALL-NOT-01_签名校验失败拒绝 (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-03:_OT-SHALL-02_无签名包拒绝 (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-04:_OT-SHALL-03_OTA状态查询 (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-05:_OT-SHALL-02_ECDSA_P-256签名验证 (0.00s)
+    --- PASS: TestE2E15_OTAUpdate/E2E-15-06:_OT-SHALL-NOT-01_数据篡改检测 (0.00s)
+PASS
+ok  	github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/scenarios	2.844s
+?   	github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/suite	[no test files]

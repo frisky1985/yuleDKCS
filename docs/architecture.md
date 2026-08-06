@@ -158,7 +158,7 @@
 | Codec | Encode / Decode / EncodeBody / DecodeBody（BERTLV） | `internal/unified/codec.go` |
 | MessageRouter | MessageType → MessageHandler 注册表（1000/1002/1004/1010/2000/3000/3002/9000） | `internal/unified/router.go` |
 
-### 4.3 车端接口头文件清单（9 处 include 目录，41 个头文件）
+### 4.3 车端接口头文件清单（8 处 include/ 目录 + freestanding 头，41 个头文件）
 
 | # | 头文件目录 | 关键头文件 | 接口内容 | 数据类型/范围 |
 |:-:|:-----------|:-----------|:---------|:--------------|
@@ -172,7 +172,7 @@
 | 8 | `embedded/icce_protocol/include/` | `security_auth.h` | 安全认证模块 | 挑战值 16B; 签名 ECDSA/SM2 |
 | 9 | `embedded/iccoa_protocol/include/` | `iccoa_digital_key.h` | ICCOA 协议栈主接口 | GATT 0xFEF5; DK3.0/4.0 帧; 8 权限位 |
 | — | `embedded/bsw_integration/include/` | `Com_Cfg_Dk.h` 等 10 个 | BSW 集成配置头（OS/COM/DCM/DEM/WdgM/SchM） | 配置宏; [待集成] |
-| — | `embedded/freertos_port/include/` | `FreeRTOSConfig.h` 等 8 个 | FreeRTOS 移植层 | 内核对象类型; 时钟节拍 |
+| — | `embedded/freertos_port/include/` | `FreeRTOSConfig.h` 等 9 个 | FreeRTOS 移植层 | 内核对象类型; 时钟节拍 |
 | — | `embedded/mcal_stubs/include/` | `Mcu.h` `Dio.h` 等 11 个 | MCAL 驱动桩接口 | 寄存器地址/位宽; 通道枚举 |
 | — | `embedded/freestanding_includes/` | `stdlib.h` `string.h` | 交叉编译 freestanding 头 | — |
 

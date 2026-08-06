@@ -29,10 +29,12 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	relay_pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/helpers"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -136,6 +138,9 @@ func mailboxURLParse(urlStr string) (mailboxID, secret string, ok bool) {
 
 // TestE2E14_CrossVendorMailboxShare 测试跨厂商 Mailbox 分享链路
 func TestE2E14_CrossVendorMailboxShare(t *testing.T) {
+	start := time.Now()
+	defer helpers.RecordScenario(t, "E2E-14: 跨厂商 Mailbox 分享链路", "E2E-14", "REST/gRPC", start)
+
 	t.Log("╔══════════════════════════════════════════════════════════╗")
 	t.Log("║  E2E-14: 跨厂商 Mailbox 分享链路                          ║")
 	t.Log("║  CCC-TS-101 §11.3.4 — Mailbox API                     ║")

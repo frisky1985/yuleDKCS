@@ -26,6 +26,7 @@ import (
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/relay/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/tests/integration/helpers"
 )
 
 const bufSize = 1024 * 1024
@@ -66,6 +67,9 @@ func startRelayGRPCServer(t *testing.T) (pb.RelayServiceClient, func()) {
 
 // TestE2E11_RelayMailboxLifecycle 测试 Mailbox 完整生命周期
 func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
+	start := time.Now()
+	defer helpers.RecordScenario(t, "E2E-11: Mailbox 完整生命周期 (Create→Read→Update→Delete)", "E2E-11", "gRPC", start)
+
 	client, cleanup := startRelayGRPCServer(t)
 	defer cleanup()
 
@@ -248,6 +252,9 @@ func TestE2E11_RelayMailboxLifecycle(t *testing.T) {
 
 // TestE2E12_RelayMailboxExpiry 测试 Mailbox TTL 过期清理
 func TestE2E12_RelayMailboxExpiry(t *testing.T) {
+	start := time.Now()
+	defer helpers.RecordScenario(t, "E2E-12: Mailbox TTL 过期清理 (Expiry)", "E2E-12", "gRPC", start)
+
 	client, cleanup := startRelayGRPCServer(t)
 	defer cleanup()
 

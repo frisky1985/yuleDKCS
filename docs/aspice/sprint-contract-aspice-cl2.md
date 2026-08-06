@@ -1,7 +1,7 @@
 # Sprint Contract — yuleDKCS ASPICE CL2 证据补齐
 
 > **Planner**: 小明 (Orchestrator) | **Generator**: 小克 👨‍💻 | **Evaluator**: 小马 🐴
-> **日期**: 2026-08-06 | **基线**: master @ 2808c69（三层 CI 全绿，MISRA 0 违规）
+> **日期**: 2026-08-06 | **基线**: master @ 2808c69（三层 CI 全绿；MISRA 当前 1 条 unknown 信息级违规（nofile:0，cppcheck 信息级，非 required/advisory 阻塞项，自 2107f7f 起存在，非回归））
 > **依据**: `.osh/evidence/aspice-gap-report.md`（18 BP：1 就绪 / 5 部分 / 12 缺失）
 
 ---

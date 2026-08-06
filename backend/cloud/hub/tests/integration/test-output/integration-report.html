@@ -25,6 +25,7 @@ td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 tr:hover td { background: #fafafa; }
 .pass { color: #4caf50; font-weight: 600; }
 .fail { color: #f44336; font-weight: 600; }
+.skip { color: #ff9800; font-weight: 600; }
 .error-detail { font-size: 12px; color: #d32f2f; margin-top: 4px; background: #ffebee; padding: 6px 10px; border-radius: 4px; max-width: 400px; word-break: break-all; }
 .footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
 .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 8px; overflow: hidden; }
@@ -41,9 +42,9 @@ tr:hover td { background: #fafafa; }
 	<div class="header">
 		<h1>🔑 yuleDKCS 集成测试报告</h1>
 		<div class="subtitle">
-			测试套件: yuleDKCS 三端集成测试 |
-			运行时间: 2026-07-08 13:07:44 |
-			总耗时: 105µs
+			测试套件: yuleDKCS HUB API 集成测试 |
+			运行时间: 2026-08-06 19:03:43 |
+			总耗时: 7ms
 		</div>
 	</div>
 
@@ -53,7 +54,7 @@ tr:hover td { background: #fafafa; }
 			<div class="label">总用例数</div>
 		</div>
 		<div class="summary-card card-pass">
-			<div class="num">5</div>
+			<div class="num">0</div>
 			<div class="label">通过</div>
 		</div>
 		<div class="summary-card card-fail">
@@ -61,9 +62,13 @@ tr:hover td { background: #fafafa; }
 			<div class="label">失败</div>
 		</div>
 		<div class="summary-card card-rate">
-			<div class="num">100.0%</div>
+			<div class="num">5</div>
+			<div class="label">跳过 (best-effort)</div>
+		</div>
+		<div class="summary-card card-rate">
+			<div class="num">0.0%</div>
 			<div class="label">通过率</div>
-			<div class="progress-bar"><div class="progress-fill" style="width:100.0%"></div></div>
+			<div class="progress-bar"><div class="progress-fill" style="width:0.0%"></div></div>
 		</div>
 	</div>
 
@@ -80,46 +85,46 @@ tr:hover td { background: #fafafa; }
 	</thead>
 	<tbody>
 	<tr>
-				<td rowspan="1" style="background:#e3f2fd;font-weight:bold;text-align:center">E2E-01</td>
-				<td>E2E-01: 手机发现车辆 (BLE advertising)</td>
-				<td>BLE</td>
-				<td>0µs</td>
-				<td><span class="pass">✅ PASS</span></td>
-				<td></td>
+				<td rowspan="5" style="background:#ffffff;font-weight:bold;text-align:center">HUB-API</td>
+				<td>健康检查 /health + /healthz</td>
+				<td>HTTP</td>
+				<td>15ms</td>
+				<td><span class="skip">⚠️ SKIP</span></td>
+				<td><div class="error-detail">SKIPPED — 环境无运行中 hub 服务 (best-effort)</div></td>
 			</tr><tr>
-				<td rowspan="1" style="background:#e8f5e9;font-weight:bold;text-align:center">E2E-02</td>
-				<td>E2E-02: 密钥绑定流程 (手机↔TCU↔DKCS)</td>
-				<td>CCC/ICCOA/ICCE</td>
-				<td>0µs</td>
-				<td><span class="pass">✅ PASS</span></td>
-				<td></td>
+				
+				<td>gRPC 连通性 + HealthCheck RPC</td>
+				<td>gRPC</td>
+				<td>2ms</td>
+				<td><span class="skip">⚠️ SKIP</span></td>
+				<td><div class="error-detail">SKIPPED — 环境无运行中 hub 服务 (best-effort)</div></td>
 			</tr><tr>
-				<td rowspan="1" style="background:#fff3e0;font-weight:bold;text-align:center">E2E-03</td>
-				<td>E2E-03: 无钥匙解锁 (BLE+UWB测距)</td>
-				<td>UWB+BLE</td>
-				<td>0µs</td>
-				<td><span class="pass">✅ PASS</span></td>
-				<td></td>
+				
+				<td>Hub 启停生命周期</td>
+				<td>进程</td>
+				<td>2ms</td>
+				<td><span class="skip">⚠️ SKIP</span></td>
+				<td><div class="error-detail">SKIPPED — 环境无运行中 hub 服务 (best-effort)</div></td>
 			</tr><tr>
-				<td rowspan="1" style="background:#f3e5f5;font-weight:bold;text-align:center">E2E-04</td>
-				<td>E2E-04: 远程控车 (HTTPS→HUB→DKCS→MQTT→TCU)</td>
-				<td>HTTPS/gRPC/MQTT</td>
-				<td>0µs</td>
-				<td><span class="pass">✅ PASS</span></td>
-				<td></td>
+				
+				<td>JWT 登录认证</td>
+				<td>HTTP</td>
+				<td>1ms</td>
+				<td><span class="skip">⚠️ SKIP</span></td>
+				<td><div class="error-detail">SKIPPED — 环境无运行中 hub 服务 (best-effort)</div></td>
 			</tr><tr>
-				<td rowspan="1" style="background:#fce4ec;font-weight:bold;text-align:center">E2E-05</td>
-				<td>E2E-05: NFC备用解锁</td>
-				<td>NFC</td>
-				<td>0µs</td>
-				<td><span class="pass">✅ PASS</span></td>
-				<td></td>
+				
+				<td>受保护端点鉴权</td>
+				<td>HTTP</td>
+				<td>1ms</td>
+				<td><span class="skip">⚠️ SKIP</span></td>
+				<td><div class="error-detail">SKIPPED — 环境无运行中 hub 服务 (best-effort)</div></td>
 			</tr>
 	</tbody>
 	</table>
 
 	<div class="footer">
-		<p>yuleDKCS Integration Test Framework | Generated: 2026-07-08 13:07:44 CST</p>
+		<p>yuleDKCS Integration Test Framework | Generated: 2026-08-06 19:03:43 CST</p>
 		<p>三端集成测试：嵌入式 C / Android+ iOS SDK / 云端 Go+Java</p>
 	</div>
 </div>

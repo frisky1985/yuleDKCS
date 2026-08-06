@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -14,6 +15,7 @@ import (
 type TestCaseResult struct {
 	Name      string
 	Passed    bool
+	Skipped   bool
 	Duration  time.Duration
 	Error     string
 	Scenario  string // E2E-01, E2E-02, etc.
@@ -29,13 +31,27 @@ type TestReport struct {
 	suiteName string
 }
 
-// NewTestReport creates a new test report collector.
+// sharedReport is a process-wide singleton: all tests in one binary
+// (scenarios or the top-level hub API tests) record into the SAME report,
+// so the final HTML aggregates every recorded case instead of only the
+// last test file's rows.
+var (
+	reportOnce  sync.Once
+	sharedReport *TestReport
+)
+
+// NewTestReport returns the shared report collector (created on first call).
+// The suite name of the first caller wins — subsequent callers reuse the
+// collector so that GenerateHTML writes the full aggregated report.
 func NewTestReport(suiteName string) *TestReport {
-	return &TestReport{
-		suiteName: suiteName,
-		startTime: time.Now(),
-		results:   make([]TestCaseResult, 0),
-	}
+	reportOnce.Do(func() {
+		sharedReport = &TestReport{
+			suiteName: suiteName,
+			startTime: time.Now(),
+			results:   make([]TestCaseResult, 0),
+		}
+	})
+	return sharedReport
 }
 
 // Record adds a test result to the report.
@@ -53,6 +69,32 @@ func (r *TestReport) Record(name string, passed bool, duration time.Duration, er
 	})
 }
 
+// RecordScenario defers a pass/fail record for a scenario test function.
+// Scenario test files that do not record per-subtest rows can call this as
+// their first statement to ensure the aggregated report covers them:
+//
+//	start := time.Now()
+//	defer helpers.RecordScenario(t, "E2E-11: Mailbox 生命周期", "E2E-11", "gRPC", start)
+func RecordScenario(t *testing.T, name, scenario, protocol string, start time.Time) {
+	report := NewTestReport("yuleDKCS 场景集成测试")
+	report.Record(name, !t.Failed(), time.Since(start), "", scenario, protocol)
+}
+
+// RecordSkipped adds a skipped (best-effort, environment-dependent) result.
+func (r *TestReport) RecordSkipped(name, reason, scenario, protocol string, duration time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.results = append(r.results, TestCaseResult{
+		Name:      name,
+		Skipped:   true,
+		Duration:  duration,
+		Error:     reason,
+		Scenario:  scenario,
+		Protocol:  protocol,
+		Timestamp: time.Now(),
+	})
+}
+
 // Results returns a copy of all recorded results.
 func (r *TestReport) Results() []TestCaseResult {
 	r.mu.Lock()
@@ -62,13 +104,15 @@ func (r *TestReport) Results() []TestCaseResult {
 	return cp
 }
 
-// Summary returns pass/fail counts.
-func (r *TestReport) Summary() (total, passed, failed int) {
+// Summary returns pass/fail/skip counts.
+func (r *TestReport) Summary() (total, passed, failed, skipped int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	total = len(r.results)
 	for _, tr := range r.results {
-		if tr.Passed {
+		if tr.Skipped {
+			skipped++
+		} else if tr.Passed {
 			passed++
 		} else {
 			failed++
@@ -82,9 +126,12 @@ func (r *TestReport) GenerateHTML(outputPath string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	total, passed, failed := len(r.results), 0, 0
+	total := len(r.results)
+	passed, failed, skipped := 0, 0, 0
 	for _, tr := range r.results {
-		if tr.Passed {
+		if tr.Skipped {
+			skipped++
+		} else if tr.Passed {
 			passed++
 		} else {
 			failed++
@@ -105,7 +152,7 @@ func (r *TestReport) GenerateHTML(outputPath string) error {
 		scenarioMap[tr.Scenario] = append(scenarioMap[tr.Scenario], tr)
 	}
 	var groups []scenarioGroup
-	for _, key := range []string{"E2E-01", "E2E-02", "E2E-03", "E2E-04", "E2E-05", "E2E-06", "E2E-07", "E2E-08", "E2E-09", "E2E-10"} {
+	for _, key := range []string{"E2E-01", "E2E-02", "E2E-03", "E2E-04", "E2E-05", "E2E-06", "E2E-07", "E2E-08", "E2E-09", "E2E-10", "E2E-11", "E2E-12", "E2E-13", "E2E-14", "E2E-15", "HUB-API"} {
 		if cases, ok := scenarioMap[key]; ok {
 			groups = append(groups, scenarioGroup{scenario: key, cases: cases})
 		}
@@ -141,7 +188,10 @@ func (r *TestReport) GenerateHTML(outputPath string) error {
 		for i, tr := range g.cases {
 			status := `<span class="pass">✅ PASS</span>`
 			detail := ""
-			if !tr.Passed {
+			if tr.Skipped {
+				status = `<span class="skip">⚠️ SKIP</span>`
+				detail = fmt.Sprintf(`<div class="error-detail">%s</div>`, escapeHTML(tr.Error))
+			} else if !tr.Passed {
 				status = `<span class="fail">❌ FAIL</span>`
 				detail = fmt.Sprintf(`<div class="error-detail">%s</div>`, escapeHTML(tr.Error))
 			}
@@ -191,6 +241,7 @@ td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 tr:hover td { background: #fafafa; }
 .pass { color: #4caf50; font-weight: 600; }
 .fail { color: #f44336; font-weight: 600; }
+.skip { color: #ff9800; font-weight: 600; }
 .error-detail { font-size: 12px; color: #d32f2f; margin-top: 4px; background: #ffebee; padding: 6px 10px; border-radius: 4px; max-width: 400px; word-break: break-all; }
 .footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
 .progress-bar { width: 100%%; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 8px; overflow: hidden; }
@@ -227,6 +278,10 @@ tr:hover td { background: #fafafa; }
 			<div class="label">失败</div>
 		</div>
 		<div class="summary-card card-rate">
+			<div class="num">%d</div>
+			<div class="label">跳过 (best-effort)</div>
+		</div>
+		<div class="summary-card card-rate">
 			<div class="num">%.1f%%</div>
 			<div class="label">通过率</div>
 			<div class="progress-bar"><div class="progress-fill" style="width:%.1f%%"></div></div>
@@ -259,7 +314,7 @@ tr:hover td { background: #fafafa; }
 		r.suiteName,
 		r.startTime.Format("2006-01-02 15:04:05"),
 		fmtDuration(time.Since(r.startTime)),
-		total, passed, failed, passRate, passRate,
+		total, passed, failed, skipped, passRate, passRate,
 		rowsHTML.String(),
 		time.Now().Format("2006-01-02 15:04:05 MST"),
 	)

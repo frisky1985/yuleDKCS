@@ -3,7 +3,7 @@
 > **项目**: yuleDKCS 数字钥匙系统
 > **文档编号**: yuleDKCS-SRS-001
 > **版本**: 1.0.0 | **日期**: 2026-08-06 | **状态**: APPROVED (基线)
-> **上游**: `specs/requirements-index.md` (RS-xxx 系统需求体系, 40 条) + 8 个 spec 文件
+> **上游**: `specs/requirements-index.md`（9 RS + 31 SWR = 40 条系统级需求）+ 8 个 spec 文件
 > **机器可读表**: `specs/requirements-shall-table.md`（供追溯工具解析）
 > **过程域**: ASPICE SWE.1 (Software Requirements Analysis)
 
@@ -428,8 +428,8 @@
 | 优先级 | 数量 | 说明 |
 |:-------|:----:|:-----|
 | P0 (必须) | 25 | 安全/钥匙生命周期/协议合规 |
-| P1 (重要) | 11 | 性能/可用性/质量门禁 |
-| P2 (建议) | 4 | 体验优化 |
+| P1 (重要) | 14 | 性能/可用性/质量门禁/部分协议与前端 |
+| P2 (建议) | 1 | 体验优化（REQ-009） |
 
 ---
 

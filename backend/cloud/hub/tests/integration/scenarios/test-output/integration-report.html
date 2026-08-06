@@ -25,6 +25,7 @@ td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-ali
 tr:hover td { background: #fafafa; }
 .pass { color: #4caf50; font-weight: 600; }
 .fail { color: #f44336; font-weight: 600; }
+.skip { color: #ff9800; font-weight: 600; }
 .error-detail { font-size: 12px; color: #d32f2f; margin-top: 4px; background: #ffebee; padding: 6px 10px; border-radius: 4px; max-width: 400px; word-break: break-all; }
 .footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
 .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 8px; overflow: hidden; }
@@ -41,24 +42,28 @@ tr:hover td { background: #fafafa; }
 	<div class="header">
 		<h1>🔑 yuleDKCS 集成测试报告</h1>
 		<div class="subtitle">
-			测试套件: E2E-06 OTA升级 |
-			运行时间: 2026-07-08 13:07:45 |
-			总耗时: 1ms
+			测试套件: E2E-01 手机发现车辆 |
+			运行时间: 2026-08-06 19:03:44 |
+			总耗时: 1.70s
 		</div>
 	</div>
 
 	<div class="summary-grid">
 		<div class="summary-card card-total">
-			<div class="num">6</div>
+			<div class="num">64</div>
 			<div class="label">总用例数</div>
 		</div>
 		<div class="summary-card card-pass">
-			<div class="num">6</div>
+			<div class="num">64</div>
 			<div class="label">通过</div>
 		</div>
 		<div class="summary-card card-fail">
 			<div class="num">0</div>
 			<div class="label">失败</div>
+		</div>
+		<div class="summary-card card-rate">
+			<div class="num">0</div>
+			<div class="label">跳过 (best-effort)</div>
 		</div>
 		<div class="summary-card card-rate">
 			<div class="num">100.0%</div>
@@ -80,45 +85,451 @@ tr:hover td { background: #fafafa; }
 	</thead>
 	<tbody>
 	<tr>
-				<td rowspan="6" style="background:#ffffff;font-weight:bold;text-align:center">E2E-06</td>
-				<td>E2E-06-01: OTA正常升级</td>
-				<td>OTA</td>
+				<td rowspan="3" style="background:#e3f2fd;font-weight:bold;text-align:center">E2E-01</td>
+				<td>E2E-01-01: BLE扫描发现车辆</td>
+				<td>BLE</td>
 				<td>251µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-06-02: OTA签名校验失败拒绝</td>
-				<td>OTA</td>
-				<td>74µs</td>
+				<td>E2E-01-02: 多协议BLE发现</td>
+				<td>BLE/CCC/ICCOA/ICCE</td>
+				<td>101µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-06-03: OTA无签名包拒绝</td>
-				<td>OTA</td>
+				<td>E2E-01-03: BLE信号强度检测</td>
+				<td>BLE</td>
+				<td>6µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="4" style="background:#e8f5e9;font-weight:bold;text-align:center">E2E-02</td>
+				<td>E2E-02-01: CCC DK3密钥绑定 (Apple)</td>
+				<td>CCC</td>
+				<td>43µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-02-02: ICCOA DK4.0密钥绑定 (Xiaomi)</td>
+				<td>ICCOA</td>
+				<td>37µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-02-03: ICCE密钥绑定 (Huawei)</td>
+				<td>ICCE</td>
+				<td>38µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-02-04: 多厂商并发密钥绑定</td>
+				<td>CCC/ICCOA</td>
+				<td>148µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="3" style="background:#fff3e0;font-weight:bold;text-align:center">E2E-03</td>
+				<td>E2E-03-01: UWB测距+BLE无钥匙解锁</td>
+				<td>UWB+BLE</td>
+				<td>24ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-03-02: 离开自动闭锁</td>
+				<td>UWB</td>
+				<td>4µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-03-03: UWB区域距离判断</td>
+				<td>UWB</td>
+				<td>12ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#f3e5f5;font-weight:bold;text-align:center">E2E-04</td>
+				<td>E2E-04-01: 远程解锁</td>
+				<td>HTTPS→gRPC→MQTT→CAN</td>
+				<td>32µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-04-02: 远程闭锁</td>
+				<td>HTTPS→gRPC→MQTT→CAN</td>
+				<td>4µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-04-03: 远程启动/熄火</td>
+				<td>MQTT→CAN</td>
+				<td>3µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-04-04: 多指令顺序执行</td>
+				<td>MQTT→CAN</td>
 				<td>6µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-06-04: OTA状态查询</td>
-				<td>OTA</td>
-				<td>1µs</td>
+				<td>E2E-04-05: 车辆状态上报</td>
+				<td>MQTT/Status</td>
+				<td>7µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="4" style="background:#fce4ec;font-weight:bold;text-align:center">E2E-05</td>
+				<td>E2E-05-01: NFC备用解锁</td>
+				<td>NFC</td>
+				<td>17ms</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-06-05: ECDSA签名验证(crypto)</td>
-				<td>OTA/CRYPTO</td>
-				<td>323µs</td>
+				<td>E2E-05-02: NFC无效密钥拒绝</td>
+				<td>NFC</td>
+				<td>6µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr><tr>
 				
-				<td>E2E-06-06: OTA数据篡改检测</td>
-				<td>OTA</td>
+				<td>E2E-05-03: 多厂商NFC兼容性</td>
+				<td>NFC/CCC/ICCOA/ICCE</td>
+				<td>84ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-05-04: NFCPayload编解码验证</td>
+				<td>NFC</td>
+				<td>11µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#ede7f6;font-weight:bold;text-align:center">E2E-06</td>
+				<td>E2E-06-01: CCC BLE远程命令认证</td>
+				<td>CCC</td>
+				<td>15µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-06-02: CCC Security Counter递增验证</td>
+				<td>CCC</td>
+				<td>317µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-06-03: CCC 命令时效窗口验证</td>
+				<td>CCC</td>
+				<td>131µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-06-04: CCC Access Level权限校验</td>
+				<td>CCC</td>
 				<td>54µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-06-05: CCC 扩展命令</td>
+				<td>CCC</td>
+				<td>107µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#e0f2f1;font-weight:bold;text-align:center">E2E-07</td>
+				<td>E2E-07-01: ICCOA DK4.0 OTA密钥绑定</td>
+				<td>ICCOA</td>
+				<td>73µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-07-02: ICCOA DK3.0 BLE密钥绑定</td>
+				<td>ICCOA</td>
+				<td>62µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-07-03: ICCOA跨厂商互通</td>
+				<td>ICCOA</td>
+				<td>388µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-07-04: ICCOA重新绑定</td>
+				<td>ICCOA</td>
+				<td>133µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-07-05: ICCOA密钥元数据同步</td>
+				<td>ICCOA</td>
+				<td>135µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#fbe9e7;font-weight:bold;text-align:center">E2E-08</td>
+				<td>E2E-08-01: ICCE密钥分享（车主→好友）</td>
+				<td>ICCE</td>
+				<td>89µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-08-02: ICCE好友使用分享密钥开锁</td>
+				<td>ICCE</td>
+				<td>91µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-08-03: ICCE好友UWB被动进入</td>
+				<td>ICCE/UWB</td>
+				<td>16ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-08-04: ICCE好友密钥吊销</td>
+				<td>ICCE</td>
+				<td>138µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-08-05: ICCE已吊销密钥拒绝访问</td>
+				<td>ICCE</td>
+				<td>98µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#fff8e1;font-weight:bold;text-align:center">E2E-09</td>
+				<td>E2E-09-01: 三协议并发密钥绑定</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>494µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-09-02: 同一车辆多手机并发访问</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>290µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-09-03: 多厂商混合操作并发</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>371µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-09-04: 多厂商并发UWB被动进入</td>
+				<td>CCC/ICCOA/ICCE/UWB</td>
+				<td>19ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-09-05: 厂商隔离验证</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>466µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="5" style="background:#f1f8e9;font-weight:bold;text-align:center">E2E-10</td>
+				<td>E2E-10-01: 密钥过期拒绝访问</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>96µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-10-02: 云管端吊销密钥</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>85µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-10-03: 密钥续期</td>
+				<td>ICCOA</td>
+				<td>98µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-10-04: 使用次数超限密钥失效</td>
+				<td>ICCE</td>
+				<td>51µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-10-05: 部分吊销不影响其他密钥</td>
+				<td>CCC/ICCOA/ICCE</td>
+				<td>193µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="1" style="background:#ffffff;font-weight:bold;text-align:center">E2E-11</td>
+				<td>E2E-11: Mailbox 完整生命周期 (Create→Read→Update→Delete)</td>
+				<td>gRPC</td>
+				<td>4ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="6" style="background:#ffffff;font-weight:bold;text-align:center">E2E-12</td>
+				<td>E2E-12: Mailbox TTL 过期清理 (Expiry)</td>
+				<td>gRPC</td>
+				<td>1.50s</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-12-01: ShareKey→genSession</td>
+				<td>ICCOA</td>
+				<td>2ms</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-12-02: AcceptShare→sign</td>
+				<td>ICCOA</td>
+				<td>501µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-12-03: BindKey→trackKey</td>
+				<td>ICCOA</td>
+				<td>306µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-12-04: UnbindKey→manageKey</td>
+				<td>ICCOA</td>
+				<td>432µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-12-05: S2S故障降级</td>
+				<td>ICCOA</td>
+				<td>539µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="6" style="background:#ffffff;font-weight:bold;text-align:center">E2E-13</td>
+				<td>E2E-13-01: ShareKey→/share</td>
+				<td>ICCE</td>
+				<td>285µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-13-02: AcceptShare→/share/accept</td>
+				<td>ICCE</td>
+				<td>171µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-13-03: BindKey→/bind</td>
+				<td>ICCE</td>
+				<td>169µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-13-04: UnbindKey→/unbind</td>
+				<td>ICCE</td>
+				<td>153µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-13-05: RevokeNotify→/revoke</td>
+				<td>ICCE</td>
+				<td>119µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-13-06: S2S故障降级</td>
+				<td>ICCE</td>
+				<td>297µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="1" style="background:#ffffff;font-weight:bold;text-align:center">E2E-14</td>
+				<td>E2E-14: 跨厂商 Mailbox 分享链路</td>
+				<td>REST/gRPC</td>
+				<td>488µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				<td rowspan="6" style="background:#ffffff;font-weight:bold;text-align:center">E2E-15</td>
+				<td>E2E-15-01: OTA正常升级</td>
+				<td>OTA</td>
+				<td>162µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-15-02: OTA签名校验失败拒绝</td>
+				<td>OTA</td>
+				<td>94µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-15-03: OTA无签名包拒绝</td>
+				<td>OTA</td>
+				<td>8µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-15-04: OTA状态查询</td>
+				<td>OTA</td>
+				<td>3µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-15-05: ECDSA签名验证(crypto)</td>
+				<td>OTA/CRYPTO</td>
+				<td>433µs</td>
+				<td><span class="pass">✅ PASS</span></td>
+				<td></td>
+			</tr><tr>
+				
+				<td>E2E-15-06: OTA数据篡改检测</td>
+				<td>OTA</td>
+				<td>61µs</td>
 				<td><span class="pass">✅ PASS</span></td>
 				<td></td>
 			</tr>
@@ -126,7 +537,7 @@ tr:hover td { background: #fafafa; }
 	</table>
 
 	<div class="footer">
-		<p>yuleDKCS Integration Test Framework | Generated: 2026-07-08 13:07:45 CST</p>
+		<p>yuleDKCS Integration Test Framework | Generated: 2026-08-06 19:03:46 CST</p>
 		<p>三端集成测试：嵌入式 C / Android+ iOS SDK / 云端 Go+Java</p>
 	</div>
 </div>
