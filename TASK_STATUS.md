@@ -86,6 +86,7 @@
 | 🟡 | JWKS kid 未命中防放大 | ✅ **已完成 (2026-08-01)** | oem 级刷新冷却 30s + kid 级负缓存（上限 1024/OEM 防内存撑爆）; 单飞并发去重保留; 4 单测含 -race, 24 passed |
 | 🟡 | tests/integration 预存 vet 错误 | ✅ **已完成 (2026-08-01)** | e2e_14 relay API 签名漂移修复 + e2e_11 Delete 终态语义隐性回归修复; integration **87 passed / 0 failed**, go vet exit 0 |
 | 🟡 | carsim replay 检测逻辑修复 | ✅ **已完成 (2026-08-06)** | `CheckAndIncrementSeq` 返回 false=replay 但 handler 当新 seq 漏过 → 真 replay 放行; 旧 ts 未参与判定; 修复后 security **18 passed** + scenarios **32 passed**（本地 carsim :18001 验证）|
+| 🟡 | E2E 套件纳入 CI（L2.5 job）| ✅ **已完成 (2026-08-06)** | CI 三层此前只跑 unit/integration/build，scenarios/security 从未在 CI 执行（carsim replay bug 因此漏网）; 新增 L2.5 job: GOWORK=off 构建 carsim + 后台启动 + nc 就绪探测 + 跑 scenarios 32 + security 18; 失败上传 carsim.log; 外部环境无 carsim 时测试自身 SKIP 机制保留 |
 
 ---
 
