@@ -205,8 +205,8 @@ yuleDKCS 云端的可伸缩性：
 
 | 组件 | 型号 | 状态 |
 |:-----|:-----|:----:|
-| MCU | NXP S32G2/G3 | ✅ 架构层支持 |
-| BLE SoC | NXP KW38 / KW47A | ✅ 三协议 BLE 操作复用 |
+| MCU | NXP S32K312 | ✅ 架构层支持 |
+| BLE SoC | NXP KW47A | ✅ 三协议 BLE 操作复用 |
 | UWB SoC | NXP SR250 / NCJ29D6 | ⚠️ FiRa 测距为 stub（P1） |
 | NFC Reader | ST ST25R501 | ✅ NDEF + APDU |
 | SE | NXP SE050 | ✅ SCP03 真实实现 |
@@ -316,7 +316,7 @@ yuleDKCS **12 个 E2E 测试场景全部通过**：
 
 详见 `docs/compatibility-matrix.md` v1.0.0，覆盖 9 个维度：
 1. 协议标准兼容性（ICCE / CCC / ICCOA）
-2. 硬件兼容性（S32G2 / KW47A / NCJ29D6 / ST25R501 / SE050）
+2. 硬件兼容性（S32K312 / KW47A / NCJ29D6 / ST25R501 / SE050）
 3. 平台兼容性（iOS / Android / Go / Java / Embedded C）
 4. 通信协议兼容性（BLE / UWB / NFC / gRPC / MQTT / HTTPS）
 5. 部署环境兼容性（K8s / Docker / PostgreSQL / Redis / Kafka）

@@ -4,7 +4,7 @@
 > **版本**: 1.0.0 | **日期**: 2026-07-16 | **状态**: 正式版
 > **目标 ASIL**: ASIL-B(D) (关键功能), ASIL-A/QM (非关键功能)
 > **参考标准**: ISO 26262:2018, ISO 21434:2021, CCC DK 3.0, ICCOA DK 4.0, ICCE T/CA 110-2020
-> **硬件平台**: NXP S32G2/G3 + SE050 (EAL 6+), NXP KW47A (BLE), NCJ29D6 (UWB), ST25R501 (NFC)
+> **硬件平台**: NXP S32K312 + SE050 (EAL 6+), NXP KW47A (BLE), NCJ29D6 (UWB), ST25R501 (NFC)
 
 ---
 
@@ -29,7 +29,7 @@
 
 The Digital Key System (DKS) enables phone-as-key functionality — passive keyless entry, passive keyless start, remote vehicle control, and key lifecycle management — across three tiers:
 
-- **Embedded Tier (Vehicle)**: Runs on NXP S32G2/G3 MCU with SE050 secure element. Implements ICCE/CCC/ICCOA protocol stacks. Communicates with mobile via BLE (KW47A), UWB (NCJ29D6), and NFC (ST25R501), and with cloud via MQTT/TLS.
+- **Embedded Tier (Vehicle)**: Runs on NXP S32K312 MCU with SE050 secure element. Implements ICCE/CCC/ICCOA protocol stacks. Communicates with mobile via BLE (KW47A), UWB (NCJ29D6), and NFC (ST25R501), and with cloud via MQTT/TLS.
 - **Mobile Tier (App)**: Android (Kotlin, StrongBox/Android Keystore) and iOS (Swift, Secure Enclave/Keychain) SDKs. Provides user-facing key management and vehicle control.
 - **Cloud Tier (Backend)**: Go HUB Gateway + Go DKCS Core + Java Protocol Adapters (CCC/ICCOA/ICCE). Handles key provisioning, sharing, revocation, and telematics service provider (TSP) integration.
 
@@ -196,7 +196,7 @@ Each SG is decomposed into 2-3 FSRs with ASIL inheritance.
 | ID | Requirement | ASIL | Rationale |
 |:---|:------------|:----:|:----------|
 | **FSR-07-01** | The system SHALL derive all device keys via HKDF-SHA256 from the Master Key stored in SE050. The derivation context SHALL include the device ID and a domain separator string ("yuledkcs-device-key-v1"). The private key SHALL never be stored outside SE050 in any form | **ASIL B** | Key isolation; domain separation prevents cross-protocol derivation |
-| **FSR-07-02** | All communication between the host MCU (S32G2/G3) and the SE050 SHALL use the GlobalPlatform SCP03 secure channel, with session keys derived via ECDH. The system SHALL authenticate the host to SE050 before any key material operation | **ASIL B** | Protects SE050 bus from injection/sniffing |
+| **FSR-07-02** | All communication between the host MCU (S32K312) and the SE050 SHALL use the GlobalPlatform SCP03 secure channel, with session keys derived via ECDH. The system SHALL authenticate the host to SE050 before any key material operation | **ASIL B** | Protects SE050 bus from injection/sniffing |
 | **FSR-07-03** | Cloud-stored key material (wrapped device keys, permission tokens) SHALL be encrypted using AES-256-GCM with a key wrapping key stored in a hardware HSM (AWS CloudHSM or equivalent FIPS 140-2 Level 3 validated device). No plaintext key material SHALL exist in cloud memory | **ASIL B** | Cloud-side key material confidentiality |
 
 ### 4.8 FSR for SG-08 (Secure Boot)
@@ -242,7 +242,7 @@ TSRs refine FSRs into implementation-specific technical specifications.
 |:---|:------------|:-------------|:----:|
 | **TSR-01-02-A** | The UWB ranging session SHALL use IEEE 802.15.4z High Rate Pulse (HRP) mode with STS. STS key material SHALL be derived from the BLE session master key using HKDF-SHA256 with context `"yuledkcs-uwb-sts-key-v1"` | TCU (NCJ29D6), App | ASIL B(D) |
 | **TSR-01-02-B** | The TCU SHALL compute UWB distance using Two-Way Ranging (TWR) with a minimum of 5 round-trip measurements. The median distance SHALL be compared against the unlock threshold (≤2m). Variance >0.3m across the 5 measurements SHALL trigger reliability degradation and request re-ranging | TCU (NCJ29D6 firmware) | ASIL B(D) |
-| **TSR-01-02-C** | The TCU SHALL check both UWB ToF distance AND BLE RSSI before unlock. If BLE RSSI indicates signal strength corresponding to >10m but UWB reports <2m, the system SHALL flag a relay attack and reject. The RSSI check SHALL be performed in TCU firmware, not in the BLE controller | TCU (S32G2) | ASIL B(D) |
+| **TSR-01-02-C** | The TCU SHALL check both UWB ToF distance AND BLE RSSI before unlock. If BLE RSSI indicates signal strength corresponding to >10m but UWB reports <2m, the system SHALL flag a relay attack and reject. The RSSI check SHALL be performed in TCU firmware, not in the BLE controller | TCU (S32K312) | ASIL B(D) |
 
 ### 5.3 TSR for FSR-03-01 (STS Mode Enforcement)
 
@@ -270,9 +270,9 @@ TSRs refine FSRs into implementation-specific technical specifications.
 
 | ID | Requirement | Allocated To | ASIL |
 |:---|:------------|:-------------|:----:|
-| **TSR-07-02-A** | The host MCU SHALL establish an SCP03 session with the SE050 before any key operation. The SCP03 session SHALL use AES-128 for message encryption and CMAC for integrity. Session keys SHALL be derived per the GlobalPlatform Card Specification v2.3.1 | TCU (S32G2 + SE050) | ASIL B |
-| **TSR-07-02-B** | If SCP03 session establishment fails (e.g., mutual authentication error, CMAC mismatch), the host SHALL retry at most once. On second failure, the host SHALL log the event to SE050 monotonic counter and enter a degraded mode where no key operation is possible | TCU (S32G2) | ASIL B |
-| **TSR-07-02-C** | No cryptographic operation (sign, verify, encrypt, decrypt, key generation) SHALL be performed on the host MCU with SE050 key material. All such operations SHALL be executed inside the SE050 via SCP03-secured APDU commands | TCU (S32G2 + SE050) | ASIL B |
+| **TSR-07-02-A** | The host MCU SHALL establish an SCP03 session with the SE050 before any key operation. The SCP03 session SHALL use AES-128 for message encryption and CMAC for integrity. Session keys SHALL be derived per the GlobalPlatform Card Specification v2.3.1 | TCU (S32K312 + SE050) | ASIL B |
+| **TSR-07-02-B** | If SCP03 session establishment fails (e.g., mutual authentication error, CMAC mismatch), the host SHALL retry at most once. On second failure, the host SHALL log the event to SE050 monotonic counter and enter a degraded mode where no key operation is possible | TCU (S32K312) | ASIL B |
+| **TSR-07-02-C** | No cryptographic operation (sign, verify, encrypt, decrypt, key generation) SHALL be performed on the host MCU with SE050 key material. All such operations SHALL be executed inside the SE050 via SCP03-secured APDU commands | TCU (S32K312 + SE050) | ASIL B |
 
 ### 5.7 TSR for FSR-08-01 (Multi-Stage Secure Boot)
 
@@ -403,7 +403,7 @@ TSRs refine FSRs into implementation-specific technical specifications.
 │                  Embedded Safety Domain (TCU)                        │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  Secure Boot Layer (S32G2/G3) — ASIL B(D)                   │    │
+│  │  Secure Boot Layer (S32K312) — ASIL B(D)                   │    │
 │  │  • Boot ROM → BootLoader → TFM → Application               │    │
 │  │  • SE050-anchored signature verification                    │    │
 │  │  • Monotonic version counters (SE050 NV)                    │    │
@@ -479,11 +479,11 @@ TSRs refine FSRs into implementation-specific technical specifications.
 
 | CCF ID | Mechanism | Affected Elements | Mitigation |
 |:-------|:----------|:------------------|:-----------|
-| CCF-01 | Power supply failure | S32G2 + SE050 + NCJ29D6 + KW47A | Redundant voltage regulators; brownout detection; graceful shutdown with door state retention |
-| CCF-02 | Clock source failure | Challenge-response timing, UWB RTT | Independent oscillators: SE050 internal RTC + S32G2 external XTAL + NCJ29D6 internal RC |
+| CCF-01 | Power supply failure | S32K312 + SE050 + NCJ29D6 + KW47A | Redundant voltage regulators; brownout detection; graceful shutdown with door state retention |
+| CCF-02 | Clock source failure | Challenge-response timing, UWB RTT | Independent oscillators: SE050 internal RTC + S32K312 external XTAL + NCJ29D6 internal RC |
 | CCF-03 | SE050 firmware corruption | All key/crypto operations | SE050 ROM is immutable; SCP03 prevents unauthorized updates to SE050 applet |
 | CCF-04 | BLE firmware stack crash | BLE auth + data channel | Watchdog timer on KW47A; independent BLE controller crash does not affect UWB/NFC path |
-| CCF-05 | Temperature extreme | All embedded components | SE050 rated -40°C to +125°C; S32G2 -40°C to +125°C; thermal throttling with safety margin |
+| CCF-05 | Temperature extreme | All embedded components | SE050 rated -40°C to +125°C; S32K312 -40°C to +125°C; thermal throttling with safety margin |
 
 ### 8.2 Cascading Failure Analysis
 

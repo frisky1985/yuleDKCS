@@ -34,7 +34,7 @@
 
 | 环境 | 说明 |
 |------|------|
-| **嵌入式** | ARM Cortex-M7 模拟器（QEMU）或 NXP S32G2 EVB；工具链 `arm-none-eabi-gcc` |
+| **嵌入式** | ARM Cortex-M7 模拟器（QEMU）或 NXP S32K312 EVB；工具链 `arm-none-eabi-gcc` |
 | **App** | Flutter 3.x；iOS 模拟器 / Android 模拟器 |
 | **云端** | Go 1.21+；Docker / Kubernetes（测试环境） |
 | **通用** | Mock HSM（开发测试）、真实 HSM（生产隔离验证） |
@@ -253,7 +253,7 @@ cd app && flutter test test/sdk/digital_key_sdk_test.dart
 
 #### 3.3.1 App ↔ 嵌入式模拟器（E2E 配对）
 
-> 注：需启动嵌入式模拟器（QEMU 模拟 S32G2）或使用 mock BLE/GATT server
+> 注：需启动嵌入式模拟器（QEMU 模拟 S32K312）或使用 mock BLE/GATT server
 
 | 用例编号 | 描述 | 数据流 |
 |---------|------|--------|
@@ -448,7 +448,7 @@ curl https://api-test.digitalkey.example.com/api/v1/keys \
 
 | 组件 | 最低要求 | 推荐 |
 |------|---------|------|
-| 硬件 | NXP S32G2 EVB 或 QEMU ARM 模拟器 | S32G3 EVB |
+| 硬件 | NXP S32K312 EVB 或 QEMU ARM 模拟器 | S32K312 EVB |
 | 调试器 | J-Link / Lauterbach Trace32 | 同左 |
 | BLE 仿真 | BlueZ hcitool / nRF Connect | nRF52840 DK |
 | UWB 仿真 | Qorvo DWM3000 或软件仿真 | 真实 SR250 模组 |

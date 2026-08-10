@@ -1246,7 +1246,7 @@ int32_t exception_get_health_status(uint8_t *status);
 
 | 组件 | 接口 | 驱动 | 依赖版本 |
 |------|------|------|---------|
-| STM32L5 | - | STM32 HAL | 1.27+ |
+| S32K312 | - | STM32 HAL | 1.27+ |
 | KW47A | SPI+UART | KW47A SDK | 2.x |
 | NCJ29D6 (DK 4.0) | SPI | NCJ29D6 SDK | 1.x |
 | SE050 | I2C | Plug & Trust Middleware | 4.x |

@@ -33,7 +33,7 @@
 
 | 组件 | 更新方式 | 更新频率 | 安全级别 |
 |------|----------|----------|----------|
-| BootLoader (S32G2) | OTA + 回滚保护 | 极少 (≤ 1次/年) | 🔴 关键 |
+| BootLoader (S32K312) | OTA + 回滚保护 | 极少 (≤ 1次/年) | 🔴 关键 |
 | Application 固件 | OTA (主要) + USB DFU (备用) | 4-12次/年 | 🔴 关键 |
 | BLE 模块固件 (KW47A) | OTA 透传 | 2-4次/年 | 🟠 高 |
 | UWB 模块固件 (NCJ29D6) | OTA 透传 | 2-4次/年 | 🟠 高 |
@@ -210,7 +210,7 @@
 │
 ├── manifest.json              # 更新清单 (JSON)
 │   ├── package_version: "2.2.0"
-│   ├── target_hardware: "S32G2"
+│   ├── target_hardware: "S32K312"
 │   ├── target_slot: "B"
 │   ├── min_compatible_version: "2.0.0"
 │   ├── requires_bootloader: "≥1.5.0"
@@ -240,7 +240,7 @@
   "manifest_version": 1,
   "package_version": "2.2.0",
   "build_id": "20260729.001",
-  "target_hardware": "S32G2",
+  "target_hardware": "S32K312",
   "target_slot": "B",
   "min_compatible_version": "2.0.0",
   "requires_bootloader": ">=1.5.0",
@@ -957,7 +957,7 @@ void enter_recovery_mode(RecoveryReason reason) {
       "max_vehicle_speed_kmh": 0,
       "min_firmware_version": "2.0.0",
       "max_firmware_version": "3.0.0",
-      "allowed_hardware_revisions": ["S32G2-revB", "S32G2-revC"]
+      "allowed_hardware_revisions": ["S32K312-revB", "S32K312-revC"]
     },
     "auto_pause_triggers": {
       "error_rate_percent": 5,

@@ -8,7 +8,7 @@
 |------|------|
 | 协议标准 | CCC Digital Key Release 3.0 |
 | 通信方式 | NFC (ISO 14443/NFC-F) + BLE 5.0 LE + UWB (IEEE 802.15.4z) |
-| 硬件平台 | STM32L5 + KW47A + NCJ29D6 + ST25R501 + SE050 |
+| 硬件平台 | S32K312 + KW47A + NCJ29D6 + ST25R501 + SE050 |
 | 安全体系 | SCP03 + ECDSA P-256 + Attestation + TFM |
 
 ## 2. 协议栈层级架构
@@ -1529,7 +1529,7 @@ int32_t exception_get_health_status(uint8_t *status);
 
 | 组件 | 接口 | 驱动 | 依赖版本 |
 |------|------|------|---------|
-| STM32L5 | - | STM32 HAL | 1.27+ |
+| S32K312 | - | STM32 HAL | 1.27+ |
 | ST25R501 | SPI | RFAL | 2.4+ |
 | KW47A | SPI+UART | KW47A SDK | 2.x |
 | NCJ29D6 | SPI | NCJ29D6 SDK | 1.x |

@@ -25,7 +25,7 @@
 | 环境 | 说明 | 状态 |
 |:-----|:-----|:-----|
 | E2E 集成测试环境 | ARM 模拟器(QEMU) + App 模拟器 + 云端测试集群 | `[待确认: 环境搭建计划 Week 3-5]` |
-| 嵌入式测试台 | NXP S32G2 EVB + UWB/BLE/NFC 模组 | `[待确认]` |
+| 嵌入式测试台 | NXP S32K312 EVB + UWB/BLE/NFC 模组 | `[待确认]` |
 | 云端测试集群 | Kubernetes 1.28+ / TiDB / Redis / Kafka | `[待确认]` |
 | 真机测试矩阵 | Top 10 Android/iOS 机型 | `[待确认]` |
 

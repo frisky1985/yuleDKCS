@@ -75,7 +75,7 @@
 
 | 端 | 技术栈 | 关键组件 |
 |----|--------|---------|
-| **嵌入式** | C语言 + FreeRTOS | NXP S32G2/G3, SE050安全芯片, UWB(SR250), BLE(KW38) |
+| **嵌入式** | C语言 + FreeRTOS | NXP S32K312, SE050安全芯片, UWB(SR250), BLE(KW47A) |
 | **App** | Flutter 3.x | Dart, 原生桥接(iOS/Android), Secure Enclave/KeyStore |
 | **云端** | Go 1.21+ | 微服务架构, gRPC/REST, PostgreSQL, Redis |
 
@@ -277,7 +277,7 @@ digital-key-project/
 
 | 优先级 | 任务 | 说明 |
 |--------|------|------|
-| 🟡 P2 | 采购硬件开发板 | NXP S32G2 EVB + SE050 评估套件 |
+| 🟡 P2 | 采购硬件开发板 | NXP S32K312 EVB + SE050 评估套件 |
 | 🟡 P2 | 搭建硬件测试环境 | 连接 UWB/BLE/NFC 模块 |
 | 🟡 P2 | 执行集成测试 | 端到端配对、解锁流程验证 |
 | 🟢 P3 | 性能优化 | 解锁响应时间优化至 < 500ms |
@@ -295,7 +295,7 @@ digital-key-project/
 
 | 资源 | 用途 | 预估成本 |
 |------|------|---------|
-| NXP S32G2 EVB | 嵌入式开发测试 | ~$500 |
+| NXP S32K312 EVB | 嵌入式开发测试 | ~$500 |
 | SE050 评估套件 | 安全芯片开发 | ~$200 |
 | UWB 模块 (SR250) | 测距功能验证 | ~$300 |
 | iOS/Android 测试机 | App 真机测试 | 已有 |

@@ -84,7 +84,7 @@ NXP S32K3 系列 MCU 集成了片载 Hardware Security Engine（HSE），可替�
 |------|-----------|-----------|---------|
 | MCU | S32G2 | S32K3xx | 替换 |
 | 安全芯片 | SE050（外挂I2C） | HSE（片载） | 替换 |
-| BLE | KW38（UART） | KW38 / NCF29A1 | 可能保留/替换 |
+| BLE | KW38（UART） | **KW47A** | 替换（KW38 已淘汰，定标 KW47A） |
 | NFC | PN5180（SPI） | PN5180 / 集成 | 可能保留/替换 |
 | UWB | SR250（SPI） | SR250 | 保留 |
 

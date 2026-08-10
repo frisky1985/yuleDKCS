@@ -29,7 +29,7 @@
 | UWB Module | NXP NCJ29D6 | NCJ29D6_UWB_v1.8 | v1.0 | IEEE 802.15.4z secure ranging |
 | NFC Reader | ST ST25R501 | ST25R501_NFC_v2.0 | v1.0 | ISO 14443-4, NFC-F, APDU |
 | Secure Element | NXP SE050 | SE050_OS_v3.4.0 | v1.0 | EAL5+ key storage + crypto |
-| Main MCU | STM32L552ZE | STM32L5_HAL_v1.6 | v1.0 | System control + protocol stack |
+| Main MCU | S32K312 | S32K312_HAL_v1.6 | v1.0 | System control + protocol stack |
 
 ### 1.3 Test Bed Configuration
 

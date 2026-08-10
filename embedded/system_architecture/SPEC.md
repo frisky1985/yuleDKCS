@@ -24,7 +24,7 @@
 | BLE芯片 | NXP KW47A | 蓝牙5.0 Low Energy |
 | UWB芯片 | NXP NCJ29D6 | 实时定位，穿墙能力强 |
 | NFC芯片 | ST ST25R501 | 被动式通信，应急解锁 |
-| MCU | STM32L5系列 | 安全MCU，TFM认证 |
+| MCU | S32K312系列 | 安全MCU，TFM认证 |
 | 安全芯片 | SE050 | 专用安全元件 |
 
 ---
@@ -58,7 +58,7 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        硬件层 (Hardware Layer)                     │
 │  ┌────────┐  ┌────────┐  ┌────────┐  ┌──────┐  ┌───────────────┐   │
-│  │KW47A  │  │NCJ29D6│  │ST25R501│  │SE050│  │  STM32L5     │   │
+│  │KW47A  │  │NCJ29D6│  │ST25R501│  │SE050│  │  S32K312     │   │
 │  └────────┘  └────────┘  └────────┘  └──────┘  └───────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -553,7 +553,7 @@ typedef enum {
 1. NXP KW47A Datasheet
 2. NXP NCJ29D6 Datasheet
 3. ST ST25R501 Datasheet
-4. ST STM32L5 Reference Manual
+4. ST S32K312 Reference Manual
 5. Car Connectivity Consortium Digital Key Specification
 
 ### B. 术语表

@@ -53,6 +53,7 @@
 | H-9b | **batch-api 存储可插拔** | ✅ | `Store` 接口 + FileStore (默认, 文件 JSON) + PGStore (PostgreSQL, pgx) 双实现；`BATCH_API_STORE=file\|postgres` + `BATCH_API_PG_DSN` 切换, schema 两端一致；PG 集成测试 build tag (`-tags pg_test`, 需外部 PG)；go vet -tags 编译验证 + 错误路径验证 |
 | H-10 | **MES 对接文档** | ✅ | `docs/mes-integration.md`: 架构图/API 契约/域名对接清单 (DNS/TLS/反代/环境变量)/数据模型/哈希链/数据流/安全合规 |
 | H-11 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) — SKIPPED 用例在此阶段转真实执行 |
+| H-12 | **硬件方案定标 S32K312+KW47A** | ✅ | 全仓文档统一: 删除 KW38 (8 处→KW47A), 旧主控 S32G2/G3→S32K312 (40+ 处), 旧案 STM32L5→S32K312 (8 处), s32g/→s32k312/ 目录规划; 26 文件 81 处; 迁移指南保留来源列 (文档目的), .yuleosh 证据快照不动 (重跑 yuleosh ev 刷新) |
 
 ---
 

@@ -266,7 +266,7 @@ yuleDKCS supports two certificate systems simultaneously:
 | UWB Module | NXP NCJ29D6 | CCC (UWB Mandatory), ICCOA DK 4.0 | ✅ Selected |
 | NFC Reader | ST ST25R501 | CCC (NFC), ICCE (NFC) | ✅ Selected |
 | Secure Element | NXP SE050 | CCC (Mandatory), ICCE (Mandatory) | ✅ Selected |
-| Main MCU | STM32L5 | Platform level | ✅ Selected |
+| Main MCU | S32K312 | Platform level | ✅ Selected |
 
 ### 5.2 Protocol Interoperability
 

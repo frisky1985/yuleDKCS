@@ -131,7 +131,7 @@ yuleDKCS v2.1.0 是数字钥匙系统的生产就绪版本。已通过专家评�
 |------|---------|------|
 | Android | 10 (API 29) | BLE/UWB/NFC |
 | iOS | 15.0 | CoreBluetooth / CoreNFC / NearbyInteraction |
-| 嵌入式 MCU | - | NXP S32G2/G3, KW47A, NCJ29D6, ST25R501 |
+| 嵌入式 MCU | - | NXP S32K312, KW47A, NCJ29D6, ST25R501 |
 | Kubernetes | 1.28+ | 生产部署 |
 | PostgreSQL | 15+ | 持久化存储 |
 | Redis | 7+ | 缓存 + 分布式锁 |

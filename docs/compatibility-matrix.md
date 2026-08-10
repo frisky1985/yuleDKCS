@@ -30,8 +30,8 @@
 
 | 组件 | 型号 | 协议/接口 | 车端驱动 | 加密能力 | 状态 |
 |------|------|-----------|----------|---------|------|
-| **MCU** | NXP S32G2/G3 | ARM Cortex-A/M 异构 | ✅ 架构层支持 | 安全启动链 (SE050) | ⚠️ CI 中仅 gcc 编译，生产交叉编译（ARM-eabi）未纳入 CI |
-| **BLE SoC** | NXP KW38 / KW47A | BLE 5.x GATT | ✅ `hal_ble.h` + `ble_kw47a.c` | AES-CCM 128-bit（LE Secure Connections） | ✅ 驱动层存在，三协议 BLE 操作复用 |
+| **MCU** | NXP S32K312 | ARM Cortex-M7（S32K3 系列，片载 HSE 安全引擎） | ✅ 架构层支持 | 安全启动链 (SE050/HSE) | ⚠️ CI 中仅 gcc 编译，生产交叉编译（ARM-eabi）未纳入 CI |
+| **BLE SoC** | NXP KW47A | BLE 5.x GATT | ✅ `hal_ble.h` + `ble_kw47a.c` | AES-CCM 128-bit（LE Secure Connections） | ✅ 驱动层存在，三协议 BLE 操作复用 |
 | **UWB SoC** | NXP SR250 / NCJ29D6 | IEEE 802.15.4z (HRP) | ✅ `hal_uwb.h` + `uwb_ncj29d6.c` | AES-128 + STS 安全测距 | ⚠️ FiRa 测距实现为 stub，生产部署需替换为真实驱动 |
 | **NFC Reader** | ST ST25R501 | ISO/IEC 14443 A/B, ISO 7816-4 | ✅ `hal_nfc.h` + `nfc_st25r501.c` | AES-256-GCM 安全通道 | ✅ 驱动层存在，NDEF + APDU 交互支持 |
 | **Secure Element** | NXP SE050 | I²C / SPI, SCP03 安全通道 | ✅ `hal_sec.h` + SE050 驱动框架 | AES-128/256, ECC P-192/256/384/521, RSA 2K–4K, TRNG | ⚠️ `se05x_open_session` 等核心函数为 stub（P0 投产前必须解决） |
@@ -41,7 +41,7 @@
 
 | 层级 | 组件 | 通信方式 |
 |------|------|----------|
-| 应用处理器 | NXP S32G2/G3 (MCU + MPU) | 内部总线 |
+| 应用处理器 | NXP S32K312 (MCU + MPU) | 内部总线 |
 | 无线连接 | NXP KW47A (BLE) + NCJ29D6 (UWB) | SPI / UART |
 | NFC 读卡器 | ST ST25R501 | SPI / I²C |
 | 安全元件 | NXP SE050 | I²C (SCP03 安全通道) |
@@ -215,7 +215,7 @@
 |--------|---------|-----------------|
 | 协议覆盖广度 | ICCE + CCC 3.0 + ICCOA DK 3.0/4.0 | 通常仅 1–2 协议 |
 | 移动端覆盖 | Android + iOS 双平台 SDK | 通常仅 1 平台或 SDK 形式 |
-| 车端硬件兼容 | NXP S32G2/G3 + KW47A + NCJ29D6 + ST25R501 + SE050 | 通常绑定单一芯片方案 |
+| 车端硬件兼容 | NXP S32K312 + KW47A + NCJ29D6 + ST25R501 + SE050 | 通常绑定单一芯片方案 |
 | 云端部署 | K8s + Helm + Docker（3 种编排） | 多数有 |
 | 安全芯片 | SE050 (CC EAL 6+) | 行业标配 SE 或 TEE |
 | 加密算法 | AES-256 + ECDSA P-256 + SM2/SM3（ICCE 国密） | 通常仅国际算法 |

@@ -100,7 +100,7 @@ yuleDKCS/
 
 | 端 | 技术 | 说明 |
 |----|------|------|
-| **嵌入式** | C / CMake | NXP S32G2/G3, SE050, UWB SR250, BLE KW38 |
+| **嵌入式** | C / CMake | NXP S32K312, SE050, UWB SR250, BLE KW47A |
 | **Android** | Kotlin / Gradle | BLE, UWB, NFC, BerTLV |
 | **iOS** | Swift / XcodeGen | CoreBluetooth, CoreNFC, CoreLocation |
 | **Hub** | Go / gRPC | 协议转发、密钥管理 |

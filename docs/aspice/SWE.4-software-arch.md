@@ -90,7 +90,7 @@ MCAL ┌──────────────┴─────────
 
 | 模块 | 硬件 | ASIL |
 |:-----|:-----|:-----|
-| CAN 驱动 | S32G2/G3 CAN FD | QM |
+| CAN 驱动 | S32K312 CAN FD | QM |
 | SPI 驱动 | SE050 SPI | QM |
 | I2C 驱动 | NFC 控制器 I2C | QM |
 | UART 驱动 | 调试串口 | QM |

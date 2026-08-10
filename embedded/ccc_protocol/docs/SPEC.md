@@ -32,7 +32,7 @@
 | UWB芯片 | NXP NCJ29D6 | SPI | IEEE 802.15.4z UWB |
 | NFC芯片 | ST ST25R501 | SPI + IRQ | ISO 14443/NFC-F |
 | 安全芯片 | NXP SE050 | I2C | 密钥存储/加密 |
-| 主MCU | STM32L5 | - | 系统主控 |
+| 主MCU | S32K312 | - | 系统主控 |
 
 ### 1.3 通信架构
 

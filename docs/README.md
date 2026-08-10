@@ -73,7 +73,7 @@ go run cmd/hub/main.go
 | 云端核心 | Go 1.22+ / gRPC / Kafka / PostgreSQL / Redis |
 | 协议适配 | Java 17 / Spring Boot 3.2 |
 | 手机端 | Kotlin (Android) / Swift (iOS) |
-| 车端 | C / STM32L5 / NXP KW47A / NCJ29D6 / ST ST25R501 |
+| 车端 | C / S32K312 / NXP KW47A / NCJ29D6 / ST ST25R501 |
 | 安全 | SE050 / TFM / AES-256-GCM / ECDSA P-256 |
 
 ## 许可证

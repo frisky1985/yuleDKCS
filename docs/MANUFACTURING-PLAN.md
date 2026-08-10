@@ -35,7 +35,7 @@
 
 | 组件 | 描述 | 协议栈 |
 |------|------|--------|
-| 车辆嵌入式固件 (TCU) | 主控 MCU 固件 (NXP S32G2/G3) | CCC 3.0 / ICCOA 2.0 / ICCE 1.5 |
+| 车辆嵌入式固件 (TCU) | 主控 MCU 固件 (NXP S32K312) | CCC 3.0 / ICCOA 2.0 / ICCE 1.5 |
 | BLE 模块固件 | NXP KW47A BLE 5.0 通信固件 | CCC BLE GATT Profile |
 | NFC 模块固件 | ST ST25R501 NFC 读写器固件 | ISO 14443 A/B |
 | UWB 模块固件 | NXP NCJ29D6 UWB 测距固件 | FiRa MAC / IEEE 802.15.4z |
@@ -88,7 +88,7 @@ cmake --build . -j$(nproc)
 
 # 构建输出产物
 # build-release/firmware/bootloader.bin        # 安全启动引导程序
-# build-release/firmware/s32g_firmware.bin     # 主固件
+# build-release/firmware/s32k312_firmware.bin     # 主固件
 # build-release/firmware/ccc_protocol.bin      # CCC 协议栈固件
 # build-release/firmware/iccoa_protocol.bin    # ICCOA 协议栈固件
 # build-release/firmware/icce_protocol.bin     # ICCE 协议栈固件
@@ -145,21 +145,21 @@ docker run --rm -v $(pwd)/output:/output yuledkcs/firmware-builder:1.0 \
 
 ```bash
 # 1. 计算固件哈希
-sha256sum s32g_firmware.bin > s32g_firmware.sha256
+sha256sum s32k312_firmware.bin > s32k312_firmware.sha256
 
 # 2. 使用 HSM 签名
 # 生产环境使用 Thales Luna / AWS CloudHSM
 pkcs11-tool --module /usr/lib/librainbow.so \
   --slot 0 --id 01 \
   --sign --mechanism ECDSA \
-  --input-file s32g_firmware.sha256 \
-  --output-file s32g_firmware.sig
+  --input-file s32k312_firmware.sha256 \
+  --output-file s32k312_firmware.sig
 
 # 3. 生成签名清单 manifest
 # manifest.bin 包含: 固件哈希 + 签名 + 版本号 + 签名证书链
 generate_manifest \
-  --firmware s32g_firmware.bin \
-  --signature s32g_firmware.sig \
+  --firmware s32k312_firmware.bin \
+  --signature s32k312_firmware.sig \
   --version 2.1.0 \
   --cert-chain firmware_signing_chain.pem \
   --output manifest.bin
@@ -350,7 +350,7 @@ build-icce:
 
 ```bash
 # 1. 物理连接校验
-JLinkExe -device S32G2A -if SWD -speed 4000
+JLinkExe -device S32K312 -if SWD -speed 4000
 # 检测 SE050 I2C 通信
 SE05x_Detect() → OK
 
@@ -514,14 +514,14 @@ curl -X POST https://api.yuledkcs.com/v1/devices/register \
 # 小批量烧录 (< 1000 片/批)
 # 使用 J-Link Commander 脚本自动烧录
 cat > flash.jlink << 'EOF'
-device S32G2A
+device S32K312
 si SWD
 speed 4000
 connect
 loadbin bootloader.bin 0x00000000
-loadbin s32g_firmware.bin 0x00080000
+loadbin s32k312_firmware.bin 0x00080000
 verifybin bootloader.bin 0x00000000
-verifybin s32g_firmware.bin 0x00080000
+verifybin s32k312_firmware.bin 0x00080000
 reset
 go
 exit
@@ -532,7 +532,7 @@ JLinkExe -CommanderScript flash.jlink
 # 大批量量产 (> 10000 片/批)
 # 使用离线编程器 (支持 8 路并行烧录)
 # 1. 将固件加载到编程器缓存
-gang-programmer load --device S32G2A --firmware s32g_firmware.bin
+gang-programmer load --device S32K312 --firmware s32k312_firmware.bin
 # 2. 批量烧录 (8 路并行)
 gang-programmer flash --batch-size 8 --count 10000
 ```

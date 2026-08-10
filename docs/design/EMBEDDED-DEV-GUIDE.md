@@ -28,9 +28,9 @@
 
 | 组件 | 型号 | 说明 |
 |------|------|------|
-| **主控 MCU** | NXP S32G2/G3 | 车规级，内置 HSE 安全引擎 |
+| **主控 MCU** | NXP S32K312 | 车规级，S32K3 系列，内置 HSE 安全引擎 |
 | **UWB 芯片** | NXP SR250 或 Qorvo DW3300 | FiRa MAC 支持 |
-| **BLE 芯片** | NXP KW38 | BLE 5.0+，车规级 |
+| **BLE 芯片** | NXP KW47A | BLE 5.0+，车规级 |
 | **NFC 芯片** | NXP PN5180 | ISO 14443 A/B |
 | **安全芯片** | NXP SE050 或 Infineon SLB9670 | EAL6+，支持 SM2/SM3/SM4 |
 | **通信接口** | SPI / I2C / UART / CAN-FD | - |
@@ -56,7 +56,7 @@
 digital-key-vehicle/
 ├── docs/                       # 设计文档
 ├── firmware/
-│   ├── s32g/                   # S32G 主控固件
+│   ├── s32k312/                   # S32K312 主控固件
 │   │   ├── bootloader/         # 安全启动引导程序
 │   │   ├── kernel/             # FreeRTOS 内核配置
 │   │   ├── apps/               # 应用程序
@@ -136,7 +136,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Debug -DTOOLCHAIN_PREFIX=/opt/gcc-arm-10.3.2021.10-x
 cmake --build . -j$(nproc)
 
 # 编译输出
-# build/firmware/s32g_firmware.bin      # 主固件
+# build/firmware/s32k312_firmware.bin      # 主固件
 # build/firmware/bootloader.bin         # 引导程序
 # build/firmware/manifest.bin           # 签名清单
 ```
@@ -148,9 +148,9 @@ cmake --build . -j$(nproc)
 # 使用 Lauterbach TRACE32 或 J-Link
 
 # 示例：J-Link 烧录
-JLinkExe -device S32G2A -if SWD -speed 4000
+JLinkExe -device S32K312 -if SWD -speed 4000
 loadbin build/firmware/bootloader.bin 0x00000000
-loadbin build/firmware/s32g_firmware.bin 0x00080000
+loadbin build/firmware/s32k312_firmware.bin 0x00080000
 reset
 go
 
@@ -163,7 +163,7 @@ go
 1. **导入项目**：`File → Import → General → Existing Projects into Workspace`
 2. **配置编译器**：`Project → Properties → C/C++ Build → Settings → Tool Settings`
 3. **配置调试器**：`Run → Debug Configurations → GDB Hardware Debugging`
-4. **添加符号文件**：连接 S32G HSE 固件调试符号
+4. **添加符号文件**：连接 S32K312 HSE 固件调试符号
 
 ---
 
@@ -173,7 +173,7 @@ go
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         S32G2/G3 主控                            │
+│                         S32K312 主控                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
 │  │ Cortex-A53  │  │ Cortex-M7×3 │  │        HSE              │ │
 │  │  (×4 Core)  │  │  (实时核)   │  │  (Hardware Security)   │ │
@@ -195,7 +195,7 @@ go
           │      │       │        │          │
     ┌─────▼─┐ ┌──▼───┐ ┌──▼───┐ ┌─▼────┐  ┌─▼─────┐
     │ UWB   │ │ BLE  │ │ NFC  │ │  SE  │  │ CAN   │
-    │ SR250 │ │ KW38 │ │PN5180│ │ SE050│  │ 总线  │
+    │ SR250 │ │ KW47A│ │PN5180│ │ SE050│  │ 总线  │
     │       │ │      │ │      │ │      │  │       │
     │SPI x1 │ │UART  │ │I2C x1│ │SPI x1│  │CAN-FD │
     └───────┘ └──────┘ └──────┘ └──────┘  └───────┘
@@ -237,7 +237,7 @@ go
 │   GPIO │ SPI │ I2C │ UART │ CAN │ DMA │ Timer │ Interrupt  │
 ├─────────────────────────────────────────────────────────────┤
 │                  板级支持包 (BSP)                          │
-│   S32G2 BSP │ Clock Config │ Pin Mux │ Memory Config       │
+│   S32K312 BSP │ Clock Config │ Pin Mux │ Memory Config       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
