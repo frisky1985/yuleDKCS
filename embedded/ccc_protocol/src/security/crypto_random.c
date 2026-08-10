@@ -51,6 +51,7 @@
 
 #include "crypto_random.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 

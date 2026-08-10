@@ -464,22 +464,35 @@ void test_ccc_full_lifecycle(void)
 }
 
 /* ========================================================================
- *  CCC_SEC_003 — ECC 签名和验证 (伪)
- * ======================================================================== */
+ *  CCC_SEC_003 — 签名接口契约 + fail-closed 验签语义
+ * ========================================================================
+ * sec_sign 目前为 SE050 集成前的桩实现 (仅返回 CCC_OK + sig_len=64, 不产出
+ * 有效签名); sec_verify 为 fail-closed 安全设计 (未集成 HSM 时拒绝一切验签)。
+ * 此测试验证这两个真实契约, 而非 stub 时代的"伪验签通过"行为。
+ */
 void test_security_sign_verify(void)
 {
     sec_init();
 
     uint8_t data[] = "test_data_for_signature";
     uint8_t sig[64];
+    memset(sig, 0xAA, sizeof(sig));
     uint32_t sig_len = sizeof(sig);
 
+    /* 桩签名: 返回 OK 且声明 64 字节签名长度 */
     ccc_status_t ret = sec_sign(data, sizeof(data), sig, &sig_len);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
-    TEST_ASSERT_TRUE(sig_len > 0);
+    TEST_ASSERT_EQUAL(64, sig_len);
 
+    /* fail-closed: 无真实 HSM 密钥时验签必须拒绝 (安全默认) */
     verify_result_e vr = sec_verify(data, sizeof(data), sig, sig_len);
-    TEST_ASSERT_EQUAL(VERIFY_OK, vr);
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID, vr);
+
+    /* NULL/长度错误参数同样拒绝 */
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
+                      sec_verify(NULL, sizeof(data), sig, sig_len));
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
+                      sec_verify(data, sizeof(data), sig, 32));
 
     sec_deinit();
 }

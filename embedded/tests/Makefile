@@ -29,6 +29,8 @@ CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
               $(CCC_SRC)/ble/ble_kw47a.c \
               $(CCC_SRC)/nfc/nfc_st25r501.c \
               $(CCC_SRC)/security/security.c \
+              $(CCC_SRC)/security/se050_scp03.c \
+              $(CCC_SRC)/security/crypto_random.c \
               $(CCC_SRC)/keymgmt/key_mgmt.c
 
 # uwb_ncj29d6.c calls classify_distance_impl() before its static definition.
@@ -120,6 +122,9 @@ $(BUILD)/unity.o: $(VENDOR)/unity/unity.c | $(BUILD)
 $(BUILD)/stubs_hal.o: $(TESTDIR)/support/stubs_hal.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
+$(BUILD)/freertos_stubs.o: $(TESTDIR)/support/freertos_stubs.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
 #---------------------------------------------------------------------------
 # Test objects (standalone — each has main())
 #---------------------------------------------------------------------------
@@ -149,6 +154,10 @@ $(BUILD)/test_icce_lib.o: $(TEST_DIR)/test_icce.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_unified_lib.o: $(TEST_DIR)/test_unified.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_UNIFIED_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_edge_condition.o: $(TEST_DIR)/test_edge_condition.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_edge_condition_lib.o: $(TEST_DIR)/test_edge_condition.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_EDGE_COND_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
@@ -168,8 +177,9 @@ test_iccoa: $(BUILD)/test_iccoa_dk_core.o \
 test_ccc: $(BUILD)/test_ccc_dk_core.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/key_mgmt.o \
-          $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+          $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+          $(BUILD)/key_mgmt.o \
+          $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
@@ -190,34 +200,36 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
               $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
               $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-              $(BUILD)/security.o $(BUILD)/key_mgmt.o \
+              $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+              $(BUILD)/key_mgmt.o \
               $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
               $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
               $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
               $(BUILD)/edge_condition.o \
               $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
               $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
-              $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+              $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
-          $(BUILD)/test_unified_lib.o \
+          $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/key_mgmt.o \
+          $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+          $(BUILD)/key_mgmt.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
           $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
           $(BUILD)/edge_condition.o \
           $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
           $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
-          $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/unity.o
+          $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 

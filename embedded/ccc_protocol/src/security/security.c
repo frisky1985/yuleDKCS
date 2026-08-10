@@ -202,7 +202,8 @@ ccc_status_t sec_init(void)
     {
         int ret = se050_scp03_init(&g_scp03_session);
         if (ret != SCP03_OK) {
-            crypto_engine_deinit();
+            /* 不 deinit 共享 crypto_engine: 引擎由 crypto_engine_init() 成功取得,
+             * 属 ICCE/共享模块生命周期, 多协议栈共存 (unified) 时越权释放会破坏其他栈。 */
             crypto_random_deinit();
             return CCC_ERR_HARDWARE;
         }
@@ -212,7 +213,6 @@ ccc_status_t sec_init(void)
     int ret = se05x_open_session();
     if (ret != 0) {
         se050_scp03_deinit(&g_scp03_session);
-        crypto_engine_deinit();
         crypto_random_deinit();
         return CCC_ERR_HARDWARE;
     }
@@ -242,8 +242,8 @@ ccc_status_t sec_deinit(void)
     /* 关闭 SE050 硬件会话 */
     se05x_close_session();
 
-    /* 关闭密码引擎 */
-    crypto_engine_deinit();
+    /* 不 deinit 共享 crypto_engine: 引擎生命周期由 crypto_engine_init() 所有者
+     * (ICCE/共享层) 管理; 多协议栈共存 (unified) 时 ccc 释放会破坏其他栈。 */
 
     /* [P1-1] Deinitialize the TRNG subsystem */
     crypto_random_deinit();

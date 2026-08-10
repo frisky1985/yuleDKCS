@@ -26,7 +26,7 @@ icce_zone_e icce_zone_classify(int32_t distance_mm)
 {
     if (distance_mm < 0) return ICCE_ZONE_NONE;
     if (distance_mm < 1000)   return ICCE_ZONE_INTERIOR;
-    if (distance_mm < 2000)   return ICCE_ZONE_VICINITY;  /* [P0-06 FIX] 3000→2000mm */
+    if (distance_mm <= 2000)  return ICCE_ZONE_VICINITY;  /* [P0-06 FIX] 3000→2000mm, 含边界 */
     if (distance_mm < 10000)  return ICCE_ZONE_NEAR;
     if (distance_mm < 20000)  return ICCE_ZONE_MID;
     if (distance_mm < 50000)  return ICCE_ZONE_FAR;

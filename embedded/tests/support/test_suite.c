@@ -19,6 +19,7 @@ extern int run_iccoa_ble_tests(void);
 extern int run_ccc_core_tests(void);
 extern int run_icce_tests(void);
 extern int run_unified_tests(void);
+extern int run_edge_condition_tests(void);
 
 int main(void)
 {
@@ -42,6 +43,9 @@ int main(void)
 
     printf("\n--- Unified Protocol Tests ---\n");
     ret += run_unified_tests();
+
+    printf("\n--- Edge Condition Tree Tests ---\n");
+    ret += run_edge_condition_tests();
 
     printf("\n============================================\n");
     if (ret == 0) {

@@ -1077,7 +1077,7 @@ int se050_scp03_open_session(scp03_session_t *session, uint8_t i2c_addr)
                 if (sw != SCP03_SW_OK)
                 {
                     se050_scp03_close_session(session);
-                    return SCP03_ERR_SECURITY;
+                    return SCP03_ERR_SW;
                 }
             }
         }

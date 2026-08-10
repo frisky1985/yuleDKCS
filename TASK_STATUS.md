@@ -18,6 +18,23 @@
 
 ---
 
+## Phase 2 嵌入式验证（2026-08-10 起，进行中）
+
+| # | 事项 | 状态 | 备注 |
+|:-:|:-----|:----:|:-----|
+| E-1 | **C 测试基建修复** | ✅ | 补缺失 freertos_stubs.c (pvPortMalloc/vPortFree)；se050_scp03.c + crypto_random.c 纳入测试链接（修复 2 个从未编译的编译错误）；crypto_utils weak 符号兼容 |
+| E-2 | **共享引擎污染修复 (真实缺陷)** | ✅ | ccc security.c 的 sec_init 失败路径与 sec_deinit 越权调用 crypto_engine_deinit() 破坏共享引擎 (ecc→P256)，多协议栈共存 (unified) 时 ICCE 密码路径失效 → 已修复 |
+| E-3 | **ICCE zone 边界 bug** | ✅ | icce_zone_classify(2000) 边界: `< 2000` → `<= 2000` (P0-06 语义 "UNLOCK/LOCK ≤2m" 含边界) |
+| E-4 | **测试契约对齐** | ✅ | test_security_sign_verify 改为验证真实 fail-closed 语义 (sec_verify 未集成 HSM 时拒绝验签) |
+| E-5 | **条件树测试 (新增 16 用例)** | ✅ | edge_condition.c 13.5% → 70.85%；覆盖 pool 生命周期/溢出/序列化往返/反序列化错误/深拷贝/NVM 持久化/头校验 |
+| E-6 | **C 测试全量** | ✅ | **97 tests / 0 failures** (ICCOA 17 + CCC 28 + ICCE 24 + Unified 12 + EdgeCond 16) |
+| E-7 | **覆盖率现状** | 📊 | ICCE 27.1% → 36.9%；ICCE 目标 ≥75% 需补国密算法测试 (sm2 9%/sm4 0%/crypto_engine 4%, ~900 行, 需标准测试向量) |
+| E-8 | 待办: icce_edge 规则引擎 | 📋 | 23.8% (378 行)，下一轮 |
+| E-9 | 待办: SE050 SCP03 测试 | 📋 | 9.8% (428 行)，需 mock SCP03 会话 |
+| E-10 | 待办: HIL 环境 + 烧录工具链 | 📋 | ROADMAP 2.4/2.5，需硬件
+
+---
+
 ## P1-2 里程碑（已完成）
 
 | # | 任务 | 状态 | 备注 |

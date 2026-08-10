@@ -1015,7 +1015,12 @@ static int hsm_get_random_bytes(uint8_t *buf, size_t len)  /* [P0-1] */
  *  crypto_random_bytes — [P0-1] 委托到 hsm_get_random_bytes
  * ========================================================================
  * 向后兼容包装, 所有原有调用不变。
+ * weak: ccc_protocol/src/security/crypto_random.c 提供统一强实现,
+ * 同时链接时强符号优先; 单独链接本模块时此包装兜底。
  */
+#if defined(__GNUC__)
+__attribute__((weak))
+#endif
 int crypto_random_bytes(uint8_t *buf, size_t len)
 {
     return hsm_get_random_bytes(buf, len);
