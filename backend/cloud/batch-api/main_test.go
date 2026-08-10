@@ -15,7 +15,7 @@ import (
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
-	store, err := NewStore(t.TempDir())
+	store, err := NewStore("file", t.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

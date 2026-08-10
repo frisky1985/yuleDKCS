@@ -14,7 +14,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -54,106 +53,7 @@ type BatchStats struct {
 	FailedDevices []string          `json:"failed_devices"`
 }
 
-// ---------------------------------------------------------------------------
-//  存储 (文件 JSON 持久化, 零依赖)
-// ---------------------------------------------------------------------------
-
-type Store struct {
-	dir string
-}
-
-func NewStore(dir string) (*Store, error) {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
-	}
-	return &Store{dir: dir}, nil
-}
-
-func (s *Store) batchesPath() string { return filepath.Join(s.dir, "batches.json") }
-func (s *Store) recordsPath(id string) string {
-	return filepath.Join(s.dir, "records", id+".json")
-}
-
-func (s *Store) loadBatches() ([]Batch, error) {
-	data, err := os.ReadFile(s.batchesPath())
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []Batch{}, nil
-		}
-		return nil, err
-	}
-	var batches []Batch
-	if err := json.Unmarshal(data, &batches); err != nil {
-		return nil, err
-	}
-	return batches, nil
-}
-
-func (s *Store) saveBatches(batches []Batch) error {
-	data, err := json.MarshalIndent(batches, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(s.batchesPath(), data, 0o644)
-}
-
-func (s *Store) getBatch(id string) (*Batch, error) {
-	batches, err := s.loadBatches()
-	if err != nil {
-		return nil, err
-	}
-	for i := range batches {
-		if batches[i].ID == id {
-			return &batches[i], nil
-		}
-	}
-	return nil, nil
-}
-
-func (s *Store) createBatch(b Batch) error {
-	batches, err := s.loadBatches()
-	if err != nil {
-		return err
-	}
-	for _, x := range batches {
-		if x.ID == b.ID {
-			return fmt.Errorf("batch already exists: %s", b.ID)
-		}
-	}
-	batches = append(batches, b)
-	return s.saveBatches(batches)
-}
-
-func (s *Store) loadRecords(batchID string) ([]FlashRecord, error) {
-	data, err := os.ReadFile(s.recordsPath(batchID))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []FlashRecord{}, nil
-		}
-		return nil, err
-	}
-	var records []FlashRecord
-	if err := json.Unmarshal(data, &records); err != nil {
-		return nil, err
-	}
-	return records, nil
-}
-
-func (s *Store) appendRecord(batchID string, r FlashRecord) error {
-	records, err := s.loadRecords(batchID)
-	if err != nil {
-		return err
-	}
-	records = append(records, r)
-	if err := os.MkdirAll(filepath.Dir(s.recordsPath(batchID)), 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(records, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(s.recordsPath(batchID), data, 0o644)
-}
+// 存储实现见 store.go (接口) / store_file.go (文件 JSON) / store_pg.go (PostgreSQL)
 
 // ---------------------------------------------------------------------------
 //  哈希链 (与 batch_manager.py record_hash 算法一致)
@@ -182,7 +82,7 @@ func recordHash(prev, batchID, deviceID, result, flashedAt, version, sha string)
 // ---------------------------------------------------------------------------
 
 type Server struct {
-	store *Store
+	store Store
 	apiKey string
 }
 
@@ -237,7 +137,7 @@ func (s *Server) handleCreateBatch(w http.ResponseWriter, r *http.Request) {
 		EncKeyID: req.EncKeyID, PlannedDevices: req.PlannedDevices,
 		Status: "active", CreatedAt: nowISO(),
 	}
-	if err := s.store.createBatch(b); err != nil {
+	if err := s.store.CreateBatch(b); err != nil {
 		writeErr(w, http.StatusConflict, err.Error())
 		return
 	}
@@ -245,7 +145,7 @@ func (s *Server) handleCreateBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListBatches(w http.ResponseWriter, r *http.Request) {
-	batches, err := s.store.loadBatches()
+	batches, err := s.store.ListBatches()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -257,7 +157,7 @@ func (s *Server) handleGetBatch(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/batches/")
 	id = strings.TrimSuffix(id, "/stats")
 	id = strings.TrimSuffix(id, "/records")
-	b, err := s.store.getBatch(id)
+	b, err := s.store.GetBatch(id)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -272,7 +172,7 @@ func (s *Server) handleGetBatch(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleBatchStats(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/batches/")
 	id = strings.TrimSuffix(id, "/stats")
-	records, err := s.store.loadRecords(id)
+	records, err := s.store.ListRecords(id)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -298,7 +198,7 @@ func (s *Server) handleBatchStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAddRecord(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/batches/")
 	id = strings.TrimSuffix(id, "/records")
-	b, err := s.store.getBatch(id)
+	b, err := s.store.GetBatch(id)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -338,7 +238,7 @@ func (s *Server) handleAddRecord(w http.ResponseWriter, r *http.Request) {
 	if req.FlashedAt == "" {
 		req.FlashedAt = nowISO()
 	}
-	records, err := s.store.loadRecords(id)
+	records, err := s.store.ListRecords(id)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -354,7 +254,7 @@ func (s *Server) handleAddRecord(w http.ResponseWriter, r *http.Request) {
 		RecordHash: recordHash(prev, id, req.DeviceID, req.Result,
 			req.FlashedAt, req.Version, req.Package),
 	}
-	if err := s.store.appendRecord(id, rec); err != nil {
+	if err := s.store.AppendRecord(id, rec); err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -364,7 +264,7 @@ func (s *Server) handleAddRecord(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleListRecords(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/api/v1/batches/")
 	id = strings.TrimSuffix(id, "/records")
-	records, err := s.store.loadRecords(id)
+	records, err := s.store.ListRecords(id)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -375,7 +275,7 @@ func (s *Server) handleListRecords(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDevice(w http.ResponseWriter, r *http.Request) {
 	dev := strings.TrimPrefix(r.URL.Path, "/api/v1/devices/")
-	batches, err := s.store.loadBatches()
+	batches, err := s.store.ListBatches()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
@@ -388,7 +288,7 @@ func (s *Server) handleDevice(w http.ResponseWriter, r *http.Request) {
 		LastFlash string `json:"last_flash_result"`
 	}
 	for _, b := range batches {
-		records, err := s.store.loadRecords(b.ID)
+		records, err := s.store.ListRecords(b.ID)
 		if err != nil {
 			continue
 		}
@@ -422,7 +322,7 @@ func main() {
 	dataDir := getenv("BATCH_API_DATA_DIR", "./data")
 	apiKey := getenv("BATCH_API_KEY", "dev-key-change-me")
 
-	store, err := NewStore(dataDir)
+	store, err := storeFromEnv()
 	if err != nil {
 		log.Fatalf("store init: %v", err)
 	}

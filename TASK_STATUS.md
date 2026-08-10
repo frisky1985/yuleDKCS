@@ -50,6 +50,7 @@
 | H-7 | **固件状态机注入 (FI-05 转真实)** | ✅ | qemu_m33 固件加状态机 (IDLE/MONITORING/UNLOCKED/LOCKED + 合法转换表) + HIL:SM:* 命令 (STATE/SET/ILLEGAL/RESET)；非法转换 → REJECT + 状态保持 + 安全计数；新增 HIL-SM-01..03 (合法序列/非法拒绝/计数清零)；实测 46 用例 10 PASSED/36 SKIPPED/0 FAIL |
 | H-8 | **B3-A 工厂侧批次管理** | ✅ | `batch_manager.py`: SQLite (batches/flash_records/devices/key_usage) + 哈希链防篡改 (verify-chain 检测篡改) + 良率统计/失败设备/设备状态机/密钥审计/CSV 导入/API 载荷导出；13/13 单测 + CLI 冒烟 |
 | H-9 | **B3-B 云端 batch-api** | ✅ | `backend/cloud/batch-api` (Go, 纯标准库): REST API (批次 CRUD/烧录上报/良率/设备状态) + X-API-Key 鉴权 + 文件持久化 + 哈希链与 A 端算法一致；11 单测 + 端到端冒烟 (创建→上报→统计→401) |
+| H-9b | **batch-api 存储可插拔** | ✅ | `Store` 接口 + FileStore (默认, 文件 JSON) + PGStore (PostgreSQL, pgx) 双实现；`BATCH_API_STORE=file\|postgres` + `BATCH_API_PG_DSN` 切换, schema 两端一致；PG 集成测试 build tag (`-tags pg_test`, 需外部 PG)；go vet -tags 编译验证 + 错误路径验证 |
 | H-10 | **MES 对接文档** | ✅ | `docs/mes-integration.md`: 架构图/API 契约/域名对接清单 (DNS/TLS/反代/环境变量)/数据模型/哈希链/数据流/安全合规 |
 | H-11 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) — SKIPPED 用例在此阶段转真实执行 |
 

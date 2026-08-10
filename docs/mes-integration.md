@@ -99,6 +99,25 @@ curl -X POST https://batch-api.yuletech.com/api/v1/batches \
 python3 batch_manager.py --db batch.db verify-chain
 ```
 
+## 3.1 云端存储引擎切换 (file → PostgreSQL)
+
+batch-api 存储层可插拔 (`Store` 接口, 文件 JSON 与 PostgreSQL 双实现):
+
+```bash
+# 默认: 文件 JSON (零依赖, 单机)
+BATCH_API_STORE=file BATCH_API_DATA_DIR=./data
+
+# PostgreSQL (多工位并发上报 / MES 远程查询 / 高可用)
+BATCH_API_STORE=postgres \
+BATCH_API_PG_DSN=postgres://batch:pass@pg-host:5432/batch_db
+
+# 集成测试 (需要外部 PG, 自动建表 + 哈希链验证)
+BATCH_TEST_PG_DSN=postgres://batch:pass@pg-host:5432/batch_db \
+  go test -tags pg_test ./...
+```
+
+两种实现 schema 一致 (§5), 切换不改变 API 契约与数据模型。
+
 ---
 
 ## 4. 域名对接配置 (上线清单)
@@ -108,10 +127,10 @@ python3 batch_manager.py --db batch.db verify-chain
 | 1 | DNS | `batch-api.<company>.com` A/CNAME 指向 API 服务器 |
 | 2 | TLS | 证书 (Let's Encrypt / 企业 CA), 强制 HTTPS |
 | 3 | 反向代理 | Nginx/Caddy 转发 `/api/*` → `localhost:8080` |
-| 4 | 环境变量 | `BATCH_API_PORT`(默认 8080), `BATCH_API_DATA_DIR`(默认 ./data), `BATCH_API_KEY`(生产必改) |
+| 4 | 环境变量 | `BATCH_API_PORT`(默认 8080), `BATCH_API_DATA_DIR`(默认 ./data), `BATCH_API_KEY`(生产必改), `BATCH_API_STORE`(file\|postgres), `BATCH_API_PG_DSN`(postgres 连接串) |
 | 5 | 密钥管理 | 生产签名密钥入 HSM, API key 按工位/系统独立签发 |
-| 6 | 数据备份 | data/ 目录每日快照 (批次 JSON 可完整重建) |
-| 7 | 存储升级 | 文件 JSON → PostgreSQL/SQLite 时, schema 字段不变 (见 §5) |
+| 6 | 数据备份 | file: data/ 目录每日快照; postgres: pg_dump + WAL 归档 |
+| 7 | 存储升级 | 默认 file → PostgreSQL: 设置 `BATCH_API_STORE=postgres` + `BATCH_API_PG_DSN`, 字段不变 (见 §5); 迁移脚本 `go test -tags pg_test` 验证 |
 
 ---
 
