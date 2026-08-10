@@ -32,6 +32,8 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
+from transports import JLinkTransport
+
 # ---------------------------------------------------------------------------
 #  Paths
 # ---------------------------------------------------------------------------
@@ -262,44 +264,70 @@ class TestReport:
 #  Hardware Interface
 # ---------------------------------------------------------------------------
 class HardwareInterface:
-    """Interface to the S32K312 EVB over UART/J-Link."""
+    """S32K312 EVB 硬件接口 — 通过可插拔 transport 通信.
 
-    def __init__(self, uart_device="/dev/tty.usbserial-*", baud=115200):
+    transport 可选: qemu (SIL) / serial (真实 UART) / jlink (J-Link).
+    默认 qemu: 无硬件时用 QEMU 软件在环跑固件逻辑.
+    """
+
+    def __init__(self, uart_device="/dev/tty.usbserial-*", baud=115200,
+                 transport=None, transport_kwargs=None):
         self.uart_device = uart_device
         self.baud = baud
-        self._serial = None
+        if transport is not None:
+            self._transport = transport
+        else:
+            from transports import create_transport
+            kwargs = dict(transport_kwargs or {})
+            kind = kwargs.pop("kind", "qemu")
+            self._transport = create_transport(kind, **kwargs)
+        self._transport_open = False
+
+    # -- transport 生命周期 --
+    def open(self):
+        if not self._transport_open:
+            self._transport.open()
+            self._transport_open = True
+        return self
 
     def send_command(self, cmd):
-        """Send a command to EVB over UART."""
-        raise NotImplementedError("Use a real serial connection")
+        """发送命令到固件 (UART)."""
+        return self._transport.send_command(cmd)
 
     def read_line(self):
-        """Read a line from UART."""
-        raise NotImplementedError("Use a real serial connection")
+        """从固件读取一行."""
+        return self._transport.read_line()
+
+    def query(self, cmd, timeout=2.0):
+        """发送命令并等待响应行 (返回响应或 None)."""
+        self.send_command(cmd)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            line = self._transport.read_line(timeout=0.5)
+            if line:
+                return line
+        return None
 
     def flash_firmware(self, binary_path=None):
-        """Flash firmware using J-Link."""
-        if binary_path is None:
-            binary_path = EMBEDDED_DIR / "build" / "hil" / "yuleDKCS_hil.elf"
-        cmd = [
-            "JLinkExe", "-device", "S32K312", "-if", "SWD",
-            "-speed", "4000", "-autoconnect", "1",
-            "-CommanderScript", str(HIL_DIR / "flash_hil.jlink"),
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        print(result.stdout)
-        if result.returncode != 0:
-            print(f"[HIL] Flash FAILED: {result.stderr}", file=sys.stderr)
-            return False
+        """使用 J-Link 烧录固件."""
+        if isinstance(self._transport, JLinkTransport):
+            if binary_path is None:
+                binary_path = EMBEDDED_DIR / "build" / "hil" / "yuleDKCS_hil.elf"
+            return self._transport.flash(str(binary_path))
+        print("[HIL] 当前 transport 非 J-Link, 跳过烧录")
         return True
 
     def read_firmware_version(self):
-        """Read firmware version from UART."""
+        """读取固件版本."""
+        resp = self.query("HIL:GET_VERSION", timeout=2.0)
+        if resp and "VERSION" in resp:
+            return resp.split("VERSION:")[-1].strip()
         return "simulated-v1.2.0"
 
     def close(self):
-        if self._serial:
-            self._serial.close()
+        if self._transport_open:
+            self._transport.close()
+            self._transport_open = False
 
 
 # ---------------------------------------------------------------------------
@@ -553,6 +581,11 @@ def main():
     parser.add_argument("--power-on", action="store_true", help="Power on rig")
     parser.add_argument("--power-off", action="store_true", help="Power off rig")
     parser.add_argument("--jenkins", action="store_true", help="Jenkins CI mode")
+    parser.add_argument("--transport", type=str, default="qemu",
+                        help="传输层: qemu (SIL, 默认) / serial / jlink")
+    parser.add_argument("--transport-arg", action="append", default=[],
+                        help="transport 参数, 如 --transport-arg kind=qemu "
+                             "--transport-arg kernel=path/to.elf")
     args = parser.parse_args()
 
     # Ensure reports dir
@@ -561,8 +594,17 @@ def main():
     if args.check_env:
         sys.exit(0 if check_environment() else 1)
 
-    # Initialize
-    hw = HardwareInterface()
+    # Initialize (transport 可插拔)
+    transport_kwargs = {}
+    for kv in args.transport_arg:
+        if "=" in kv:
+            k, v = kv.split("=", 1)
+            transport_kwargs[k] = v
+    transport_kwargs.setdefault("kind", args.transport)
+    if transport_kwargs.get("kind") == "qemu":
+        transport_kwargs.setdefault(
+            "kernel", str(REPO_ROOT / "tests" / "qemu_m33" / "qemu_m33.elf"))
+    hw = HardwareInterface(transport_kwargs=transport_kwargs)
     report = TestReport()
     runner = HILTestRunner(hardware=hw, report=report)
 
@@ -588,18 +630,19 @@ def main():
         print(f"  HIL Dir: {HIL_DIR}")
         sys.exit(0)
 
-    if args.test:
+    if args.test or args.domain or args.all:
+        hw.open()  # 启动 transport (QEMU 进程 / 串口)
         runner.report.start_time = datetime.now(timezone.utc)
-        runner.run_single(args.test.upper())
-
-    elif args.domain:
-        domains = [d.strip().upper() for d in args.domain.split(",")]
-        runner.report.start_time = datetime.now(timezone.utc)
-        runner.run_domains(domains)
-
-    elif args.all:
-        runner.report.start_time = datetime.now(timezone.utc)
-        runner.run_all()
+        try:
+            if args.test:
+                runner.run_single(args.test.upper())
+            elif args.domain:
+                domains = [d.strip().upper() for d in args.domain.split(",")]
+                runner.run_domains(domains)
+            elif args.all:
+                runner.run_all()
+        finally:
+            hw.close()
 
     else:
         parser.print_help()

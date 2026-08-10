@@ -71,3 +71,12 @@ QEMU_M33_PASS
 
 Requires: `arm-none-eabi-gcc` (16.x), `qemu-system-arm` (11.x).
 FreeRTOS-Kernel V11 vendored under `third_party/`.
+
+## QEMU 版本兼容性
+
+- **验证版本**: QEMU 11.0.2 (mps2-an521) — `QEMU_M33_PASS` 正常输出。
+- **QEMU 6.2 (Ubuntu 22.04 apt)**: SysTick 中断不触发
+  (`Timer with period zero, disabling` 警告; 任务输出 `B:0:1`/`A:0` 后卡在
+  vTaskDelay, tick 永不推进)。已尝试 configCPU_CLOCK_HZ 20MHz/25MHz 均无效,
+  根因疑为 6.2 的 mps2-an521 SysTick IRQ 路由 (secure-only CPU) 差异。
+  **SIL 环境请使用 QEMU ≥11.x** (CI 用容器固定版本)。

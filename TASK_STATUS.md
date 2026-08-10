@@ -32,8 +32,21 @@
 | E-8 | **icce_edge 规则引擎测试** | ✅ | 23.8% → **99.2%** (378 行)；59 用例: 规则增删改查/触发条件/action/cooldown/priority/状态机/timer/条件树 |
 | E-9 | **SE050 SCP03 测试** | ✅ | 9.8% → **77.3%** (428 行)；16 用例: AES-128 FIPS-197/CMAC NIST 向量/SCP03 密钥派生/APDU 解析/错误分支 (内部函数 static, 测试 include 源文件; I2C mock 无数据, 会话成功路径不可达) |
 | E-10 | **SM2 密码实现修复 (真实缺陷)** | ✅ | crypto_utils.c: SM2_P/A 常数第 5/6 字颠倒 (G 不在曲线上)、fp_mul 蒙哥马利语义错配 (R/R2/μ 常数错)、fn_mul_reduce 截断约简、fp_inv/fp_exp/fn_inv 指数位序 (a^bitrev(e))、ec_point_dbl r==a 别名 bug；crypto_engine.c: crypto_sm2_key_exchange 缺 NULL 检查 (崩溃)。修复后 GB/T 32918.2 A.2 标准签名验签通过 |
-| E-11 | 待办: HIL 环境 + 烧录工具链 | 📋 | ROADMAP 2.4/2.5，需硬件
-| E-12 | **C 测试全量** | ✅ | **196 tests / 0 failures** (97 基线 + icce_edge 59 + 国密 24 + SCP03 16)
+| E-11 | **C 测试全量** | ✅ | **196 tests / 0 failures** (97 基线 + icce_edge 59 + 国密 24 + SCP03 16) |
+| E-12 | 待办: HIL 环境 + 烧录工具链 | 🔄 进行中 | 见下方 Phase 2.4/2.5 表格 |
+
+---
+
+## Phase 2.4 HIL / 2.5 烧录工具链（2026-08-10 晚，进行中）
+
+| # | 事项 | 状态 | 备注 |
+|:-:|:-----|:----:|:-----|
+| H-1 | **HIL transport 抽象** | ✅ | `tests/hil/transports.py`: QemuTransport (SIL) / SerialTransport (真机 UART) / JLinkTransport (烧录)；hil_runner HardwareInterface 可插拔 + `--transport` CLI + `query()` 协议；fake-qemu 单测 9/9 绿 |
+| H-2 | QEMU 6.2 SysTick 兼容 | ⚠️ 记录 | qemu_m33 在 QEMU 6.2 下 SysTick IRQ 不触发 (20/25MHz 均无效, 疑 secure-only 路由差异)；README 注明需 QEMU ≥11.x (CI 容器固定版本) |
+| H-3 | **固件签名/加密工具链** | ✅ | `embedded/firmware_toolchain/`: sign_firmware.py (ECDSA P-256) + verify_firmware.py (AES-256-GCM 解密验签) + fw_header.py (.ydk 包格式) + 17 单测全绿 (6 种篡改检测 + CLI 端到端)；SM2 算法位预留 |
+| H-4 | 待办: qemu 固件 HIL 命令通道 | 📋 | qemu_m33 main.c 加 UART RX 命令解析 (HIL:GET_VERSION 等) |
+| H-5 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) |
+| H-6 | 待办: 烧录工具 B2/B3 | 📋 | J-Link 脚本生成器 + 批次 manifest + 烧录日志 DB |
 
 ---
 
