@@ -11,7 +11,7 @@ let package = Package(
 
     dependencies: [
         // 本地路径引用 yuleDKCS SDK（发布后替换为 git 依赖）
-        .package(name: "yuleDKCS-SDK", path: "../../../mobile/ios")
+        .package(name: "yuleDKCS-SDK", path: "../../../../mobile/ios")
     ],
 
     targets: [

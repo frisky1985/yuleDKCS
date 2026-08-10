@@ -15,7 +15,7 @@ import XCTest
 /// URLSession transport 不可注入, 因此按 YDKHubClient+Remote.swift::sendCommand
 /// 的逐字段结构构造 body, 经 AnyEncodable.json + JSONEncoder 编码后验证 wire
 /// 字节形状; 真实 HTTP 方法/路径由 Android MockWebServer 测试与
-/// scripts/sdk-hub-contract-e2e.sh 覆盖。
+/// backend/scripts/sdk-hub-contract-e2e.sh 覆盖。
 final class YDKHubClientRemoteControlContractTests: XCTestCase {
 
     /// 按 sendCommand 的真实编码路径 ([String: Any] → AnyEncodable.json → JSONEncoder)

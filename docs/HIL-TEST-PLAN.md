@@ -622,25 +622,25 @@ sleep 10
 cd hil/tests
 
 # 5.1 NFC 场景
-pytest test_nfc.py -v --alluredir=../reports/nfc
+pytest test_nfc.py -v --alluredir=reports/nfc
 
 # 5.2 UWB 场景
-pytest test_uwb.py -v --alluredir=../reports/uwb
+pytest test_uwb.py -v --alluredir=reports/uwb
 
 # 5.3 钥匙生命周期
-pytest test_key_lifecycle.py -v --alluredir=../reports/keys
+pytest test_key_lifecycle.py -v --alluredir=reports/keys
 
 # 5.4 安全攻击
-pytest test_security.py -v --alluredir=../reports/security
+pytest test_security.py -v --alluredir=reports/security
 
 # 5.5 压力测试 (简短版 10min)
-pytest test_stress.py -v -k "short" --alluredir=../reports/stress
+pytest test_stress.py -v -k "short" --alluredir=reports/stress
 
 # 6. 生成报告
-allure generate ../reports -o ../reports/html --clean
+allure generate ../reports -o reports/html --clean
 
 # 7. 生成摘要
-python ../scripts/generate_summary.py
+python scripts/generate_summary.py
 
 echo "=== HIL 测试完成 ==="
 ```

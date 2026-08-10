@@ -24,7 +24,7 @@ migrate:
 	go run backend/hub/migrations/run_migrations.go
 
 init-db:
-	bash scripts/init-db.sh
+	bash backend/scripts/init-db.sh
 
 # ---- Docker development targets ----
 

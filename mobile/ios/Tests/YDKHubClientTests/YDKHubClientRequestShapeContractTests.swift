@@ -11,7 +11,7 @@ import XCTest
 /// 说明: 本测试不修改 SDK 源码。iOS SDK 的 URLSession transport 不可注入,
 /// 因此通过 @testable 直接验证 bindKey/acceptShare 构造的 body 字典经
 /// AnyEncodable + JSONEncoder 编码后的字节形状 —— 这正是 request() 实际
-/// 发送到 Hub 的内容。端到端 wire 验证由 scripts/sdk-hub-contract-e2e.sh 覆盖。
+/// 发送到 Hub 的内容。端到端 wire 验证由 backend/scripts/sdk-hub-contract-e2e.sh 覆盖。
 final class YDKHubClientRequestShapeContractTests: XCTestCase {
 
     /// 按 SDK request() 的真实编码路径 ([String: String] → AnyEncodable → JSONEncoder)

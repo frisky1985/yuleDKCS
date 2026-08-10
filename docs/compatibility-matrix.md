@@ -2,7 +2,7 @@
 
 > **文档版本**: 1.0.0  
 > **创建日期**: 2026-07-16  
-> **依据**: [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)、[SECURITY_WHITEPAPER.md](SECURITY_WHITEPAPER.md)、[digital-key-expert-review.md](../reports/digital-key-expert-review.md)  
+> **依据**: [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)、[SECURITY_WHITEPAPER.md](SECURITY_WHITEPAPER.md)、[digital-key-expert-review.md](reports/digital-key-expert-review.md)  
 > **范围**: 覆盖车端（Embedded C）、移动端（Android SDK / iOS SDK）、云端（Go / Java）全平台
 
 ---
@@ -22,7 +22,7 @@
 - CCC Digital Key 3.0：Car Connectivity Consortium 规范，NFC OOB + BLE GATT 0xFFD1 + UWB FiRa
 - ICCOA DK 3.0/DK 4.0：ICCE 开放联盟规范，BLE UUID 0xFEF5
 
-> 来源：[专家评审 §1 - 协议标准符合性](../reports/digital-key-expert-review.md) | [架构设计 §1.2 核心特性](SYSTEM_ARCHITECTURE.md#12-核心特性)
+> 来源：[专家评审 §1 - 协议标准符合性](reports/digital-key-expert-review.md) | [架构设计 §1.2 核心特性](SYSTEM_ARCHITECTURE.md#12-核心特性)
 
 ---
 
@@ -46,7 +46,7 @@
 | NFC 读卡器 | ST ST25R501 | SPI / I²C |
 | 安全元件 | NXP SE050 | I²C (SCP03 安全通道) |
 
-> 来源：[架构设计 §1.3 技术栈](SYSTEM_ARCHITECTURE.md#13-技术栈) | [安全白皮书 §6.2 Key ID 分配](SECURITY_WHITEPAPER.md#62-key-id-allocation) | [专家评审 §2 - 三端架构合理性](../reports/digital-key-expert-review.md)
+> 来源：[架构设计 §1.3 技术栈](SYSTEM_ARCHITECTURE.md#13-技术栈) | [安全白皮书 §6.2 Key ID 分配](SECURITY_WHITEPAPER.md#62-key-id-allocation) | [专家评审 §2 - 三端架构合理性](reports/digital-key-expert-review.md)
 
 ---
 
@@ -75,7 +75,7 @@
 | 错误码 | `DkError` | `DigitalKeyError` |
 | 异步模型 | Kotlin Coroutines | Combine |
 
-> 来源：[架构设计 §3.2 手机端架构](SYSTEM_ARCHITECTURE.md#32-手机端架构-frontend) | [专家评审 §3 安全性](../reports/digital-key-expert-review.md)
+> 来源：[架构设计 §3.2 手机端架构](SYSTEM_ARCHITECTURE.md#32-手机端架构-frontend) | [专家评审 §3 安全性](reports/digital-key-expert-review.md)
 
 ---
 
@@ -125,7 +125,7 @@
 | **Jaeger** | 分布式追踪 + 性能分析 | ✅ 链路追踪集成 |
 | **Cert-Manager** | Let's Encrypt 自动证书管理 | ✅ 集成在 Helm Chart |
 
-> 来源：[架构设计 §7 部署架构](SYSTEM_ARCHITECTURE.md#7-部署架构) | [安全白皮书 §7.2 数据库加密](SECURITY_WHITEPAPER.md#72-database-encryption) | [专家评审 §4 - 可生产性](../reports/digital-key-expert-review.md)
+> 来源：[架构设计 §7 部署架构](SYSTEM_ARCHITECTURE.md#7-部署架构) | [安全白皮书 §7.2 数据库加密](SECURITY_WHITEPAPER.md#72-database-encryption) | [专家评审 §4 - 可生产性](reports/digital-key-expert-review.md)
 
 ---
 
@@ -173,7 +173,7 @@
 | Cross-platform E2E | 手机↔车端↔云端 | Appium/Detox | ⛔ **缺失** | 专家建议 P2 实施 |
 | 安全测试 | 多端 | OWASP ZAP + Burp + Fuzz | ⚠️ 基础覆盖 | Fuzz 1 个 (BERTLV 解码器) |
 
-> 来源：[专家评审 §4 - 可生产性](../reports/digital-key-expert-review.md) | [安全白皮书 §10.2 安全测试节奏](SECURITY_WHITEPAPER.md#102-security-testing-cadence)
+> 来源：[专家评审 §4 - 可生产性](reports/digital-key-expert-review.md) | [安全白皮书 §10.2 安全测试节奏](SECURITY_WHITEPAPER.md#102-security-testing-cadence)
 
 ---
 
@@ -205,7 +205,7 @@
 | 🟠 **P1 High** | 投产前建议解决 | ≤ 投产前 | TLS Pinning、交叉编译 CI、DK40 HMAC 对齐 |
 | 🟡 **P2 Medium** | 投产后 3 个月内 | ≤ 3 个月 | 灰度发布、TSP 真机联调、跨平台 E2E |
 
-> 来源：[专家评审 - 最终建议](../reports/digital-key-expert-review.md#-最终建议)
+> 来源：[专家评审 - 最终建议](reports/digital-key-expert-review.md#-最终建议)
 
 ---
 
@@ -222,7 +222,7 @@
 | 密钥层级 | 5 级（RK → MK → DK → SSK → SK） | 3–4 级常见 |
 | 测试覆盖 | 多层级多框架（Unity/Espresso/XCTest/Go test） | 差异大 |
 
-> 来源：[专家评审 - 行业对标](../reports/digital-key-expert-review.md#行业对标)
+> 来源：[专家评审 - 行业对标](reports/digital-key-expert-review.md#行业对标)
 
 ---
 
@@ -234,4 +234,4 @@
 
 ---
 
-*本文档应与 [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)、[SECURITY_WHITEPAPER.md](SECURITY_WHITEPAPER.md) 及 [专家评审报告](../reports/digital-key-expert-review.md) 配套阅读。*
+*本文档应与 [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)、[SECURITY_WHITEPAPER.md](SECURITY_WHITEPAPER.md) 及 [专家评审报告](reports/digital-key-expert-review.md) 配套阅读。*

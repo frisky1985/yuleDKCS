@@ -11,7 +11,7 @@ proto 源文件通过 Gradle 的 protobuf 插件在 `sdk/` 模块的 `src/main/p
 cd mobile/android/sdk/src/main/proto
 ln -sf ../../../../../../api/v1/hub.proto .
 ln -sf ../../../../../../api/relay/v1/relay.proto .
-ln -sf ../../../../../../api/sdk/v1/sdk.proto .
+ln -sf ../../../../../../backend/cloud/protocol/sdk/v1/sdk.proto .
 ```
 
 编译时自动生成到 `build/generated/source/proto/`。
@@ -26,7 +26,7 @@ protoc \
   -I=../../api \
   ../../api/v1/hub.proto \
   ../../api/relay/v1/relay.proto \
-  ../../api/sdk/v1/sdk.proto
+  ../../backend/cloud/protocol/sdk/v1/sdk.proto
 ```
 
 ## 注意

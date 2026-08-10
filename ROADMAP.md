@@ -40,7 +40,7 @@
 
 ### 交付物
 
-- [ ] 渗透测试正式报告 (`reports/pentest-final-report.md`)
+- [ ] 渗透测试正式报告 (`docs/reports/pentest-final-report.md`)
 - [ ] SLA 文档定稿 (`docs/SLA.md`)
 - [ ] strPtr nil safety 修复 + 测试通过
 - [ ] DKCS + Hub 全覆盖测试 (cmd/ 入口 ≥30%)
@@ -125,9 +125,9 @@
 
 ### 交付物
 
-- [ ] `reports/embedded-p0-cleared.md` — P0 清零报告
-- [ ] `reports/misra-compliance-report.md` — MISRA 合规报告
-- [ ] `reports/hil-validation-report.md` — HIL 验证报告
+- [ ] `docs/reports/embedded-p0-cleared.md` — P0 清零报告
+- [ ] `docs/reports/misra-compliance-report.md` — MISRA 合规报告
+- [ ] `docs/reports/hil-validation-report.md` — HIL 验证报告
 - [ ] C 单元测试框架搭建完成 (Unity/Ceedling)
 - [ ] `docs/FLASHING-GUIDE.md` — 生产烧录指南
 - [ ] 嵌入式 CI pipeline (C build + lint + unit test)
@@ -194,7 +194,7 @@
 - [ ] `docs/EOL-TEST-GUIDE.md` — 产线测试指南
 - [ ] ICCE 认证证书
 - [ ] CCC 认证证书
-- [ ] `reports/production-pilot-report.md` — 首批量产报告
+- [ ] `docs/reports/production-pilot-report.md` — 首批量产报告
 - [ ] 生产质量管理文档包
 
 ### 验收标准
@@ -245,7 +245,7 @@
 
 #### 4.4 持续合规体系
 - 自动化合规测试 CI 集成 (定期执行)
-- 合规趋势报告 (`reports/compliance-trend.md`)
+- 合规趋势报告 (`docs/reports/compliance-trend.md`)
 - 标准版本跟踪 (CCC DK R4 / ICCOA DK 5.0)
 - 渗透测试半年度例行
 

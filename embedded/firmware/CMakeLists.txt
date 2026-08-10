@@ -25,21 +25,21 @@ add_subdirectory(hal)
 
 # ── Protocol Stacks ──────────────────────────────────────────
 if(BUILD_CCC)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/../embedded/ccc_protocol ccc)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/../ccc_protocol ccc)
     target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../embedded/ccc_protocol/include)
+        ${CMAKE_SOURCE_DIR}/../ccc_protocol/include)
 endif()
 
 if(BUILD_ICCE)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/../embedded/icce_protocol icce)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/../icce_protocol icce)
     target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../embedded/icce_protocol/include)
+        ${CMAKE_SOURCE_DIR}/../icce_protocol/include)
 endif()
 
 if(BUILD_ICCOA)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/../embedded/iccoa_protocol iccoa)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/../iccoa_protocol iccoa)
     target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../embedded/iccoa_protocol/include)
+        ${CMAKE_SOURCE_DIR}/../iccoa_protocol/include)
 endif()
 
 # ── Application ──────────────────────────────────────────────

@@ -14,11 +14,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HUB_PROTO_DIR="$ROOT/backend/cloud/hub/api"
-SDK_PROTO_DIR="$ROOT/api/sdk/v1"
+SDK_PROTO_DIR="$ROOT/backend/cloud/protocol/sdk/v1"
 
 ios_gen() {
     echo "[DEPRECATED] iOS SDK 使用 HTTP/JSON，不生成 gRPC stubs"
-    echo "  Proto 合约参考: api/sdk/v1/sdk.proto"
+    echo "  Proto 合约参考: backend/cloud/protocol/sdk/v1/sdk.proto"
     echo "  Proto 合约参考: $HUB_PROTO_DIR/v1/hub.proto"
     echo "  Proto 合约参考: $HUB_PROTO_DIR/relay/v1/relay.proto"
     echo "  如需手动生成消息类型（仅供文档参考）:"

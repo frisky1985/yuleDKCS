@@ -1,6 +1,6 @@
 # yuleDKCS CI 配置 — yuleOSH 工具链
 # 覆盖: Go 后端 (backend/dkcs + backend/cloud/hub) + Embedded C MISRA + Java 适配器
-# 配合 misra-rules.yaml + .cppcheck_suppressions 使用
+# 配合 embedded/misra-rules.yaml + .cppcheck_suppressions 使用
 project:
   language: mixed   # go | python | c | mixed — 覆盖自动检测（yuleDKCS 是 Go+C+Java 混合）
 
@@ -31,7 +31,7 @@ misra:
   active_profile: safety
   # rule_texts_path 必须为空 — misra.py 的 --rule-texts 只接受 MISRA 文档
   # Appendix A 文本格式，YAML 会导致 "rule-texts-file not found" 全量误报。
-  # misra-rules.yaml 仍用于报告增强（load_rule_definitions），但不传给 cppcheck。
+  # embedded/misra-rules.yaml 仍用于报告增强（load_rule_definitions），但不传给 cppcheck。
   rule_texts_path: ""
   # 扫描目录: yuleDKCS 的 C 代码在 embedded/ (非默认 src/benchmark/ref)
   scan_dirs: [embedded]

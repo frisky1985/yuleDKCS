@@ -35,7 +35,7 @@ protoc \
   --grpc-swift_opt=Visibility=Public \
   --grpc-swift_out=./Sources/YDKProto \
   -I=../../../../api/sdk/v1 \
-  ../../../../api/sdk/v1/sdk.proto
+  ../../../../backend/cloud/protocol/sdk/v1/sdk.proto
 ```
 
 ## 输出

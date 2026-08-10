@@ -18,37 +18,37 @@ jobs:
 
       - name: Run coverage and generate trend report
         run: |
-          mkdir -p reports
-          echo "# Coverage Trend Report" > reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
+          mkdir -p docs/reports
+          echo "# Coverage Trend Report" > docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
 
           TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-          echo "**Generated:** $TIMESTAMP" >> reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
-          echo "## Summary" >> reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
+          echo "**Generated:** $TIMESTAMP" >> docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
+          echo "## Summary" >> docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
 
           # dkcs
-          echo "### dkcs" >> reports/coverage-trend.md
-          echo '```' >> reports/coverage-trend.md
-          go test -coverprofile=/tmp/dkcs-mon.out ./backend/dkcs/... 2>&1 | grep "coverage:" >> reports/coverage-trend.md
-          echo '```' >> reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
+          echo "### dkcs" >> docs/reports/coverage-trend.md
+          echo '```' >> docs/reports/coverage-trend.md
+          go test -coverprofile=/tmp/dkcs-mon.out ./backend/dkcs/... 2>&1 | grep "coverage:" >> docs/reports/coverage-trend.md
+          echo '```' >> docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
 
           # hub (exclude proto & cmd, matching CI gate)
-          echo "### hub" >> reports/coverage-trend.md
-          echo '```' >> reports/coverage-trend.md
+          echo "### hub" >> docs/reports/coverage-trend.md
+          echo '```' >> docs/reports/coverage-trend.md
           cd backend/cloud/hub
-          go test -coverprofile=/tmp/hub-mon.out -covermode=atomic $(go list ./... | grep -v api/v1 | grep -v cmd/) 2>&1 | grep "coverage:" >> reports/coverage-trend.md
+          go test -coverprofile=/tmp/hub-mon.out -covermode=atomic $(go list ./... | grep -v api/v1 | grep -v cmd/) 2>&1 | grep "coverage:" >> docs/reports/coverage-trend.md
           cd ../../..
-          echo '```' >> reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
+          echo '```' >> docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
 
           # Overall totals (CI-gate semantics)
-          echo "### Gate Totals" >> reports/coverage-trend.md
-          echo "" >> reports/coverage-trend.md
-          echo '| Module | Coverage | Threshold | Status |' >> reports/coverage-trend.md
-          echo '|--------|----------|-----------|--------|' >> reports/coverage-trend.md
+          echo "### Gate Totals" >> docs/reports/coverage-trend.md
+          echo "" >> docs/reports/coverage-trend.md
+          echo '| Module | Coverage | Threshold | Status |' >> docs/reports/coverage-trend.md
+          echo '|--------|----------|-----------|--------|' >> docs/reports/coverage-trend.md
 
           dkcs_total=$(go tool cover -func=/tmp/dkcs-mon.out | grep 'total:' | awk '{print $3}')
           hub_total=$(go tool cover -func=/tmp/hub-mon.out | grep 'total:' | awk '{print $3}')
@@ -57,5 +57,5 @@ jobs:
           [ "$dkcs_pass" = "1" ] && dkcs_status="✅ PASS" || dkcs_status="❌ FAIL"
           [ "$hub_pass" = "1" ] && hub_status="✅ PASS" || hub_status="❌ FAIL"
 
-          echo "| dkcs | $dkcs_total | 70% | $dkcs_status |" >> reports/coverage-trend.md
-          echo "| hub  | $hub_total | 70% | $hub_status |" >> reports/coverage-trend.md
+          echo "| dkcs | $dkcs_total | 70% | $dkcs_status |" >> docs/reports/coverage-trend.md
+          echo "| hub  | $hub_total | 70% | $hub_status |" >> docs/reports/coverage-trend.md

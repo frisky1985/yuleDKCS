@@ -7,8 +7,8 @@
 
 | 工程 | 路径 | 接入方式 | 验证 |
 |:-----|:-----|:---------|:-----|
-| iOS DemoApp | `ios/DemoApp/` | SwiftPM path 依赖 `../../../mobile/ios` | `swiftc -parse Sources/DemoApp/main.swift` |
-| Android DemoApp | `android/` | Gradle `settings.gradle.kts` 引用 `../../mobile/android/sdk` module | 静态审查（禁止 gradle/kotlinc，与 SDK 验证规则一致） |
+| iOS DemoApp | `ios/DemoApp/` | SwiftPM path 依赖 `../../../../mobile/ios` | `swiftc -parse Sources/DemoApp/main.swift` |
+| Android DemoApp | `android/` | Gradle `settings.gradle.kts` 引用 `../../../mobile/android/sdk` module | 静态审查（禁止 gradle/kotlinc，与 SDK 验证规则一致） |
 
 ## iOS
 
@@ -22,7 +22,7 @@ swift build
 
 要点：
 
-- `Package.swift` 以 `.package(name: "yuleDKCS-SDK", path: "../../../mobile/ios")` 本地引用，
+- `Package.swift` 以 `.package(name: "yuleDKCS-SDK", path: "../../../../mobile/ios")` 本地引用，
   依赖 SDK 的三个 library 产物：`YDKHubClient` / `YDKKeyManager` / `YDKBLEManager`。
 - `Sources/DemoApp/main.swift` 演示：初始化 → 绑定/查询钥匙 → 远程控车 →
   BLE 扫描/连接/解锁 → 分享（分享码 + CCC Mailbox）→ 离线授权 → UWB → NFC。

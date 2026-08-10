@@ -168,7 +168,7 @@ Each commit should be a single logical change. Split large features into multipl
 Before submitting a PR, ensure:
 
 - [ ] Code follows the [coding standards](#coding-standards)
-- [ ] Tests pass (`./scripts/run-tests.sh`)
+- [ ] Tests pass (`./backend/scripts/run-tests.sh`)
 - [ ] New code has adequate test coverage (≥80%)
 - [ ] Documentation updated if applicable
 - [ ] Commit messages follow [conventional commits](#commit-messages)

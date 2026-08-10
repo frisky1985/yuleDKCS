@@ -41,15 +41,15 @@ jobs:
         run: |
           # 验证所有 proto 文件编译通过（不真正生成代码）
           protoc \
-            --proto_path=api \
-            --proto_path=api/v1 \
-            --proto_path=api/relay/v1 \
-            --proto_path=api/sdk/v1 \
+            --proto_path=backend/cloud/hub/api \
+            --proto_path=backend/cloud/hub/api/v1 \
+            --proto_path=backend/cloud/hub/api/relay/v1 \
+            --proto_path=backend/cloud/protocol/sdk/v1 \
             --include_imports \
             --descriptor_set_out=/dev/null \
-            api/v1/hub.proto \
-            api/relay/v1/relay.proto \
-            api/sdk/v1/sdk.proto
+            backend/cloud/hub/api/v1/hub.proto \
+            backend/cloud/hub/api/relay/v1/relay.proto \
+            backend/cloud/protocol/sdk/v1/sdk.proto
           echo "✓ All proto files compile"
 
       - name: Verify code generation
@@ -59,16 +59,18 @@ jobs:
           protoc \
             --swift_out=/tmp/proto-gen-check \
             --grpc-swift_out=/tmp/proto-gen-check \
-            -I=api \
-            api/v1/hub.proto api/relay/v1/relay.proto api/sdk/v1/sdk.proto
+            -I=backend/cloud/hub/api \
+            -I=backend/cloud/protocol/sdk/v1 \
+            backend/cloud/hub/api/v1/hub.proto backend/cloud/hub/api/relay/v1/relay.proto backend/cloud/protocol/sdk/v1/sdk.proto
           echo "✓ Swift code generation OK"
 
           # Kotlin
           protoc \
             --kotlin_out=/tmp/proto-gen-check \
             --grpc-kotlin_out=/tmp/proto-gen-check \
-            -I=api \
-            api/v1/hub.proto api/relay/v1/relay.proto api/sdk/v1/sdk.proto
+            -I=backend/cloud/hub/api \
+            -I=backend/cloud/protocol/sdk/v1 \
+            backend/cloud/hub/api/v1/hub.proto backend/cloud/hub/api/relay/v1/relay.proto backend/cloud/protocol/sdk/v1/sdk.proto
           echo "✓ Kotlin code generation OK"
 
           echo "Generated files:"
