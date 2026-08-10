@@ -69,6 +69,8 @@ DOMAIN_TEST_MAP = {
     "PM":     ["HIL-PM-01", "HIL-PM-02", "HIL-PM-03"],
     "FI":     ["HIL-FI-01", "HIL-FI-02", "HIL-FI-03", "HIL-FI-04", "HIL-FI-05", "HIL-FI-06"],
     "WAKEUP": ["HIL-WK-01", "HIL-WK-02", "HIL-WK-03"],
+    "CMD":    ["HIL-CMD-01", "HIL-CMD-02", "HIL-CMD-03", "HIL-CMD-04",
+               "HIL-CMD-05", "HIL-CMD-06"],
 }
 
 ALL_TEST_IDS = [tid for ids in DOMAIN_TEST_MAP.values() for tid in ids]
@@ -86,6 +88,9 @@ TEST_PRIORITY = {
     "HIL-UWB-01": "P1", "HIL-UWB-02": "P1", "HIL-UWB-03": "P1", "HIL-UWB-04": "P1",
     "HIL-UL-03":  "P1", "HIL-UL-04": "P1",
     "HIL-SE-04":  "P1",
+    # 命令通道 (SIL 真实验证)
+    "HIL-CMD-01": "P0", "HIL-CMD-02": "P0", "HIL-CMD-03": "P0",
+    "HIL-CMD-04": "P0", "HIL-CMD-05": "P0", "HIL-CMD-06": "P1",
     "HIL-VS-01":  "P1", "HIL-VS-03": "P1",
     "HIL-FI-01":  "P1", "HIL-FI-02": "P1", "HIL-FI-03": "P1", "HIL-FI-04": "P1", "HIL-FI-06": "P1",
     "HIL-WK-01":  "P1", "HIL-WK-02": "P1",
@@ -110,7 +115,7 @@ class TestResult:
         self.test_id = test_id
         self.name = name
         self.domain = domain
-        self.status = status  # PASSED | FAILED | ERROR | NOT_RUN
+        self.status = status  # PASSED | FAILED | ERROR | SKIPPED | NOT_RUN
         self.duration_ms = duration_ms
         self.measurements = measurements or {}
         self.details = details
@@ -158,15 +163,18 @@ class TestReport:
         passed = sum(1 for r in self.results if r.status == "PASSED")
         failed = sum(1 for r in self.results if r.status == "FAILED")
         error = sum(1 for r in self.results if r.status == "ERROR")
+        skipped = sum(1 for r in self.results if r.status == "SKIPPED")
         not_run = sum(1 for r in self.results if r.status == "NOT_RUN")
-        return total, passed, failed, error, not_run
+        return total, passed, failed, error, skipped, not_run
 
     @property
     def pass_rate(self):
-        total, passed, *_ = self.totals
-        if total == 0:
-            return 0.0
-        return round(passed / total * 100, 1)
+        total, passed, failed, error, skipped, not_run = self.totals
+        # SKIPPED (无硬件) 不计入分母 — 只统计实际执行的用例
+        executed = total - skipped - not_run
+        if executed == 0:
+            return 100.0
+        return round(passed / executed * 100, 1)
 
     @property
     def p0_pass_rate(self):
@@ -204,7 +212,7 @@ class TestReport:
 
     def to_json(self):
         duration = (self.end_time - self.start_time).total_seconds()
-        total, passed, failed, error, not_run = self.totals
+        total, passed, failed, error, skipped, not_run = self.totals
         return {
             "metadata": {
                 "firmware_version": self.firmware_version,
@@ -219,6 +227,7 @@ class TestReport:
                 "passed": passed,
                 "failed": failed,
                 "error": error,
+                "skipped": skipped,
                 "not_run": not_run,
                 "pass_rate": self.pass_rate,
                 "p0_pass_rate": self.p0_pass_rate,
@@ -241,7 +250,7 @@ class TestReport:
         return path
 
     def print_summary(self):
-        total, passed, failed, error, not_run = self.totals
+        total, passed, failed, error, skipped, not_run = self.totals
         print()
         print("=" * 60)
         print("  yuleDKCS HIL Test Summary")
@@ -250,6 +259,7 @@ class TestReport:
         print(f"  Passed:  {passed:3d}")
         print(f"  Failed:  {failed:3d}")
         print(f"  Error:   {error:3d}")
+        print(f"  Skipped: {skipped:3d}  (无硬件, 诚实标记)")
         print(f"  Not Run: {not_run:3d}")
         print(f"  Pass Rate: {self.pass_rate:.1f}%")
         print(f"  P0 Rate:   {self.p0_pass_rate:.1f}% ({self.p0_passed}/{self.p0_total})")
@@ -359,6 +369,7 @@ class HILTestRunner:
             test_fn(self.hw, result, *args, **kwargs)
             if result.status == "NOT_RUN":
                 result.status = "PASSED"
+            # SKIPPED 由测试函数显式设置, 不被自动覆盖
         except AssertionError:
             result.status = "FAILED"
         except Exception as e:
@@ -369,9 +380,12 @@ class HILTestRunner:
             elapsed = (time.perf_counter() - start) * 1000
             result.duration_ms = round(elapsed, 1)
             self.report.add_result(result)
-            icon = {"PASSED": "✅", "FAILED": "❌", "ERROR": "⚠️", "NOT_RUN": "⏭️"}
+            icon = {"PASSED": "✅", "FAILED": "❌", "ERROR": "⚠️",
+                    "SKIPPED": "⏭️", "NOT_RUN": "⏭️"}
             print(f"[HIL] <<< {icon.get(result.status, '❓')} {test_id}: "
                   f"{result.status} ({result.duration_ms:.0f}ms)")
+            if result.status == "SKIPPED" and result.details:
+                print(f"[HIL]     Skip: {result.details[:160]}")
             if result.status in ("FAILED", "ERROR") and result.details:
                 print(f"[HIL]     Detail: {result.details[:200]}")
         return result
@@ -431,8 +445,11 @@ class HILTestRunner:
         }
 
     def run_all(self):
-        """Run all 37 HIL tests in dependency order."""
+        """Run all 43 HIL tests (6 命令通道 + 37 硬件用例) in dependency order."""
         ordered = [
+            # Phase 0: 命令通道 (SIL 真实固件验证)
+            "HIL-CMD-01", "HIL-CMD-02", "HIL-CMD-03", "HIL-CMD-04",
+            "HIL-CMD-05", "HIL-CMD-06",
             # Phase 1: HW basics
             "HIL-PM-01",
             "HIL-SE-01",

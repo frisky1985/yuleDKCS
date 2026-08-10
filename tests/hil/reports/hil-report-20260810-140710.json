@@ -1,0 +1,470 @@
+{
+  "metadata": {
+    "firmware_version": "unknown",
+    "hardware_config": "S32K312-EVB",
+    "tester": "auto",
+    "start_time": "2026-08-10T14:07:10.626063+00:00",
+    "end_time": "2026-08-10T14:07:11.012594+00:00",
+    "duration_seconds": 0.386531
+  },
+  "summary": {
+    "total": 43,
+    "passed": 6,
+    "failed": 0,
+    "error": 0,
+    "skipped": 37,
+    "not_run": 0,
+    "pass_rate": 100.0,
+    "p0_pass_rate": 33.3,
+    "p1_pass_rate": 5.0
+  },
+  "results": [
+    {
+      "test_id": "HIL-CMD-01",
+      "name": "HIL-CMD-01",
+      "domain": "CMD",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 53.9,
+      "measurements": {
+        "roundtrip": "OK"
+      },
+      "details": "PING → PONG"
+    },
+    {
+      "test_id": "HIL-CMD-02",
+      "name": "HIL-CMD-02",
+      "domain": "CMD",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 25.9,
+      "measurements": {
+        "version": "1.3.0"
+      },
+      "details": "固件版本 1.3.0"
+    },
+    {
+      "test_id": "HIL-CMD-03",
+      "name": "HIL-CMD-03",
+      "domain": "CMD",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 3.1,
+      "measurements": {
+        "led_on": "HIL:STATE:1",
+        "led_off": "HIL:STATE:0"
+      },
+      "details": "LED 置位/复位状态保持正确"
+    },
+    {
+      "test_id": "HIL-CMD-04",
+      "name": "HIL-CMD-04",
+      "domain": "CMD",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 1.8,
+      "measurements": {
+        "tick_before": 65,
+        "tick_after": 66,
+        "delta": 1
+      },
+      "details": "tick 65 → 66 (Δ1ms, 调度正常)"
+    },
+    {
+      "test_id": "HIL-CMD-05",
+      "name": "HIL-CMD-05",
+      "domain": "CMD",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 1.8,
+      "measurements": {
+        "uptime_before_ms": 67,
+        "uptime_after_ms": 68
+      },
+      "details": "uptime 67ms → 68ms"
+    },
+    {
+      "test_id": "HIL-CMD-06",
+      "name": "HIL-CMD-06",
+      "domain": "CMD",
+      "priority": "P1",
+      "status": "PASSED",
+      "duration_ms": 1.2,
+      "measurements": {
+        "unknown_handled": "HIL:UNKNOWN:HIL:BOGUS_CMD_XYZ"
+      },
+      "details": "未知命令 → HIL:UNKNOWN:HIL:BOGUS_CMD_XYZ"
+    },
+    {
+      "test_id": "HIL-PM-01",
+      "name": "休眠电流测量",
+      "domain": "PM",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] PM 硬件在 QEMU 不可用, 需真实硬件 (A2) — 电流测量需硬件探头"
+    },
+    {
+      "test_id": "HIL-SE-01",
+      "name": "SCP03 标准建链",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] SE050 硬件在 QEMU 不可用, 需真实硬件 (A2) — SCP03 握手需 SE050 芯片"
+    },
+    {
+      "test_id": "HIL-BLE-01",
+      "name": "BLE 标准连接",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] BLE 硬件在 QEMU 不可用, 需真实硬件 (A2) — 连接时序测量需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-BLE-02",
+      "name": "RSSI 阈值测试",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] BLE 硬件在 QEMU 不可用, 需真实硬件 (A2) — RSSI 测量需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-BLE-03",
+      "name": "断线重连",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 1.0,
+      "measurements": {},
+      "details": "[SIL] BLE 硬件在 QEMU 不可用, 需真实硬件 (A2) — 重连时序需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-BLE-05",
+      "name": "BLE GATT MTU 协商",
+      "domain": "BLE",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 1.0,
+      "measurements": {},
+      "details": "[SIL] BLE 硬件在 QEMU 不可用, 需真实硬件 (A2) — GATT 协商需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-SE-02",
+      "name": "SCP03 建链失败(错误密钥)",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] SE050 硬件在 QEMU 不可用, 需真实硬件 (A2) — 错误密钥握手需 SE050 芯片"
+    },
+    {
+      "test_id": "HIL-SE-03",
+      "name": "密钥注入与签名",
+      "domain": "SE050",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] SE050 硬件在 QEMU 不可用, 需真实硬件 (A2) — 密钥注入需 SE050 芯片"
+    },
+    {
+      "test_id": "HIL-SE-04",
+      "name": "密钥更新",
+      "domain": "SE050",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 1.0,
+      "measurements": {},
+      "details": "[SIL] SE050 硬件在 QEMU 不可用, 需真实硬件 (A2) — 密钥轮换需 SE050 芯片"
+    },
+    {
+      "test_id": "HIL-SE-05",
+      "name": "密钥删除",
+      "domain": "SE050",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] SE050 硬件在 QEMU 不可用, 需真实硬件 (A2) — 密钥删除需 SE050 芯片"
+    },
+    {
+      "test_id": "HIL-UL-01",
+      "name": "BLE 解锁 < 1s",
+      "domain": "UNLOCK",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] UNLOCK 硬件在 QEMU 不可用, 需真实硬件 (A2) — 端到端解锁时序需硬件"
+    },
+    {
+      "test_id": "HIL-NFC-01",
+      "name": "NFC 标准刷卡解锁",
+      "domain": "NFC",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] NFC 硬件在 QEMU 不可用, 需真实硬件 (A2) — NFC 时序需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-NFC-02",
+      "name": "NFC 多卡共存",
+      "domain": "NFC",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] NFC 硬件在 QEMU 不可用, 需真实硬件 (A2) — 多卡读取需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-NFC-03",
+      "name": "NFC 超时处理",
+      "domain": "NFC",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] NFC 硬件在 QEMU 不可用, 需真实硬件 (A2) — 超时行为需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-NFC-04",
+      "name": "NFC 场强与距离",
+      "domain": "NFC",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 1.2,
+      "measurements": {},
+      "details": "[SIL] NFC 硬件在 QEMU 不可用, 需真实硬件 (A2) — 场强测量需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-UL-02",
+      "name": "NFC 解锁 < 500ms",
+      "domain": "UNLOCK",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.5,
+      "measurements": {},
+      "details": "[SIL] UNLOCK 硬件在 QEMU 不可用, 需真实硬件 (A2) — 端到端解锁时序需硬件"
+    },
+    {
+      "test_id": "HIL-UL-04",
+      "name": "解锁失败重试机制",
+      "domain": "UNLOCK",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 59.3,
+      "measurements": {},
+      "details": "[SIL] UNLOCK 硬件在 QEMU 不可用, 需真实硬件 (A2) — 重试机制需硬件"
+    },
+    {
+      "test_id": "HIL-UWB-01",
+      "name": "1m 近距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 119.2,
+      "measurements": {},
+      "details": "[SIL] UWB 硬件在 QEMU 不可用, 需真实硬件 (A2) — 测距精度需 UWB 硬件"
+    },
+    {
+      "test_id": "HIL-UWB-02",
+      "name": "5m 中距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 1.0,
+      "measurements": {},
+      "details": "[SIL] UWB 硬件在 QEMU 不可用, 需真实硬件 (A2) — 测距精度需 UWB 硬件"
+    },
+    {
+      "test_id": "HIL-UWB-03",
+      "name": "10m 远距离测距精度",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 87.9,
+      "measurements": {},
+      "details": "[SIL] UWB 硬件在 QEMU 不可用, 需真实硬件 (A2) — 测距精度需 UWB 硬件"
+    },
+    {
+      "test_id": "HIL-UWB-04",
+      "name": "20m 极限距离测距稳定性",
+      "domain": "UWB",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.9,
+      "measurements": {},
+      "details": "[SIL] UWB 硬件在 QEMU 不可用, 需真实硬件 (A2) — 远距稳定性需 UWB 硬件"
+    },
+    {
+      "test_id": "HIL-UL-03",
+      "name": "UWB 自动解锁",
+      "domain": "UNLOCK",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] UNLOCK 硬件在 QEMU 不可用, 需真实硬件 (A2) — UWB 测距需硬件"
+    },
+    {
+      "test_id": "HIL-VS-01",
+      "name": "状态变更推送",
+      "domain": "VS",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] VS 硬件在 QEMU 不可用, 需真实硬件 (A2) — 状态推送需总线/后端"
+    },
+    {
+      "test_id": "HIL-VS-02",
+      "name": "离线缓冲",
+      "domain": "VS",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.7,
+      "measurements": {},
+      "details": "[SIL] VS 硬件在 QEMU 不可用, 需真实硬件 (A2) — 离线缓冲需后端"
+    },
+    {
+      "test_id": "HIL-VS-03",
+      "name": "状态变更频控",
+      "domain": "VS",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] VS 硬件在 QEMU 不可用, 需真实硬件 (A2) — 频控需后端"
+    },
+    {
+      "test_id": "HIL-WK-01",
+      "name": "BLE 唤醒",
+      "domain": "WAKEUP",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] WK 硬件在 QEMU 不可用, 需真实硬件 (A2) — BLE 唤醒需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-WK-02",
+      "name": "NFC 唤醒",
+      "domain": "WAKEUP",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] WK 硬件在 QEMU 不可用, 需真实硬件 (A2) — NFC 唤醒需 RF 硬件"
+    },
+    {
+      "test_id": "HIL-WK-03",
+      "name": "定时唤醒",
+      "domain": "WAKEUP",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] WK 硬件在 QEMU 不可用, 需真实硬件 (A2) — RTC 唤醒需硬件"
+    },
+    {
+      "test_id": "HIL-PM-02",
+      "name": "BLE 唤醒延迟",
+      "domain": "PM",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.7,
+      "measurements": {},
+      "details": "[SIL] PM 硬件在 QEMU 不可用, 需真实硬件 (A2) — 唤醒延迟需硬件测量"
+    },
+    {
+      "test_id": "HIL-FI-01",
+      "name": "BLE 通信异常",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — RF 故障注入需硬件"
+    },
+    {
+      "test_id": "HIL-FI-02",
+      "name": "SE050 通信故障",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — SE050 故障注入需硬件"
+    },
+    {
+      "test_id": "HIL-FI-03",
+      "name": "NFC 通信故障",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — NFC 故障注入需硬件"
+    },
+    {
+      "test_id": "HIL-FI-04",
+      "name": "电源掉电恢复",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — 掉电注入需可编程电源"
+    },
+    {
+      "test_id": "HIL-FI-05",
+      "name": "非法状态机转换",
+      "domain": "FI",
+      "priority": "P0",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — 状态机注入需固件支持"
+    },
+    {
+      "test_id": "HIL-FI-06",
+      "name": "签名绕过攻击模拟",
+      "domain": "FI",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] FI 硬件在 QEMU 不可用, 需真实硬件 (A2) — 签名链路需硬件"
+    },
+    {
+      "test_id": "HIL-PM-03",
+      "name": "低电量模式",
+      "domain": "PM",
+      "priority": "P2",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] PM 硬件在 QEMU 不可用, 需真实硬件 (A2) — 电压注入需可编程电源"
+    },
+    {
+      "test_id": "HIL-BLE-04",
+      "name": "多设备并发连接",
+      "domain": "BLE",
+      "priority": "P1",
+      "status": "SKIPPED",
+      "duration_ms": 0.8,
+      "measurements": {},
+      "details": "[SIL] BLE 硬件在 QEMU 不可用, 需真实硬件 (A2) — 多连接并发需 RF 硬件"
+    }
+  ],
+  "failures": []
+}

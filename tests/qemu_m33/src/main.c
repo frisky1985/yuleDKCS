@@ -83,14 +83,19 @@ void vAssertCall( void )
  * TaskHil — HIL 命令通道 (UART RX 轮询)
  *
  * 命令集 (host → 固件):
- *   HIL:PING         → HIL:PONG
- *   HIL:GET_VERSION  → HIL:VERSION:<ver>
- *   HIL:LED:1|0      → HIL:LED:ON|OFF
- *   HIL:STATE        → HIL:STATE:IDLE|<n>
+ *   HIL:PING           → HIL:PONG
+ *   HIL:GET_VERSION    → HIL:VERSION:<ver>
+ *   HIL:LED:1|0        → HIL:LED:ON|OFF
+ *   HIL:STATE          → HIL:STATE:<led>
+ *   HIL:GET_TICKS      → HIL:TICKS:<n>      (真实 tick 计数)
+ *   HIL:GET_UPTIME     → HIL:UPTIME:<ms>    (真实运行时间)
+ *   HIL:<DOMAIN>:STATUS → HIL:<DOMAIN>:NOT_AVAILABLE
+ *                       (BLE/NFC/UWB/SE050: QEMU 无 RF/SE 硬件, 诚实报告)
  * 未知命令 → HIL:UNKNOWN:<cmd>
  * ------------------------------------------------------------------- */
 static volatile uint32_t g_led_state = 0UL;
 static volatile uint32_t g_hil_cmds  = 0UL;
+static volatile TickType_t g_hil_start_tick = 0UL;
 
 /* -nostdlib 无 libc, 用内联字符串比较替代 strcmp */
 static int hil_streq( const char * a, const char * b )
@@ -144,6 +149,26 @@ static void TaskHil( void * arg )
                     Uart_WriteString( "HIL:STATE:" );
                     Uart_WriteDec( g_led_state );
                     Uart_WriteString( "\n" );
+                }
+                else if ( hil_streq( line, "HIL:GET_TICKS" ) == 0 )
+                {
+                    Uart_WriteString( "HIL:TICKS:" );
+                    Uart_WriteDec( ( uint32_t ) xTaskGetTickCount() );
+                    Uart_WriteString( "\n" );
+                }
+                else if ( hil_streq( line, "HIL:GET_UPTIME" ) == 0 )
+                {
+                    Uart_WriteString( "HIL:UPTIME:" );
+                    Uart_WriteDec( ( uint32_t ) xTaskGetTickCount() - g_hil_start_tick );
+                    Uart_WriteString( "\n" );
+                }
+                else if ( ( hil_streq( line, "HIL:BLE:STATUS" ) == 0 ) ||
+                          ( hil_streq( line, "HIL:NFC:STATUS" ) == 0 ) ||
+                          ( hil_streq( line, "HIL:UWB:STATUS" ) == 0 ) ||
+                          ( hil_streq( line, "HIL:SE050:STATUS" ) == 0 ) )
+                {
+                    /* QEMU 无 RF/SE 硬件 — 诚实报告不可用 (host 端应 SKIP) */
+                    Uart_WriteString( "HIL:NOT_AVAILABLE\n" );
                 }
                 else
                 {
