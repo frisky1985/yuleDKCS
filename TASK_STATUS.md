@@ -28,10 +28,12 @@
 | E-4 | **测试契约对齐** | ✅ | test_security_sign_verify 改为验证真实 fail-closed 语义 (sec_verify 未集成 HSM 时拒绝验签) |
 | E-5 | **条件树测试 (新增 16 用例)** | ✅ | edge_condition.c 13.5% → 70.85%；覆盖 pool 生命周期/溢出/序列化往返/反序列化错误/深拷贝/NVM 持久化/头校验 |
 | E-6 | **C 测试全量** | ✅ | **97 tests / 0 failures** (ICCOA 17 + CCC 28 + ICCE 24 + Unified 12 + EdgeCond 16) |
-| E-7 | **覆盖率现状** | 📊 | ICCE 27.1% → 36.9%；ICCE 目标 ≥75% 需补国密算法测试 (sm2 9%/sm4 0%/crypto_engine 4%, ~900 行, 需标准测试向量) |
-| E-8 | 待办: icce_edge 规则引擎 | 📋 | 23.8% (378 行)，下一轮 |
-| E-9 | 待办: SE050 SCP03 测试 | 📋 | 9.8% (428 行)，需 mock SCP03 会话 |
-| E-10 | 待办: HIL 环境 + 烧录工具链 | 📋 | ROADMAP 2.4/2.5，需硬件
+| E-7 | **覆盖率现状** | ✅ | ICCE 27.1% → 36.9% → **国密全部达标**: sm2 9% → **95.4%**、sm4 0% → **95.6%**、crypto_engine 4% → **92.8%**、sm3 82.6%、crypto_utils(bn256) 60.1% (标准测试向量: GB/T 32905/32907/32918.2 A.2 + OpenSSL/Python 独立交叉验证) |
+| E-8 | **icce_edge 规则引擎测试** | ✅ | 23.8% → **99.2%** (378 行)；59 用例: 规则增删改查/触发条件/action/cooldown/priority/状态机/timer/条件树 |
+| E-9 | **SE050 SCP03 测试** | ✅ | 9.8% → **77.3%** (428 行)；16 用例: AES-128 FIPS-197/CMAC NIST 向量/SCP03 密钥派生/APDU 解析/错误分支 (内部函数 static, 测试 include 源文件; I2C mock 无数据, 会话成功路径不可达) |
+| E-10 | **SM2 密码实现修复 (真实缺陷)** | ✅ | crypto_utils.c: SM2_P/A 常数第 5/6 字颠倒 (G 不在曲线上)、fp_mul 蒙哥马利语义错配 (R/R2/μ 常数错)、fn_mul_reduce 截断约简、fp_inv/fp_exp/fn_inv 指数位序 (a^bitrev(e))、ec_point_dbl r==a 别名 bug；crypto_engine.c: crypto_sm2_key_exchange 缺 NULL 检查 (崩溃)。修复后 GB/T 32918.2 A.2 标准签名验签通过 |
+| E-11 | 待办: HIL 环境 + 烧录工具链 | 📋 | ROADMAP 2.4/2.5，需硬件
+| E-12 | **C 测试全量** | ✅ | **196 tests / 0 failures** (97 基线 + icce_edge 59 + 国密 24 + SCP03 16)
 
 ---
 

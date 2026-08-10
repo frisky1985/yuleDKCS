@@ -748,6 +748,9 @@ int crypto_sm2_key_exchange(const uint8_t *private_key,
     /* 使用简化密钥交换 (类似 ECDH, 同一方调用) */
     /* 此处自动生成本端临时密钥并完成交换 */
     /* 用自身公钥和对方公钥, 默认 UID */
+    if (!private_key || !peer_public || !shared_secret)
+        return CRYPTO_ERR_NULL_PTR;
+
     uint8_t self_public[64] = {0};
     uint8_t ephemeral_private[32];
     uint8_t ephemeral_public[64];

@@ -19,13 +19,15 @@
  * ======================================================================== */
 
 #define W(x3,x2,x1,x0) { 0x##x3, 0x##x2, 0x##x1, 0x##x0, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF }
-/* p = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF 00000000 FFFFFFFF FFFFFFFF FFFFFFFF */
+/* p = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 00000000 FFFFFFFF FFFFFFFF
+ * (GB/T 32918.5-2017 / GM/T 0003; 修正: 此前第 5/6 个 32 位字颠倒导致基点 G
+ *  不在曲线上, 全部 SM2 域运算失效) */
 const bn256_t SM2_P = { .w = { 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-                               0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF } };
+                               0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFF } };
 
-/* a = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF 00000000 FFFFFFFF FFFFFFFF FFFFFFFC  (= p - 3) */
+/* a = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF 00000000 FFFFFFFF FFFFFFFC  (= p - 3) */
 const bn256_t SM2_A = { .w = { 0xFFFFFFFE, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
-                               0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFC } };
+                               0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0xFFFFFFFC } };
 
 /* b = 28E9FA9E 9D9F5E34 4D5A9E4B CF6509A7 F39789F5 15AB8F92 DDBCBD41 4D940E93 */
 const bn256_t SM2_B = { .w = { 0x28E9FA9E, 0x9D9F5E34, 0x4D5A9E4B, 0xCF6509A7,
@@ -75,34 +77,7 @@ const bn256_t SM2_GY = { .w = { 0xBC3736A2, 0xF4F6779C, 0x59BDCEE3, 0x6B692153,
  * 验证: 2^256 = 0x01000000000000000000000000000000000000000000000000000000000000000
  * 减去 p =    0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFFFFFFFFFF
  * 结果 =      0x00000001000000000000000000000000FFFFFFFEFFFFFFFF0000000000000001
- *
- * R = 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0xFFFFFFFE, 0xFFFFFFFF, 0x00000000, 0x00000001
  */
-#define MONT_R_WORDS  { 0x00000001, 0x00000000, 0x00000000, 0x00000000, \
-                        0xFFFFFFFE, 0xFFFFFFFF, 0x00000000, 0x00000001 }
-
-/* R2 = 2^512 mod p = R^2 mod p = 2^256 * 2^256 mod p = (2^256)^2 mod p */
-/* 手工计算较复杂, 用快速计算方法: R2 = R^2 mod p */
-/* 标准值: */
-#define MONT_R2_WORDS { 0x00000004, 0x00000000, 0x00000000, 0x00000000, \
-                        0xFFFFFFF9, 0xFFFFFFF7, 0x00000000, 0x00000004 }
-
-/* μ = -p^(-1) mod 2^32 (Montgomery 乘需要的单字) */
-/* μ(32) = -p[0]^(-1) mod 2^32, where p[0] = 0xFFFFFFFF */
-/* p[0]^-1 mod 2^32 = 1 (因为 1*1 = 1 mod 2^32 = 1... 等等 0xFFFFFFFF * ? = 1 mod 2^32) */
-/* 实际上 p[0] = 0xFFFFFFFF, 所以 ( -p[0]^(-1) ) mod 2^32 = 1 */
-/* 因为 0xFFFFFFFF * 0xFFFFFFFF = 0xFFFFFFFE00000001 = 1 mod 2^32... 不对 */
-/* x * (-x^(-1)) mod 2^32 = 0xFFFFFFFF * 1 = 0xFFFFFFFF ≠ 1 */
-/* 需要 (0xFFFFFFFF * μ) ≡ -1 (mod 2^32), so μ = 1 */
-/* 因为 0xFFFFFFFF * 1 = 0xFFFFFFFF ≡ -1 mod 2^32, 所以 μ = 1 ✓ (对 -p[0]^{-1} mod 2^32) */
-/*
- * 更准确: 对 Montgomery 乘, 需要 μ = p' 满足 (p * p') ≡ -1 (mod 2^32)
- * p[7] (LSW) = 0xFFFFFFFF
- * 0xFFFFFFFF * μ ≡ -1 ≡ 0xFFFFFFFF (mod 2^32)
- * μ = 1 因为 0xFFFFFFFF * 1 = 0xFFFFFFFF
- * 所以 μ = 1
- */
-#define MONT_MU  0x00000001
 
 /* ========================================================================
  *  256 位大数运算 (内部辅助)
@@ -204,53 +179,67 @@ void bn256_rshift1(bn256_t *r, const bn256_t *a)
 }
 
 /* ========================================================================
- *  Montgomery 乘法 (256 位)
+ *  512-bit → 256-bit 模约简 (mod p / mod n 通用)
  * ========================================================================
- * 算法: CIOS (Coarsely Integrated Operand Scanning)
- * 输入: a, b (0 ≤ a,b < p), μ = -p^(-1) mod 2^32
- * 输出: r = a * b * 2^(-256) mod p
- * 然后在模 p 结果上调用蒙哥马利约简即可。
- *
- * 对于模 p, 使用蒙哥马利形式:
- *   输入蒙哥马利化: a' = a * R mod p, b' = b * R mod p
- *   输出: r' = a' * b' * R^(-1) mod p = (a*b) * R mod p
- *   逆变换: r = r' * R^(-1) mod p (用 Montgomery 乘 1 实现)
+ * 修正说明: 原实现 (mont_reduce / fn_mul_reduce) 存在两类致命缺陷:
+ *   1. mont_reduce 执行的是 Montgomery 约简 (结果带 R^-1 因子), 但调用方
+ *      fp_mul 的输入/输出均为普通值, 未做 Montgomery 转换, 导致域运算
+ *      全部错误;
+ *   2. fn_mul_reduce 只截取 512 位乘积的高 256 位再减 n, 并非模 n 约简。
+ * 本实现采用折叠约简 (fold reduction): 对 m > 2^255 (SM2_P/SM2_N 均满足),
+ * 2^256 ≡ c = 2^256 - m (mod m), 反复用 t = hi*2^256 + lo → hi*c + lo
+ * 折叠 (每轮高位减少约 31 位), 直到 < 2^256, 最后至多减 2 次 m。
  */
-
-/* 单次 Montgomery 约简 (将 512-bit 积约简到 256-bit) */
-static void mont_reduce(bn256_t *r, uint32_t t[17])
+static void mul_512(uint32_t r[16], const bn256_t *a, const bn256_t *b); /* 见下方定义 */
+static void mod_reduce_512(bn256_t *r, const uint32_t t[16], const bn256_t *m)
 {
-    for (int i = 0; i < 8; i++) {
-        uint32_t u = t[i] * MONT_MU;
-        uint64_t carry = 0;
-        /* t[i..i+8] += u * p[i..i+7] */
-        for (int j = 0; j < 8; j++) {
-            carry += (uint64_t)t[i + j] + (uint64_t)u * SM2_P.w[7 - j];
-            /* SM2_P 的 w 从 MSW 到 LSW: p[0]=MSW, p[7]=LSW */
-            /* 但 t 索引从 LSW 开始: t[0]=LSW, t[15]=MSW */
-            /* 我们要乘的是 p[j] (从 LSW 到 MSW) */
-            /* 修正: u * p[j] 加到 t[i+j] */
-            t[i + j] = (uint32_t)carry;
-            carry >>= 32;
+    uint32_t v[16];
+    int i;
+    for (i = 0; i < 16; i++) v[i] = t[i];   /* LSB-first */
+
+    /* c = 2^256 - m = ~m + 1 (MSB-first 8 字) */
+    bn256_t c_bn;
+    uint64_t carry = 1;
+    for (i = 7; i >= 0; i--) {
+        uint64_t s = (uint64_t)(~m->w[i]) + carry;
+        c_bn.w[i] = (uint32_t)s;
+        carry = s >> 32;
+    }
+
+    int top = 15;
+    while (top > 7) {
+        while (top > 7 && v[top] == 0) top--;
+        if (top <= 7) break;
+
+        /* hi = v[8..top] (mul_512 要求 bn256_t 为 MSB-first, 故需反转),
+         * lo = v[0..7] (LSB-first, 直接参与下方加法) */
+        bn256_t hi_bn;
+        for (i = 0; i < 8; i++) {
+            int src = 15 - i;   /* w[0]=MSW ← v[15] */
+            hi_bn.w[i] = (src >= 8 && src <= top) ? v[src] : 0;
         }
-        carry += (uint64_t)t[i + 8];
-        t[i + 8] = (uint32_t)carry;
-        carry >>= 32;
-        t[i + 9] += (uint32_t)carry;
+
+        /* prod = hi * c (LSB-first 16 字); hi*c < 2^481, 加 lo 后 < 2^482 */
+        uint32_t prod[16];
+        mul_512(prod, &hi_bn, &c_bn);
+
+        uint64_t acc = 0;
+        for (i = 0; i < 16; i++) {
+            acc += (uint64_t)prod[i] + ((i < 8) ? v[i] : 0);
+            v[i] = (uint32_t)acc;
+            acc >>= 32;
+        }
     }
-    /* 复制 t[8..15] 到 r */
-    for (int i = 0; i < 8; i++) {
-        r->w[7 - i] = t[8 + i];  /* 恢复大端序 */
+
+    /* v < 2^256: 转 MSB-first, 至多减 2 次 m */
+    bn256_t rem;
+    for (i = 0; i < 8; i++) rem.w[i] = v[7 - i];
+    for (i = 0; i < 3; i++) {
+        bn256_t tmp;
+        if (bn256_sub(&tmp, &rem, m)) break;
+        bn256_copy(&rem, &tmp);
     }
-    /* 最后减法: if r >= p then r -= p */
-    /* 由于 r 可能 < p 但可能等于 p (因为蒙哥马利约简后范围为 [0, 2p)),
-     * 我们只需比较 r >= p 则减 p */
-    bn256_t tmp;
-    bn256_copy(&tmp, r);
-    uint32_t borrow = bn256_sub(&tmp, r, &SM2_P);
-    if (borrow == 0) {
-        bn256_copy(r, &tmp);
-    }
+    bn256_copy(r, &rem);
 }
 
 /* ========================================================================
@@ -283,9 +272,9 @@ static void mul_512(uint32_t r[16], const bn256_t *a, const bn256_t *b)
 
 void fp_mul(bn256_t *r, const bn256_t *a, const bn256_t *b)
 {
-    uint32_t t[17];
+    uint32_t t[16];
     mul_512(t, a, b);
-    mont_reduce(r, t);
+    mod_reduce_512(r, t, &SM2_P);
 }
 
 void fp_sqr(bn256_t *r, const bn256_t *a)
@@ -338,7 +327,8 @@ void fp_inv(bn256_t *r, const bn256_t *a)
     } else {
         e.w[7] -= 2; /* 实际 p.w[7]=0xFFFFFFFF, 所以没问题 */
     }
-    /* 平方-乘求幂 */
+    /* 平方-乘求幂 (MSB-first: 先平方后乘; 修正: 原实现先乘后平方,
+     * 配合 MSB-first 读位等价于计算 a^bitrev(e), 求逆结果错误) */
     bn256_t base, result;
     bn256_copy(&base, a);
     bn256_set_word(&result, 1);
@@ -349,10 +339,10 @@ void fp_inv(bn256_t *r, const bn256_t *a)
         int bit_idx = 31 - (i % 32);
         uint32_t bit = (e.w[word_idx] >> bit_idx) & 1;
 
+        fp_sqr(&result, &result);
         if (bit) {
             fp_mul(&result, &result, &base);
         }
-        fp_sqr(&base, &base);
     }
     bn256_copy(r, &result);
 }
@@ -368,10 +358,10 @@ void fp_exp(bn256_t *r, const bn256_t *a, const bn256_t *e)
         int bit_idx = 31 - (i % 32);
         uint32_t bit = (e->w[word_idx] >> bit_idx) & 1;
 
+        fp_sqr(&result, &result);
         if (bit) {
             fp_mul(&result, &result, &base);
         }
-        fp_sqr(&base, &base);
     }
     bn256_copy(r, &result);
 }
@@ -403,29 +393,7 @@ void fn_sub(bn256_t *r, const bn256_t *a, const bn256_t *b)
 /* 模 n 乘法: 先用普通乘法再用约简 mod n */
 static void fn_mul_reduce(bn256_t *r, const uint32_t t[16])
 {
-    /* 手动约简 mod n: 从 512 位到 256 位 */
-    /* n = FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123 */
-    /* 对于 256 位模, 用 Barrett 约简或反复减法 */
-    /* 简单实现: 用标准长除法 (对于加速可优化) */
-    bn256_t tmp;
-    /* 把 t 转换为大端 bn256_t (高 256 位) */
-    for (int i = 0; i < 8; i++) {
-        tmp.w[i] = t[15 - i];
-    }
-    bn256_copy(r, &tmp);
-
-    /* 逐次减去 n 直到小于 n (最多减 2 次因为乘积 < 2²⁵⁶+n) */
-    bn256_t rem;
-    bn256_copy(&rem, r);
-    for (int i = 0; i < 3; i++) {
-        uint32_t b = bn256_sub(&rem, &rem, &SM2_N);
-        if (b) {
-            (void)bn256_add(&rem, &rem, &SM2_N);
-            break;
-        }
-        bn256_copy(&rem, &rem);
-    }
-    bn256_copy(r, &rem);
+    mod_reduce_512(r, t, &SM2_N);
 }
 
 void fn_mul(bn256_t *r, const bn256_t *a, const bn256_t *b)
@@ -453,11 +421,11 @@ void fn_inv(bn256_t *r, const bn256_t *a)
         int bit_idx = 31 - (i % 32);
         uint32_t bit = (e.w[word_idx] >> bit_idx) & 1;
 
+        /* MSB-first: 先平方后乘 (修正: 原实现先乘后平方导致指数位序错误) */
+        fn_mul(&result, &result, &result);
         if (bit) {
             fn_mul(&result, &result, &base);
         }
-        /* base = base^2 mod n */
-        fn_mul(&base, &base, &base);
     }
     bn256_copy(r, &result);
 }
@@ -572,7 +540,7 @@ void ec_point_add(ec_point_jac_t *r, const ec_point_jac_t *a, const ec_point_jac
     fp_mul(&r->Z, &t0, &H);
 }
 
-/* 倍点: r = 2 * a */
+/* 倍点: r = 2 * a (支持 r == a 别名调用) */
 void ec_point_dbl(ec_point_jac_t *r, const ec_point_jac_t *a)
 {
     if (ec_point_is_inf(a)) {
@@ -580,21 +548,27 @@ void ec_point_dbl(ec_point_jac_t *r, const ec_point_jac_t *a)
         return;
     }
 
+    /* 快照输入 (r == a 时 r->X/r->Y 会先被覆写, 必须提前保存) */
+    bn256_t ax, ay, az;
+    bn256_copy(&ax, &a->X);
+    bn256_copy(&ay, &a->Y);
+    bn256_copy(&az, &a->Z);
+
     bn256_t XX, YY, YYYY, S, M, T, t0, t1;
 
     /* 雅可比倍点公式 (a = -3 即 SM2_A 略作优化) */
-    fp_sqr(&XX, &a->X);             /* XX = X² */
-    fp_sqr(&YY, &a->Y);             /* YY = Y² */
+    fp_sqr(&XX, &ax);               /* XX = X² */
+    fp_sqr(&YY, &ay);               /* YY = Y² */
     fp_sqr(&YYYY, &YY);            /* YYYY = Y⁴ */
 
-    fp_add(&S, &a->X, &YY);
+    fp_add(&S, &ax, &YY);
     fp_sqr(&S, &S);
     fp_sub(&S, &S, &XX);
     fp_sub(&S, &S, &YYYY);
     fp_add(&S, &S, &S);            /* S = 2*(X+Y²)² - 2*X² - 2*Y⁴ */
 
     /* M = 3*X² + a*Z⁴ (a = p-3, 使用 a = -3 的优化) */
-    fp_sqr(&t0, &a->Z);            /* Z² */
+    fp_sqr(&t0, &az);              /* Z² */
     fp_sqr(&t0, &t0);              /* Z⁴ */
     /* a * Z⁴: a = -3 mod p, 所以 = p - 3 */
     /* 即 (Z⁴ 乘以 a) */
@@ -617,7 +591,7 @@ void ec_point_dbl(ec_point_jac_t *r, const ec_point_jac_t *a)
     fp_sub(&r->Y, &t1, &YYYY);
 
     /* Z3 = 2*Y*Z */
-    fp_mul(&t0, &a->Y, &a->Z);
+    fp_mul(&t0, &ay, &az);
     fp_add(&r->Z, &t0, &t0);
 }
 

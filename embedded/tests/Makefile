@@ -158,6 +158,18 @@ $(BUILD)/test_edge_condition.o: $(TEST_DIR)/test_edge_condition.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_edge_condition_lib.o: $(TEST_DIR)/test_edge_condition.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_EDGE_COND_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_icce_edge.o: $(TEST_DIR)/test_icce_edge.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_icce_edge_lib.o: $(TEST_DIR)/test_icce_edge.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_EDGE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_sm_crypto.o: $(TEST_DIR)/test_sm_crypto.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_sm_crypto_lib.o: $(TEST_DIR)/test_sm_crypto.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SM_CRYPTO_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_se050_scp03.o: $(TEST_DIR)/test_se050_scp03.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_se050_scp03_lib.o: $(TEST_DIR)/test_se050_scp03.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SE050_SCP03_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
@@ -216,15 +228,17 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
           $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
+          $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
+          $(BUILD)/test_se050_scp03_lib.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+          $(BUILD)/security.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
-          $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
-          $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
+          $(BUILD)/icce_dk_core.o $(BUILD)/icce_security.o \
+          $(BUILD)/icce_uwb.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
           $(BUILD)/edge_condition.o \
           $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
