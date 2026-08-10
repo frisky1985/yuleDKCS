@@ -12,6 +12,7 @@ type Config struct {
 	Database DatabaseConfig
 	Redis    RedisConfig
 	Kafka    KafkaConfig
+	MQTT     MQTTConfig
 	JWT      JWTConfig
 	Log      LogConfig
 	Metrics  MetricsConfig
@@ -63,10 +64,65 @@ type KafkaConfig struct {
 
 // KafkaTopics Kafka主题配置
 type KafkaTopics struct {
-	KeyEvents    string
-	Commands     string
-	Events       string
-	DLQ          string
+	KeyEvents string
+	Commands  string
+	Events    string
+	DLQ       string
+}
+
+// MQTTConfig MQTT配置 (TCU车端连接通道)
+type MQTTConfig struct {
+	Broker         string        // MQTT broker address
+	ClientID       string        // Client identifier
+	Username       string        // Username for authentication
+	Password       string        // Password for authentication
+	QoS            byte          // Quality of Service level
+	KeepAlive      time.Duration // Keep-alive interval
+	ConnectTimeout time.Duration // Connection timeout
+	AutoReconnect  bool          // Automatically reconnect
+	MaxReconnect   int           // Maximum reconnection attempts
+	ReconnectDelay time.Duration // Delay between reconnection attempts
+	TLSEnabled     bool          // Enable TLS
+	TLSCACert      string        // Path to CA certificate
+	TLSClientCert  string        // Path to client certificate
+	TLSClientKey   string        // Path to client private key
+	Producer       ProducerConfig
+	Consumer       ConsumerConfig
+	Pool           PoolConfig
+}
+
+// ProducerConfig MQTT Producer配置
+type ProducerConfig struct {
+	DefaultQoS          byte          // Default QoS level for commands
+	DefaultRetained     bool          // Whether to retain messages
+	CommandTimeout      time.Duration // Time to wait for command acknowledgment
+	MaxRetries          int           // Maximum number of retry attempts
+	RetryInitialDelay   time.Duration // Initial delay before retry
+	RetryMaxDelay       time.Duration // Maximum delay between retries
+	RetryBackoffFactor  float64       // Exponential backoff multiplier
+	EnablePersistence   bool          // Enable message persistence
+	EnableDeduplication bool          // Enable message deduplication
+	PoolMinSize         int           // Minimum pool size
+	PoolMaxSize         int           // Maximum pool size
+}
+
+// ConsumerConfig MQTT Consumer配置
+type ConsumerConfig struct {
+	DefaultQoS             byte          // Default QoS level for subscriptions
+	BufferSize             int           // Channel buffer size
+	EnableEventPersistence bool          // Enable event persistence
+	EnableMetrics          bool          // Enable metrics collection
+	WorkerCount            int           // Number of worker goroutines
+	MessageTimeout         time.Duration // Timeout for processing each message
+}
+
+// PoolConfig MQTT连接池配置
+type PoolConfig struct {
+	MinSize     int           // Minimum number of connections
+	MaxSize     int           // Maximum number of connections
+	IdleTimeout time.Duration // Idle timeout for connections
+	MaxLifetime time.Duration // Maximum lifetime for connections
+	HealthCheck time.Duration // Health check interval
 }
 
 // JWTConfig JWT配置
@@ -124,6 +180,50 @@ func Load() *Config {
 				DLQ:       getEnv("KAFKA_TOPIC_DLQ", "dkcs.dlq"),
 			},
 		},
+		MQTT: MQTTConfig{
+			Broker:         getEnv("MQTT_BROKER", "tcp://localhost:1883"),
+			ClientID:       getEnv("MQTT_CLIENT_ID", "dkcs-cloud"),
+			Username:       getEnv("MQTT_USERNAME", ""),
+			Password:       getEnv("MQTT_PASSWORD", ""),
+			QoS:            byte(getEnvInt("MQTT_QOS", 1)),
+			KeepAlive:      time.Duration(getEnvInt("MQTT_KEEP_ALIVE_SEC", 60)) * time.Second,
+			ConnectTimeout: time.Duration(getEnvInt("MQTT_CONNECT_TIMEOUT_SEC", 30)) * time.Second,
+			AutoReconnect:  getEnvBool("MQTT_AUTO_RECONNECT", true),
+			MaxReconnect:   getEnvInt("MQTT_MAX_RECONNECT", 5),
+			ReconnectDelay: time.Duration(getEnvInt("MQTT_RECONNECT_DELAY_SEC", 5)) * time.Second,
+			TLSEnabled:     getEnvBool("MQTT_TLS_ENABLED", false),
+			TLSCACert:      getEnv("MQTT_TLS_CA_CERT", ""),
+			TLSClientCert:  getEnv("MQTT_TLS_CLIENT_CERT", ""),
+			TLSClientKey:   getEnv("MQTT_TLS_CLIENT_KEY", ""),
+			Producer: ProducerConfig{
+				DefaultQoS:          byte(getEnvInt("MQTT_PRODUCER_QOS", 1)),
+				DefaultRetained:     getEnvBool("MQTT_PRODUCER_RETAINED", false),
+				CommandTimeout:      time.Duration(getEnvInt("MQTT_PRODUCER_CMD_TIMEOUT_SEC", 30)) * time.Second,
+				MaxRetries:          getEnvInt("MQTT_PRODUCER_MAX_RETRIES", 3),
+				RetryInitialDelay:   time.Duration(getEnvInt("MQTT_PRODUCER_RETRY_DELAY_SEC", 1)) * time.Second,
+				RetryMaxDelay:       time.Duration(getEnvInt("MQTT_PRODUCER_RETRY_MAX_DELAY_SEC", 30)) * time.Second,
+				RetryBackoffFactor:  getEnvFloat("MQTT_PRODUCER_RETRY_BACKOFF", 2.0),
+				EnablePersistence:   getEnvBool("MQTT_PRODUCER_PERSISTENCE", true),
+				EnableDeduplication: getEnvBool("MQTT_PRODUCER_DEDUP", true),
+				PoolMinSize:         getEnvInt("MQTT_PRODUCER_POOL_MIN", 2),
+				PoolMaxSize:         getEnvInt("MQTT_PRODUCER_POOL_MAX", 10),
+			},
+			Consumer: ConsumerConfig{
+				DefaultQoS:             byte(getEnvInt("MQTT_CONSUMER_QOS", 1)),
+				BufferSize:             getEnvInt("MQTT_CONSUMER_BUFFER_SIZE", 1000),
+				EnableEventPersistence: getEnvBool("MQTT_CONSUMER_PERSISTENCE", true),
+				EnableMetrics:          getEnvBool("MQTT_CONSUMER_METRICS", true),
+				WorkerCount:            getEnvInt("MQTT_CONSUMER_WORKERS", 5),
+				MessageTimeout:         time.Duration(getEnvInt("MQTT_CONSUMER_MSG_TIMEOUT_SEC", 30)) * time.Second,
+			},
+			Pool: PoolConfig{
+				MinSize:     getEnvInt("MQTT_POOL_MIN_SIZE", 2),
+				MaxSize:     getEnvInt("MQTT_POOL_MAX_SIZE", 10),
+				IdleTimeout: time.Duration(getEnvInt("MQTT_POOL_IDLE_TIMEOUT_SEC", 300)) * time.Second,
+				MaxLifetime: time.Duration(getEnvInt("MQTT_POOL_MAX_LIFETIME_MIN", 30)) * time.Minute,
+				HealthCheck: time.Duration(getEnvInt("MQTT_POOL_HEALTH_CHECK_SEC", 30)) * time.Second,
+			},
+		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "change-me-in-production"),
 			ExpireTime: time.Duration(getEnvInt("JWT_EXPIRE_HOURS", 24)) * time.Hour,
@@ -164,6 +264,15 @@ func getEnvBool(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if bool, err := strconv.ParseBool(value); err == nil {
 			return bool
+		}
+	}
+	return defaultValue
+}
+
+func getEnvFloat(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if float, err := strconv.ParseFloat(value, 64); err == nil {
+			return float
 		}
 	}
 	return defaultValue

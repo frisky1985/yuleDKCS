@@ -1,3 +1,0 @@
-/Users/stefan/yuleDKCS/embedded/icce_protocol/build-default/CMakeFiles/icce_dk.dir
-/Users/stefan/yuleDKCS/embedded/icce_protocol/build-default/CMakeFiles/edit_cache.dir
-/Users/stefan/yuleDKCS/embedded/icce_protocol/build-default/CMakeFiles/rebuild_cache.dir

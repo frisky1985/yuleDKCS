@@ -17,7 +17,6 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/cache"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/config"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/middleware"
@@ -27,6 +26,7 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/internal/service"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/logger"
 	"github.com/frisky1985/yuleDKCS/backend/dkcs/pkg/telemetry"
+	pb "github.com/frisky1985/yuleDKCS/backend/dkcs/proto/dkcs"
 )
 
 // kafkaEventBusAdapter adapts mq.KafkaProducer to service.EventBus.
@@ -109,6 +109,35 @@ func main() {
 	} else {
 		defer kafkaProducer.Close()
 		log.Info("Kafka producer initialized")
+	}
+
+	// Initialize MQTT producer (TCU vehicle command channel, EMQX broker)
+	mqttProducer, err := mq.NewMQTTProducer(mq.MQTTConfig{
+		Broker:         cfg.MQTT.Broker,
+		ClientID:       cfg.MQTT.ClientID,
+		Username:       cfg.MQTT.Username,
+		Password:       cfg.MQTT.Password,
+		QoS:            cfg.MQTT.QoS,
+		KeepAlive:      cfg.MQTT.KeepAlive,
+		ConnectTimeout: cfg.MQTT.ConnectTimeout,
+		AutoReconnect:  cfg.MQTT.AutoReconnect,
+		MaxReconnect:   cfg.MQTT.MaxReconnect,
+		ReconnectDelay: cfg.MQTT.ReconnectDelay,
+		TLSEnabled:     cfg.MQTT.TLSEnabled,
+		TLSCACert:      cfg.MQTT.TLSCACert,
+		TLSClientCert:  cfg.MQTT.TLSClientCert,
+		TLSClientKey:   cfg.MQTT.TLSClientKey,
+		Topic:          mq.MQTTTopicCommands,
+		Retained:       cfg.MQTT.Producer.DefaultRetained,
+	})
+	if err != nil {
+		log.Warn("MQTT producer not available, TCU command channel disabled", logger.Err(err))
+	} else {
+		defer mqttProducer.Close()
+		log.Info("MQTT producer initialized (TCU command channel)",
+			logger.String("broker", cfg.MQTT.Broker),
+			logger.String("topic", mq.MQTTTopicCommands),
+		)
 	}
 
 	// Initialize telemetry

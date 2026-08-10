@@ -1,5 +1,6 @@
 # Build
 build/
+build-*/
 cmake-build-*/
 *.o
 *.a
@@ -8,60 +9,62 @@ cmake-build-*/
 
 # Java / Maven
 **/target/
-     8|
-     9|# IDE
-    10|.idea/
-    11|*.iml
-    12|.vscode/
-    13|*.swp
-    14|*.swo
-    15|.DS_Store
-    16|
-    17|# Android
-    18|frontend/android/.gradle/
-    19|frontend/android/build/
-    20|frontend/android/local.properties
-    21|*.apk
-    22|*.aab
-    23|
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Android
+frontend/android/.gradle/
+frontend/.gradle/
+frontend/android/build/
+frontend/android/local.properties
+*.apk
+*.aab
+
 # iOS
 frontend/ios/Pods/
 frontend/ios/.build/
 frontend/ios/*.xcworkspace/
 *.xcuserdata
-    28|
-    29|# Go
-    30|vendor/
-    31|
-    32|# Coverage
-    33|*.out
-    34|*.cov.out
-    35|coverage.out
-    36|
-    37|# Binaries
-    38|backend/cloud/hub/hub
-    39|cmd/yuledkcs/yuledkcs
-    40|backend/dkcs/dkcs
-    41|
-    42|# Reports (generated HTML)
-    43|*.html
-    44|reports/test-output/
-    45|
-    46|# Logs
-    47|*.log
-    48|
-    49|# Mobile generated proto stubs (build artifacts, not committed)
-    50|mobile/ios/Sources/YDKProto/*.pb.swift
-    51|mobile/ios/Sources/YDKProto/*.grpc.swift
-    52|mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/*Kt.kt
-    53|mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/SdkKt.*.kt
-    54|mobile/android/sdk/src/main/kotlin/digitalkey/
-    55|
-    56|# Embedded test build artifacts
+
+# Go
+vendor/
+
+# Coverage
+*.out
+*.cov.out
+coverage.out
+
+# Binaries
+backend/cloud/hub/hub
+cmd/yuledkcs/yuledkcs
+backend/dkcs/dkcs
+
+# Reports (generated HTML)
+*.html
+reports/test-output/
+
+# Logs
+*.log
+
+# Mobile generated proto stubs (build artifacts, not committed)
+mobile/ios/Sources/YDKProto/*.pb.swift
+mobile/ios/Sources/YDKProto/*.grpc.swift
+mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/*Kt.kt
+mobile/android/sdk/src/main/kotlin/com/yuledkcs/sdk/SdkKt.*.kt
+mobile/android/sdk/src/main/kotlin/digitalkey/
+
+# Embedded test build artifacts
 embedded/tests/build/
 
 # Local temp outputs
 backend/cloud/hub/hub_orig.out
+
 # SwiftPM build artifacts
 mobile/ios/.build/
 mobile/ios/.swiftpm/
@@ -82,19 +85,15 @@ backend/cloud/hub/hub
 # Node
 node_modules/
 
-# Android build
-frontend/android/app/build/
-frontend/android/.gradle/
-
 # iOS build
 frontend/ios/build/
 frontend/ios/Pods/
 
 # Secrets (never commit)
-    57|config.yaml
-    58|*.key
-    59|*.pem
-    60|
+config.yaml
+*.key
+*.pem
+
 # yuleOSH runtime artifacts
 tests/e2e/carsim/carsim
 .osh/ci/

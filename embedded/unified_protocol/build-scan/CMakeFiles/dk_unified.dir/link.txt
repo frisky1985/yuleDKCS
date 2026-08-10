@@ -1,2 +1,0 @@
-/opt/homebrew/bin/arm-none-eabi-ar qc libdk_unified.a CMakeFiles/dk_unified.dir/src/dk_unified.c.obj
-/opt/homebrew/bin/arm-none-eabi-ranlib libdk_unified.a

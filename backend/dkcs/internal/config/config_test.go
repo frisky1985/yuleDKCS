@@ -71,6 +71,44 @@ func TestLoadDefaults(t *testing.T) {
 		t.Errorf("expected KeyEvents topic, got %s", cfg.Kafka.Topics.KeyEvents)
 	}
 
+	// MQTT defaults
+	if cfg.MQTT.Broker != "tcp://localhost:1883" {
+		t.Errorf("expected MQTT broker=tcp://localhost:1883, got %s", cfg.MQTT.Broker)
+	}
+	if cfg.MQTT.ClientID != "dkcs-cloud" {
+		t.Errorf("expected MQTT client ID=dkcs-cloud, got %s", cfg.MQTT.ClientID)
+	}
+	if cfg.MQTT.QoS != 1 {
+		t.Errorf("expected MQTT QoS=1, got %d", cfg.MQTT.QoS)
+	}
+	if !cfg.MQTT.AutoReconnect {
+		t.Error("expected MQTT AutoReconnect=true by default")
+	}
+	if cfg.MQTT.KeepAlive != 60*time.Second {
+		t.Errorf("expected MQTT keepalive=60s, got %v", cfg.MQTT.KeepAlive)
+	}
+	if cfg.MQTT.ConnectTimeout != 30*time.Second {
+		t.Errorf("expected MQTT connect timeout=30s, got %v", cfg.MQTT.ConnectTimeout)
+	}
+	if cfg.MQTT.TLSEnabled {
+		t.Error("expected MQTT TLS disabled by default")
+	}
+	if cfg.MQTT.Producer.DefaultQoS != 1 || cfg.MQTT.Producer.MaxRetries != 3 {
+		t.Errorf("unexpected MQTT producer defaults: qos=%d retries=%d",
+			cfg.MQTT.Producer.DefaultQoS, cfg.MQTT.Producer.MaxRetries)
+	}
+	if !cfg.MQTT.Producer.EnablePersistence || !cfg.MQTT.Producer.EnableDeduplication {
+		t.Error("expected MQTT producer persistence/dedup enabled by default")
+	}
+	if cfg.MQTT.Consumer.WorkerCount != 5 || cfg.MQTT.Consumer.BufferSize != 1000 {
+		t.Errorf("unexpected MQTT consumer defaults: workers=%d buffer=%d",
+			cfg.MQTT.Consumer.WorkerCount, cfg.MQTT.Consumer.BufferSize)
+	}
+	if cfg.MQTT.Pool.MinSize != 2 || cfg.MQTT.Pool.MaxSize != 10 {
+		t.Errorf("unexpected MQTT pool defaults: min=%d max=%d",
+			cfg.MQTT.Pool.MinSize, cfg.MQTT.Pool.MaxSize)
+	}
+
 	// JWT defaults
 	if cfg.JWT.Secret != "change-me-in-production" {
 		t.Errorf("expected JWT secret default, got %s", cfg.JWT.Secret)
@@ -201,6 +239,78 @@ func TestLoadWithKafkaBrokers(t *testing.T) {
 	}
 	if cfg.Kafka.Brokers[2] != "broker3:9094" {
 		t.Errorf("expected broker3:9094, got %s", cfg.Kafka.Brokers[2])
+	}
+}
+
+func TestLoadWithMQTT(t *testing.T) {
+	clearEnv()
+	defer clearEnv()
+
+	os.Setenv("MQTT_BROKER", "ssl://emqx:8883")
+	os.Setenv("MQTT_CLIENT_ID", "dkcs-prod")
+	os.Setenv("MQTT_USERNAME", "tcu-user")
+	os.Setenv("MQTT_PASSWORD", "tcu-pass")
+	os.Setenv("MQTT_QOS", "2")
+	os.Setenv("MQTT_KEEP_ALIVE_SEC", "120")
+	os.Setenv("MQTT_CONNECT_TIMEOUT_SEC", "15")
+	os.Setenv("MQTT_AUTO_RECONNECT", "false")
+	os.Setenv("MQTT_MAX_RECONNECT", "10")
+	os.Setenv("MQTT_TLS_ENABLED", "true")
+	os.Setenv("MQTT_TLS_CA_CERT", "/certs/ca.pem")
+	os.Setenv("MQTT_PRODUCER_QOS", "0")
+	os.Setenv("MQTT_PRODUCER_RETAINED", "true")
+	os.Setenv("MQTT_PRODUCER_MAX_RETRIES", "7")
+	os.Setenv("MQTT_PRODUCER_RETRY_BACKOFF", "1.5")
+	os.Setenv("MQTT_CONSUMER_WORKERS", "8")
+	os.Setenv("MQTT_CONSUMER_BUFFER_SIZE", "5000")
+	os.Setenv("MQTT_POOL_MIN_SIZE", "3")
+	os.Setenv("MQTT_POOL_MAX_SIZE", "20")
+
+	cfg := Load()
+
+	if cfg.MQTT.Broker != "ssl://emqx:8883" {
+		t.Errorf("expected broker=ssl://emqx:8883, got %s", cfg.MQTT.Broker)
+	}
+	if cfg.MQTT.ClientID != "dkcs-prod" {
+		t.Errorf("expected client ID=dkcs-prod, got %s", cfg.MQTT.ClientID)
+	}
+	if cfg.MQTT.Username != "tcu-user" || cfg.MQTT.Password != "tcu-pass" {
+		t.Errorf("unexpected MQTT credentials: user=%s", cfg.MQTT.Username)
+	}
+	if cfg.MQTT.QoS != 2 {
+		t.Errorf("expected QoS=2, got %d", cfg.MQTT.QoS)
+	}
+	if cfg.MQTT.KeepAlive != 120*time.Second {
+		t.Errorf("expected keepalive=120s, got %v", cfg.MQTT.KeepAlive)
+	}
+	if cfg.MQTT.ConnectTimeout != 15*time.Second {
+		t.Errorf("expected connect timeout=15s, got %v", cfg.MQTT.ConnectTimeout)
+	}
+	if cfg.MQTT.AutoReconnect {
+		t.Error("expected AutoReconnect=false")
+	}
+	if cfg.MQTT.MaxReconnect != 10 {
+		t.Errorf("expected MaxReconnect=10, got %d", cfg.MQTT.MaxReconnect)
+	}
+	if !cfg.MQTT.TLSEnabled || cfg.MQTT.TLSCACert != "/certs/ca.pem" {
+		t.Errorf("unexpected TLS config: enabled=%v ca=%s", cfg.MQTT.TLSEnabled, cfg.MQTT.TLSCACert)
+	}
+	if cfg.MQTT.Producer.DefaultQoS != 0 || !cfg.MQTT.Producer.DefaultRetained {
+		t.Errorf("unexpected producer config: qos=%d retained=%v",
+			cfg.MQTT.Producer.DefaultQoS, cfg.MQTT.Producer.DefaultRetained)
+	}
+	if cfg.MQTT.Producer.MaxRetries != 7 {
+		t.Errorf("expected MaxRetries=7, got %d", cfg.MQTT.Producer.MaxRetries)
+	}
+	if cfg.MQTT.Producer.RetryBackoffFactor != 1.5 {
+		t.Errorf("expected backoff=1.5, got %v", cfg.MQTT.Producer.RetryBackoffFactor)
+	}
+	if cfg.MQTT.Consumer.WorkerCount != 8 || cfg.MQTT.Consumer.BufferSize != 5000 {
+		t.Errorf("unexpected consumer config: workers=%d buffer=%d",
+			cfg.MQTT.Consumer.WorkerCount, cfg.MQTT.Consumer.BufferSize)
+	}
+	if cfg.MQTT.Pool.MinSize != 3 || cfg.MQTT.Pool.MaxSize != 20 {
+		t.Errorf("unexpected pool config: min=%d max=%d", cfg.MQTT.Pool.MinSize, cfg.MQTT.Pool.MaxSize)
 	}
 }
 
@@ -398,6 +508,18 @@ func clearEnv() {
 		"REDIS_ADDR", "REDIS_PASSWORD", "REDIS_DB",
 		"KAFKA_BROKERS",
 		"KAFKA_TOPIC_KEY_EVENTS", "KAFKA_TOPIC_COMMANDS", "KAFKA_TOPIC_EVENTS", "KAFKA_TOPIC_DLQ",
+		"MQTT_BROKER", "MQTT_CLIENT_ID", "MQTT_USERNAME", "MQTT_PASSWORD",
+		"MQTT_QOS", "MQTT_KEEP_ALIVE_SEC", "MQTT_CONNECT_TIMEOUT_SEC",
+		"MQTT_AUTO_RECONNECT", "MQTT_MAX_RECONNECT", "MQTT_RECONNECT_DELAY_SEC",
+		"MQTT_TLS_ENABLED", "MQTT_TLS_CA_CERT", "MQTT_TLS_CLIENT_CERT", "MQTT_TLS_CLIENT_KEY",
+		"MQTT_PRODUCER_QOS", "MQTT_PRODUCER_RETAINED", "MQTT_PRODUCER_CMD_TIMEOUT_SEC",
+		"MQTT_PRODUCER_MAX_RETRIES", "MQTT_PRODUCER_RETRY_DELAY_SEC", "MQTT_PRODUCER_RETRY_MAX_DELAY_SEC",
+		"MQTT_PRODUCER_RETRY_BACKOFF", "MQTT_PRODUCER_PERSISTENCE", "MQTT_PRODUCER_DEDUP",
+		"MQTT_PRODUCER_POOL_MIN", "MQTT_PRODUCER_POOL_MAX",
+		"MQTT_CONSUMER_QOS", "MQTT_CONSUMER_BUFFER_SIZE", "MQTT_CONSUMER_PERSISTENCE",
+		"MQTT_CONSUMER_METRICS", "MQTT_CONSUMER_WORKERS", "MQTT_CONSUMER_MSG_TIMEOUT_SEC",
+		"MQTT_POOL_MIN_SIZE", "MQTT_POOL_MAX_SIZE", "MQTT_POOL_IDLE_TIMEOUT_SEC",
+		"MQTT_POOL_MAX_LIFETIME_MIN", "MQTT_POOL_HEALTH_CHECK_SEC",
 		"JWT_SECRET", "JWT_EXPIRE_HOURS", "JWT_ISSUER",
 		"LOG_LEVEL", "LOG_FORMAT", "LOG_OUTPUT", "LOG_FILE",
 		"METRICS_ENABLED", "METRICS_PORT", "METRICS_PATH",

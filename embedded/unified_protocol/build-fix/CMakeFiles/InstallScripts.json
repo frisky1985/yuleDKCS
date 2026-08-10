@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/stefan/yuleDKCS/embedded/unified_protocol/build-fix/cmake_install.cmake",
-		"/Users/stefan/yuleDKCS/embedded/unified_protocol/build-fix/examples/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

@@ -1,3 +1,0 @@
-/Users/stefan/yuleDKCS/embedded/ccc_protocol/build-scan/CMakeFiles/ccc_dk.dir
-/Users/stefan/yuleDKCS/embedded/ccc_protocol/build-scan/CMakeFiles/edit_cache.dir
-/Users/stefan/yuleDKCS/embedded/ccc_protocol/build-scan/CMakeFiles/rebuild_cache.dir

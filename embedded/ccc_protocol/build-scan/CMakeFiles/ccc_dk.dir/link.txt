@@ -1,2 +1,0 @@
-/opt/homebrew/bin/arm-none-eabi-ar qc libccc_dk.a CMakeFiles/ccc_dk.dir/src/ble/ble_kw47a.c.obj CMakeFiles/ccc_dk.dir/src/core/ccc_dk_core.c.obj CMakeFiles/ccc_dk.dir/src/keymgmt/key_mgmt.c.obj CMakeFiles/ccc_dk.dir/src/nfc/nfc_st25r501.c.obj CMakeFiles/ccc_dk.dir/src/security/security.c.obj CMakeFiles/ccc_dk.dir/src/uwb/uwb_ncj29d6.c.obj
-/opt/homebrew/bin/arm-none-eabi-ranlib libccc_dk.a
