@@ -5,6 +5,37 @@
 
 ---
 
+## [2.2.0] — 2026-08-10
+
+### 新增
+- TCU 车端 MQTT 通道（backend/dkcs）：配置 + paho 客户端 + 8 用例（含并发 80 消息/TLS/重连），topic 约定 `dkcs/tcu/{commands,telemetry,events}`
+- HIL 软件在环（SIL）：transport 抽象（QEMU/串口/J-Link）+ 固件 HIL 命令通道 + 状态机注入（FI-05 转真实），46 用例 10 PASSED/36 SKIPPED（无硬件诚实标记，拒绝假数据）
+- 生产烧录工具链（embedded/firmware_toolchain）：
+  - B1 固件签名加密：.ydk 包格式（116B 头部）+ ECDSA P-256 + AES-256-GCM，17 测试（6 种篡改检测）
+  - B2 烧录脚本生成器：验签解密 → J-Link 脚本 + 批次 manifest + 烧录日志 CSV，9 测试
+  - B3 批次管理：工厂侧 SQLite（哈希链防篡改/良率/设备状态机/密钥审计）+ 云端 batch-api（Go REST，存储可插拔 file/PostgreSQL）+ MES 对接文档
+- 依赖安全升级：Spring Boot 3.2.12 / grpc-java 1.68.2（CVE-2024-47535）/ protobuf 3.25.5（CVE-2024-35255）
+
+### 修复
+- **SM2 密码实现 6 处致命缺陷**（测试驱动发现）：SM2_P/A 常数颠倒（基点 G 不在曲线上）、fp_mul 蒙哥马利错配、fn_mul_reduce 截断、fp_inv/fp_exp 指数位序、ec_point_dbl 别名 bug、crypto_sm2_key_exchange NULL 崩溃 → 修复后 GB/T 32918.2 A.2 标准验签通过
+- ccc security.c 越权 deinit 共享 crypto_engine（unified 多协议共存时 ICCE 密码路径失效）
+- ICCE zone 分类 2m 边界（P0-06 语义）
+- QEMU 6.2 SysTick 外部时钟源（32768Hz）导致 tick 卡死 → 内核时钟修复
+- 补缺失 freertos_stubs.c / se050_scp03.c 编译错误 / crypto_random stdio
+
+### 测试
+- 嵌入式 C 测试：97 → **196 tests / 0 failures**（icce_edge 99.2%、sm2 95.4%、sm4 95.6%、SE050 SCP03 77.3%、edge_condition 70.85% 覆盖率）
+- HIL：46 用例（9 真实 SIL 验证 + 37 硬件域诚实 SKIP），报告含 skipped 统计
+- batch-api：11 Go 测试 + PG 集成测试（build tag）
+- 工具链：17 + 9 + 13 单测全绿
+
+### 架构
+- 目录四类重组：backend/frontend/embedded/mobile + docs/tests
+- 新增 backend/cloud/batch-api（生产批次管理）、embedded/firmware_toolchain（生产烧录工具链）
+- go.work 纳入 batch-api 模块
+
+---
+
 ## [1.0.0] — 2026-05-06
 
 ### 新增
