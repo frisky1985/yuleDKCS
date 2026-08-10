@@ -32,47 +32,64 @@
 
 ## 📁 项目结构
 
+> 顶层按四端分类：`backend`（云端）/ `frontend`（移动端 SDK+App）/ `embedded`（车端固件）/ `mobile`（新 SDK）+ `docs`（文档）/ `tests`（跨端集成）
+
 ```
 yuleDKCS/
-├── 📁 embedded/              # 嵌入式固件
-│   ├── icce_protocol/        #   ICCE 协议栈（BLE/UWB/安全/离线决策）
-│   ├── ccc_protocol/         #   CCC 协议栈（BLE/UWB/NFC/安全）
-│   ├── iccoa_protocol/       #   ICCOA 协议栈（DK 3.0 & 4.0）
-│   ├── unified_protocol/     #   统一协议接口层
-│   ├── system_architecture/  #   系统架构规范
-│   └── test_suite/           #   测试用例套件
+├── 📁 backend/                # 云端服务
+│   ├── cloud/hub/             #   Hub 服务 (Go, gRPC)
+│   ├── cloud/protocol/        #   通信协议规范 (+ api/ 合并: sdk.proto)
+│   ├── cloud/deploy/          #   部署编排 (k8s/helm/docker-compose/certs)
+│   ├── dkcs/                  #   DKCS 核心服务 (Go, MQTT TCU 通道)
+│   ├── adapters/              #   TSP 适配器 (Java, Spring Boot)
+│   ├── db/                    #   数据库迁移
+│   └── scripts/               #   构建/迁移/验证脚本 (gen-proto, migrate-dkcs, sdk-hub-e2e)
 │
-├── 📁 frontend/              # 前端 SDK + App
-│   ├── android/              #   Android SDK (Kotlin)
-│   ├── android-app/          #   Android App (MVVM)
-│   ├── ios/                  #   iOS SDK (Swift)
-│   ├── ios-app/              #   iOS App (UIKit)
-│   └── ios-tests/            #   iOS 测试
+├── 📁 frontend/               # 移动端 SDK + App
+│   ├── android/               #   Android SDK (Kotlin)
+│   ├── android-app/           #   Android App (MVVM)
+│   ├── ios/                   #   iOS SDK (Swift)
+│   ├── ios-app/               #   iOS App (UIKit)
+│   ├── ios-tests/             #   iOS 测试
+│   └── examples/              #   Demo 示例 (android/ + ios/DemoApp)
 │
-├── 📁 backend/               # 后端服务
-│   ├── cloud/hub/            #   Hub 服务 (Go, gRPC)
-│   ├── cloud/protocol/       #   通信协议规范
-│   ├── dkcs/                 #   DKCS 核心服务 (Go)
-│   └── adapters/             #   TSP 适配器 (Java, Spring Boot)
+├── 📁 embedded/               # 车端固件
+│   ├── icce_protocol/         #   ICCE 协议栈（BLE/UWB/安全/离线决策）
+│   ├── ccc_protocol/          #   CCC 协议栈（BLE/UWB/NFC/安全）
+│   ├── iccoa_protocol/        #   ICCOA 协议栈（DK 3.0 & 4.0）
+│   ├── unified_protocol/      #   统一协议接口层
+│   ├── firmware/              #   固件工程 (CMake, 原顶层 firmware/)
+│   ├── include/               #   跨协议接口头文件 (dk_hal/dk_interfaces/dk_protocol)
+│   ├── misra-rules.yaml       #   MISRA C:2023 规则集
+│   ├── tests/ test_suite/     #   测试用例套件 (Unity)
+│   └── system_architecture/   #   系统架构规范
 │
-└── 📁 docs/                  # 文档
-    ├── SYSTEM_ARCHITECTURE.md  # 系统架构设计
-    ├── API_REFERENCE.md        # API 参考文档
-    ├── SECURITY_GUIDE.md       # 安全指南
-    ├── DEPLOYMENT_GUIDE.md     # 部署指南
-    └── design/                 # 详细设计文档（from digital-key-project）
-        ├── PRD.md               #   产品需求规格说明书
-        ├── ARCHITECTURE.md      #   架构设计（互补视角）
-        ├── PROJECT-PLAN.md      #   项目计划书 (WBS + 排期)
-        ├── DEV-TASKS.md         #   开发任务分解
-        ├── TEST-PLAN.md         #   测试计划
-        ├── API-CONTRACT.md      #   API 契约
-        ├── EMBEDDED-DEV-GUIDE.md # 嵌入式开发指南
-        ├── APP-DEV-GUIDE.md     #   App 开发指南
-        ├── CLOUD-DEV-GUIDE.md   #   云端开发指南
-        ├── CODE-REVIEW-V2.md    #   代码审查报告（通过）
-        ├── DELIVERY-REPORT.md   #   交付报告
-        └── S32K3-MIGRATION-GUIDE.md # S32K3 迁移指南
+├── 📁 mobile/                 # 新移动端 SDK (proto 生成目标)
+│   ├── android/sdk/           #   Android SDK (Kotlin)
+│   └── ios/                   #   iOS SDK (SwiftPM)
+│
+├── 📁 docs/                   # 文档
+│   ├── SYSTEM_ARCHITECTURE.md #   系统架构设计
+│   ├── API_REFERENCE.md       #   API 参考文档
+│   ├── SECURITY_GUIDE.md      #   安全指南
+│   ├── DEPLOYMENT_GUIDE.md    #   部署指南
+│   ├── reports/               #   评审/测试报告 (原顶层 reports/)
+│   ├── specs/                 #   OpenSpec 规范 (原顶层 specs/)
+│   └── design/                #   详细设计文档（from digital-key-project）
+│       ├── PRD.md             #   产品需求规格说明书
+│       ├── ARCHITECTURE.md    #   架构设计（互补视角）
+│       ├── PROJECT-PLAN.md    #   项目计划书 (WBS + 排期)
+│       ├── DEV-TASKS.md       #   开发任务分解
+│       ├── TEST-PLAN.md       #   测试计划
+│       ├── API-CONTRACT.md    #   API 契约
+│       ├── EMBEDDED-DEV-GUIDE.md # 嵌入式开发指南
+│       ├── APP-DEV-GUIDE.md   #   App 开发指南
+│       ├── CLOUD-DEV-GUIDE.md #   云端开发指南
+│       ├── CODE-REVIEW-V2.md  #   代码审查报告（通过）
+│       ├── DELIVERY-REPORT.md #   交付报告
+│       └── S32K3-MIGRATION-GUIDE.md # S32K3 迁移指南
+│
+└── 📁 tests/                  # 跨端集成/E2E/安全测试 (e2e, integration, security, hil, qemu_m33)
 ```
 
 ## 🔧 技术栈
