@@ -81,5 +81,8 @@ FreeRTOS-Kernel V11 vendored under `third_party/`.
   用外部时钟 (CLKSOURCE=0), QEMU 6.2 mps2-an521 的 STCLK=32768Hz →
   tick 变 0.6s。**修复**: 删除 configSYSTICK_CLOCK_HZ 定义, SysTick 用内核
   时钟 (20MHz → 1ms tick), 6.2 下 QEMU_M33_PASS 恢复正常。
-- HIL 命令通道: 固件支持 UART RX 命令 (HIL:PING/GET_VERSION/LED/STATE),
-  见 src/main.c TaskHil。
+- HIL 命令通道: 固件支持 UART RX 命令 (HIL:PING/GET_VERSION/LED/STATE/
+  GET_TICKS/GET_UPTIME/BLE|NFC|UWB|SE050:STATUS), 见 src/main.c TaskHil。
+- 状态机注入: HIL:SM:STATE|SET:<target>|ILLEGAL|RESET —
+  状态机 IDLE→MONITORING→UNLOCKED→LOCKED, 非法转换 REJECT + 安全计数
+  (FI-05 SIL 验证载体)。

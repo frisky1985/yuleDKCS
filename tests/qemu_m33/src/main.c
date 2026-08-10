@@ -79,6 +79,76 @@ void vAssertCall( void )
     }
 }
 
+/* -nostdlib 无 libc, 用内联字符串比较替代 strcmp */
+static int hil_streq( const char * a, const char * b );
+
+static int hil_starts_with( const char * s, const char * prefix )
+{
+    while ( *prefix != '\0' )
+    {
+        if ( *s != *prefix )
+        {
+            return 0;
+        }
+        s++;
+        prefix++;
+    }
+    return 1;
+}
+
+/* ---------------------------------------------------------------------
+ * 系统状态机 (HIL 可注入) — FI-05 非法转换检测的 SIL 验证载体
+ *
+ * 状态: IDLE(0) → MONITORING(1) → UNLOCKED(2) → LOCKED(3)
+ * 合法转换表:
+ *   IDLE       → MONITORING          (开始检测)
+ *   MONITORING → UNLOCKED | IDLE     (认证成功 / 超时回退)
+ *   UNLOCKED   → LOCKED              (上锁)
+ *   LOCKED     → MONITORING          (重新检测)
+ * 非法转换: 拒绝 (状态保持) + 非法计数++ (安全日志模拟)
+ * ------------------------------------------------------------------- */
+#define SM_IDLE         0
+#define SM_MONITORING   1
+#define SM_UNLOCKED     2
+#define SM_LOCKED       3
+
+static volatile int      g_sm_state   = SM_IDLE;
+static volatile uint32_t g_sm_illegal = 0UL;
+
+static int sm_transition_allowed( int from, int target )
+{
+    switch ( from )
+    {
+        case SM_IDLE:       return ( target == SM_MONITORING );
+        case SM_MONITORING: return ( ( target == SM_UNLOCKED ) || ( target == SM_IDLE ) );
+        case SM_UNLOCKED:   return ( target == SM_LOCKED );
+        case SM_LOCKED:     return ( target == SM_MONITORING );
+        default:            return 0;
+    }
+}
+
+static const char * sm_state_name( int s )
+{
+    switch ( s )
+    {
+        case SM_IDLE:       return "IDLE";
+        case SM_MONITORING: return "MONITORING";
+        case SM_UNLOCKED:   return "UNLOCKED";
+        case SM_LOCKED:     return "LOCKED";
+        default:            return "UNKNOWN";
+    }
+}
+
+/* 解析 "SET:<name|num>" 中的目标状态, 失败返回 -1 */
+static int sm_parse_target( const char * s )
+{
+    if ( hil_streq( s, "IDLE" ) == 0 )       return SM_IDLE;
+    if ( hil_streq( s, "MONITORING" ) == 0 ) return SM_MONITORING;
+    if ( hil_streq( s, "UNLOCKED" ) == 0 )   return SM_UNLOCKED;
+    if ( hil_streq( s, "LOCKED" ) == 0 )     return SM_LOCKED;
+    return -1;
+}
+
 /* ---------------------------------------------------------------------
  * TaskHil — HIL 命令通道 (UART RX 轮询)
  *
@@ -169,6 +239,51 @@ static void TaskHil( void * arg )
                 {
                     /* QEMU 无 RF/SE 硬件 — 诚实报告不可用 (host 端应 SKIP) */
                     Uart_WriteString( "HIL:NOT_AVAILABLE\n" );
+                }
+                else if ( hil_streq( line, "HIL:SM:STATE" ) == 0 )
+                {
+                    Uart_WriteString( "HIL:SM:STATE:" );
+                    Uart_WriteString( sm_state_name( g_sm_state ) );
+                    Uart_WriteString( "\n" );
+                }
+                else if ( hil_streq( line, "HIL:SM:ILLEGAL" ) == 0 )
+                {
+                    Uart_WriteString( "HIL:SM:ILLEGAL:" );
+                    Uart_WriteDec( g_sm_illegal );
+                    Uart_WriteString( "\n" );
+                }
+                else if ( hil_streq( line, "HIL:SM:RESET" ) == 0 )
+                {
+                    g_sm_state = SM_IDLE;
+                    g_sm_illegal = 0UL;
+                    Uart_WriteString( "HIL:SM:RESET:OK\n" );
+                }
+                else if ( hil_starts_with( line, "HIL:SM:SET:" ) )
+                {
+                    int target = sm_parse_target( &line[ 11 ] );
+                    if ( target < 0 )
+                    {
+                        Uart_WriteString( "HIL:SM:SET:INVALID_TARGET\n" );
+                    }
+                    else if ( sm_transition_allowed( g_sm_state, target ) )
+                    {
+                        Uart_WriteString( "HIL:SM:OK:" );
+                        Uart_WriteString( sm_state_name( g_sm_state ) );
+                        Uart_WriteString( "->" );
+                        g_sm_state = target;
+                        Uart_WriteString( sm_state_name( g_sm_state ) );
+                        Uart_WriteString( "\n" );
+                    }
+                    else
+                    {
+                        /* 非法转换: 拒绝 + 状态保持 + 计数 (安全日志) */
+                        g_sm_illegal++;
+                        Uart_WriteString( "HIL:SM:REJECT:" );
+                        Uart_WriteString( sm_state_name( g_sm_state ) );
+                        Uart_WriteString( "->" );
+                        Uart_WriteString( sm_state_name( target ) );
+                        Uart_WriteString( "\n" );
+                    }
                 }
                 else
                 {

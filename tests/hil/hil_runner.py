@@ -69,6 +69,7 @@ DOMAIN_TEST_MAP = {
     "PM":     ["HIL-PM-01", "HIL-PM-02", "HIL-PM-03"],
     "FI":     ["HIL-FI-01", "HIL-FI-02", "HIL-FI-03", "HIL-FI-04", "HIL-FI-05", "HIL-FI-06"],
     "WAKEUP": ["HIL-WK-01", "HIL-WK-02", "HIL-WK-03"],
+    "SM":     ["HIL-SM-01", "HIL-SM-02", "HIL-SM-03"],
     "CMD":    ["HIL-CMD-01", "HIL-CMD-02", "HIL-CMD-03", "HIL-CMD-04",
                "HIL-CMD-05", "HIL-CMD-06"],
 }
@@ -91,6 +92,8 @@ TEST_PRIORITY = {
     # 命令通道 (SIL 真实验证)
     "HIL-CMD-01": "P0", "HIL-CMD-02": "P0", "HIL-CMD-03": "P0",
     "HIL-CMD-04": "P0", "HIL-CMD-05": "P0", "HIL-CMD-06": "P1",
+    # 状态机 (SIL 真实验证)
+    "HIL-SM-01": "P0", "HIL-SM-02": "P0", "HIL-SM-03": "P1",
     "HIL-VS-01":  "P1", "HIL-VS-03": "P1",
     "HIL-FI-01":  "P1", "HIL-FI-02": "P1", "HIL-FI-03": "P1", "HIL-FI-04": "P1", "HIL-FI-06": "P1",
     "HIL-WK-01":  "P1", "HIL-WK-02": "P1",
@@ -445,11 +448,13 @@ class HILTestRunner:
         }
 
     def run_all(self):
-        """Run all 43 HIL tests (6 命令通道 + 37 硬件用例) in dependency order."""
+        """Run all 46 HIL tests (9 真实 SIL + 37 硬件用例) in dependency order."""
         ordered = [
             # Phase 0: 命令通道 (SIL 真实固件验证)
             "HIL-CMD-01", "HIL-CMD-02", "HIL-CMD-03", "HIL-CMD-04",
             "HIL-CMD-05", "HIL-CMD-06",
+            # Phase 0.5: 状态机 (SIL 真实固件验证)
+            "HIL-SM-01", "HIL-SM-02", "HIL-SM-03",
             # Phase 1: HW basics
             "HIL-PM-01",
             "HIL-SE-01",

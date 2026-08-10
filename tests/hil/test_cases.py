@@ -357,7 +357,7 @@ def test_power_low_battery(hw, result):
 
 
 # ============================================================================
-#  Fault Injection (HIL-FI-01 ~ 06) — 需故障注入硬件/固件支持
+#  Fault Injection (HIL-FI-01 ~ 06) — FI-05 已转真实 (固件状态机注入)
 # ============================================================================
 
 @register("HIL-FI-01")
@@ -390,9 +390,30 @@ def test_fault_power_loss(hw, result):
 
 @register("HIL-FI-05")
 def test_fault_illegal_state(hw, result):
-    """非法状态机转换: 强制非法转换 (需固件状态机注入支持)."""
-    _query_domain(hw, result, "FI", "HIL:BLE:STATUS",
-                  "状态机注入需固件支持")
+    """非法状态机转换: 强制非法转换 → 拒绝 + 回滚 + 安全计数 (真实固件状态机)."""
+    # 重置状态机
+    r = hw.query("HIL:SM:RESET", timeout=3.0)
+    assert r == "HIL:SM:RESET:OK", f"SM RESET 失败: {r}"
+
+    # 非法转换: IDLE → UNLOCKED (跳过认证)
+    r = hw.query("HIL:SM:SET:UNLOCKED", timeout=3.0)
+    assert r == "HIL:SM:REJECT:IDLE->UNLOCKED", f"非法转换未被拒绝: {r}"
+
+    # 状态保持 (回滚)
+    s = hw.query("HIL:SM:STATE", timeout=3.0)
+    assert s == "HIL:SM:STATE:IDLE", f"非法转换后状态未回滚: {s}"
+
+    # 安全计数
+    c = hw.query("HIL:SM:ILLEGAL", timeout=3.0)
+    assert c == "HIL:SM:ILLEGAL:1", f"非法转换计数错误: {c}"
+
+    result.measurements = {
+        "illegal_transition": "REJECT",
+        "state_rolled_back": True,
+        "illegal_count": 1,
+    }
+    result.details = ("非法转换 IDLE→UNLOCKED → REJECT + 状态保持 + 计数 1 "
+                      "(真实固件状态机验证)")
 
 
 @register("HIL-FI-06")
@@ -400,6 +421,71 @@ def test_fault_signature_bypass(hw, result):
     """签名绕过攻击模拟 (需 SE050/安全链路)."""
     _query_domain(hw, result, "FI", "HIL:SE050:STATUS",
                   "签名链路需硬件")
+
+
+# ============================================================================
+#  State Machine (HIL-SM-01 ~ 03) — 固件状态机真实 SIL 验证
+# ============================================================================
+
+@register("HIL-SM-01")
+def test_sm_legal_sequence(hw, result):
+    """状态机合法转换序列: IDLE→MONITORING→UNLOCKED→LOCKED→MONITORING."""
+    r = hw.query("HIL:SM:RESET", timeout=3.0)
+    assert r == "HIL:SM:RESET:OK", f"SM RESET 失败: {r}"
+
+    seq = [("MONITORING", "HIL:SM:OK:IDLE->MONITORING"),
+           ("UNLOCKED", "HIL:SM:OK:MONITORING->UNLOCKED"),
+           ("LOCKED", "HIL:SM:OK:UNLOCKED->LOCKED"),
+           ("MONITORING", "HIL:SM:OK:LOCKED->MONITORING")]
+    for target, expected in seq:
+        resp = hw.query(f"HIL:SM:SET:{target}", timeout=3.0)
+        assert resp == expected, f"合法转换 {target} 失败: {resp}"
+
+    result.measurements = {"legal_transitions": len(seq)}
+    result.details = "合法转换序列 4/4 通过 (真实固件状态机)"
+
+
+@register("HIL-SM-02")
+def test_sm_illegal_rejected(hw, result):
+    """状态机非法转换拒绝: 多类非法转换均 REJECT + 状态保持."""
+    r = hw.query("HIL:SM:RESET", timeout=3.0)
+    assert r == "HIL:SM:RESET:OK"
+
+    illegal = [
+        ("HIL:SM:SET:UNLOCKED", "HIL:SM:REJECT:IDLE->UNLOCKED"),  # 跳过认证
+        ("HIL:SM:SET:LOCKED", "HIL:SM:REJECT:IDLE->LOCKED"),      # 未检测直接上锁
+        ("HIL:SM:SET:IDLE", "HIL:SM:REJECT:IDLE->IDLE"),          # 自转换
+    ]
+    for cmd, expected in illegal:
+        resp = hw.query(cmd, timeout=3.0)
+        assert resp == expected, f"{cmd} 期望 {expected}, 实际 {resp}"
+        state = hw.query("HIL:SM:STATE", timeout=3.0)
+        assert state == "HIL:SM:STATE:IDLE", f"非法转换后状态漂移: {state}"
+
+    result.measurements = {"illegal_attempts": len(illegal),
+                           "all_rejected": True}
+    result.details = f"{len(illegal)} 类非法转换全部 REJECT + 状态保持"
+
+
+@register("HIL-SM-03")
+def test_sm_illegal_counter(hw, result):
+    """非法转换安全计数: 计数递增 + RESET 清零 (安全日志模拟)."""
+    r = hw.query("HIL:SM:RESET", timeout=3.0)
+    assert r == "HIL:SM:RESET:OK"
+
+    # 3 次非法尝试
+    for _ in range(3):
+        hw.query("HIL:SM:SET:UNLOCKED", timeout=3.0)
+    c = hw.query("HIL:SM:ILLEGAL", timeout=3.0)
+    assert c == "HIL:SM:ILLEGAL:3", f"非法计数错误: {c}"
+
+    # RESET 清零
+    hw.query("HIL:SM:RESET", timeout=3.0)
+    c2 = hw.query("HIL:SM:ILLEGAL", timeout=3.0)
+    assert c2 == "HIL:SM:ILLEGAL:0", f"RESET 后计数未清零: {c2}"
+
+    result.measurements = {"illegal_count": 3, "after_reset": 0}
+    result.details = "非法转换计数 3 → RESET 清零 (安全日志可用)"
 
 
 # ============================================================================
