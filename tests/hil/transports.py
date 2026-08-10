@@ -69,7 +69,7 @@ class QemuTransport(BaseTransport):
         ]
         self._proc = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, bufsize=1, text=False,
+            stderr=subprocess.STDOUT, text=False,
         )
         # 等待固件启动标记
         deadline = time.time() + self.boot_timeout

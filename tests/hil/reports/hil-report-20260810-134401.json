@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "firmware_version": "unknown",
+    "hardware_config": "S32K312-EVB",
+    "tester": "auto",
+    "start_time": "2026-08-10T13:44:01.244822+00:00",
+    "end_time": "2026-08-10T13:44:01.256250+00:00",
+    "duration_seconds": 0.011428
+  },
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "error": 0,
+    "not_run": 0,
+    "pass_rate": 100.0,
+    "p0_pass_rate": 100.0,
+    "p1_pass_rate": 100.0
+  },
+  "results": [
+    {
+      "test_id": "HIL-BLE-01",
+      "name": "BLE 标准连接",
+      "domain": "BLE",
+      "priority": "P0",
+      "status": "PASSED",
+      "duration_ms": 0.0,
+      "measurements": {
+        "avg_connection_time_ms": 1221.2,
+        "min_ms": 908.8,
+        "max_ms": 1760.9,
+        "success_rate_pct": 100.0,
+        "total_attempts": 10
+      },
+      "details": "Avg connection time: 1221ms, rate: 100%"
+    }
+  ],
+  "failures": []
+}

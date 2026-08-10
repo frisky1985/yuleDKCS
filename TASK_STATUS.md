@@ -42,9 +42,9 @@
 | # | 事项 | 状态 | 备注 |
 |:-:|:-----|:----:|:-----|
 | H-1 | **HIL transport 抽象** | ✅ | `tests/hil/transports.py`: QemuTransport (SIL) / SerialTransport (真机 UART) / JLinkTransport (烧录)；hil_runner HardwareInterface 可插拔 + `--transport` CLI + `query()` 协议；fake-qemu 单测 9/9 绿 |
-| H-2 | QEMU 6.2 SysTick 兼容 | ⚠️ 记录 | qemu_m33 在 QEMU 6.2 下 SysTick IRQ 不触发 (20/25MHz 均无效, 疑 secure-only 路由差异)；README 注明需 QEMU ≥11.x (CI 容器固定版本) |
-| H-3 | **固件签名/加密工具链** | ✅ | `embedded/firmware_toolchain/`: sign_firmware.py (ECDSA P-256) + verify_firmware.py (AES-256-GCM 解密验签) + fw_header.py (.ydk 包格式) + 17 单测全绿 (6 种篡改检测 + CLI 端到端)；SM2 算法位预留 |
-| H-4 | 待办: qemu 固件 HIL 命令通道 | 📋 | qemu_m33 main.c 加 UART RX 命令解析 (HIL:GET_VERSION 等) |
+| H-2 | **QEMU 6.2 SysTick 修复** | ✅ | 根因: FreeRTOSConfig.h 定义了 configSYSTICK_CLOCK_HZ → port.c 走 #else 分支用外部时钟 (CLKSOURCE=0, QEMU 6.2 mps2-an521 STCLK=32768Hz → tick 0.6s 卡死)；删除定义 → 内核时钟 20MHz → 1ms tick，QEMU_M33_PASS 恢复 |
+| H-3 | **固件 HIL 命令通道** | ✅ | qemu_m33: UART RX 轮询 (CMSDK RXBF bit1) + TaskHil 命令集 (PING/GET_VERSION/LED/STATE/UNKNOWN)；实测 5 命令全通 + QEMU_M33_PASS |
+| H-4 | **SIL 端到端打通** | ✅ | hil_runner --transport qemu 连真固件: --status 读版本 1.3.0、query() 前缀过滤 (固件任务日志不干扰)、CLI 单测试跑通出报告；transports 9/9 + firmware_toolchain 17/17 回归全绿 |
 | H-5 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) |
 | H-6 | 待办: 烧录工具 B2/B3 | 📋 | J-Link 脚本生成器 + 批次 manifest + 烧录日志 DB |
 

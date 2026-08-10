@@ -32,6 +32,9 @@ import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
+# 保证 tests/hil 下模块可导入 (直接运行 或 python -m 两种方式)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from transports import JLinkTransport
 
 # ---------------------------------------------------------------------------
@@ -298,13 +301,13 @@ class HardwareInterface:
         """从固件读取一行."""
         return self._transport.read_line()
 
-    def query(self, cmd, timeout=2.0):
-        """发送命令并等待响应行 (返回响应或 None)."""
+    def query(self, cmd, timeout=2.0, prefix="HIL:"):
+        """发送命令并等待带前缀的响应行 (过滤固件日志输出)."""
         self.send_command(cmd)
         deadline = time.time() + timeout
         while time.time() < deadline:
             line = self._transport.read_line(timeout=0.5)
-            if line:
+            if line and line.startswith(prefix):
                 return line
         return None
 
@@ -621,10 +624,14 @@ def main():
         sys.exit(0)
 
     if args.status:
+        hw.open()  # status 需连接 transport
         print("=" * 60)
         print("  yuleDKCS HIL System Status")
         print("=" * 60)
-        version = hw.read_firmware_version()
+        try:
+            version = hw.read_firmware_version()
+        finally:
+            hw.close()
         print(f"  Firmware: {version}")
         print(f"  HW Config: S32K312-EVB + KW47 + ST25R501 + SE050 + NCJ29D6")
         print(f"  HIL Dir: {HIL_DIR}")

@@ -19,7 +19,10 @@
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
 #define configUSE_TICKLESS_IDLE                 0
 #define configCPU_CLOCK_HZ                      ( 20000000UL )
-#define configSYSTICK_CLOCK_HZ                  ( configCPU_CLOCK_HZ )
+/* 注意: 不定义 configSYSTICK_CLOCK_HZ — 让 port.c 走 #ifndef 分支,
+ * SysTick 使用内核时钟 (CLKSOURCE=1, 20MHz → 1ms tick)。
+ * 若定义它, port.c 走 #else 分支用外部时钟 (CLKSOURCE=0),
+ * QEMU 6.2 mps2-an521 的 STCLK=32768Hz → tick 变 0.6s, 任务卡死。 */
 #define configTICK_RATE_HZ                      ( 1000 )
 #define configMAX_PRIORITIES                    ( 5 )
 #define configMINIMAL_STACK_SIZE                ( 128 )

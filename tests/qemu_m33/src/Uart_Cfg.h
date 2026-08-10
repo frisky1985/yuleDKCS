@@ -6,8 +6,8 @@
  * serial0 (QEMU stdio) is wired to UART0.
  *
  * CMSDK UART registers (base + offset):
- *   0x00 DATA       write = transmit character
- *   0x04 STATE      bit0 TXREADY (1 = ready, 0 = busy)
+ *   0x00 DATA       write = transmit character, read = received char
+ *   0x04 STATE      bit0 TXREADY (1 = ready, 0 = busy), bit1 RXBF (RX buffer full)
  *   0x08 CTRL       bit0 TXEN, bit1 RXEN
  *   0x10 BAUDDIV    must be non-zero or QEMU drops all TX
  */
@@ -31,5 +31,7 @@ void Uart_Init( void );
 void Uart_WriteByte( uint8_t ch );
 void Uart_WriteString( const char * str );
 void Uart_WriteDec( uint32_t value );
+int  Uart_RxAvailable( void );
+uint8_t Uart_ReadByte( void );
 
 #endif /* UART_CFG_H */

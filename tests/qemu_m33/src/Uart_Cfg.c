@@ -65,3 +65,17 @@ void Uart_WriteDec( uint32_t value )
 
     Uart_WriteString( &buf[ i ] );
 }
+
+/* ---------------------------------------------------------------------
+ * RX path (HIL command channel)
+ * STATE bit1 = RXBF (receive buffer full)
+ * ------------------------------------------------------------------- */
+int Uart_RxAvailable( void )
+{
+    return ( int )( ( *Uart_StateReg & 0x02UL ) != 0UL );
+}
+
+uint8_t Uart_ReadByte( void )
+{
+    return ( uint8_t )( *Uart_DataReg & 0xFFUL );
+}
