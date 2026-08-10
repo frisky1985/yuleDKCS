@@ -48,7 +48,10 @@
 | H-5 | **37 用例去模拟化 (拒绝假数据)** | ✅ | test_cases.py 重写: 6 个 HIL-CMD-* 命令通道用例 (PING/版本/LED/tick 前进/uptime/未知命令) 真实验证固件状态; 37 个硬件域用例全部改为固件 query — QEMU 无硬件 → 固件诚实返回 NOT_AVAILABLE → SKIPPED + reason; random 假测量全部移除; runner 支持 SKIPPED 状态 (pass_rate 排除 skipped)；实测 43 用例 6 PASSED/37 SKIPPED/0 FAIL, 报告含 skipped 统计 |
 | H-6 | **B2 烧录脚本生成器** | ✅ | `flash_generator.py`: 验签+解密 → J-Link 脚本 (SWD/JTAG/erase/loadfile/verifybin) + 批次 manifest (固件哈希/密钥ID/设备列表) + 烧录日志 CSV (追加/DRY_RUN 模式)；篡改包拒绝；9/9 单测 + CLI 端到端 |
 | H-7 | **固件状态机注入 (FI-05 转真实)** | ✅ | qemu_m33 固件加状态机 (IDLE/MONITORING/UNLOCKED/LOCKED + 合法转换表) + HIL:SM:* 命令 (STATE/SET/ILLEGAL/RESET)；非法转换 → REJECT + 状态保持 + 安全计数；新增 HIL-SM-01..03 (合法序列/非法拒绝/计数清零)；实测 46 用例 10 PASSED/36 SKIPPED/0 FAIL |
-| H-8 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) — SKIPPED 用例在此阶段转真实执行 |
+| H-8 | **B3-A 工厂侧批次管理** | ✅ | `batch_manager.py`: SQLite (batches/flash_records/devices/key_usage) + 哈希链防篡改 (verify-chain 检测篡改) + 良率统计/失败设备/设备状态机/密钥审计/CSV 导入/API 载荷导出；13/13 单测 + CLI 冒烟 |
+| H-9 | **B3-B 云端 batch-api** | ✅ | `backend/cloud/batch-api` (Go, 纯标准库): REST API (批次 CRUD/烧录上报/良率/设备状态) + X-API-Key 鉴权 + 文件持久化 + 哈希链与 A 端算法一致；11 单测 + 端到端冒烟 (创建→上报→统计→401) |
+| H-10 | **MES 对接文档** | ✅ | `docs/mes-integration.md`: 架构图/API 契约/域名对接清单 (DNS/TLS/反代/环境变量)/数据模型/哈希链/数据流/安全合规 |
+| H-11 | 待办: 真实硬件 A2 | 📋 | pyserial + J-Link 接 S32K312-EVB, 5 个 P0 用例 (BLE/NFC/SE050/解锁/电源) — SKIPPED 用例在此阶段转真实执行 |
 
 ---
 

@@ -6,6 +6,7 @@ use (
 	backend/cloud/hub
 	backend/cloud/hub/tests/integration
 	backend/cloud/hub/tests/stress
+	backend/cloud/batch-api
 	backend/dkcs
 	backend/dkcs/proto
 	tests/security

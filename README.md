@@ -38,6 +38,7 @@
 yuleDKCS/
 ├── 📁 backend/                # 云端服务
 │   ├── cloud/hub/             #   Hub 服务 (Go, gRPC)
+│   ├── cloud/batch-api/       #   生产批次管理 API (Go, REST — B3, 见 docs/mes-integration.md)
 │   ├── cloud/protocol/        #   通信协议规范 (+ api/ 合并: sdk.proto)
 │   ├── cloud/deploy/          #   部署编排 (k8s/helm/docker-compose/certs)
 │   ├── dkcs/                  #   DKCS 核心服务 (Go, MQTT TCU 通道)
@@ -53,12 +54,15 @@ yuleDKCS/
 │   ├── ios-tests/             #   iOS 测试
 │   └── examples/              #   Demo 示例 (android/ + ios/DemoApp)
 │
-├── 📁 embedded/               # 车端固件
+├── 📁 embedded/               # 车端固件 + 生产工具链
 │   ├── icce_protocol/         #   ICCE 协议栈（BLE/UWB/安全/离线决策）
 │   ├── ccc_protocol/          #   CCC 协议栈（BLE/UWB/NFC/安全）
 │   ├── iccoa_protocol/        #   ICCOA 协议栈（DK 3.0 & 4.0）
 │   ├── unified_protocol/      #   统一协议接口层
 │   ├── firmware/              #   固件工程 (CMake, 原顶层 firmware/)
+│   ├── firmware_toolchain/    #   生产烧录工具链: 签名/加密/烧录脚本/批次管理
+│   │                          #   (sign_firmware, verify_firmware, flash_generator,
+│   │                          #    batch_manager — B1/B2/B3 工厂侧, 对接 batch-api)
 │   ├── include/               #   跨协议接口头文件 (dk_hal/dk_interfaces/dk_protocol)
 │   ├── misra-rules.yaml       #   MISRA C:2023 规则集
 │   ├── tests/ test_suite/     #   测试用例套件 (Unity)
