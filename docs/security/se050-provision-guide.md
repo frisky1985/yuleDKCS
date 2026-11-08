@@ -218,9 +218,26 @@ S3 轮换中 (REPLACE KEYS, version++)
 | 在线派生轮换（REPLACE KEYS, INS 0xD2） | `se050_scp03_replace_keys()` | ✅ |
 | 轮换并重建通道 | `se050_scp03_rotate_keys()` | ✅ |
 | 设备签名 | `se050_apdu_sign()` / `sec_sign()` | ✅ |
-| HSM 派生与产线工位工具 | 待实现（HSM/产线系统） | ⏳ |
+| HSM 密钥派生（MK → 传输密钥组） | `hsm_provision_derive_transport()` | ✅ 接口 + 软件参考实现；PKCS#11 后端待接入 |
+| 产线密钥指纹 | `hsm_provision_fingerprint()` | ✅ |
 | 设备密钥生成/证书签发 | 依赖 Plug&Trust 与 CA | ⏳ |
 | 真机 G1 注入/轮换验证 | 见 `docs/g1-bringup-runbook.md` | ⏳ |
+
+### 7.1 HSM 派生接口
+
+头文件：`embedded/tools/provision/include/se050_hsm_provision.h`
+实现：`embedded/tools/provision/src/se050_hsm_provision.c`
+
+| 接口 | 说明 |
+|:-----|:-----|
+| `hsm_provision_init(ctx, cfg)` | 初始化后端；SOFTWARE 必须 `allow_software=1`，PKCS11 当前返回 `HSM_PROV_ERR_UNAVAILABLE` |
+| `hsm_provision_derive_transport(ctx, uid, ver, out)` | 派生 K-ENC/K-MAC/K-RMAC；拒绝全零 UID、`ver=0`、未初始化上下文 |
+| `hsm_provision_fingerprint(uid, set, out)` | `SHA-256("YULE-DK-TRANSPORT-V1"‖UID‖K-ENC‖K-MAC‖K-RMAC)`，供产线 DB 登记 |
+| `hsm_provision_key_set_clear(set)` | 安全清零密钥组 |
+| `hsm_provision_deinit(ctx)` | 安全清零上下文（MK/句柄） |
+
+实现自包含 AES-128/192/256、AES-CMAC、SHA-256，不依赖 OpenSSL；测试向量由 OpenSSL
+独立生成。`make test_provision`：16/16 通过（KAT、确定性、域分离、参数/状态错误、清零）。
 
 **仿真验证**（`test_vse050_scp03`，91/91）：
 - PUT KEY 后旧零密钥 `SCP03_ERR_CRYPTOGRAM`，新密钥重连成功；

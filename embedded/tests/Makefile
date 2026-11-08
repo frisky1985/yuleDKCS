@@ -16,6 +16,7 @@ ICCOA_SRC := $(ROOT)/iccoa_protocol/src
 CCC_SRC   := $(ROOT)/ccc_protocol/src
 ICCE_SRC  := $(ROOT)/icce_protocol/src
 UNI_SRC   := $(ROOT)/unified_protocol/src
+PROV_SRC  := $(ROOT)/tools/provision/src
 
 # Source files
 ICCOA_SRCS := $(ICCOA_SRC)/iccoa/iccoa_dk_core.c \
@@ -70,6 +71,7 @@ TEST_ALL     := $(TESTDIR)/support/test_suite.c
 INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/iccoa_protocol/include -I$(ROOT)/ccc_protocol/include \
             -I$(ROOT)/icce_protocol/include -I$(ROOT)/unified_protocol/include \
+            -I$(ROOT)/tools/provision/include \
             -I$(ROOT)/system_architecture \
             -I$(ROOT)/ccc_protocol/src/logger \
             -I$(ROOT)/icce_protocol/src/crypto \
@@ -176,11 +178,17 @@ $(BUILD)/test_vse050_scp03.o: $(TEST_DIR)/test_vse050_scp03.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/vse050_sim.o: $(TESTDIR)/support/vse050_sim.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_se050_provision.o: $(TEST_DIR)/test_se050_provision.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_se050_provision_lib.o: $(TEST_DIR)/test_se050_provision.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SE050_PROVISION_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_all
 
 all: test_all
 
@@ -240,12 +248,18 @@ test_vse050: $(BUILD)/test_vse050_scp03.o $(BUILD)/vse050_sim.o \
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
+test_provision: $(BUILD)/test_se050_provision.o $(BUILD)/se050_hsm_provision.o \
+                $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
           $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
           $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
           $(BUILD)/test_se050_scp03_lib.o \
+          $(BUILD)/test_se050_provision_lib.o $(BUILD)/se050_hsm_provision.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \

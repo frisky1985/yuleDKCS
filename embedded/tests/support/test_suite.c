@@ -23,6 +23,7 @@ extern int run_edge_condition_tests(void);
 extern int run_icce_edge_tests(void);
 extern int run_sm_crypto_tests(void);
 extern int run_se050_scp03_tests(void);
+extern int run_se050_provision_tests(void);
 
 int main(void)
 {
@@ -58,6 +59,9 @@ int main(void)
 
     printf("\n--- SE050 SCP03 Tests ---\n");
     ret += run_se050_scp03_tests();
+
+    printf("\n--- SE050 HSM Provision Tests ---\n");
+    ret += run_se050_provision_tests();
 
     printf("\n============================================\n");
     if (ret == 0) {
