@@ -61,6 +61,9 @@ extern "C" {
 #define SCP03_MAX_APDU_RESP        256      /**< Max APDU response data (bytes) */
 #define SCP03_CARD_IV_SIZE          16      /**< Card-side IV for Secure Messaging (bytes) */
 
+/** PUT KEY payload: K-ENC || K-MAC || K-RMAC (fixed length) */
+#define SCP03_PUT_KEY_DATA_SIZE    (3 * SCP03_KEY_SIZE)
+
 /** SCP03 key derivation counters */
 #define SCP03_DERIVE_S_ENC           0x01U  /**< S-ENC derivation counter */
 #define SCP03_DERIVE_S_MAC           0x02U  /**< S-MAC derivation counter */
@@ -188,6 +191,13 @@ void se050_scp03_close_session(scp03_session_t *session);
 /**
  * @brief Provision personalized static SCP03 keys (replaces defaults).
  *
+ * Host-side only: updates the keys used by the NEXT open_session(). It does
+ * not transmit anything. Must be called with the channel closed
+ * (SCP03_STATE_INIT).
+ *
+ * For online personalization of a card that is still using default transport
+ * keys, use se050_scp03_put_key() instead.
+ *
  * @param session   [in/out] Session context
  * @param enc_key   [in] K_ENC (16 bytes), NULL to keep current
  * @param mac_key   [in] K_MAC (16 bytes), NULL to keep current
@@ -198,6 +208,37 @@ int se050_scp03_provision_keys(scp03_session_t *session,
                                 const uint8_t enc_key[SCP03_KEY_SIZE],
                                 const uint8_t mac_key[SCP03_KEY_SIZE],
                                 const uint8_t rmac_key[SCP03_KEY_SIZE]);
+
+/**
+ * @brief Send PUT KEY to personalize the static SCP03 key set.
+ *
+ * Must be called on an OPEN channel (the command itself travels encrypted
+ * and C-MAC protected). On success the card stores the new K-ENC / K-MAC /
+ * K-RMAC under @p new_key_version, and this session's static keys are
+ * updated so the NEXT open_session() authenticates with them. The current
+ * session keeps using its already-derived session keys.
+ *
+ * Payload layout (reduced GP form; no key TLVs):
+ *   P1 = new key version, P2 = 0x00 (SCP03 key set)
+ *   Data = K-ENC(16) || K-MAC(16) || K-RMAC(16)
+ *
+ * Reference: GlobalPlatform Card Spec v2.3.1 Amendment D, PUT KEY (INS D8).
+ *
+ * @param session          [in/out] Active SCP03 session (state == OPEN)
+ * @param i2c_addr         SE050 I2C slave address
+ * @param new_key_version  New key version number (P1)
+ * @param enc_key          [in] New K-ENC (16 bytes, required)
+ * @param mac_key          [in] New K-MAC (16 bytes, required)
+ * @param rmac_key         [in] New K-RMAC (16 bytes, required)
+ * @return SCP03_OK on success;
+ *         SCP03_ERR_NULL / SCP03_ERR_CHANNEL / SCP03_ERR_SW /
+ *         SCP03_ERR_HW / SCP03_ERR_CMAC on failure
+ */
+int se050_scp03_put_key(scp03_session_t *session, uint8_t i2c_addr,
+                        uint8_t new_key_version,
+                        const uint8_t enc_key[SCP03_KEY_SIZE],
+                        const uint8_t mac_key[SCP03_KEY_SIZE],
+                        const uint8_t rmac_key[SCP03_KEY_SIZE]);
 
 /* ========================================================================
  *  Public API — Secure APDU Communication

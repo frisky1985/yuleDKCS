@@ -950,7 +950,56 @@ int se050_scp03_provision_keys(scp03_session_t *session,
     return SCP03_OK;
 }
 
-/* ---- APDU Plain (no secure channel) ---- */
+int se050_scp03_put_key(scp03_session_t *session, uint8_t i2c_addr,
+                        uint8_t new_key_version,
+                        const uint8_t enc_key[16],
+                        const uint8_t mac_key[16],
+                        const uint8_t rmac_key[16])
+{
+    uint8_t  data[SCP03_PUT_KEY_DATA_SIZE];
+    uint8_t  resp[SCP03_CMAC_SIZE];
+    uint16_t resp_len = 0U;
+    int      ret;
+
+    if ((session == NULL) || (enc_key == NULL) ||
+        (mac_key == NULL) || (rmac_key == NULL))
+    {
+        return SCP03_ERR_NULL;
+    }
+
+    /* PUT KEY must itself be protected by the secure channel. */
+    if (session->state != SCP03_STATE_OPEN)
+    {
+        return SCP03_ERR_CHANNEL;
+    }
+
+    (void)memcpy(data, enc_key, SCP03_KEY_SIZE);
+    (void)memcpy(data + SCP03_KEY_SIZE, mac_key, SCP03_KEY_SIZE);
+    (void)memcpy(data + 2U * SCP03_KEY_SIZE, rmac_key, SCP03_KEY_SIZE);
+
+    ret = se050_scp03_apdu_enc(session, i2c_addr,
+                               SCP03_CLA_NO_SM, SCP03_INS_PUT_KEY,
+                               new_key_version, 0x00U,
+                               data, (uint16_t)sizeof(data), resp, &resp_len);
+
+    se050_scp03_secure_zero(data, sizeof(data));
+
+    if (ret != SCP03_OK)
+    {
+        return ret;
+    }
+
+    /*
+     * The card accepted the new key set. Adopt it for the next handshake; the
+     * currently open session keeps its already-derived session keys.
+     */
+    (void)memcpy(session->static_enc_key, enc_key, SCP03_KEY_SIZE);
+    (void)memcpy(session->static_mac_key, mac_key, SCP03_KEY_SIZE);
+    (void)memcpy(session->static_rmac_key, rmac_key, SCP03_KEY_SIZE);
+    session->key_version = new_key_version;
+
+    return SCP03_OK;
+}
 
 int se050_scp03_apdu_plain(uint8_t i2c_addr,
                             uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
@@ -1639,7 +1688,7 @@ static int scp03_apdu_common(scp03_session_t *session, uint8_t i2c_addr,
                 field_len = payload_len;
             }
 
-            if (encrypt != 0)
+            if ((encrypt != 0) && (field_len > 0U))
             {
                 uint8_t  plain[SCP03_MAX_APDU_RESP + SCP03_BLOCK_SIZE];
                 int      plain_len;

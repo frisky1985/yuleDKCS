@@ -54,6 +54,7 @@ typedef struct {
 
     uint8_t  wtx_on_init_update;   /**< 1: emit S(WTX) before INIT UPDATE reply */
     uint8_t  reject_ext_auth;      /**< 1: EXTERNAL AUTH always fails */
+    uint8_t  reject_put_key;       /**< 1: PUT KEY returns SW=6985 */
     uint8_t  sign_disabled;        /**< 1: ECDSA sign returns SW=6982 */
     uint8_t  corrupt_rmac;         /**< One-shot: corrupt the response R-MAC */
     uint8_t  corrupt_ciphertext;   /**< One-shot: flip a command ciphertext byte */
@@ -89,6 +90,8 @@ uint32_t vse050_sim_wtx_count(void);
 uint32_t vse050_sim_crc_errors(void);   /**< Injected CRC faults */
 uint32_t vse050_sim_auth_failures(void);
 uint32_t vse050_sim_sign_count(void);    /**< Accepted ECDSA sign commands */
+uint32_t vse050_sim_put_key_count(void); /**< Accepted PUT KEY commands */
+uint8_t  vse050_sim_key_version(void);   /**< Current card-side key version */
 uint32_t vse050_sim_encrypted_cmds(void);/**< Sign commands received encrypted */
 uint16_t vse050_sim_last_cipher_len(void);/**< Ciphertext length of the last encrypted command */
 uint16_t vse050_sim_apdu_count(void);

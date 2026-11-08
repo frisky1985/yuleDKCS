@@ -10,6 +10,7 @@
  *   - Timeout when the card answers nothing
  *   - Cryptogram mismatch (wrong static keys)
  *   - EXTERNAL AUTHENTICATE rejection
+ *   - PUT KEY personalization (old keys rejected, new keys accepted)
  */
 
 #include "se050_scp03.h"
@@ -314,6 +315,85 @@ static void test_sign_ciphertext_tamper(void)
     se050_scp03_deinit(&s);
 }
 
+static void test_put_key_personalization(void)
+{
+    static const uint8_t k_enc[16] = {
+        0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7,
+        0xA8,0xA9,0xAA,0xAB,0xAC,0xAD,0xAE,0xAF
+    };
+    static const uint8_t k_mac[16] = {
+        0xB0,0xB1,0xB2,0xB3,0xB4,0xB5,0xB6,0xB7,
+        0xB8,0xB9,0xBA,0xBB,0xBC,0xBD,0xBE,0xBF
+    };
+    static const uint8_t k_rmac[16] = {
+        0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7,
+        0xC8,0xC9,0xCA,0xCB,0xCC,0xCD,0xCE,0xCF
+    };
+    vse050_config_t cfg;
+    scp03_session_t s;
+    scp03_session_t old_keys;
+
+    printf("\n[12] PUT KEY personalization\n");
+    vse050_sim_default_config(&cfg);
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "default transport keys open the channel");
+
+    CHECK(se050_scp03_put_key(&s, 0x48, 0x02, NULL, k_mac, k_rmac) == SCP03_ERR_NULL,
+          "NULL key material rejected");
+    CHECK(se050_scp03_put_key(&s, 0x48, 0x02, k_enc, k_mac, k_rmac) == SCP03_OK,
+          "PUT KEY accepted on the secure channel");
+    CHECK(vse050_sim_put_key_count() == 1, "card committed one key set");
+    CHECK(vse050_sim_key_version() == 0x02, "card key version advanced to 0x02");
+    CHECK(se050_scp03_is_open(&s), "channel survives PUT KEY");
+
+    /* Reconnect with the personalized keys (close_session keeps static keys). */
+    se050_scp03_close_session(&s);
+    CHECK(se050_scp03_open_session(&s, 0x48) == SCP03_OK,
+          "reconnect with personalized keys succeeds");
+
+    /* The default (all-zero) transport keys must no longer authenticate. */
+    CHECK(se050_scp03_init(&old_keys) == SCP03_OK, "old-key session initialised");
+    CHECK(se050_scp03_open_session(&old_keys, 0x48) == SCP03_ERR_CRYPTOGRAM,
+          "default transport keys rejected after personalization");
+    se050_scp03_deinit(&old_keys);
+
+    se050_scp03_deinit(&s);
+}
+
+static void test_put_key_rejected(void)
+{
+    static const uint8_t k_enc[16] = { 0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,
+                                       0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F };
+    static const uint8_t k_mac[16] = { 0x20,0x21,0x22,0x23,0x24,0x25,0x26,0x27,
+                                       0x28,0x29,0x2A,0x2B,0x2C,0x2D,0x2E,0x2F };
+    static const uint8_t k_rmac[16] = { 0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,
+                                        0x38,0x39,0x3A,0x3B,0x3C,0x3D,0x3E,0x3F };
+    vse050_config_t cfg;
+    scp03_session_t s;
+
+    printf("\n[13] PUT KEY rejection\n");
+    vse050_sim_default_config(&cfg);
+    vse050_sim_init(&cfg);
+
+    CHECK(se050_scp03_init(&s) == SCP03_OK, "session initialised");
+    CHECK(se050_scp03_put_key(&s, 0x48, 0x02, k_enc, k_mac, k_rmac) == SCP03_ERR_CHANNEL,
+          "PUT KEY refused without an open channel");
+
+    cfg.reject_put_key = 1;
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "channel open before rejected PUT KEY");
+    CHECK(se050_scp03_put_key(&s, 0x48, 0x02, k_enc, k_mac, k_rmac) == SCP03_ERR_SW,
+          "card rejection surfaces SW 6985");
+    CHECK(vse050_sim_put_key_count() == 0, "card committed no key set");
+    CHECK(se050_scp03_is_open(&s), "channel survives a rejected PUT KEY");
+
+    se050_scp03_close_session(&s);
+    CHECK(se050_scp03_open_session(&s, 0x48) == SCP03_OK,
+          "old keys still valid after rejected PUT KEY");
+
+    se050_scp03_deinit(&s);
+}
+
 int main(void)
 {
     printf("=== vSE050 asynchronous SCP03 simulation ===\n");
@@ -331,6 +411,8 @@ int main(void)
     test_sign_apdu();
     test_sign_rmac_tamper();
     test_sign_ciphertext_tamper();
+    test_put_key_personalization();
+    test_put_key_rejected();
 
     printf("\n=== 结果: %d passed, %d failed ===\n", g_pass, g_fail);
     return (g_fail == 0) ? 0 : 1;
