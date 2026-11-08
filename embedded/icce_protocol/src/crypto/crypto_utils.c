@@ -431,6 +431,41 @@ void fn_inv(bn256_t *r, const bn256_t *a)
 }
 
 /* ========================================================================
+ *  通用模运算 (任意素数 m > 2^255)
+ * ======================================================================== */
+
+void bn256_mod_mul(bn256_t *r, const bn256_t *a, const bn256_t *b, const bn256_t *m)
+{
+    uint32_t t[16];
+    mul_512(t, a, b);
+    mod_reduce_512(r, t, m);
+}
+
+void bn256_mod_inv(bn256_t *r, const bn256_t *a, const bn256_t *m)
+{
+    bn256_t e, base, result;
+
+    /* e = m - 2 (m > 2^255, 不会借位) */
+    bn256_copy(&e, m);
+    e.w[7] -= 2U;
+
+    bn256_copy(&base, a);
+    bn256_set_word(&result, 1);
+
+    for (int i = 0; i < 256; i++) {
+        int word_idx = i / 32;
+        int bit_idx = 31 - (i % 32);
+        uint32_t bit = (e.w[word_idx] >> bit_idx) & 1U;
+
+        bn256_mod_mul(&result, &result, &result, m);
+        if (bit) {
+            bn256_mod_mul(&result, &result, &base, m);
+        }
+    }
+    bn256_copy(r, &result);
+}
+
+/* ========================================================================
  *  椭圆曲线点运算 (雅可比射影坐标)
  * ======================================================================== */
 

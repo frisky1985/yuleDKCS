@@ -469,9 +469,22 @@ void test_ccc_full_lifecycle(void)
  * sec_sign/sec_verify 已由软件回退实现 (SM2, USE_SE050 可切硬件).
  * 此测试验证真实契约: 设备密钥自签自验通过, 篡改签名必须拒绝.
  */
+/* SM2 基点 G (开发密钥 d=1 对应的公钥), 仅用于测试注册对端公钥. */
+static const uint8_t k_dev_pub_sm2[64] = {
+    0x32,0xC4,0xAE,0x2C,0x1F,0x19,0x81,0x19,
+    0x5F,0x99,0x04,0x46,0x6A,0x39,0xC9,0x94,
+    0x8F,0xE3,0x0B,0xBF,0xF2,0x66,0x0B,0xE1,
+    0x71,0x5A,0x45,0x89,0x33,0x4C,0x74,0xC7,
+    0xBC,0x37,0x36,0xA2,0xF4,0xF6,0x77,0x9C,
+    0x59,0xBD,0xCE,0xE3,0x6B,0x69,0x21,0x53,
+    0xD0,0xA9,0x87,0x7C,0xC6,0x2A,0x47,0x40,
+    0x02,0xDF,0x32,0xE5,0x21,0x39,0xF0,0xA0
+};
+
 void test_security_sign_verify(void)
 {
     sec_init();
+    sec_clear_peer_public_key();
 
     uint8_t data[] = "test_data_for_signature";
     uint8_t sig[64];
@@ -483,7 +496,14 @@ void test_security_sign_verify(void)
     TEST_ASSERT_EQUAL(CCC_OK, ret);
     TEST_ASSERT_EQUAL(64, sig_len);
 
-    /* 设备密钥自验签应通过 (开发测试密钥, 量产替换为 SE050 预置密钥) */
+    /* 未注册对端公钥时必须拒绝 (不允许内置开发公钥回退) */
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
+                      sec_verify(data, sizeof(data), sig, sig_len));
+
+    /* 注册对端公钥后验签通过 */
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_public_key(SEC_KEY_TYPE_SM2,
+                                              k_dev_pub_sm2, 64));
     TEST_ASSERT_EQUAL(VERIFY_OK,
                       sec_verify(data, sizeof(data), sig, sig_len));
 
@@ -499,6 +519,7 @@ void test_security_sign_verify(void)
     TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
                       sec_verify(data, sizeof(data), sig, 32));
 
+    sec_clear_peer_public_key();
     sec_deinit();
 }
 

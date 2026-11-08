@@ -22,6 +22,10 @@
 #include "crypto_random.h"      /* [P1-1] TRNG-backed crypto_random_bytes() */
 #include "se050_scp03.h"        /* [P0-1] SCP03 secure channel implementation */
 #include "se050_apdu.h"         /* [P0-04] SE050 command layer (sign APDU) */
+#include "p256.h"               /* ECDSA P-256 software verify/sign */
+#include "sec_x509.h"           /* Minimal DER/X.509 parser */
+#include "sm2.h"                /* SM2 verify (ICCE software fallback) */
+#include "sm3.h"                /* SM3 hash (ICCE software fallback) */
 /* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
 void *pvPortMalloc(size_t xSize);
 void vPortFree(void *pv);
@@ -48,6 +52,46 @@ static bool g_sec_initialized = false;
  * Must be explicitly zeroed on deinit or close.
  */
 static scp03_session_t g_scp03_session;
+
+/* ========================================================================
+ *  Peer / device key provisioning state (P0-04 T4)
+ * ========================================================================
+ * There is deliberately no built-in peer key: sec_verify() fails until a
+ * peer key is registered, either explicitly or via a verified certificate
+ * chain. This removes the previous development self-verification fallback.
+ */
+#define SEC_ATT_CERT_MAX 512U
+
+static uint8_t  g_peer_pub[64];
+static uint16_t g_peer_pub_len;
+static uint8_t  g_peer_key_type;
+static bool     g_peer_pub_valid;
+
+static uint8_t  g_dev_id[16];
+static uint8_t  g_dev_key_id[16];
+static bool     g_identity_set;
+
+static uint8_t  g_fw_measurement[32];
+static bool     g_fw_measurement_set;
+
+static uint8_t  g_att_cert[SEC_ATT_CERT_MAX];
+static uint16_t g_att_cert_len;
+
+static uint8_t  g_att_root[64];
+static bool     g_att_root_set;
+
+static uint8_t  g_device_pub[64];
+static uint8_t  g_device_key_type;
+static bool     g_device_pub_set;
+
+static uint32_t g_trusted_time;
+static bool     g_trusted_time_set;
+
+#ifdef USE_SE050
+#define SEC_DEFAULT_DEVICE_KEY_TYPE SEC_KEY_TYPE_P256
+#else
+#define SEC_DEFAULT_DEVICE_KEY_TYPE SEC_KEY_TYPE_SM2
+#endif
 
 /* volatile memset: 安全清零 */
 static inline void sec_secure_zero(void *ptr, size_t len)
@@ -664,19 +708,6 @@ static const uint8_t g_dev_priv_key[32] = {
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
 };
-/* 公钥 = SM2 基点 G = (Gx, Gy) */
-static const uint8_t g_dev_pub_key[64] = {
-    /* Gx = 32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7 */
-    0x32,0xC4,0xAE,0x2C,0x1F,0x19,0x81,0x19,
-    0x5F,0x99,0x04,0x46,0x6A,0x39,0xC9,0x94,
-    0x8F,0xE3,0x0B,0xBF,0xF2,0x66,0x0B,0xE1,
-    0x71,0x5A,0x45,0x89,0x33,0x4C,0x74,0xC7,
-    /* Gy = BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0 */
-    0xBC,0x37,0x36,0xA2,0xF4,0xF6,0x77,0x9C,
-    0x59,0xBD,0xCE,0xE3,0x6B,0x69,0x21,0x53,
-    0xD0,0xA9,0x87,0x7C,0xC6,0x2A,0x47,0x40,
-    0x02,0xDF,0x32,0xE5,0x21,0x39,0xF0,0xA0
-};
 
 ccc_status_t sec_sign(const uint8_t *data, uint32_t len, uint8_t *sig, uint32_t *sig_len)
 {
@@ -729,102 +760,295 @@ ccc_status_t sec_sign(const uint8_t *data, uint32_t len, uint8_t *sig, uint32_t 
 #endif
 }
 
+/* ========================================================================
+ *  Shared verification helpers
+ * ======================================================================== */
+
+static verify_result_e sec_verify_with_pub(uint8_t key_type, const uint8_t pub[64],
+                                           const uint8_t *data, uint32_t len,
+                                           const uint8_t *sig, uint32_t sig_len)
+{
+    uint8_t hash[32];
+    int rc;
+
+    if (data == NULL || sig == NULL || pub == NULL || sig_len != 64U) {
+        return VERIFY_SIGN_INVALID;
+    }
+
+    if (key_type == SEC_KEY_TYPE_SM2) {
+        rc = sm3_hash(data, (size_t)len, hash);
+        if (rc == CRYPTO_SUCCESS) {
+            rc = sm2_verify_hash(pub, hash, sig);
+        }
+    } else if (key_type == SEC_KEY_TYPE_P256) {
+        rc = crypto_sha256(data, (size_t)len, hash);
+        if (rc == CRYPTO_SUCCESS) {
+            rc = crypto_p256_verify(pub, hash, sig);
+        }
+    } else {
+        return VERIFY_SIGN_INVALID;
+    }
+
+    sec_secure_zero(hash, sizeof(hash));
+    return (rc == CRYPTO_SUCCESS) ? VERIFY_OK : VERIFY_SIGN_INVALID;
+}
+
+/**
+ * Validate a DER certificate chain (leaf first, optional root cert last).
+ * The last certificate must be signed by @p root_pub. On success the leaf
+ * public key is copied to @p leaf_pub.
+ */
+static verify_result_e sec_verify_chain_internal(const uint8_t *chain, uint16_t chain_len,
+                                                 const uint8_t *root_pub, uint16_t root_len,
+                                                 uint8_t leaf_pub[64])
+{
+    const uint8_t *p;
+    uint16_t rem;
+    sec_x509_cert_t prev;
+    bool have_prev = false;
+    int count = 0;
+
+    if (chain == NULL || root_pub == NULL || root_len != 64U || chain_len < 2U) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    p = chain;
+    rem = chain_len;
+
+    while (rem > 0U) {
+        int clen = sec_x509_total_len(p, rem);
+        sec_x509_cert_t c;
+
+        if (clen <= 0 || (uint16_t)clen > rem) return VERIFY_CERT_INVALID;
+        if (sec_x509_parse(p, (uint16_t)clen, &c) != 0) return VERIFY_CERT_INVALID;
+
+        if (g_trusted_time_set && c.has_validity) {
+            if (g_trusted_time < c.not_before || g_trusted_time > c.not_after) {
+                return VERIFY_KEY_EXPIRED;
+            }
+        }
+
+        if (!have_prev) {
+            if (leaf_pub != NULL) {
+                (void)memcpy(leaf_pub, c.pub, 64);
+            }
+        } else {
+            /* prev is the child: its issuer must equal this cert's subject. */
+            if (prev.issuer_len != c.subject_len ||
+                (prev.issuer_len > 0U &&
+                 memcmp(prev.issuer, c.subject, prev.issuer_len) != 0)) {
+                return VERIFY_CERT_INVALID;
+            }
+            if (sec_verify_with_pub(SEC_KEY_TYPE_P256, c.pub, prev.tbs,
+                                    prev.tbs_len, prev.sig, 64) != VERIFY_OK) {
+                return VERIFY_CERT_INVALID;
+            }
+        }
+
+        prev = c;
+        have_prev = true;
+        if (++count > 8) return VERIFY_CERT_INVALID;
+
+        p += clen;
+        rem = (uint16_t)(rem - (uint16_t)clen);
+    }
+
+    if (!have_prev) return VERIFY_CERT_INVALID;
+
+    /* Anchor: the top-most certificate must verify against the trusted root key. */
+    if (sec_verify_with_pub(SEC_KEY_TYPE_P256, root_pub, prev.tbs,
+                            prev.tbs_len, prev.sig, 64) != VERIFY_OK) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    return VERIFY_OK;
+}
+
+/* ========================================================================
+ *  Peer / device key provisioning (P0-04 T4)
+ * ======================================================================== */
+
+ccc_status_t sec_set_peer_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len)
+{
+    if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
+    if (key_type != SEC_KEY_TYPE_P256 && key_type != SEC_KEY_TYPE_SM2) {
+        return CCC_ERR_INVALID_PARAM;
+    }
+
+    (void)memcpy(g_peer_pub, pub, 64);
+    g_peer_pub_len = 64;
+    g_peer_key_type = key_type;
+    g_peer_pub_valid = true;
+    return CCC_OK;
+}
+
+void sec_clear_peer_public_key(void)
+{
+    sec_secure_zero(g_peer_pub, sizeof(g_peer_pub));
+    g_peer_pub_len = 0;
+    g_peer_key_type = 0;
+    g_peer_pub_valid = false;
+}
+
+void sec_set_trusted_time(uint32_t unix_secs)
+{
+    g_trusted_time = unix_secs;
+    g_trusted_time_set = (unix_secs != 0U);
+}
+
+ccc_status_t sec_set_device_identity(const uint8_t device_id[16], const uint8_t key_id[16])
+{
+    if (device_id == NULL || key_id == NULL) return CCC_ERR_INVALID_PARAM;
+    (void)memcpy(g_dev_id, device_id, 16);
+    (void)memcpy(g_dev_key_id, key_id, 16);
+    g_identity_set = true;
+    return CCC_OK;
+}
+
+ccc_status_t sec_set_firmware_measurement(const uint8_t hash[32])
+{
+    if (hash == NULL) return CCC_ERR_INVALID_PARAM;
+    (void)memcpy(g_fw_measurement, hash, 32);
+    g_fw_measurement_set = true;
+    return CCC_OK;
+}
+
+ccc_status_t sec_set_attestation_cert(const uint8_t *der, uint16_t len)
+{
+    if (der == NULL || len == 0U || len > SEC_ATT_CERT_MAX) {
+        return CCC_ERR_INVALID_PARAM;
+    }
+    (void)memcpy(g_att_cert, der, len);
+    g_att_cert_len = len;
+    return CCC_OK;
+}
+
+ccc_status_t sec_set_attestation_root(const uint8_t *pub, uint16_t len)
+{
+    if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
+    (void)memcpy(g_att_root, pub, 64);
+    g_att_root_set = true;
+    return CCC_OK;
+}
+
+ccc_status_t sec_set_device_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len)
+{
+    if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
+    if (key_type != SEC_KEY_TYPE_P256 && key_type != SEC_KEY_TYPE_SM2) {
+        return CCC_ERR_INVALID_PARAM;
+    }
+    (void)memcpy(g_device_pub, pub, 64);
+    g_device_key_type = key_type;
+    g_device_pub_set = true;
+    return CCC_OK;
+}
+
 verify_result_e sec_verify(const uint8_t *data, uint32_t len, const uint8_t *sig, uint32_t sig_len)
 {
     if (!data || !sig) return VERIFY_SIGN_INVALID;
-    if (sig_len != 64) return VERIFY_SIGN_INVALID;
 
-    /*
-     * 验签需要对端公钥. 此处使用内置设备公钥进行自验签 (开发测试).
-     * 量产时应通过 sec_load_key() 查找对端公钥后再验签.
-     */
-    const uint8_t *pub = g_dev_pub_key;
-    size_t pub_len = sizeof(g_dev_pub_key);
+    /* No built-in fallback: a peer key must be registered first. */
+    if (!g_peer_pub_valid) return VERIFY_SIGN_INVALID;
 
-    int ret = crypto_verify(pub, pub_len, data, (size_t)len, sig, (size_t)sig_len);
-    return (ret == CRYPTO_SUCCESS) ? VERIFY_OK : VERIFY_SIGN_INVALID;
+    return sec_verify_with_pub(g_peer_key_type, g_peer_pub, data, len, sig, sig_len);
 }
 
 /* ========================================================================
  *  sec_attestation / sec_verify_attestation — 远程证明
  * ========================================================================
+ * The attestation is only produced from provisioned identity + firmware
+ * measurement. Placeholder device IDs and synthetic firmware hashes are no
+ * longer generated: an unprovisioned device fails closed.
  */
 
 ccc_status_t sec_attestation(ccc_attestation_t *att)
 {
     if (!att) return CCC_ERR_INVALID_PARAM;
     if (!g_sec_initialized) return CCC_ERR_NOT_INIT;
+    if (!g_identity_set || !g_fw_measurement_set) return CCC_ERR_SECURITY;
 
     memset(att, 0, sizeof(*att));
 
     att->version = 0x02;
-    /* nonce: 使用 TRNG 生成 */
     if (crypto_random_bytes(att->nonce, sizeof(att->nonce)) != CRYPTO_SUCCESS) {
         return CCC_ERR_SECURITY;
     }
 
-    /* device_id / key_id: 从密钥槽派生 (占位, 量产由 SE050 OTP 提供) */
-    memset(att->device_id, 0xAA, sizeof(att->device_id));
-    memset(att->key_id,    0xBB, sizeof(att->key_id));
-    att->key_type = 0x01; /* ECDSA P-256 */
+    (void)memcpy(att->device_id, g_dev_id, sizeof(att->device_id));
+    (void)memcpy(att->key_id, g_dev_key_id, sizeof(att->key_id));
+    att->key_type = g_device_pub_set ? g_device_key_type
+                                     : SEC_DEFAULT_DEVICE_KEY_TYPE;
 
-    /* access_rights */
     att->access_rights[0] = 0x0F;
 
-    /* firmware_hash: 对证明数据计算 SHA-256 (占位, 量产应哈希运行时固件) */
-    uint8_t fw_input[64];
-    memcpy(fw_input, att->device_id, 16);
-    memcpy(fw_input + 16, att->nonce, 16);
-    memset(fw_input + 32, 0, 32);
-    if (crypto_sha256(fw_input, sizeof(fw_input), att->firmware_hash) != CRYPTO_SUCCESS) {
-        return CCC_ERR_SECURITY;
-    }
+    (void)memcpy(att->firmware_hash, g_fw_measurement, sizeof(att->firmware_hash));
 
     att->security_state = 0x01; /* SECURE */
 
-    /* attestation_cert: 自签名证书占位 (量产由 CA 签发) */
-    att->attestation_cert_len = 0;
+    if (g_att_cert_len > 0U) {
+        (void)memcpy(att->attestation_cert, g_att_cert, g_att_cert_len);
+        att->attestation_cert_len = g_att_cert_len;
+    }
 
-    /* 签名: 对 attestation 结构 (除 signature 字段) 进行 ECDSA 签名 */
     uint32_t sig_len = sizeof(att->signature);
     ccc_status_t st = sec_sign((const uint8_t *)att,
                                (uint32_t)offsetof(ccc_attestation_t, signature),
                                att->signature, &sig_len);
     if (st != CCC_OK) return st;
+    if (sig_len != sizeof(att->signature)) return CCC_ERR_SECURITY;
 
     return CCC_OK;
 }
 
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
 {
+    uint8_t pub[64];
+    uint8_t key_type;
+
     if (!att) return VERIFY_CERT_INVALID;
+    if (!g_identity_set || !g_fw_measurement_set) return VERIFY_SIGN_INVALID;
 
-    /* 1. 验证固件哈希 (tamper detection) */
-    uint8_t fw_input[64];
-    memcpy(fw_input, att->device_id, 16);
-    memcpy(fw_input + 16, att->nonce, 16);
-    memset(fw_input + 32, 0, 32);
-
-    uint8_t computed_fw_hash[32];
-    if (crypto_sha256(fw_input, sizeof(fw_input), computed_fw_hash) != CRYPTO_SUCCESS) {
-        return VERIFY_SIGN_INVALID;
-    }
-    if (memcmp(computed_fw_hash, att->firmware_hash, 32) != 0) {
+    /* 1. Firmware measurement must match the provisioned value. */
+    if (memcmp(att->firmware_hash, g_fw_measurement,
+               sizeof(att->firmware_hash)) != 0) {
         return VERIFY_FW_TAMPERED;
     }
 
-    /* 2. 验证 ECDSA 签名 (对 attestation 头至 signature 字段前的数据) */
-    int ret = crypto_verify(g_dev_pub_key, sizeof(g_dev_pub_key),
-                            (const uint8_t *)att,
-                            (size_t)offsetof(ccc_attestation_t, signature),
-                            att->signature, sizeof(att->signature));
-    if (ret != CRYPTO_SUCCESS) {
+    /* 2. Identity must match the provisioned device. */
+    if (memcmp(att->device_id, g_dev_id, sizeof(att->device_id)) != 0 ||
+        memcmp(att->key_id, g_dev_key_id, sizeof(att->key_id)) != 0) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    /* 3. Security state policy gate (fail closed before expensive crypto). */
+    if (att->security_state != 0x01) {
+        return VERIFY_PERMISSION_DENIED;
+    }
+
+    /* 4. Resolve the device public key: attestation cert chain preferred. */
+    if (att->attestation_cert_len > 0U) {
+        if (!g_att_root_set || att->attestation_cert_len > SEC_ATT_CERT_MAX) {
+            return VERIFY_CERT_INVALID;
+        }
+        if (sec_verify_chain_internal(att->attestation_cert,
+                                      att->attestation_cert_len,
+                                      g_att_root, 64, pub) != VERIFY_OK) {
+            return VERIFY_CERT_INVALID;
+        }
+        key_type = SEC_KEY_TYPE_P256;
+    } else if (g_device_pub_set) {
+        (void)memcpy(pub, g_device_pub, sizeof(pub));
+        key_type = g_device_key_type;
+    } else {
         return VERIFY_SIGN_INVALID;
     }
 
-    /* 3. 安全状态检查 */
-    if (att->security_state != 0x01) {
-        return VERIFY_PERMISSION_DENIED;
+    /* 5. Signature over the attestation header. */
+    if (sec_verify_with_pub(key_type, pub,
+                            (const uint8_t *)att,
+                            (uint32_t)offsetof(ccc_attestation_t, signature),
+                            att->signature, sizeof(att->signature)) != VERIFY_OK) {
+        return VERIFY_SIGN_INVALID;
     }
 
     return VERIFY_OK;
@@ -833,34 +1057,25 @@ verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
 /* ========================================================================
  *  sec_verify_cert_chain — 证书链验证 (P0-04)
  * ========================================================================
- *
- * 简化证书链验证: 逐跳验证签名. cert_chain 为 DER 编码证书的串联
- * (叶证书在前, 根证书在后). 使用 crypto_engine 的 ECDSA 验签.
- *
- * 量产实现应使用完整 X.509 解析 + 有效期/吊销检查. 此处提供结构骨架.
+ * cert_chain is a concatenation of DER certificates (leaf first). Each
+ * certificate must be signed by its issuer; the top-most certificate must be
+ * signed by root_pub_key. Validity is enforced when a trusted time is set.
  */
+
 verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_len,
                                        const uint8_t *root_pub_key, uint16_t root_key_len)
 {
-    if (!cert_chain || chain_len == 0 || !root_pub_key || root_key_len < 64) {
-        return VERIFY_CERT_INVALID;
-    }
+    uint8_t leaf_pub[64];
+    verify_result_e r;
 
-    /*
-     * 简化实现: 验证链中最后一个证书由 root_pub_key 签发.
-     * 完整实现应解析每个证书的 TBS / signatureAlgorithm / signature,
-     * 逐级验证签名, 并检查有效期与吊销状态.
-     *
-     * 此处使用对证书链数据的哈希 + root 公钥验签作为占位验证,
-     * 确保函数可调用并返回合理结果.
-     */
-    uint8_t hash[32];
-    if (crypto_sha256(cert_chain, (size_t)chain_len, hash) != CRYPTO_SUCCESS) {
-        return VERIFY_CERT_INVALID;
+    r = sec_verify_chain_internal(cert_chain, chain_len,
+                                  root_pub_key, root_key_len, leaf_pub);
+    if (r == VERIFY_OK) {
+        /* Subsequent sec_verify() calls authenticate as the leaf. */
+        (void)memcpy(g_peer_pub, leaf_pub, sizeof(g_peer_pub));
+        g_peer_pub_len = 64;
+        g_peer_key_type = SEC_KEY_TYPE_P256;
+        g_peer_pub_valid = true;
     }
-
-    /* 用 root 公钥验证 (此处假设签名附加在链末尾; 简化处理) */
-    /* 完整 X.509 路径验证需要 ASN.1 DER 解析器, 此处返回结构占位 */
-    (void)hash;
-    return VERIFY_OK;
+    return r;
 }

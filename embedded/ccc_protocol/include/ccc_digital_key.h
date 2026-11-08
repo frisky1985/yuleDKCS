@@ -277,7 +277,7 @@ typedef struct __attribute__((packed)) {
     uint8_t  access_rights[4];
     uint8_t  firmware_hash[32];
     uint8_t  security_state;
-    uint8_t  attestation_cert[256];
+    uint8_t  attestation_cert[512];
     uint16_t attestation_cert_len;
     uint8_t  signature[64];
 } ccc_attestation_t;
@@ -291,6 +291,10 @@ typedef enum {
     VERIFY_PERMISSION_DENIED = 0x05,
     VERIFY_FW_TAMPERED       = 0x06
 } verify_result_e;
+
+/* Public-key / device-key algorithm identifiers (also used in attestation.key_type). */
+#define SEC_KEY_TYPE_P256  0x01U
+#define SEC_KEY_TYPE_SM2   0x02U
 
 ccc_status_t  sec_init(void);
 ccc_status_t  sec_deinit(void);
@@ -307,6 +311,34 @@ ccc_status_t  sec_attestation(ccc_attestation_t *att);
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att);
 verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_len,
                                        const uint8_t *root_pub_key, uint16_t root_key_len);
+
+/* ========================================================================
+ *  Peer / device key provisioning (P0-04 T4)
+ * ========================================================================
+ * sec_verify() requires a registered peer key; there is no built-in
+ * development key fallback. A successful sec_verify_cert_chain() registers
+ * the leaf public key automatically.
+ */
+ccc_status_t sec_set_peer_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len);
+void         sec_clear_peer_public_key(void);
+
+/** Trusted wall-clock time for certificate validity checks (0 = disabled). */
+void         sec_set_trusted_time(uint32_t unix_secs);
+
+/** Provision device identity: SE050 OTP / production data (16 + 16 bytes). */
+ccc_status_t sec_set_device_identity(const uint8_t device_id[16], const uint8_t key_id[16]);
+
+/** Provision the expected firmware measurement (SHA-256). */
+ccc_status_t sec_set_firmware_measurement(const uint8_t hash[32]);
+
+/** Provision the DER attestation certificate (max 256 bytes). */
+ccc_status_t sec_set_attestation_cert(const uint8_t *der, uint16_t len);
+
+/** Provision the P-256 root public key (X||Y) that signs attestation certs. */
+ccc_status_t sec_set_attestation_root(const uint8_t *pub, uint16_t len);
+
+/** Provision the device public key, used when no attestation cert is present. */
+ccc_status_t sec_set_device_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len);
 
 /* GATT Service Registration ([P0-2]) */
 ccc_status_t  ble_register_gatt_service(void);

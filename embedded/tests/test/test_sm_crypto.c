@@ -666,13 +666,39 @@ void test_engine_sm2_sign_dispatch(void)
     TEST_ASSERT_EQUAL_INT(CRYPTO_ERR_NULL_PTR, crypto_sm2_sign(NULL, V_SM3_ABC, sig));
     TEST_ASSERT_EQUAL_INT(CRYPTO_ERR_NULL_PTR, crypto_sm2_verify(NULL, V_SM3_ABC, sig));
 
-    /* P-256 占位分支 */
-    crypto_engine_set_algo(CRYPTO_ALGO_ECC_P256, HASH_ALGO_SHA256, SYM_ALGO_AES256_GCM);
-    sig_len = 64;
-    TEST_ASSERT_EQUAL_INT(CRYPTO_ERR_UNSUPPORTED,
-        crypto_sign(V_SM2_D, 32, (const uint8_t *)msg, strlen(msg), sig, &sig_len));
-    TEST_ASSERT_EQUAL_INT(CRYPTO_ERR_UNSUPPORTED,
-        crypto_verify(V_SM2_P, 64, (const uint8_t *)msg, strlen(msg), sig, 64));
+    /* P-256 分支: priv = 1 对应的公钥即 P-256 基点 G */
+    {
+        static const uint8_t p256_priv[32] = {
+            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01
+        };
+        static const uint8_t p256_pub[64] = {
+            0x6B,0x17,0xD1,0xF2,0xE1,0x2C,0x42,0x47,
+            0xF8,0xBC,0xE6,0xE5,0x63,0xA4,0x40,0xF2,
+            0x77,0x03,0x7D,0x81,0x2D,0xEB,0x33,0xA0,
+            0xF4,0xA1,0x39,0x45,0xD8,0x98,0xC2,0x96,
+            0x4F,0xE3,0x42,0xE2,0xFE,0x1A,0x7F,0x9B,
+            0x8E,0xE7,0xEB,0x4A,0x7C,0x0F,0x9E,0x16,
+            0x2B,0xCE,0x33,0x57,0x6B,0x31,0x5E,0xCE,
+            0xCB,0xB6,0x40,0x68,0x37,0xBF,0x51,0xF5
+        };
+
+        crypto_engine_set_algo(CRYPTO_ALGO_ECC_P256, HASH_ALGO_SHA256,
+                               SYM_ALGO_AES256_GCM);
+        sig_len = 64;
+        TEST_ASSERT_EQUAL_INT(CRYPTO_SUCCESS,
+            crypto_sign(p256_priv, 32, (const uint8_t *)msg, strlen(msg), sig, &sig_len));
+        TEST_ASSERT_EQUAL_INT(64, sig_len);
+        TEST_ASSERT_EQUAL_INT(CRYPTO_SUCCESS,
+            crypto_verify(p256_pub, 64, (const uint8_t *)msg, strlen(msg), sig, sig_len));
+
+        sig[0] ^= 0x01;
+        TEST_ASSERT_NOT_EQUAL(CRYPTO_SUCCESS,
+            crypto_verify(p256_pub, 64, (const uint8_t *)msg, strlen(msg), sig, sig_len));
+        sig[0] ^= 0x01;
+    }
 
     crypto_engine_deinit();
 }

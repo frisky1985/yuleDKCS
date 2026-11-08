@@ -30,6 +30,7 @@ CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
               $(CCC_SRC)/ble/ble_kw47a.c \
               $(CCC_SRC)/nfc/nfc_st25r501.c \
               $(CCC_SRC)/security/security.c \
+              $(CCC_SRC)/security/sec_x509.c \
               $(CCC_SRC)/security/se050_scp03.c \
               $(CCC_SRC)/security/se050_apdu.c \
               $(CCC_SRC)/security/se050_t1oi2c.c \
@@ -53,6 +54,7 @@ ICCE_SRCS  := $(ICCE_SRC)/icce_dk_core.c \
               $(ICCE_SRC)/decision/edge_condition.c \
               $(ICCE_SRC)/crypto/crypto_engine.c \
               $(ICCE_SRC)/crypto/crypto_utils.c \
+              $(ICCE_SRC)/crypto/p256.c \
               $(ICCE_SRC)/crypto/sm2.c \
               $(ICCE_SRC)/crypto/sm3.c \
               $(ICCE_SRC)/crypto/sm4.c
@@ -74,6 +76,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/tools/provision/include \
             -I$(ROOT)/system_architecture \
             -I$(ROOT)/ccc_protocol/src/logger \
+            -I$(ROOT)/ccc_protocol/src/security \
             -I$(ROOT)/icce_protocol/src/crypto \
             -I$(ROOT)/icce_protocol/src/decision \
             -I$(VENDOR)/unity
@@ -182,13 +185,17 @@ $(BUILD)/test_se050_provision.o: $(TEST_DIR)/test_se050_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_se050_provision_lib.o: $(TEST_DIR)/test_se050_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SE050_PROVISION_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_security_chain.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_security_chain_lib.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURITY_CHAIN_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_all
 
 all: test_all
 
@@ -203,11 +210,12 @@ test_iccoa: $(BUILD)/test_iccoa_dk_core.o \
 test_ccc: $(BUILD)/test_ccc_dk_core.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/se050_scp03.o \
+          $(BUILD)/security.o $(BUILD)/sec_x509.o \
+          $(BUILD)/se050_scp03.o \
           $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
           $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
-          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+          $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
@@ -218,7 +226,7 @@ test_icce: $(BUILD)/test_icce.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
           $(BUILD)/edge_condition.o \
           $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
-          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+          $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/stubs_hal.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
@@ -229,7 +237,8 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
               $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
               $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-              $(BUILD)/security.o $(BUILD)/se050_scp03.o \
+              $(BUILD)/security.o $(BUILD)/sec_x509.o \
+              $(BUILD)/se050_scp03.o \
               $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
               $(BUILD)/key_mgmt.o \
               $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
@@ -237,7 +246,7 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
               $(BUILD)/edge_condition.o \
               $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
-              $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+              $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
               $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
@@ -253,6 +262,16 @@ test_provision: $(BUILD)/test_se050_provision.o $(BUILD)/se050_hsm_provision.o \
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
+test_chain: $(BUILD)/test_security_chain.o \
+            $(BUILD)/security.o $(BUILD)/sec_x509.o \
+            $(BUILD)/se050_scp03.o \
+            $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
+            $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+            $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+            $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
@@ -260,12 +279,13 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
           $(BUILD)/test_se050_scp03_lib.o \
           $(BUILD)/test_se050_provision_lib.o $(BUILD)/se050_hsm_provision.o \
+          $(BUILD)/test_security_chain_lib.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o \
+          $(BUILD)/security.o $(BUILD)/sec_x509.o \
           $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_security.o \
@@ -273,7 +293,7 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/icce_vehicle.o $(BUILD)/icce_zone.o \
           $(BUILD)/edge_condition.o \
           $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
-          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+          $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@

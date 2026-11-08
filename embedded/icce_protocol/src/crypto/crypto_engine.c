@@ -15,6 +15,7 @@
 
 #include "crypto_engine.h"
 #include "crypto_utils.h"
+#include "p256.h"
 
 /* ========================================================================
  *  条件编译: USE_SM_CRYPTO
@@ -871,11 +872,9 @@ int crypto_sign(const uint8_t *private_key, size_t key_len,
         ret = crypto_sha256(data, data_len, hash);
         if (ret != CRYPTO_SUCCESS) return ret;
 
-        /* ECDSA 签名 (需要 HSM 或外部实现) */
-        /* 此处返回占位 — 生产环境替换为 HSM 调用 */
-        (void)signature;
-        *sig_len = 64;
-        return CRYPTO_ERR_UNSUPPORTED;
+        ret = crypto_p256_sign(private_key, hash, signature);
+        if (ret == CRYPTO_SUCCESS) *sig_len = 64;
+        return ret;
     }
 }
 
@@ -905,8 +904,6 @@ int crypto_verify(const uint8_t *public_key, size_t key_len,
         ret = crypto_sha256(data, data_len, hash);
         if (ret != CRYPTO_SUCCESS) return ret;
 
-        (void)hash;
-        /* ECDSA 验签 (需要 HSM 或外部实现) */
-        return CRYPTO_ERR_UNSUPPORTED;
+        return crypto_p256_verify(public_key, hash, signature);
     }
 }

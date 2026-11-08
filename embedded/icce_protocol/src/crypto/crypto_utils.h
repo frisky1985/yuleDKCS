@@ -31,7 +31,8 @@ extern "C" {
  * G = (Gx, Gy)
  * n = FFFFFFFE FFFFFFFF FFFFFFFF FFFFFFFF 7203DF6B 21C6052B 53BBF409 39D54123  (阶)
  *
- * 注: SM2 与 secp256r1 使用相同的域 p 和系数 a, 但 b、生成元 G、阶 n 不同。
+ * 注: 本文件的 fp_* 与 ec_point_* 全部绑定到 sm2p256v1 参数。secp256r1
+ * 的域素数 p 与本曲线不同, 不能复用这些函数 (见 crypto/p256.c)。
  */
 extern const bn256_t SM2_P;   /* 域模数 p */
 extern const bn256_t SM2_A;   /* 曲线系数 a */
@@ -117,6 +118,16 @@ void fn_mul(bn256_t *r, const bn256_t *a, const bn256_t *b);
 
 /** r = a^(-1) mod n */
 void fn_inv(bn256_t *r, const bn256_t *a);
+
+/* ========================================================================
+ *  通用模运算 (任意素数 m > 2^255, 如 P-256 的阶 n)
+ * ======================================================================== */
+
+/** r = (a * b) mod m */
+void bn256_mod_mul(bn256_t *r, const bn256_t *a, const bn256_t *b, const bn256_t *m);
+
+/** r = a^(-1) mod m (费马小定理: a^(m-2) mod m) */
+void bn256_mod_inv(bn256_t *r, const bn256_t *a, const bn256_t *m);
 
 /* ========================================================================
  *  椭圆曲线点运算 (雅可比射影坐标)
