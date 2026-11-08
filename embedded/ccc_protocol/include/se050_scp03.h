@@ -318,10 +318,38 @@ int se050_scp03_apdu_plain(uint8_t i2c_addr,
  * ======================================================================== */
 
 /**
- * @brief Rotate SCP03 session keys to a new sequence counter.
+ * @brief Rotate the static SCP03 key set online (REPLACE KEYS, INS 0xD2).
  *
- * Performs REPLACE KEYS to trigger a new INITIALIZE UPDATE flow,
- * or directly initiates a new session with incremented seq counter.
+ * Both sides derive the replacement keys deterministically from the current
+ * static keys, so no key material travels on the wire. The 8-byte nonce is
+ * sent inside the encrypted, C-MAC protected channel and binds the derivation
+ * to this particular rotation.
+ *
+ *   new_K(key_id) = AES-CMAC(K(key_id),
+ *                            0x02 || key_id || old_version || new_version ||
+ *                            nonce[8] || 00 00 00 00)
+ *
+ * Must be called on an OPEN channel. On success the host adopts the derived
+ * static keys; the currently open session keeps its session keys and the new
+ * keys apply to the NEXT handshake. To rotate and immediately re-establish
+ * the channel, use se050_scp03_rotate_keys().
+ *
+ * @param session          [in/out] Active SCP03 session (state == OPEN)
+ * @param i2c_addr         SE050 I2C slave address
+ * @param new_key_version  New key version number (P1)
+ * @return SCP03_OK on success;
+ *         SCP03_ERR_NULL / SCP03_ERR_CHANNEL / SCP03_ERR_HW /
+ *         SCP03_ERR_SW / SCP03_ERR_CMAC on failure
+ */
+int se050_scp03_replace_keys(scp03_session_t *session, uint8_t i2c_addr,
+                             uint8_t new_key_version);
+
+/**
+ * @brief Rotate the static keys and re-establish the secure channel.
+ *
+ * Performs REPLACE KEYS with key_version + 1, closes the current session and
+ * performs a fresh INITIALIZE UPDATE / EXTERNAL AUTHENTICATE with the derived
+ * keys. Old keys are rejected on subsequent handshakes.
  *
  * @param session   [in/out] Current session
  * @param i2c_addr  SE050 I2C slave address

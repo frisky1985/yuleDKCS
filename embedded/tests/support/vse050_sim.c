@@ -507,6 +507,7 @@ typedef struct {
     uint8_t  resp_icv[16];
     uint32_t sign_count;
     uint32_t put_key_count;
+    uint32_t replace_key_count;
     uint32_t encrypted_cmds;
     uint16_t last_cipher_len;
     uint8_t  wtx_pending;
@@ -584,6 +585,32 @@ static void vs_derive_session_keys(void)
     vs_derive_key(s_dev.cfg.enc_key,  0x01U, s_dev.s_enc);
     vs_derive_key(s_dev.cfg.mac_key,  0x02U, s_dev.s_mac);
     vs_derive_key(s_dev.cfg.rmac_key, 0x03U, s_dev.s_rmac);
+}
+
+/**
+ * @brief Derive one replacement static key (REPLACE KEYS).
+ *
+ *   input = 0x02 || key_id || old_version || new_version || nonce[8] || 00*4
+ *   new   = AES-CMAC(old_key, input)
+ *
+ * Must match scp03_derive_replacement_key() on the host side.
+ */
+static void vs_derive_replacement(const uint8_t old_key[16], uint8_t key_id,
+                                  uint8_t old_version, uint8_t new_version,
+                                  const uint8_t nonce[8], uint8_t out[16])
+{
+    uint8_t input[16];
+
+    input[0] = 0x02U;
+    input[1] = key_id;
+    input[2] = old_version;
+    input[3] = new_version;
+    (void)memcpy(&input[4], nonce, 8U);
+    (void)memset(&input[12], 0, 4U);
+
+    vse050_sim_aes_cmac(old_key, input, (uint16_t)sizeof(input), out);
+
+    (void)memset(input, 0, sizeof(input));
 }
 
 static void vs_cryptogram(const uint8_t first[8], const uint8_t second[8],
@@ -967,6 +994,116 @@ static void vs_handle_put_key(void)
     vs_set_sw(0x9000U);
 }
 
+static void vs_handle_replace_keys(void)
+{
+    uint8_t  mac[16];
+    uint8_t  input[16U + 5U + 32U];
+    uint8_t  plain[VSE050_MAX_RESP];
+    uint8_t  new_enc[16];
+    uint8_t  new_mac[16];
+    uint8_t  new_rmac[16];
+    uint16_t body_len;
+    uint16_t payload_len;
+    int      plain_len;
+    uint8_t  diff;
+    uint16_t i;
+
+    if (s_dev.state != VSE050_STATE_OPEN) {
+        vs_set_sw(0x6985U);
+        return;
+    }
+
+    /* cmd = CLA INS P1(new version) P2(0x00) Lc nonce... C-MAC(8) */
+    if (s_dev.cmd_len < (uint16_t)(5U + SCP03_CMAC_TRUNC) ||
+        s_dev.cmd[3] != 0x00U ||
+        s_dev.cmd[4] != (uint8_t)(s_dev.cmd_len - 5U)) {
+        vs_set_sw(0x6700U);
+        return;
+    }
+
+    body_len    = (uint16_t)(s_dev.cmd_len - SCP03_CMAC_TRUNC);
+    payload_len = (uint16_t)(body_len - 5U);
+
+    if (s_dev.cfg.corrupt_ciphertext != 0U && payload_len > 0U) {
+        s_dev.cmd[5] ^= 0xFFU;
+        s_dev.cfg.corrupt_ciphertext = 0;
+    }
+
+    (void)memcpy(input, s_dev.cmac_iv, 16U);
+    (void)memcpy(&input[16], s_dev.cmd, body_len);
+    vse050_sim_aes_cmac(s_dev.s_mac, input, (uint16_t)(16U + body_len), mac);
+
+    diff = 0U;
+    for (i = 0; i < SCP03_CMAC_TRUNC; i++) {
+        diff |= (uint8_t)(mac[i] ^ s_dev.cmd[body_len + i]);
+    }
+    (void)memcpy(s_dev.cmac_iv, mac, 16U);
+    (void)memcpy(s_dev.resp_icv, mac, 16U);
+    (void)memset(input, 0, sizeof(input));
+
+    if (diff != 0U) {
+        (void)memset(mac, 0, sizeof(mac));
+        s_dev.auth_failures++;
+        s_dev.state = VSE050_STATE_RESET;
+        vs_set_sw(0x6982U);
+        return;
+    }
+    (void)memset(mac, 0, sizeof(mac));
+
+    if ((s_dev.cmd[0] & 0x08U) == 0U) {
+        vs_set_sw(0x6982U);
+        return;
+    }
+    if ((payload_len == 0U) || ((payload_len % 16U) != 0U)) {
+        vs_set_sw(0x6700U);
+        return;
+    }
+
+    vs_cbc_decrypt(s_dev.s_enc, s_dev.cmd_icv, &s_dev.cmd[5], plain, payload_len);
+    plain_len = vs_unpad(plain, payload_len);
+
+    if ((plain_len < 0) || (plain_len != 8)) {
+        (void)memset(plain, 0, sizeof(plain));
+        vs_set_sw(0x6700U);
+        return;
+    }
+
+    if (s_dev.cfg.reject_replace_keys != 0U) {
+        (void)memset(plain, 0, sizeof(plain));
+        vs_set_sw(0x6985U);
+        return;
+    }
+
+    /* Derive into temporaries, then commit atomically. */
+    vs_derive_replacement(s_dev.cfg.enc_key,  0x01U, s_dev.cfg.key_version,
+                          s_dev.cmd[2], plain, new_enc);
+    vs_derive_replacement(s_dev.cfg.mac_key,  0x02U, s_dev.cfg.key_version,
+                          s_dev.cmd[2], plain, new_mac);
+    vs_derive_replacement(s_dev.cfg.rmac_key, 0x03U, s_dev.cfg.key_version,
+                          s_dev.cmd[2], plain, new_rmac);
+
+    (void)memcpy(s_dev.cfg.enc_key,  new_enc, 16U);
+    (void)memcpy(s_dev.cfg.mac_key,  new_mac, 16U);
+    (void)memcpy(s_dev.cfg.rmac_key, new_rmac, 16U);
+    s_dev.cfg.key_version = s_dev.cmd[2];
+    {
+        uint16_t seq = (uint16_t)(((uint16_t)s_dev.cfg.seq_counter[0] << 8) |
+                                  (uint16_t)s_dev.cfg.seq_counter[1]);
+        seq = (uint16_t)(seq + 1U);
+        s_dev.cfg.seq_counter[0] = (uint8_t)(seq >> 8);
+        s_dev.cfg.seq_counter[1] = (uint8_t)(seq & 0xFFU);
+    }
+    s_dev.replace_key_count++;
+
+    (void)memset(plain, 0, sizeof(plain));
+    (void)memset(new_enc, 0, sizeof(new_enc));
+    (void)memset(new_mac, 0, sizeof(new_mac));
+    (void)memset(new_rmac, 0, sizeof(new_rmac));
+
+    /* REPLACE KEYS has no response data: SW only, no R-MAC. */
+    vs_set_sw(0x9000U);
+}
+
 static void vs_process_apdu(void)
 {
     uint8_t cla;
@@ -997,6 +1134,8 @@ static void vs_process_apdu(void)
         vs_handle_sign();
     } else if ((cla & 0x04U) != 0U && ins == 0xD8U) {
         vs_handle_put_key();
+    } else if ((cla & 0x04U) != 0U && ins == 0xD2U) {
+        vs_handle_replace_keys();
     } else {
         vs_set_sw(0x6D00U);
     }
@@ -1236,6 +1375,7 @@ uint32_t vse050_sim_crc_errors(void)   { return s_dev.crc_errors; }
 uint32_t vse050_sim_auth_failures(void){ return s_dev.auth_failures; }
 uint32_t vse050_sim_sign_count(void)   { return s_dev.sign_count; }
 uint32_t vse050_sim_put_key_count(void){ return s_dev.put_key_count; }
+uint32_t vse050_sim_replace_key_count(void){ return s_dev.replace_key_count; }
 uint8_t  vse050_sim_key_version(void)  { return s_dev.cfg.key_version; }
 uint32_t vse050_sim_encrypted_cmds(void){ return s_dev.encrypted_cmds; }
 uint16_t vse050_sim_last_cipher_len(void){ return s_dev.last_cipher_len; }

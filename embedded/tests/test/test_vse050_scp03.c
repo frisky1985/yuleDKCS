@@ -11,6 +11,7 @@
  *   - Cryptogram mismatch (wrong static keys)
  *   - EXTERNAL AUTHENTICATE rejection
  *   - PUT KEY personalization (old keys rejected, new keys accepted)
+ *   - REPLACE KEYS rotation (derived keys, chained rotations, old keys rejected)
  */
 
 #include "se050_scp03.h"
@@ -394,6 +395,81 @@ static void test_put_key_rejected(void)
     se050_scp03_deinit(&s);
 }
 
+static void test_replace_keys_rotation(void)
+{
+    vse050_config_t cfg;
+    scp03_session_t s;
+    scp03_session_t old_keys;
+    uint8_t hash[32];
+    uint8_t sig[64];
+
+    printf("\n[14] REPLACE KEYS rotation\n");
+    vse050_sim_default_config(&cfg);
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "session open before rotation");
+    CHECK(vse050_sim_key_version() == 0x00, "card starts at key version 0");
+
+    CHECK(se050_scp03_rotate_keys(&s, 0x48) == SCP03_OK,
+          "rotate_keys sends REPLACE KEYS and re-opens the channel");
+    CHECK(vse050_sim_replace_key_count() == 1, "card performed one rotation");
+    CHECK(vse050_sim_key_version() == 0x01, "card key version advanced to 1");
+    CHECK(se050_scp03_is_open(&s), "host channel is OPEN after rotation");
+
+    /* The re-opened channel must work end-to-end. */
+    (void)memset(hash, 0x3C, sizeof(hash));
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, sig) == SE050_APDU_OK,
+          "sign APDU works on the rotated channel");
+    CHECK(vse050_sim_sign_count() == 1, "card accepted the signature");
+
+    /* Pre-rotation (default) keys must no longer authenticate. */
+    CHECK(se050_scp03_init(&old_keys) == SCP03_OK, "old-key session initialised");
+    CHECK(se050_scp03_open_session(&old_keys, 0x48) == SCP03_ERR_CRYPTOGRAM,
+          "pre-rotation keys rejected");
+    se050_scp03_deinit(&old_keys);
+
+    /* Re-establish the rotated session, then chain a second rotation. */
+    se050_scp03_close_session(&s);
+    CHECK(se050_scp03_open_session(&s, 0x48) == SCP03_OK,
+          "rotated key session re-established");
+    CHECK(se050_scp03_rotate_keys(&s, 0x48) == SCP03_OK, "second rotation succeeds");
+    CHECK(vse050_sim_replace_key_count() == 2, "card performed two rotations");
+    CHECK(vse050_sim_key_version() == 0x02, "card key version advanced to 2");
+
+    (void)memset(hash, 0x4D, sizeof(hash));
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, sig) == SE050_APDU_OK,
+          "sign APDU works after the second rotation");
+
+    se050_scp03_deinit(&s);
+}
+
+static void test_replace_keys_rejected(void)
+{
+    vse050_config_t cfg;
+    scp03_session_t s;
+
+    printf("\n[15] REPLACE KEYS rejection\n");
+    vse050_sim_default_config(&cfg);
+    vse050_sim_init(&cfg);
+
+    CHECK(se050_scp03_init(&s) == SCP03_OK, "session initialised");
+    CHECK(se050_scp03_replace_keys(&s, 0x48, 0x01) == SCP03_ERR_CHANNEL,
+          "REPLACE KEYS refused without an open channel");
+
+    cfg.reject_replace_keys = 1;
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "channel open before rejected rotation");
+    CHECK(se050_scp03_replace_keys(&s, 0x48, 0x01) == SCP03_ERR_SW,
+          "card rejection surfaces SW 6985");
+    CHECK(vse050_sim_replace_key_count() == 0, "no rotation committed");
+    CHECK(se050_scp03_is_open(&s), "channel survives a rejected rotation");
+
+    se050_scp03_close_session(&s);
+    CHECK(se050_scp03_open_session(&s, 0x48) == SCP03_OK,
+          "old keys remain valid after rejected rotation");
+
+    se050_scp03_deinit(&s);
+}
+
 int main(void)
 {
     printf("=== vSE050 asynchronous SCP03 simulation ===\n");
@@ -413,6 +489,8 @@ int main(void)
     test_sign_ciphertext_tamper();
     test_put_key_personalization();
     test_put_key_rejected();
+    test_replace_keys_rotation();
+    test_replace_keys_rejected();
 
     printf("\n=== 结果: %d passed, %d failed ===\n", g_pass, g_fail);
     return (g_fail == 0) ? 0 : 1;

@@ -30,6 +30,7 @@
 | **P0-04-T2（签名 APDU）** | 新增 `se050_apdu_sign()`：INS 0x62 签名命令经 SCP03 发送（key id 4 + SHA-256 32），校验 64 字节 r‖s；`sec_sign` 的 USE_SE050 路径改走该接口并移除静默软件降级；`se050_scp03_apdu` 增加 R-MAC 校验与剥离（失败即关闭通道） | `test_vse050_scp03` 签名段 13/13；未知 key→6A88、无通道→拒绝、R-MAC 篡改→关闭通道；固件 USE_SE050 构建通过 |
 | **P0-05-T3（数据加密）** SCP03 AES-CBC | 新增 `se050_scp03_apdu_enc()`：CLA 0x8C，ISO 7816-4 填充 + AES-128-CBC（S-ENC）；命令 ICV 链接上一 R-MAC，响应 ICV 取命令 C-MAC；R-MAC 覆盖密文，解密/去填充失败即关闭通道 | `test_vse050_scp03`：53/53 通过（AES 解密 FIPS-197 KAT、36→48 字节命令密文、64→80 字节响应密文、密文篡改→C-MAC 拒绝） |
 | **P0-04-T5（密钥个性化）** SCP03 PUT KEY | 新增 `se050_scp03_put_key()`：在 OPEN 通道上用 CLA 0x8C + AES-CBC 加密下发 K-ENC/K-MAC/K-RMAC（INS 0xD8，P1=新 key version），成功后主机静态密钥与卡片密钥同步切换，旧默认传输密钥失效；卡侧 vSE050 支持 PUT KEY、key version/seq 推进与拒绝注入 | `test_vse050_scp03`：69/69 通过（个性化后旧零密钥重连 `SCP03_ERR_CRYPTOGRAM`、新密钥重连成功、未开通道拒绝、卡片拒绝 SW 6985、NULL 参数拒绝） |
+| **P0-04-T5（密钥轮换）** SCP03 REPLACE KEYS | 新增 `se050_scp03_replace_keys()`，`se050_scp03_rotate_keys()` 改为真实轮换：在 OPEN 通道上以 INS 0xD2 + AES-CBC 加密下发 8 字节 nonce，双方用 AES-CMAC 从旧静态密钥确定性派生新 K-ENC/K-MAC/K-RMAC（新密钥不上线）；成功后关闭并重建通道，旧密钥失效；卡侧 vSE050 支持派生、版本/seq 推进与拒绝注入 | `test_vse050_scp03`：91/91 通过（轮换后重连成功、旧密钥重连 `SCP03_ERR_CRYPTOGRAM`、轮换通道上签名可用、连续两次轮换、未开通道拒绝、卡片拒绝 SW 6985） |
 | **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
 ### 待办（依赖硬件/认证）
@@ -117,7 +118,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过。**✅ 软件回退完成（SM2）；✅ 签名 APDU 已封装（INS 0x62 + C-MAC/R-MAC + AES-CBC 加密），vSE050 仿真 53/53；真机待 G1 验证** |
 | P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过。**✅ 软件回退完成** |
 | P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 软件回退完成（含 sec_verify_cert_chain）** |
-| P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销。**✅ 在线 PUT KEY 个性化已实现并通过 vSE050 仿真（旧密钥失效/新密钥重连）；产线注入流程与真机验证待定** |
+| P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销。**✅ 在线 PUT KEY 个性化与 REPLACE KEYS 轮换已实现并通过 vSE050 仿真；产线注入流程与真机验证待定** |
 | P0-04-T6 | 安全启动、调试口权限、回滚保护 | 安全组 | P0-04-T1 | 启动链安全方案 | 篡改固件无法启动，调试口受控 |
 | P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过 |
 | P0-04-T8 | 第三方密码审计与渗透测试 | 安全组 | P0-04-T2~7 | 审计报告 | 无未修复高危 |

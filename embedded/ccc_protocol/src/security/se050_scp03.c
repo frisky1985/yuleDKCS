@@ -714,6 +714,37 @@ static void scp03_derive_session_keys(const uint8_t static_enc[16],
 }
 
 /* ========================================================================
+ *  Internal: SCP03 Key Replacement Derivation (REPLACE KEYS)
+ * ========================================================================
+ *
+ * Derivation data (single AES block, 16 bytes):
+ *   0x02 || key_id || old_version || new_version || nonce[8] || 00 00 00 00
+ *
+ * The card applies the same derivation to its stored keys, so the resulting
+ * static key never traverses the link.
+ */
+static void scp03_derive_replacement_key(const uint8_t old_key[16],
+                                         uint8_t key_id,
+                                         uint8_t old_version,
+                                         uint8_t new_version,
+                                         const uint8_t nonce[SCP03_CHALLENGE_SIZE],
+                                         uint8_t out[16])
+{
+    uint8_t input[SCP03_BLOCK_SIZE];
+
+    input[0] = 0x02U;
+    input[1] = key_id;
+    input[2] = old_version;
+    input[3] = new_version;
+    (void)memcpy(&input[4], nonce, SCP03_CHALLENGE_SIZE);
+    (void)memset(&input[12], 0, 4);
+
+    scp03_aes_cmac(old_key, input, (uint16_t)sizeof(input), out);
+
+    se050_scp03_secure_zero(input, sizeof(input));
+}
+
+/* ========================================================================
  *  Internal: I2C APDU Transport
  * ========================================================================
  * Wraps the platform I2C HAL for SE050 communication.
@@ -1759,9 +1790,75 @@ int se050_scp03_apdu_enc(scp03_session_t *session, uint8_t i2c_addr,
 
 /* ---- Key Rotation ---- */
 
+int se050_scp03_replace_keys(scp03_session_t *session, uint8_t i2c_addr,
+                             uint8_t new_key_version)
+{
+    uint8_t  nonce[SCP03_CHALLENGE_SIZE];
+    uint8_t  new_enc[SCP03_KEY_SIZE];
+    uint8_t  new_mac[SCP03_KEY_SIZE];
+    uint8_t  new_rmac[SCP03_KEY_SIZE];
+    uint8_t  resp[SCP03_CMAC_SIZE];
+    uint16_t resp_len = 0U;
+    uint8_t  old_version;
+    int      ret;
+
+    if (session == NULL)
+    {
+        return SCP03_ERR_NULL;
+    }
+
+    /* REPLACE KEYS must be protected by the secure channel. */
+    if (session->state != SCP03_STATE_OPEN)
+    {
+        return SCP03_ERR_CHANNEL;
+    }
+
+    ret = crypto_random_bytes(nonce, (size_t)sizeof(nonce));
+    if (ret != 0)
+    {
+        return SCP03_ERR_HW;
+    }
+
+    ret = se050_scp03_apdu_enc(session, i2c_addr,
+                               SCP03_CLA_NO_SM, SCP03_INS_REPLACE_KEYS,
+                               new_key_version, 0x00U,
+                               nonce, (uint16_t)sizeof(nonce), resp, &resp_len);
+    if (ret != SCP03_OK)
+    {
+        se050_scp03_secure_zero(nonce, sizeof(nonce));
+        return ret;
+    }
+
+    /*
+     * The card accepted the rotation. Derive the same replacement keys it
+     * just computed; the current session's session keys remain valid.
+     */
+    old_version = session->key_version;
+
+    scp03_derive_replacement_key(session->static_enc_key, 0x01U,
+                                 old_version, new_key_version, nonce, new_enc);
+    scp03_derive_replacement_key(session->static_mac_key, 0x02U,
+                                 old_version, new_key_version, nonce, new_mac);
+    scp03_derive_replacement_key(session->static_rmac_key, 0x03U,
+                                 old_version, new_key_version, nonce, new_rmac);
+
+    (void)memcpy(session->static_enc_key, new_enc, SCP03_KEY_SIZE);
+    (void)memcpy(session->static_mac_key, new_mac, SCP03_KEY_SIZE);
+    (void)memcpy(session->static_rmac_key, new_rmac, SCP03_KEY_SIZE);
+    session->key_version = new_key_version;
+
+    se050_scp03_secure_zero(nonce, sizeof(nonce));
+    se050_scp03_secure_zero(new_enc, sizeof(new_enc));
+    se050_scp03_secure_zero(new_mac, sizeof(new_mac));
+    se050_scp03_secure_zero(new_rmac, sizeof(new_rmac));
+
+    return SCP03_OK;
+}
+
 int se050_scp03_rotate_keys(scp03_session_t *session, uint8_t i2c_addr)
 {
-    int ret;
+    uint8_t next_version;
+    int     ret;
 
     if (session == NULL)
     {
@@ -1773,38 +1870,18 @@ int se050_scp03_rotate_keys(scp03_session_t *session, uint8_t i2c_addr)
         return SCP03_ERR_CHANNEL;
     }
 
-    /*
-     * Key rotation: close current session and re-establish with incremented
-     * sequence counter. The SE050 maintains its own sequence counter;
-     * re-opening will naturally advance it.
-     */
+    next_version = (uint8_t)(session->key_version + 1U);
 
-    /* Step 1: Store a snapshot of static keys */
-    uint8_t saved_enc[SCP03_KEY_SIZE];
-    uint8_t saved_mac[SCP03_KEY_SIZE];
-    uint8_t saved_rmac[SCP03_KEY_SIZE];
+    ret = se050_scp03_replace_keys(session, i2c_addr, next_version);
+    if (ret != SCP03_OK)
+    {
+        return ret;
+    }
 
-    (void)memcpy(saved_enc,  session->static_enc_key,  SCP03_KEY_SIZE);
-    (void)memcpy(saved_mac,  session->static_mac_key,  SCP03_KEY_SIZE);
-    (void)memcpy(saved_rmac, session->static_rmac_key, SCP03_KEY_SIZE);
-
-    /* Step 2: Close existing session (securely zeroes session keys) */
+    /* Re-open with the rotated keys (close_session keeps the static keys). */
     se050_scp03_close_session(session);
 
-    /* Step 3: Restore static keys (close_session also zeroes static keys) */
-    (void)memcpy(session->static_enc_key,  saved_enc,  SCP03_KEY_SIZE);
-    (void)memcpy(session->static_mac_key,  saved_mac,  SCP03_KEY_SIZE);
-    (void)memcpy(session->static_rmac_key, saved_rmac, SCP03_KEY_SIZE);
-
-    se050_scp03_secure_zero(saved_enc,  sizeof(saved_enc));
-    se050_scp03_secure_zero(saved_mac,  sizeof(saved_mac));
-    se050_scp03_secure_zero(saved_rmac, sizeof(saved_rmac));
-
-    /* Step 4: Re-establish session */
-    session->state = SCP03_STATE_INIT;
-    ret = se050_scp03_open_session(session, i2c_addr);
-
-    return ret;
+    return se050_scp03_open_session(session, i2c_addr);
 }
 
 /* ========================================================================
