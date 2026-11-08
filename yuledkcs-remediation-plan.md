@@ -26,8 +26,9 @@
 | **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2 完整路径，USE_SE050 切换硬件） | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
 | **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
 | **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
-| **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证/R-MAC 篡改）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：46/46 通过（AES/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建、签名 APDU、C-MAC 链式、R-MAC 完整性） |
+| **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证/R-MAC 篡改/密文篡改）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：53/53 通过（AES 加解密/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建、加密签名 APDU、C-MAC 链式、R-MAC 完整性） |
 | **P0-04-T2（签名 APDU）** | 新增 `se050_apdu_sign()`：INS 0x62 签名命令经 SCP03 发送（key id 4 + SHA-256 32），校验 64 字节 r‖s；`sec_sign` 的 USE_SE050 路径改走该接口并移除静默软件降级；`se050_scp03_apdu` 增加 R-MAC 校验与剥离（失败即关闭通道） | `test_vse050_scp03` 签名段 13/13；未知 key→6A88、无通道→拒绝、R-MAC 篡改→关闭通道；固件 USE_SE050 构建通过 |
+| **P0-05-T3（数据加密）** SCP03 AES-CBC | 新增 `se050_scp03_apdu_enc()`：CLA 0x8C，ISO 7816-4 填充 + AES-128-CBC（S-ENC）；命令 ICV 链接上一 R-MAC，响应 ICV 取命令 C-MAC；R-MAC 覆盖密文，解密/去填充失败即关闭通道 | `test_vse050_scp03`：53/53 通过（AES 解密 FIPS-197 KAT、36→48 字节命令密文、64→80 字节响应密文、密文篡改→C-MAC 拒绝） |
 | **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
 ### 待办（依赖硬件/认证）
@@ -112,7 +113,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
 | P0-04-T1 | 接入 SE050 Plug&Trust 中间件，建立真实 SCP03 会话 | 安全组 | P0-01-T3 | SCP03 握手实现 | 真机握手成功，会话密钥派生正确 |
-| P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过。**✅ 软件回退完成（SM2）；✅ 签名 APDU 已封装（INS 0x62 + C-MAC/R-MAC），vSE050 仿真通过；真机待 G1 验证** |
+| P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过。**✅ 软件回退完成（SM2）；✅ 签名 APDU 已封装（INS 0x62 + C-MAC/R-MAC + AES-CBC 加密），vSE050 仿真 53/53；真机待 G1 验证** |
 | P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过。**✅ 软件回退完成** |
 | P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 软件回退完成（含 sec_verify_cert_chain）** |
 | P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销 |

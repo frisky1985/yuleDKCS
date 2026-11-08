@@ -56,6 +56,7 @@ typedef struct {
     uint8_t  reject_ext_auth;      /**< 1: EXTERNAL AUTH always fails */
     uint8_t  sign_disabled;        /**< 1: ECDSA sign returns SW=6982 */
     uint8_t  corrupt_rmac;         /**< One-shot: corrupt the response R-MAC */
+    uint8_t  corrupt_ciphertext;   /**< One-shot: flip a command ciphertext byte */
     uint8_t  corrupt_next_response;/**< One-shot: corrupt the next block CRC */
     uint8_t  drop_next_response;   /**< One-shot: answer nothing (timeout) */
 } vse050_config_t;
@@ -88,7 +89,13 @@ uint32_t vse050_sim_wtx_count(void);
 uint32_t vse050_sim_crc_errors(void);   /**< Injected CRC faults */
 uint32_t vse050_sim_auth_failures(void);
 uint32_t vse050_sim_sign_count(void);    /**< Accepted ECDSA sign commands */
+uint32_t vse050_sim_encrypted_cmds(void);/**< Sign commands received encrypted */
+uint16_t vse050_sim_last_cipher_len(void);/**< Ciphertext length of the last encrypted command */
 uint16_t vse050_sim_apdu_count(void);
+
+/** AES-128 block primitives, exposed for known-answer tests. */
+void vse050_sim_aes128_decrypt_block(const uint8_t key[16],
+                                     const uint8_t in[16], uint8_t out[16]);
 
 /* ── Crypto helpers (exposed for known-answer tests) ──────── */
 void vse050_sim_aes128_encrypt_block(const uint8_t key[16],

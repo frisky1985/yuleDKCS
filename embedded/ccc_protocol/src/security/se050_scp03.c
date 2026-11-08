@@ -280,6 +280,227 @@ static void scp03_aes128_encrypt(const scp03_aes128_ctx_t *ctx,
 }
 
 /* ========================================================================
+ *  Internal: AES-128 Decryption + CBC (for SCP03 data encryption)
+ * ========================================================================
+ * SCP03 encrypts command/response data with AES-128-CBC under S-ENC.
+ * Only decryption of what the card produced is needed on the host side,
+ * but both directions share the same block primitive.
+ */
+
+/* AES inverse S-box (FIPS 197 Figure 14) */
+static const uint8_t s_scp03_inv_sbox[256] = {
+    0x52,0x09,0x6A,0xD5,0x30,0x36,0xA5,0x38,0xBF,0x40,0xA3,0x9E,0x81,0xF3,0xD7,0xFB,
+    0x7C,0xE3,0x39,0x82,0x9B,0x2F,0xFF,0x87,0x34,0x8E,0x43,0x44,0xC4,0xDE,0xE9,0xCB,
+    0x54,0x7B,0x94,0x32,0xA6,0xC2,0x23,0x3D,0xEE,0x4C,0x95,0x0B,0x42,0xFA,0xC3,0x4E,
+    0x08,0x2E,0xA1,0x66,0x28,0xD9,0x24,0xB2,0x76,0x5B,0xA2,0x49,0x6D,0x8B,0xD1,0x25,
+    0x72,0xF8,0xF6,0x64,0x86,0x68,0x98,0x16,0xD4,0xA4,0x5C,0xCC,0x5D,0x65,0xB6,0x92,
+    0x6C,0x70,0x48,0x50,0xFD,0xED,0xB9,0xDA,0x5E,0x15,0x46,0x57,0xA7,0x8D,0x9D,0x84,
+    0x90,0xD8,0xAB,0x00,0x8C,0xBC,0xD3,0x0A,0xF7,0xE4,0x58,0x05,0xB8,0xB3,0x45,0x06,
+    0xD0,0x2C,0x1E,0x8F,0xCA,0x3F,0x0F,0x02,0xC1,0xAF,0xBD,0x03,0x01,0x13,0x8A,0x6B,
+    0x3A,0x91,0x11,0x41,0x4F,0x67,0xDC,0xEA,0x97,0xF2,0xCF,0xCE,0xF0,0xB4,0xE6,0x73,
+    0x96,0xAC,0x74,0x22,0xE7,0xAD,0x35,0x85,0xE2,0xF9,0x37,0xE8,0x1C,0x75,0xDF,0x6E,
+    0x47,0xF1,0x1A,0x71,0x1D,0x29,0xC5,0x89,0x6F,0xB7,0x62,0x0E,0xAA,0x18,0xBE,0x1B,
+    0xFC,0x56,0x3E,0x4B,0xC6,0xD2,0x79,0x20,0x9A,0xDB,0xC0,0xFE,0x78,0xCD,0x5A,0xF4,
+    0x1F,0xDD,0xA8,0x33,0x88,0x07,0xC7,0x31,0xB1,0x12,0x10,0x59,0x27,0x80,0xEC,0x5F,
+    0x60,0x51,0x7F,0xA9,0x19,0xB5,0x4A,0x0D,0x2D,0xE5,0x7A,0x9F,0x93,0xC9,0x9C,0xEF,
+    0xA0,0xE0,0x3B,0x4D,0xAE,0x2A,0xF5,0xB0,0xC8,0xEB,0xBB,0x3C,0x83,0x53,0x99,0x61,
+    0x17,0x2B,0x04,0x7E,0xBA,0x77,0xD6,0x26,0xE1,0x69,0x14,0x63,0x55,0x21,0x0C,0x7D
+};
+
+/* GF(2^8) multiply in the AES field (generic, used by InvMixColumns) */
+static uint8_t scp03_gf_mul(uint8_t a, uint8_t b)
+{
+    uint8_t p = 0U;
+    uint8_t i;
+
+    for (i = 0; i < 8U; i++)
+    {
+        if ((b & 0x01U) != 0U)
+        {
+            p ^= a;
+        }
+        a = (uint8_t)(((a & 0x80U) != 0U) ? (uint8_t)((uint8_t)(a << 1) ^ 0x1BU)
+                                          : (uint8_t)(a << 1));
+        b >>= 1;
+    }
+    return p;
+}
+
+/* AddRoundKey on a byte-array state (column-major) */
+static void scp03_add_round_key(uint8_t st[16], const uint32_t *rk, uint32_t round)
+{
+    uint32_t c;
+
+    for (c = 0; c < 4U; c++)
+    {
+        uint32_t w = rk[round * 4U + c];
+
+        st[c * 4U + 0U] ^= (uint8_t)(w >> 24);
+        st[c * 4U + 1U] ^= (uint8_t)(w >> 16);
+        st[c * 4U + 2U] ^= (uint8_t)(w >>  8);
+        st[c * 4U + 3U] ^= (uint8_t)(w);
+    }
+}
+
+/* InvShiftRows on a column-major byte-array state */
+static void scp03_inv_shift_rows(const uint8_t in[16], uint8_t out[16])
+{
+    out[0]  = in[0];  out[4]  = in[4];  out[8]  = in[8];  out[12] = in[12];
+    out[1]  = in[13]; out[5]  = in[1];  out[9]  = in[5];  out[13] = in[9];
+    out[2]  = in[10]; out[6]  = in[14]; out[10] = in[2];  out[14] = in[6];
+    out[3]  = in[7];  out[7]  = in[11]; out[11] = in[15]; out[15] = in[3];
+}
+
+/**
+ * @brief AES-128 single-block ECB decrypt (FIPS 197 §5.3).
+ */
+static void scp03_aes128_decrypt(const scp03_aes128_ctx_t *ctx,
+                                  const uint8_t in[16], uint8_t out[16])
+{
+    uint8_t st[16];
+    uint8_t tmp[16];
+    uint32_t round;
+    uint32_t c;
+    uint32_t i;
+
+    (void)memcpy(st, in, 16U);
+    scp03_add_round_key(st, ctx->rk, 10U);
+
+    for (round = 9U; round >= 1U; round--)
+    {
+        scp03_inv_shift_rows(st, tmp);
+
+        for (i = 0; i < 16U; i++)
+        {
+            tmp[i] = s_scp03_inv_sbox[tmp[i]];
+        }
+
+        scp03_add_round_key(tmp, ctx->rk, round);
+
+        for (c = 0; c < 4U; c++)
+        {
+            uint8_t a0 = tmp[c * 4U + 0U];
+            uint8_t a1 = tmp[c * 4U + 1U];
+            uint8_t a2 = tmp[c * 4U + 2U];
+            uint8_t a3 = tmp[c * 4U + 3U];
+
+            st[c * 4U + 0U] = (uint8_t)(scp03_gf_mul(a0, 0x0EU) ^ scp03_gf_mul(a1, 0x0BU) ^
+                                        scp03_gf_mul(a2, 0x0DU) ^ scp03_gf_mul(a3, 0x09U));
+            st[c * 4U + 1U] = (uint8_t)(scp03_gf_mul(a0, 0x09U) ^ scp03_gf_mul(a1, 0x0EU) ^
+                                        scp03_gf_mul(a2, 0x0BU) ^ scp03_gf_mul(a3, 0x0DU));
+            st[c * 4U + 2U] = (uint8_t)(scp03_gf_mul(a0, 0x0DU) ^ scp03_gf_mul(a1, 0x09U) ^
+                                        scp03_gf_mul(a2, 0x0EU) ^ scp03_gf_mul(a3, 0x0BU));
+            st[c * 4U + 3U] = (uint8_t)(scp03_gf_mul(a0, 0x0BU) ^ scp03_gf_mul(a1, 0x0DU) ^
+                                        scp03_gf_mul(a2, 0x09U) ^ scp03_gf_mul(a3, 0x0EU));
+        }
+    }
+
+    scp03_inv_shift_rows(st, tmp);
+    for (i = 0; i < 16U; i++)
+    {
+        tmp[i] = s_scp03_inv_sbox[tmp[i]];
+    }
+    scp03_add_round_key(tmp, ctx->rk, 0U);
+
+    (void)memcpy(out, tmp, 16U);
+
+    (void)memset(st, 0, sizeof(st));
+    (void)memset(tmp, 0, sizeof(tmp));
+}
+
+/* Number of bytes after ISO 7816-4 padding (always adds >= 1 byte) */
+static uint32_t scp03_padded_len(uint32_t len)
+{
+    return ((len / 16U) + 1U) * 16U;
+}
+
+/* ISO 7816-4 padding: data || 0x80 || 0x00... */
+static void scp03_pad(const uint8_t *in, uint16_t len, uint8_t *out, uint32_t padded)
+{
+    (void)memcpy(out, in, len);
+    out[len] = 0x80U;
+    (void)memset(&out[(uint32_t)len + 1U], 0, padded - (uint32_t)len - 1U);
+}
+
+/**
+ * @brief Remove ISO 7816-4 padding.
+ * @return unpadded length, or -1 if the padding is malformed
+ */
+static int scp03_unpad(const uint8_t *buf, uint16_t padded_len)
+{
+    uint16_t n = padded_len;
+
+    while ((n > 0U) && (buf[n - 1U] == 0x00U))
+    {
+        n--;
+    }
+    if ((n == 0U) || (buf[n - 1U] != 0x80U))
+    {
+        return -1;
+    }
+    return (int)(n - 1U);
+}
+
+/* AES-128-CBC encrypt (in and out must not overlap) */
+static void scp03_cbc_encrypt(const uint8_t key[16], const uint8_t iv[16],
+                               const uint8_t *in, uint8_t *out, uint16_t len)
+{
+    scp03_aes128_ctx_t ctx;
+    uint8_t prev[16];
+    uint16_t off;
+
+    scp03_aes128_key_expand(&ctx, key);
+    (void)memcpy(prev, iv, 16U);
+
+    for (off = 0; off < len; off = (uint16_t)(off + 16U))
+    {
+        uint8_t block[16];
+        uint8_t j;
+
+        for (j = 0; j < 16U; j++)
+        {
+            block[j] = (uint8_t)(in[off + j] ^ prev[j]);
+        }
+        scp03_aes128_encrypt(&ctx, block, &out[off]);
+        (void)memcpy(prev, &out[off], 16U);
+        (void)memset(block, 0, sizeof(block));
+    }
+
+    (void)memset(&ctx, 0, sizeof(ctx));
+    (void)memset(prev, 0, sizeof(prev));
+}
+
+/* AES-128-CBC decrypt (in and out must not overlap) */
+static void scp03_cbc_decrypt(const uint8_t key[16], const uint8_t iv[16],
+                               const uint8_t *in, uint8_t *out, uint16_t len)
+{
+    scp03_aes128_ctx_t ctx;
+    uint8_t prev[16];
+    uint8_t cur[16];
+    uint16_t off;
+
+    scp03_aes128_key_expand(&ctx, key);
+    (void)memcpy(prev, iv, 16U);
+
+    for (off = 0; off < len; off = (uint16_t)(off + 16U))
+    {
+        uint8_t j;
+
+        (void)memcpy(cur, &in[off], 16U);
+        scp03_aes128_decrypt(&ctx, cur, &out[off]);
+        for (j = 0; j < 16U; j++)
+        {
+            out[off + j] ^= prev[j];
+        }
+        (void)memcpy(prev, cur, 16U);
+    }
+
+    (void)memset(&ctx, 0, sizeof(ctx));
+    (void)memset(prev, 0, sizeof(prev));
+    (void)memset(cur, 0, sizeof(cur));
+}
+
+/* ========================================================================
  *  Internal: AES-CMAC (NIST SP 800-38B)
  * ========================================================================
  * Used for C-MAC/R-MAC computation and cryptogram generation.
@@ -691,6 +912,8 @@ void se050_scp03_deinit(scp03_session_t *session)
         se050_scp03_secure_zero(session->s_rmac, sizeof(session->s_rmac));
         se050_scp03_secure_zero(session->cmac_iv, sizeof(session->cmac_iv));
         se050_scp03_secure_zero(session->rmac_iv, sizeof(session->rmac_iv));
+        se050_scp03_secure_zero(session->cmd_icv, sizeof(session->cmd_icv));
+        se050_scp03_secure_zero(session->resp_icv, sizeof(session->resp_icv));
         (void)memset(session, 0, sizeof(*session));
     }
 }
@@ -1127,6 +1350,10 @@ int se050_scp03_open_session(scp03_session_t *session, uint8_t i2c_addr)
         /* R-MAC IV starts as zero (resets with each session) */
         (void)memset(session->rmac_iv, 0, SCP03_BLOCK_SIZE);
 
+        /* No preceding command/response: both encryption ICVs are zero */
+        (void)memset(session->cmd_icv, 0, SCP03_BLOCK_SIZE);
+        (void)memset(session->resp_icv, 0, SCP03_BLOCK_SIZE);
+
         se050_scp03_secure_zero(&mac_ctx, sizeof(mac_ctx));
         se050_scp03_secure_zero(zero_block, sizeof(zero_block));
     }
@@ -1168,6 +1395,8 @@ void se050_scp03_close_session(scp03_session_t *session)
     se050_scp03_secure_zero(session->s_rmac, sizeof(session->s_rmac));
     se050_scp03_secure_zero(session->cmac_iv, sizeof(session->cmac_iv));
     se050_scp03_secure_zero(session->rmac_iv, sizeof(session->rmac_iv));
+    se050_scp03_secure_zero(session->cmd_icv, sizeof(session->cmd_icv));
+    se050_scp03_secure_zero(session->resp_icv, sizeof(session->resp_icv));
     se050_scp03_secure_zero(session->host_challenge, sizeof(session->host_challenge));
     se050_scp03_secure_zero(session->card_challenge, sizeof(session->card_challenge));
     se050_scp03_secure_zero(session->host_cryptogram, sizeof(session->host_cryptogram));
@@ -1189,18 +1418,21 @@ bool se050_scp03_is_open(const scp03_session_t *session)
 
 /* ---- Secured APDU Communication ---- */
 
-int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
-                      uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
-                      const uint8_t *data, uint16_t data_len,
-                      uint8_t *resp, uint16_t *resp_len)
+static int scp03_apdu_common(scp03_session_t *session, uint8_t i2c_addr,
+                             uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
+                             const uint8_t *data, uint16_t data_len,
+                             uint8_t *resp, uint16_t *resp_len, int encrypt)
 {
     int ret;
     uint8_t apdu_header[4];
-    uint8_t cmd_buffer[5 + SCP03_MAX_APDU_DATA + SCP03_CMAC_TRUNC]; /* header + data + mac */
+    uint8_t wire_data[SCP03_MAX_APDU_DATA + SCP03_BLOCK_SIZE];
+    uint8_t padded_plain[SCP03_MAX_APDU_DATA + SCP03_BLOCK_SIZE];
+    uint16_t wire_len = data_len;
+    uint8_t cmd_buffer[5 + SCP03_MAX_APDU_DATA + SCP03_BLOCK_SIZE + SCP03_CMAC_TRUNC];
     uint16_t cmd_len;
-    uint8_t mac_input[5 + SCP03_MAX_APDU_DATA + SCP03_CMAC_SIZE + 1]; /* for CMAC computation */
+    uint8_t mac_input[SCP03_BLOCK_SIZE + 5 + SCP03_MAX_APDU_DATA + SCP03_BLOCK_SIZE];
     uint16_t mac_input_len;
-    uint8_t mac_full[SCP03_BLOCK_SIZE]; /* 16-byte CMAC full output */
+    uint8_t mac_full[SCP03_BLOCK_SIZE];
     uint16_t i;
     uint16_t resp_data_len;
     uint16_t sw;
@@ -1221,84 +1453,94 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
     }
 
     /* ----------------------------------------------------------------
-     * Build C-MAC for the command
+     * Optional command data encryption (SCP03, AES-128-CBC / S-ENC)
      *
-     * C-MAC input (for CMAC computation):
-     *   CLA (with 0x04 C-MAC flag) || INS || P1 || P2 || Lc ||
-     *   data || [padding for CMAC]
+     *   padding : ISO 7816-4 (0x80 || 0x00*)
+     *   ICV     : chaining value from the previous R-MAC
+     *   CLA     : C-MAC + encryption flags (0x0C)
      *
-     * The CLA byte must include the C-MAC flag: cla | 0x04
-     * For encrypted communication, also set encryption flag: cla | 0x0C
-     *
-     * We use C-MAC only (no encryption for simplicity — encryption
-     * at application level via sec_encrypt/decrypt is sufficient).
-     *
-     * The MAC chaining uses:
-     *   C-MAC = AES-CMAC(S-MAC, previous_cmac || new_apdu_body)
-     *
-     * For the first command, previous_cmac = cmac_iv (from init).
+     * The C-MAC is always computed over the on-the-wire (encrypted) bytes.
      * ---------------------------------------------------------------- */
+    if ((encrypt != 0) && (data_len > 0U))
+    {
+        uint32_t padded = scp03_padded_len((uint32_t)data_len);
 
-    /* Build APDU body for MAC computation */
-    apdu_header[0] = (uint8_t)(cla | 0x04U); /* CLA with C-MAC bit */
+        if (padded > (uint32_t)SCP03_MAX_APDU_DATA + SCP03_BLOCK_SIZE)
+        {
+            return SCP03_ERR_PARAM;
+        }
+
+        scp03_pad(data, data_len, padded_plain, padded);
+        scp03_cbc_encrypt(session->s_enc, session->cmd_icv,
+                          padded_plain, wire_data, (uint16_t)padded);
+        wire_len = (uint16_t)padded;
+
+        (void)memset(padded_plain, 0, sizeof(padded_plain));
+    }
+    else if (data_len > 0U)
+    {
+        (void)memcpy(wire_data, data, data_len);
+    }
+
+    /* Lc covers the encrypted data plus the truncated C-MAC */
+    if ((uint32_t)wire_len + SCP03_CMAC_TRUNC > 0xFFU)
+    {
+        return SCP03_ERR_PARAM;
+    }
+
+    /* ----------------------------------------------------------------
+     * Build the secured APDU
+     *
+     *   CLA' || INS || P1 || P2 || Lc(=wire_len+8) || wire_data || C-MAC(8)
+     * ---------------------------------------------------------------- */
+    apdu_header[0] = (uint8_t)((uint8_t)(cla & (uint8_t)~0x0CU) |
+                               ((encrypt != 0) ? 0x0CU : 0x04U));
     apdu_header[1] = ins;
     apdu_header[2] = p1;
     apdu_header[3] = p2;
 
-    /* Build MAC input: previous CMAC || header || Lc || data */
+    /* C-MAC input: C-MAC chaining value || header || Lc || wire data */
     mac_input_len = 0;
-
-    /* Chain previous C-MAC (or IV for first command) */
     (void)memcpy(mac_input, session->cmac_iv, SCP03_BLOCK_SIZE);
-    mac_input_len += SCP03_BLOCK_SIZE;
+    mac_input_len = SCP03_BLOCK_SIZE;
 
-    /* Append APDU header */
     (void)memcpy(mac_input + mac_input_len, apdu_header, 4);
-    mac_input_len += 4;
+    mac_input_len = (uint16_t)(mac_input_len + 4U);
 
-    /* Append Lc if data present */
-    if (data_len > 0)
+    if (wire_len > 0U)
     {
-        mac_input[mac_input_len] = (uint8_t)data_len;
-        mac_input_len += 1;
+        mac_input[mac_input_len] = (uint8_t)(wire_len + SCP03_CMAC_TRUNC);
+        mac_input_len = (uint16_t)(mac_input_len + 1U);
 
-        (void)memcpy(mac_input + mac_input_len, data, data_len);
-        mac_input_len += data_len;
+        (void)memcpy(mac_input + mac_input_len, wire_data, wire_len);
+        mac_input_len = (uint16_t)(mac_input_len + wire_len);
     }
 
-    /* Compute C-MAC over entire input */
-    scp03_aes_cmac(session->s_mac, mac_input, (uint16_t)mac_input_len, mac_full);
+    scp03_aes_cmac(session->s_mac, mac_input, mac_input_len, mac_full);
 
-    /* Update C-MAC IV for next command (full 16 bytes) */
+    /* Update C-MAC chaining and the response-encryption ICV (last C-MAC) */
     (void)memcpy(session->cmac_iv, mac_full, SCP03_BLOCK_SIZE);
+    (void)memcpy(session->resp_icv, mac_full, SCP03_BLOCK_SIZE);
 
-    /* ----------------------------------------------------------------
-     * Build and send the secured APDU
-     * ---------------------------------------------------------------- */
-    cmd_buffer[0] = apdu_header[0];
-    cmd_buffer[1] = apdu_header[1];
-    cmd_buffer[2] = apdu_header[2];
-    cmd_buffer[3] = apdu_header[3];
+    (void)memcpy(cmd_buffer, apdu_header, 4);
 
-    if (data_len > 0)
+    if (wire_len > 0U)
     {
-        cmd_buffer[4] = (uint8_t)data_len;
-        (void)memcpy(&cmd_buffer[5], data, data_len);
-        cmd_len = 5 + data_len;
+        cmd_buffer[4] = (uint8_t)(wire_len + SCP03_CMAC_TRUNC);
+        (void)memcpy(&cmd_buffer[5], wire_data, wire_len);
+        cmd_len = (uint16_t)(5U + wire_len);
     }
     else
     {
         cmd_len = 4;
     }
 
-    /* Append truncated C-MAC (first 8 bytes) */
     for (i = 0; i < SCP03_CMAC_TRUNC; i++)
     {
         cmd_buffer[cmd_len + i] = mac_full[i];
     }
-    cmd_len += SCP03_CMAC_TRUNC;
+    cmd_len = (uint16_t)(cmd_len + SCP03_CMAC_TRUNC);
 
-    /* Write secured APDU */
     ret = scp03_i2c_write(i2c_addr, cmd_buffer, cmd_len);
     if (ret != 0)
     {
@@ -1306,22 +1548,21 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
     }
 
     se050_scp03_secure_zero(mac_full, sizeof(mac_full));
+    se050_scp03_secure_zero(wire_data, sizeof(wire_data));
+    se050_scp03_secure_zero(mac_input, sizeof(mac_input));
 
-    /* Read response */
+    /* ----------------------------------------------------------------
+     * Read and authenticate the response
+     * ---------------------------------------------------------------- */
     {
-        /*
-         * A secured response is: data || R-MAC (8) || SW1 SW2.
-         * Request data capacity + R-MAC + SW so the T=1' transport returns
-         * the complete block instead of truncating it.
-         */
-        uint8_t read_buffer[SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U];
+        uint8_t read_buffer[SCP03_MAX_APDU_RESP + SCP03_BLOCK_SIZE + SCP03_CMAC_SIZE + 2U];
         uint16_t read_len;
         uint16_t total_len = 0;
-        uint32_t want = (uint32_t)(*resp_len) + SCP03_CMAC_SIZE + 2U;
+        uint32_t want = (uint32_t)(*resp_len) + SCP03_BLOCK_SIZE + SCP03_CMAC_SIZE + 2U;
 
-        if (want > (uint32_t)(SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U))
+        if (want > (uint32_t)sizeof(read_buffer))
         {
-            want = (uint32_t)(SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U);
+            want = (uint32_t)sizeof(read_buffer);
         }
         read_len = (uint16_t)want;
 
@@ -1331,11 +1572,10 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
             return SCP03_ERR_HW;
         }
 
-        /* Parse response: data [|| R-MAC] || SW */
         {
-            uint16_t data_len;
+            uint16_t field_len;
 
-            ret = scp03_parse_response(read_buffer, total_len, &data_len, &sw);
+            ret = scp03_parse_response(read_buffer, total_len, &field_len, &sw);
             if (ret != 0)
             {
                 return ret;
@@ -1348,11 +1588,11 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
 
             /*
              * Verify and strip the R-MAC. Per GP SCP03 the R-MAC covers the
-             * response data with the R-MAC chaining value as prefix. Any
-             * failure means the response cannot be trusted: terminate the
-             * secure channel instead of returning attacker-controlled data.
+             * response data as transmitted (i.e. still encrypted) with the
+             * R-MAC chaining value as prefix. Any failure means the response
+             * cannot be trusted: terminate the secure channel.
              */
-            if (data_len > 0U)
+            if (field_len > 0U)
             {
                 uint8_t  rmac_input[SCP03_BLOCK_SIZE + SCP03_MAX_APDU_RESP];
                 uint8_t  rmac_full[SCP03_BLOCK_SIZE];
@@ -1360,13 +1600,13 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
                 uint16_t k;
                 uint8_t  diff;
 
-                if (data_len < SCP03_CMAC_SIZE)
+                if (field_len < SCP03_CMAC_SIZE)
                 {
                     se050_scp03_close_session(session);
                     return SCP03_ERR_CMAC;
                 }
 
-                payload_len = (uint16_t)(data_len - SCP03_CMAC_SIZE);
+                payload_len = (uint16_t)(field_len - SCP03_CMAC_SIZE);
 
                 (void)memcpy(rmac_input, session->rmac_iv, SCP03_BLOCK_SIZE);
                 (void)memcpy(rmac_input + SCP03_BLOCK_SIZE, read_buffer, payload_len);
@@ -1384,27 +1624,63 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
                 (void)memcpy(session->rmac_iv, rmac_full, SCP03_BLOCK_SIZE);
 
                 se050_scp03_secure_zero(rmac_input, sizeof(rmac_input));
-                se050_scp03_secure_zero(rmac_full, sizeof(rmac_full));
 
                 if (diff != 0U)
+                {
+                    se050_scp03_secure_zero(rmac_full, sizeof(rmac_full));
+                    se050_scp03_close_session(session);
+                    return SCP03_ERR_CMAC;
+                }
+
+                /* Next command-encryption ICV chains from this R-MAC */
+                (void)memcpy(session->cmd_icv, rmac_full, SCP03_BLOCK_SIZE);
+                se050_scp03_secure_zero(rmac_full, sizeof(rmac_full));
+
+                field_len = payload_len;
+            }
+
+            if (encrypt != 0)
+            {
+                uint8_t  plain[SCP03_MAX_APDU_RESP + SCP03_BLOCK_SIZE];
+                int      plain_len;
+
+                if ((field_len % SCP03_BLOCK_SIZE) != 0U)
                 {
                     se050_scp03_close_session(session);
                     return SCP03_ERR_CMAC;
                 }
 
-                data_len = payload_len;
-            }
+                scp03_cbc_decrypt(session->s_enc, session->resp_icv,
+                                  read_buffer, plain, field_len);
 
-            if (data_len > *resp_len)
-            {
-                resp_data_len = *resp_len;
+                plain_len = scp03_unpad(plain, field_len);
+                if (plain_len < 0)
+                {
+                    se050_scp03_secure_zero(plain, sizeof(plain));
+                    se050_scp03_close_session(session);
+                    return SCP03_ERR_CMAC;
+                }
+
+                resp_data_len = (uint16_t)plain_len;
+                if (resp_data_len > *resp_len)
+                {
+                    resp_data_len = *resp_len;
+                }
+
+                (void)memcpy(resp, plain, resp_data_len);
+                se050_scp03_secure_zero(plain, sizeof(plain));
             }
             else
             {
-                resp_data_len = data_len;
+                resp_data_len = field_len;
+                if (resp_data_len > *resp_len)
+                {
+                    resp_data_len = *resp_len;
+                }
+
+                (void)memcpy(resp, read_buffer, resp_data_len);
             }
 
-            (void)memcpy(resp, read_buffer, resp_data_len);
             *resp_len = resp_data_len;
         }
     }
@@ -1412,6 +1688,24 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
     session->scp_cmd_count++;
 
     return SCP03_OK;
+}
+
+int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
+                      uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
+                      const uint8_t *data, uint16_t data_len,
+                      uint8_t *resp, uint16_t *resp_len)
+{
+    return scp03_apdu_common(session, i2c_addr, cla, ins, p1, p2,
+                             data, data_len, resp, resp_len, 0);
+}
+
+int se050_scp03_apdu_enc(scp03_session_t *session, uint8_t i2c_addr,
+                          uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
+                          const uint8_t *data, uint16_t data_len,
+                          uint8_t *resp, uint16_t *resp_len)
+{
+    return scp03_apdu_common(session, i2c_addr, cla, ins, p1, p2,
+                             data, data_len, resp, resp_len, 1);
 }
 
 /* ---- Key Rotation ---- */

@@ -7,20 +7,22 @@
  *
  * Transport stack:
  *   security.c / sec_sign
- *     └─ se050_apdu_sign()        (this module: SE050 command semantics)
- *          └─ se050_scp03_apdu()  (secure messaging: C-MAC + R-MAC)
- *               └─ se050_t1oi2c.c (T=1' over I2C)
+ *     └─ se050_apdu_sign()            (this module: SE050 command semantics)
+ *          └─ se050_scp03_apdu_enc()  (C-MAC + AES-CBC encryption + R-MAC)
+ *               └─ se050_t1oi2c.c     (T=1' over I2C)
  *
  * APDU layout (EC-DSA signature generation, AN12413 command set):
- *   CLA  = 0x80 | 0x04 (C-MAC) applied by the SCP03 layer
+ *   CLA  = 0x8C (0x80 + C-MAC 0x04 + encryption 0x08), applied by SCP03
  *   INS  = 0x62
  *   P1   = 0x00
  *   P2   = 0x00
  *   Data = KeyObjectID (4, big-endian) || Hash (32)
- *   Resp = r (32) || s (32) || SW1 SW2
+ *          — padded to 48 bytes and AES-128-CBC encrypted under S-ENC
+ *   Resp = r (32) || s (32) — encrypted, then authenticated by the R-MAC
+ *          before decryption
  *
  * The SE050 keeps the private key inside the secure element; only the hash
- * crosses the I2C bus and only the signature comes back.
+ * crosses the I2C bus (encrypted) and only the signature comes back.
  */
 
 #ifndef SE050_APDU_H

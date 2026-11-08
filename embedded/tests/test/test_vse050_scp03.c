@@ -63,6 +63,14 @@ static void test_crypto_kat(void)
           "AES-128 FIPS-197 vector");
 
     {
+        uint8_t back[16];
+
+        vse050_sim_aes128_decrypt_block(key, out, back);
+        CHECK(hexeq(back, "00112233445566778899aabbccddeeff", 16),
+              "AES-128 decrypt FIPS-197 vector");
+    }
+
+    {
         static const uint8_t cmac_key[16] = {
             0x2b,0x7e,0x15,0x16,0x28,0xae,0xd2,0xa6,
             0xab,0xf7,0x15,0x88,0x09,0xcf,0x4f,0x3c
@@ -234,6 +242,8 @@ static void test_sign_apdu(void)
     rc = se050_apdu_sign(&s, 0x48, 0x02, hash, sig);
     CHECK(rc == SE050_APDU_OK, "sign APDU accepted");
     CHECK(vse050_sim_sign_count() == 1, "card produced one signature (74-byte reply)");
+    CHECK(vse050_sim_encrypted_cmds() == 1, "command data arrived AES-CBC encrypted");
+    CHECK(vse050_sim_last_cipher_len() == 48U, "36-byte plaintext padded to 48-byte block");
 
     rc = se050_apdu_sign(&s, 0x48, 0x02, hash, sig2);
     CHECK(rc == SE050_APDU_OK, "second sign accepted (C-MAC chaining)");
@@ -282,6 +292,28 @@ static void test_sign_rmac_tamper(void)
     se050_scp03_deinit(&s);
 }
 
+static void test_sign_ciphertext_tamper(void)
+{
+    vse050_config_t cfg;
+    scp03_session_t s;
+    uint8_t hash[32];
+    uint8_t sig[64];
+
+    printf("\n[11] Command encryption integrity (tampered ciphertext)\n");
+    vse050_sim_default_config(&cfg);
+    cfg.corrupt_ciphertext = 1;
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "session open before tamper");
+
+    (void)memset(hash, 0x77, sizeof(hash));
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, sig) == SE050_APDU_ERR_SW,
+          "tampered ciphertext rejected (SW=6982)");
+    CHECK(vse050_sim_auth_failures() == 1, "card detected the C-MAC mismatch");
+    CHECK(vse050_sim_encrypted_cmds() == 0, "no plaintext reached the sign handler");
+
+    se050_scp03_deinit(&s);
+}
+
 int main(void)
 {
     printf("=== vSE050 asynchronous SCP03 simulation ===\n");
@@ -298,6 +330,7 @@ int main(void)
     test_session_restart();
     test_sign_apdu();
     test_sign_rmac_tamper();
+    test_sign_ciphertext_tamper();
 
     printf("\n=== 结果: %d passed, %d failed ===\n", g_pass, g_fail);
     return (g_fail == 0) ? 0 : 1;

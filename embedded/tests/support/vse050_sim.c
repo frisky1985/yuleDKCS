@@ -176,6 +176,188 @@ void vse050_sim_aes128_encrypt_block(const uint8_t key[16],
     (void)memset(&ctx, 0, sizeof(ctx));
 }
 
+/* ---- AES-128 decryption (card side SCP03 data encryption) ---- */
+
+static const uint8_t s_vs_inv_sbox[256] = {
+    0x52,0x09,0x6A,0xD5,0x30,0x36,0xA5,0x38,0xBF,0x40,0xA3,0x9E,0x81,0xF3,0xD7,0xFB,
+    0x7C,0xE3,0x39,0x82,0x9B,0x2F,0xFF,0x87,0x34,0x8E,0x43,0x44,0xC4,0xDE,0xE9,0xCB,
+    0x54,0x7B,0x94,0x32,0xA6,0xC2,0x23,0x3D,0xEE,0x4C,0x95,0x0B,0x42,0xFA,0xC3,0x4E,
+    0x08,0x2E,0xA1,0x66,0x28,0xD9,0x24,0xB2,0x76,0x5B,0xA2,0x49,0x6D,0x8B,0xD1,0x25,
+    0x72,0xF8,0xF6,0x64,0x86,0x68,0x98,0x16,0xD4,0xA4,0x5C,0xCC,0x5D,0x65,0xB6,0x92,
+    0x6C,0x70,0x48,0x50,0xFD,0xED,0xB9,0xDA,0x5E,0x15,0x46,0x57,0xA7,0x8D,0x9D,0x84,
+    0x90,0xD8,0xAB,0x00,0x8C,0xBC,0xD3,0x0A,0xF7,0xE4,0x58,0x05,0xB8,0xB3,0x45,0x06,
+    0xD0,0x2C,0x1E,0x8F,0xCA,0x3F,0x0F,0x02,0xC1,0xAF,0xBD,0x03,0x01,0x13,0x8A,0x6B,
+    0x3A,0x91,0x11,0x41,0x4F,0x67,0xDC,0xEA,0x97,0xF2,0xCF,0xCE,0xF0,0xB4,0xE6,0x73,
+    0x96,0xAC,0x74,0x22,0xE7,0xAD,0x35,0x85,0xE2,0xF9,0x37,0xE8,0x1C,0x75,0xDF,0x6E,
+    0x47,0xF1,0x1A,0x71,0x1D,0x29,0xC5,0x89,0x6F,0xB7,0x62,0x0E,0xAA,0x18,0xBE,0x1B,
+    0xFC,0x56,0x3E,0x4B,0xC6,0xD2,0x79,0x20,0x9A,0xDB,0xC0,0xFE,0x78,0xCD,0x5A,0xF4,
+    0x1F,0xDD,0xA8,0x33,0x88,0x07,0xC7,0x31,0xB1,0x12,0x10,0x59,0x27,0x80,0xEC,0x5F,
+    0x60,0x51,0x7F,0xA9,0x19,0xB5,0x4A,0x0D,0x2D,0xE5,0x7A,0x9F,0x93,0xC9,0x9C,0xEF,
+    0xA0,0xE0,0x3B,0x4D,0xAE,0x2A,0xF5,0xB0,0xC8,0xEB,0xBB,0x3C,0x83,0x53,0x99,0x61,
+    0x17,0x2B,0x04,0x7E,0xBA,0x77,0xD6,0x26,0xE1,0x69,0x14,0x63,0x55,0x21,0x0C,0x7D
+};
+
+static uint8_t vs_gf_mul(uint8_t a, uint8_t b)
+{
+    uint8_t p = 0U;
+    uint8_t i;
+
+    for (i = 0; i < 8U; i++) {
+        if ((b & 0x01U) != 0U) p ^= a;
+        a = (uint8_t)(((a & 0x80U) != 0U) ? (uint8_t)((uint8_t)(a << 1) ^ 0x1BU)
+                                          : (uint8_t)(a << 1));
+        b >>= 1;
+    }
+    return p;
+}
+
+static void vs_add_round_key(uint8_t st[16], const uint32_t *rk, uint32_t round)
+{
+    uint32_t c;
+
+    for (c = 0; c < 4U; c++) {
+        uint32_t w = rk[round * 4U + c];
+
+        st[c * 4U + 0U] ^= (uint8_t)(w >> 24);
+        st[c * 4U + 1U] ^= (uint8_t)(w >> 16);
+        st[c * 4U + 2U] ^= (uint8_t)(w >> 8);
+        st[c * 4U + 3U] ^= (uint8_t)(w);
+    }
+}
+
+static void vs_inv_shift_rows(const uint8_t in[16], uint8_t out[16])
+{
+    out[0]  = in[0];  out[4]  = in[4];  out[8]  = in[8];  out[12] = in[12];
+    out[1]  = in[13]; out[5]  = in[1];  out[9]  = in[5];  out[13] = in[9];
+    out[2]  = in[10]; out[6]  = in[14]; out[10] = in[2];  out[14] = in[6];
+    out[3]  = in[7];  out[7]  = in[11]; out[11] = in[15]; out[15] = in[3];
+}
+
+static void vs_aes_decrypt(const vs_aes_ctx_t *ctx,
+                           const uint8_t in[16], uint8_t out[16])
+{
+    uint8_t st[16];
+    uint8_t tmp[16];
+    uint32_t round;
+    uint32_t c;
+    uint32_t i;
+
+    (void)memcpy(st, in, 16U);
+    vs_add_round_key(st, ctx->rk, 10U);
+
+    for (round = 9U; round >= 1U; round--) {
+        vs_inv_shift_rows(st, tmp);
+        for (i = 0; i < 16U; i++) tmp[i] = s_vs_inv_sbox[tmp[i]];
+        vs_add_round_key(tmp, ctx->rk, round);
+
+        for (c = 0; c < 4U; c++) {
+            uint8_t a0 = tmp[c * 4U + 0U];
+            uint8_t a1 = tmp[c * 4U + 1U];
+            uint8_t a2 = tmp[c * 4U + 2U];
+            uint8_t a3 = tmp[c * 4U + 3U];
+
+            st[c * 4U + 0U] = (uint8_t)(vs_gf_mul(a0, 0x0EU) ^ vs_gf_mul(a1, 0x0BU) ^
+                                        vs_gf_mul(a2, 0x0DU) ^ vs_gf_mul(a3, 0x09U));
+            st[c * 4U + 1U] = (uint8_t)(vs_gf_mul(a0, 0x09U) ^ vs_gf_mul(a1, 0x0EU) ^
+                                        vs_gf_mul(a2, 0x0BU) ^ vs_gf_mul(a3, 0x0DU));
+            st[c * 4U + 2U] = (uint8_t)(vs_gf_mul(a0, 0x0DU) ^ vs_gf_mul(a1, 0x09U) ^
+                                        vs_gf_mul(a2, 0x0EU) ^ vs_gf_mul(a3, 0x0BU));
+            st[c * 4U + 3U] = (uint8_t)(vs_gf_mul(a0, 0x0BU) ^ vs_gf_mul(a1, 0x0DU) ^
+                                        vs_gf_mul(a2, 0x09U) ^ vs_gf_mul(a3, 0x0EU));
+        }
+    }
+
+    vs_inv_shift_rows(st, tmp);
+    for (i = 0; i < 16U; i++) tmp[i] = s_vs_inv_sbox[tmp[i]];
+    vs_add_round_key(tmp, ctx->rk, 0U);
+
+    (void)memcpy(out, tmp, 16U);
+    (void)memset(st, 0, sizeof(st));
+    (void)memset(tmp, 0, sizeof(tmp));
+}
+
+void vse050_sim_aes128_decrypt_block(const uint8_t key[16],
+                                     const uint8_t in[16], uint8_t out[16])
+{
+    vs_aes_ctx_t ctx;
+
+    if (key == NULL || in == NULL || out == NULL) return;
+    vs_aes_expand(&ctx, key);
+    vs_aes_decrypt(&ctx, in, out);
+    (void)memset(&ctx, 0, sizeof(ctx));
+}
+
+static uint16_t vs_padded_len(uint16_t len)
+{
+    return (uint16_t)(((uint16_t)(len / 16U) + 1U) * 16U);
+}
+
+static void vs_pad(const uint8_t *in, uint16_t len, uint8_t *out, uint16_t padded)
+{
+    (void)memcpy(out, in, len);
+    out[len] = 0x80U;
+    (void)memset(&out[(uint16_t)(len + 1U)], 0, (uint16_t)(padded - len - 1U));
+}
+
+/* @return unpadded length, or -1 on malformed padding */
+static int vs_unpad(const uint8_t *buf, uint16_t padded)
+{
+    uint16_t n = padded;
+
+    while ((n > 0U) && (buf[n - 1U] == 0x00U)) n--;
+    if ((n == 0U) || (buf[n - 1U] != 0x80U)) return -1;
+    return (int)(n - 1U);
+}
+
+static void vs_cbc_encrypt(const uint8_t key[16], const uint8_t iv[16],
+                           const uint8_t *in, uint8_t *out, uint16_t len)
+{
+    vs_aes_ctx_t ctx;
+    uint8_t prev[16];
+    uint16_t off;
+
+    vs_aes_expand(&ctx, key);
+    (void)memcpy(prev, iv, 16U);
+
+    for (off = 0; off < len; off = (uint16_t)(off + 16U)) {
+        uint8_t block[16];
+        uint8_t j;
+
+        for (j = 0; j < 16U; j++) block[j] = (uint8_t)(in[off + j] ^ prev[j]);
+        vs_aes_encrypt(&ctx, block, &out[off]);
+        (void)memcpy(prev, &out[off], 16U);
+        (void)memset(block, 0, sizeof(block));
+    }
+
+    (void)memset(&ctx, 0, sizeof(ctx));
+    (void)memset(prev, 0, sizeof(prev));
+}
+
+static void vs_cbc_decrypt(const uint8_t key[16], const uint8_t iv[16],
+                           const uint8_t *in, uint8_t *out, uint16_t len)
+{
+    vs_aes_ctx_t ctx;
+    uint8_t prev[16];
+    uint8_t cur[16];
+    uint16_t off;
+
+    vs_aes_expand(&ctx, key);
+    (void)memcpy(prev, iv, 16U);
+
+    for (off = 0; off < len; off = (uint16_t)(off + 16U)) {
+        uint8_t j;
+
+        (void)memcpy(cur, &in[off], 16U);
+        vs_aes_decrypt(&ctx, cur, &out[off]);
+        for (j = 0; j < 16U; j++) out[off + j] ^= prev[j];
+        (void)memcpy(prev, cur, 16U);
+    }
+
+    (void)memset(&ctx, 0, sizeof(ctx));
+    (void)memset(prev, 0, sizeof(prev));
+    (void)memset(cur, 0, sizeof(cur));
+}
+
 static void vs_cmac_subkeys(const uint8_t key[16], uint8_t k1[16], uint8_t k2[16])
 {
     vs_aes_ctx_t ctx;
@@ -318,7 +500,11 @@ typedef struct {
     uint8_t  s_rmac[16];
     uint8_t  cmac_iv[16];
     uint8_t  rmac_iv[16];
+    uint8_t  cmd_icv[16];
+    uint8_t  resp_icv[16];
     uint32_t sign_count;
+    uint32_t encrypted_cmds;
+    uint16_t last_cipher_len;
     uint8_t  wtx_pending;
 } vs_dev_t;
 
@@ -511,6 +697,8 @@ static void vs_handle_ext_auth(void)
         vs_aes_expand(&ctx, s_dev.s_mac);
         vs_aes_encrypt(&ctx, zero_block, s_dev.cmac_iv);
         (void)memset(s_dev.rmac_iv, 0, sizeof(s_dev.rmac_iv));
+        (void)memset(s_dev.cmd_icv, 0, sizeof(s_dev.cmd_icv));
+        (void)memset(s_dev.resp_icv, 0, sizeof(s_dev.resp_icv));
 
         (void)memset(&ctx, 0, sizeof(ctx));
         (void)memset(zero_block, 0, sizeof(zero_block));
@@ -549,29 +737,39 @@ static void vs_append_rmac(void)
 static void vs_handle_sign(void)
 {
     uint8_t  mac[16];
-    uint8_t  input[16U + 64U];
+    uint8_t  input[16U + 64U + 16U];
+    uint8_t  plain[VSE050_MAX_RESP];
     uint16_t body_len;
+    uint16_t payload_len;
+    int      plain_len;
     uint32_t key_id;
     uint8_t  diff;
     uint16_t i;
     uint8_t  b;
+    uint8_t  encrypted = (uint8_t)((s_dev.cmd[0] & 0x08U) != 0U);
 
     if (s_dev.state != VSE050_STATE_OPEN) {
         vs_set_sw(0x6985U);
         return;
     }
 
-    /* cmd = CLA INS P1 P2 Lc data... C-MAC(8) */
-    if (s_dev.cmd_len != (uint16_t)(5U + SE050_APDU_SIGN_INPUT_SIZE + SCP03_CMAC_TRUNC) ||
+    /* cmd = CLA INS P1 P2 Lc data... C-MAC(8), with Lc = data_len + 8 */
+    if (s_dev.cmd_len < (uint16_t)(5U + SCP03_CMAC_TRUNC) ||
         s_dev.cmd[2] != 0x00U || s_dev.cmd[3] != 0x00U ||
-        s_dev.cmd[4] != SE050_APDU_SIGN_INPUT_SIZE) {
+        s_dev.cmd[4] != (uint8_t)(s_dev.cmd_len - 5U)) {
         vs_set_sw(0x6700U);
         return;
     }
 
-    body_len = (uint16_t)(s_dev.cmd_len - SCP03_CMAC_TRUNC);
+    body_len    = (uint16_t)(s_dev.cmd_len - SCP03_CMAC_TRUNC);
+    payload_len = (uint16_t)(body_len - 5U);
 
-    /* Verify the host C-MAC: CMAC(S-MAC, C-MAC_IV || body). */
+    if (s_dev.cfg.corrupt_ciphertext != 0U && payload_len > 0U) {
+        s_dev.cmd[5] ^= 0xFFU;      /* one-shot: break C-MAC coverage */
+        s_dev.cfg.corrupt_ciphertext = 0;
+    }
+
+    /* Verify the host C-MAC over the on-the-wire bytes. */
     (void)memcpy(input, s_dev.cmac_iv, 16U);
     (void)memcpy(&input[16], s_dev.cmd, body_len);
     vse050_sim_aes_cmac(s_dev.s_mac, input, (uint16_t)(16U + body_len), mac);
@@ -582,22 +780,54 @@ static void vs_handle_sign(void)
     }
     (void)memcpy(s_dev.cmac_iv, mac, 16U);
     (void)memset(input, 0, sizeof(input));
-    (void)memset(mac, 0, sizeof(mac));
 
     if (diff != 0U) {
+        (void)memset(mac, 0, sizeof(mac));
+        s_dev.auth_failures++;
         s_dev.state = VSE050_STATE_RESET;
         vs_set_sw(0x6982U);
         return;
     }
 
+    /* Response encryption ICV = full C-MAC of this command */
+    (void)memcpy(s_dev.resp_icv, mac, 16U);
+    (void)memset(mac, 0, sizeof(mac));
+
+    if (encrypted != 0U) {
+        if ((payload_len == 0U) || ((payload_len % 16U) != 0U)) {
+            vs_set_sw(0x6700U);
+            return;
+        }
+
+        vs_cbc_decrypt(s_dev.s_enc, s_dev.cmd_icv, &s_dev.cmd[5], plain, payload_len);
+        plain_len = vs_unpad(plain, payload_len);
+
+        if ((plain_len < 0) || (plain_len != (int)SE050_APDU_SIGN_INPUT_SIZE)) {
+            (void)memset(plain, 0, sizeof(plain));
+            vs_set_sw(0x6700U);
+            return;
+        }
+
+        s_dev.encrypted_cmds++;
+        s_dev.last_cipher_len = payload_len;
+    } else {
+        if (payload_len != SE050_APDU_SIGN_INPUT_SIZE) {
+            vs_set_sw(0x6700U);
+            return;
+        }
+        (void)memcpy(plain, &s_dev.cmd[5], payload_len);
+    }
+
     if (s_dev.cfg.sign_disabled != 0U) {
+        (void)memset(plain, 0, sizeof(plain));
         vs_set_sw(0x6982U);
         return;
     }
 
-    key_id = ((uint32_t)s_dev.cmd[5] << 24) | ((uint32_t)s_dev.cmd[6] << 16) |
-             ((uint32_t)s_dev.cmd[7] << 8) | (uint32_t)s_dev.cmd[8];
+    key_id = ((uint32_t)plain[0] << 24) | ((uint32_t)plain[1] << 16) |
+             ((uint32_t)plain[2] << 8) | (uint32_t)plain[3];
     if (key_id != VSE050_DEVICE_KEY_ID) {
+        (void)memset(plain, 0, sizeof(plain));
         vs_set_sw(0x6A88U);
         return;
     }
@@ -606,19 +836,36 @@ static void vs_handle_sign(void)
      * Deterministic placeholder output: 4 x CMAC(S-ENC, block_idx || id || hash).
      * NOT a valid ECDSA signature — the model has no private-key arithmetic.
      * It exists so the host side can validate framing, C-MAC chaining, R-MAC
-     * verification and response parsing.
+     * verification, CBC decryption and response parsing.
      */
     for (b = 0; b < 4U; b++) {
         uint8_t seed[1U + SE050_APDU_SIGN_INPUT_SIZE];
         seed[0] = b;
-        (void)memcpy(&seed[1], &s_dev.cmd[5], SE050_APDU_SIGN_INPUT_SIZE);
+        (void)memcpy(&seed[1], plain, SE050_APDU_SIGN_INPUT_SIZE);
         vse050_sim_aes_cmac(s_dev.s_enc, seed, sizeof(seed),
                             &s_dev.resp[(uint16_t)b * 16U]);
         (void)memset(seed, 0, sizeof(seed));
     }
-    s_dev.resp_len = SE050_APDU_SIGNATURE_SIZE;
+    (void)memset(plain, 0, sizeof(plain));
+
+    if (encrypted != 0U) {
+        uint8_t  padded[SE050_APDU_SIGNATURE_SIZE + 16U];
+        uint8_t  cipher[SE050_APDU_SIGNATURE_SIZE + 16U];
+        uint16_t padded_len = vs_padded_len(SE050_APDU_SIGNATURE_SIZE);
+
+        vs_pad(s_dev.resp, SE050_APDU_SIGNATURE_SIZE, padded, padded_len);
+        vs_cbc_encrypt(s_dev.s_enc, s_dev.resp_icv, padded, cipher, padded_len);
+        (void)memcpy(s_dev.resp, cipher, padded_len);
+        s_dev.resp_len = padded_len;
+
+        (void)memset(padded, 0, sizeof(padded));
+        (void)memset(cipher, 0, sizeof(cipher));
+    } else {
+        s_dev.resp_len = SE050_APDU_SIGNATURE_SIZE;
+    }
 
     vs_append_rmac();
+    (void)memcpy(s_dev.cmd_icv, s_dev.rmac_iv, 16U);
     vs_set_sw(0x9000U);
     s_dev.sign_count++;
 }
@@ -889,6 +1136,8 @@ uint32_t vse050_sim_wtx_count(void)    { return s_dev.wtx_count; }
 uint32_t vse050_sim_crc_errors(void)   { return s_dev.crc_errors; }
 uint32_t vse050_sim_auth_failures(void){ return s_dev.auth_failures; }
 uint32_t vse050_sim_sign_count(void)   { return s_dev.sign_count; }
+uint32_t vse050_sim_encrypted_cmds(void){ return s_dev.encrypted_cmds; }
+uint16_t vse050_sim_last_cipher_len(void){ return s_dev.last_cipher_len; }
 uint16_t vse050_sim_apdu_count(void)   { return s_dev.apdu_count; }
 
 /*

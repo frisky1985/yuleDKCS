@@ -140,6 +140,8 @@ typedef struct {
     /** Secure messaging state */
     uint8_t         cmac_iv[SCP03_BLOCK_SIZE];     /**< C-MAC chaining IV */
     uint8_t         rmac_iv[SCP03_BLOCK_SIZE];     /**< R-MAC chaining IV */
+    uint8_t         cmd_icv[SCP03_BLOCK_SIZE];     /**< Command encryption ICV (last R-MAC) */
+    uint8_t         resp_icv[SCP03_BLOCK_SIZE];    /**< Response encryption ICV (last C-MAC) */
     uint32_t        scp_cmd_count;                  /**< Command count for MAC chaining */
     uint8_t         key_version;                    /**< Key version number */
 } scp03_session_t;
@@ -223,6 +225,31 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
                       uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
                       const uint8_t *data, uint16_t data_len,
                       uint8_t *resp, uint16_t *resp_len);
+
+/**
+ * @brief Send an APDU with C-MAC **and** command/response data encryption.
+ *
+ * Uses CLA | 0x0C (C-MAC + encryption). The data field is padded per
+ * ISO 7816-4 (0x80 || 0x00*) and encrypted with AES-128-CBC under S-ENC;
+ * the ICV chains from the last R-MAC. The encrypted response is checked
+ * against its R-MAC, then decrypted and unpadded.
+ *
+ * @param session   [in/out] Active SCP03 session
+ * @param i2c_addr  SE050 I2C slave address
+ * @param cla       APDU CLA byte (0x04/0x0C flags are applied internally)
+ * @param ins       APDU INS byte
+ * @param p1        APDU P1 parameter
+ * @param p2        APDU P2 parameter
+ * @param data      [in] Plaintext data field (may be NULL if data_len == 0)
+ * @param data_len  Plaintext data length (<= 255)
+ * @param resp      [out] Plaintext response buffer
+ * @param resp_len  [in/out] Input: buffer capacity; Output: plaintext length
+ * @return SCP03_OK on success, negative on error
+ */
+int se050_scp03_apdu_enc(scp03_session_t *session, uint8_t i2c_addr,
+                          uint8_t cla, uint8_t ins, uint8_t p1, uint8_t p2,
+                          const uint8_t *data, uint16_t data_len,
+                          uint8_t *resp, uint16_t *resp_len);
 
 /**
  * @brief Send a plain (unsecured) APDU before SCP03 is established.

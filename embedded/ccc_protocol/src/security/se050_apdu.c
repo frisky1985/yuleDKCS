@@ -36,11 +36,11 @@ int se050_apdu_sign(scp03_session_t *session, uint8_t i2c_addr, uint32_t key_id,
     cmd[3] = (uint8_t)(key_id);
     (void)memcpy(&cmd[4], hash, SE050_APDU_HASH_SIZE);
 
-    rc = se050_scp03_apdu(session, i2c_addr,
-                          SE050_APDU_CLA, SE050_APDU_INS_ECDSA_SIGN,
-                          0x00, 0x00,
-                          cmd, (uint16_t)sizeof(cmd),
-                          resp, &resp_len);
+    rc = se050_scp03_apdu_enc(session, i2c_addr,
+                              SE050_APDU_CLA, SE050_APDU_INS_ECDSA_SIGN,
+                              0x00, 0x00,
+                              cmd, (uint16_t)sizeof(cmd),
+                              resp, &resp_len);
 
     se050_scp03_secure_zero(cmd, sizeof(cmd));
 
