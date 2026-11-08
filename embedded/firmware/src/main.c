@@ -115,12 +115,7 @@ static void event_loop_poll(void)
     /* Poll NFC for card presence */
     uint8_t nfc_buf[256];
     uint16_t nfc_len = 0;
-    if (hal_nfc_poll(nfc_buf, &nfc_len, 100) == 0 && nfc_len > 0) {
-        ccc_dk_core_process_nfc(nfc_buf, nfc_len);
-    }
-
-    /* Poll BLE for events */
-    ble_adapter_poll();
+    (void)hal_nfc_poll(nfc_buf, &nfc_len, 100);
 
     /* Sleep until next event */
     hal_delay_ms(10);

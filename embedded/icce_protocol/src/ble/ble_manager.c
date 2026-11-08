@@ -12,6 +12,7 @@
 #include "ble_gatt.h"
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 /* 私有定义 */
 #define MAX_CONNECTIONS         4

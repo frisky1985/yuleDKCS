@@ -18,6 +18,25 @@ static distance_threshold_t g_threshold = {
 };
 
 /* -------------------------------------------------------------------
+ *  Authentication context — holds data received from the peer (phone)
+ *  via BLE, consumed by STATE_AUTH_PROCESS.
+ * ------------------------------------------------------------------- */
+typedef struct {
+    bool            pending;
+    const uint8_t  *cert_chain;
+    uint16_t        cert_chain_len;
+    const uint8_t  *root_pub_key;
+    uint16_t        root_key_len;
+    const ccc_attestation_t *attestation;
+    const uint8_t  *auth_data;
+    uint32_t        auth_data_len;
+    const uint8_t  *auth_sig;
+    uint32_t        auth_sig_len;
+} auth_ctx_t;
+
+static auth_ctx_t g_auth = {0};
+
+/* -------------------------------------------------------------------
  *  Internal Helpers
  * ------------------------------------------------------------------- */
 static void transition_state(main_state_e next)
@@ -74,6 +93,84 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
     (void)conn_handle; (void)reason;
     g_status.ble_connected = false;
     transition_state(STATE_STANDBY);
+}
+
+/* -------------------------------------------------------------------
+ *  Authentication processing — P0-03 AUTH_PROCESS 闭环
+ *
+ *  流程: 验证证书链 → 验证远程证明 → 验证认证签名 → 启动 UWB 测距
+ *        → 根据测距区间解锁/闭锁
+ * ------------------------------------------------------------------- */
+static ccc_status_t process_authentication(void)
+{
+    if (!g_auth.pending) return CCC_ERR_BUSY;
+
+    /* Step 1: 验证对端数字钥匙证书链 */
+    verify_result_e vr = sec_verify_cert_chain(g_auth.cert_chain, g_auth.cert_chain_len,
+                                               g_auth.root_pub_key, g_auth.root_key_len);
+    if (vr != VERIFY_OK) {
+        g_auth.pending = false;
+        transition_state(STATE_LOCKED);
+        return CCC_ERR_SECURITY;
+    }
+
+    /* Step 2: 验证设备远程证明 (固件完整性 + 签名) */
+    if (g_auth.attestation) {
+        vr = sec_verify_attestation(g_auth.attestation);
+        if (vr != VERIFY_OK) {
+            g_auth.pending = false;
+            transition_state(STATE_LOCKED);
+            return CCC_ERR_SECURITY;
+        }
+    }
+
+    /* Step 3: 验证认证挑战签名 (对端私钥对 auth_data 的签名) */
+    vr = sec_verify(g_auth.auth_data, g_auth.auth_data_len,
+                    g_auth.auth_sig, g_auth.auth_sig_len);
+    if (vr != VERIFY_OK) {
+        g_auth.pending = false;
+        transition_state(STATE_LOCKED);
+        return CCC_ERR_SECURITY;
+    }
+
+    g_auth.pending = false;
+
+    /* Step 4: 认证通过, 启动 UWB 测距 */
+    ccc_status_t ret = uwb_start_ranging(1);  /* session_id = 1 */
+    if (ret == CCC_OK) {
+        /* 测距结果由 on_uwb_zone_changed() 回调处理解锁/闭锁 */
+        transition_state(STATE_UWB_RANGING);
+    } else {
+        /* UWB 不可用时回退: 认证通过即解锁 (开发/降级路径) */
+        transition_state(STATE_UNLOCKED);
+    }
+
+    return CCC_OK;
+}
+
+/* 供 BLE 接收回调调用: 提交对端认证数据 */
+void ccc_dk_set_auth_data(const uint8_t *cert_chain, uint16_t cert_chain_len,
+                          const uint8_t *root_pub_key, uint16_t root_key_len,
+                          const ccc_attestation_t *attestation,
+                          const uint8_t *auth_data, uint32_t auth_data_len,
+                          const uint8_t *auth_sig, uint32_t auth_sig_len)
+{
+    g_auth.pending        = true;
+    g_auth.cert_chain     = cert_chain;
+    g_auth.cert_chain_len = cert_chain_len;
+    g_auth.root_pub_key   = root_pub_key;
+    g_auth.root_key_len   = root_key_len;
+    g_auth.attestation    = attestation;
+    g_auth.auth_data      = auth_data;
+    g_auth.auth_data_len  = auth_data_len;
+    g_auth.auth_sig       = auth_sig;
+    g_auth.auth_sig_len   = auth_sig_len;
+
+    /* 若处于待机或已连接状态, 触发认证流程 */
+    if (g_status.state == STATE_STANDBY ||
+        g_status.state == STATE_BLE_CONNECTED) {
+        transition_state(STATE_AUTH_PROCESS);
+    }
 }
 
 /* -------------------------------------------------------------------
@@ -161,8 +258,8 @@ ccc_status_t ccc_dk_run(void)
         break;
 
     case STATE_AUTH_PROCESS: {
-        /* Verify key & attestation - handled via BLE recv callback */
-        /* On success → UNLOCKED, on fail → LOCKED */
+        /* 认证闭环: 验钥 → 证明 → UWB → 解锁/闭锁 */
+        (void)process_authentication();
         break;
     }
 

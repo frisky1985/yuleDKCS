@@ -305,6 +305,8 @@ ccc_status_t  sec_load_key(const uint8_t *key_id, uint8_t *key_data, uint16_t *k
 ccc_status_t  sec_delete_key(const uint8_t *key_id);
 ccc_status_t  sec_attestation(ccc_attestation_t *att);
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att);
+verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_len,
+                                       const uint8_t *root_pub_key, uint16_t root_key_len);
 
 /* GATT Service Registration ([P0-2]) */
 ccc_status_t  ble_register_gatt_service(void);
@@ -343,6 +345,13 @@ ccc_status_t ccc_dk_deinit(void);
 ccc_status_t ccc_dk_run(void);    /* main loop tick */
 main_state_e ccc_dk_get_state(void);
 ccc_status_t ccc_dk_get_status(system_status_t *status);
+
+/* 提交对端认证数据 (由 BLE 接收回调调用), 触发 AUTH_PROCESS 闭环 */
+void ccc_dk_set_auth_data(const uint8_t *cert_chain, uint16_t cert_chain_len,
+                          const uint8_t *root_pub_key, uint16_t root_key_len,
+                          const ccc_attestation_t *attestation,
+                          const uint8_t *auth_data, uint32_t auth_data_len,
+                          const uint8_t *auth_sig, uint32_t auth_sig_len);
 
 #ifdef __cplusplus
 }

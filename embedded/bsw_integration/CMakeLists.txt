@@ -13,18 +13,42 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # ============================================================================
 # 第三方库路径
 # ============================================================================
-set(YULEASR_ROOT     $ENV{HOME}/.openclaw/workspace/yuleASR)
-set(YULEDKCS_ROOT    $ENV{HOME}/yuleDKCS)
+# YULEDKCS_ROOT: this CMakeLists lives at <repo>/embedded/bsw_integration,
+# so the repo root is two levels up. Override with -DYULEDKCS_ROOT= if needed.
+if(NOT DEFINED YULEDKCS_ROOT)
+    set(YULEDKCS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+endif()
+get_filename_component(YULEDKCS_ROOT "${YULEDKCS_ROOT}" ABSOLUTE)
 
-if(NOT EXISTS ${YULEASR_ROOT})
-    message(FATAL_ERROR "yuleASR not found at ${YULEASR_ROOT}. Set YULEASR_ROOT or clone the repo.")
+# YULEASR_ROOT: external AUTOSAR BSW dependency. May be supplied via
+#   -DYULEASR_ROOT=<path>  or  env YULEASR_ROOT.
+# When absent we degrade gracefully: only the self-contained targets
+# (mcal_stubs, rtd_adapter self-test) are built; yuleASR-backed BSW
+# modules are skipped instead of aborting the whole configure.
+if(NOT DEFINED YULEASR_ROOT)
+    if(DEFINED ENV{YULEASR_ROOT})
+        set(YULEASR_ROOT "$ENV{YULEASR_ROOT}")
+    else()
+        set(YULEASR_ROOT "$ENV{HOME}/.openclaw/workspace/yuleASR")
+    endif()
+endif()
+get_filename_component(YULEASR_ROOT "${YULEASR_ROOT}" ABSOLUTE)
+
+set(YULEASR_FOUND FALSE)
+if(EXISTS "${YULEASR_ROOT}")
+    set(YULEASR_FOUND TRUE)
+    message(STATUS "yuleASR root: ${YULEASR_ROOT}")
+else()
+    message(WARNING
+        "yuleASR not found at ${YULEASR_ROOT}. "
+        "Pass -DYULEASR_ROOT=<path> or set env YULEASR_ROOT to enable the full "
+        "BSW stack. Building in degraded mode: only self-contained targets "
+        "(mcal_stubs, rtd_adapter self-test) will be available.")
 endif()
 
-if(NOT EXISTS ${YULEDKCS_ROOT})
-    message(FATAL_ERROR "yuleDKCS not found at ${YULEDKCS_ROOT}.")
+if(NOT EXISTS "${YULEDKCS_ROOT}")
+    message(FATAL_ERROR "yuleDKCS root not found at ${YULEDKCS_ROOT}.")
 endif()
-
-message(STATUS "yuleASR root: ${YULEASR_ROOT}")
 message(STATUS "yuleDKCS root: ${YULEDKCS_ROOT}")
 
 # ============================================================================
@@ -32,7 +56,13 @@ message(STATUS "yuleDKCS root: ${YULEDKCS_ROOT}")
 # ============================================================================
 set(ARM_CPU_FLAGS "-mcpu=cortex-m7 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16")
 
-set(CMAKE_C_FLAGS "${ARM_CPU_FLAGS} -Wall -Wextra -Werror -Os -ffreestanding -g3 -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -mthumb-interwork" CACHE STRING "C flags" FORCE)
+if(CMAKE_CROSSCOMPILING)
+    set(CMAKE_C_FLAGS "${ARM_CPU_FLAGS} -Wall -Wextra -Werror -Os -ffreestanding -g3 -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function -mthumb-interwork" CACHE STRING "C flags" FORCE)
+else()
+    # Host build (e.g. degraded mode without yuleASR): native flags, no
+    # -ffreestanding so the rtd_adapter self-test can use libc.
+    set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-unused-variable -Wno-unused-function" CACHE STRING "C flags" FORCE)
+endif()
 
 # ============================================================================
 # BSW 集成包含路径
@@ -62,6 +92,12 @@ set(BSW_INCLUDE_DIRS
     ${YULEDKCS_ROOT}/embedded/freestanding_includes         # string.h, stdlib.h
 )
 
+# Degraded mode: yuleASR provides Std_Types.h; without it, use our minimal
+# fallback so the self-contained MCAL/RTD targets still compile.
+if(NOT YULEASR_FOUND)
+    list(PREPEND BSW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include_fallback)
+endif()
+
 # ============================================================================
 # yuleDKCS 应用包含路径
 # ============================================================================
@@ -89,6 +125,7 @@ add_compile_definitions(
 # ============================================================================
 # FreeRTOS Port — S32K312 (Cortex-M7)
 # ============================================================================
+if(YULEASR_FOUND)
 add_library(freertos_port STATIC
     ${YULEDKCS_ROOT}/embedded/freertos_port/src/port.c
 )
@@ -131,6 +168,7 @@ add_library(bsw_bswm STATIC
 target_include_directories(bsw_bswm
     PUBLIC  ${BSW_INCLUDE_DIRS}
 )
+endif() # YULEASR_FOUND
 
 # ============================================================================
 # MCAL Stubs — S32K312 驱动桩 (Phase 1 编译通过即可)
@@ -186,18 +224,21 @@ target_include_directories(test_rtd_adapter
 )
 
 # 主机平台编译时关闭 -ffreestanding 和其他目标专有 flags
-if(CMAKE_SYSTEM_NAME STREQUAL "Generic" AND CMAKE_C_COMPILER MATCHES "arm-none-eabi")
+if(CMAKE_CROSSCOMPILING)
     # 交叉编译模式: 仅编译适配层库，自测在主机上运行
-    # 覆盖 test target 编译器为主机 gcc/clang
     set_target_properties(test_rtd_adapter PROPERTIES
-        COMPILE_FLAGS "-DRTD_ADAPTER_SELF_TEST -fno-builtin -Wall -Wextra"
+        COMPILE_FLAGS "-DRTD_ADAPTER_SELF_TEST"
     )
-    message(STATUS "RTD Adapter self-test: use host-compiled variant (bsw_rtd_adapter_test)")
+else()
+    # 主机模式: 启用自测宏
+    target_compile_definitions(test_rtd_adapter PRIVATE RTD_ADAPTER_SELF_TEST)
 endif()
+message(STATUS "RTD Adapter self-test: enabled (RTD_ADAPTER_SELF_TEST)")
 
 # ============================================================================
 # EcuM 模块 — 使用 yuleDKCS 定制的 EcuM callout
 # ============================================================================
+if(YULEASR_FOUND)
 add_library(bsw_ecum STATIC
     ${YULEASR_ROOT}/src/bsw/services/ecum/src/EcuM.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dk_ecum_callouts.c     # yuleDKCS 定制: callout + 唤醒源
@@ -323,6 +364,7 @@ target_include_directories(bsw_nvm
 target_compile_definitions(bsw_nvm PRIVATE
     NVM_DEV_ERROR_DETECT=STD_ON
 )
+endif() # YULEASR_FOUND
 
 # ============================================================================
 # MemIf — Memory Abstraction Interface (NvM 底层存储驱动)
@@ -340,6 +382,7 @@ target_include_directories(bsw_memif
 # ============================================================================
 # CryIf — Crypto Interface (CSM 底层密码桥接)
 # ============================================================================
+if(YULEASR_FOUND)
 add_library(bsw_cryif STATIC
     ${YULEASR_ROOT}/src/bsw/services/cryif/src/CryIf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dk_cryif_cfg.c        # yuleDKCS CryIf 配置
@@ -595,3 +638,13 @@ message(STATUS "yuleDKCS: ${YULEDKCS_ROOT}")
 message(STATUS "目标 MCU: NXP S32K312 (Cortex-M7)")
 message(STATUS "模块: OS + Det + BswM + EcuM + WdgM + COM + PduR + DCM + DEM + NvM + MemIf + CSM + CryIf + MCAL")
 message(STATUS "应用: ICCE Digital Key Protocol Stack")
+endif() # YULEASR_FOUND
+
+if(NOT YULEASR_FOUND)
+    message(STATUS "")
+    message(STATUS "=== yuleDKCS BSW (degraded mode) ===")
+    message(STATUS "yuleASR not found — full BSW stack skipped.")
+    message(STATUS "Buildable targets: mcal_stubs, rtd_adapter, bsw_memif, test_rtd_adapter")
+    message(STATUS "Pass -DYULEASR_ROOT=<path> to enable the full BSW stack.")
+    message(STATUS "====================================")
+endif()

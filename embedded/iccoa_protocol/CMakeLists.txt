@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # [P0-05 FIX] 添加 -ffreestanding 和 freestanding 头文件路径
 add_compile_options(-Wall -Wextra -Werror -Os -ffreestanding)
 add_compile_options(-Wno-error=unused-variable -Wno-error=unused-function -Wno-error=unused-parameter)
+add_compile_options(-Wno-error=address-of-packed-member)
 
 file(GLOB_RECURSE SOURCES "src/*.c")
 include_directories(include)

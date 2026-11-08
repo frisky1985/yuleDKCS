@@ -5,15 +5,17 @@
 
 ## 📌 项目状态
 
+> **2026-11-08 更新（PRR-2026-001 评审决议）**：本项目当前为**原型/内部预览阶段，不具备量产条件**。云端服务可试商用，车端固件存在可构建性、CCC 认证链路、SE050 安全闭环、硬件驱动与真实 HIL 证据等 P0 阻断项。量产准入以整改计划 `yuledkcs-remediation-plan.md` 的 G0–G5 门禁关闭为准。
+
 ```
 ✅ 架构设计完成
-✅ 嵌入式三协议栈开发完成（ICCE / CCC / ICCOA DK 3.0 & 4.0）
-✅ 原生 Android/iOS SDK 开发完成
-✅ 云端服务开发完成（Go hub + dkcs + Java adapters）
-✅ 安全设计文档完成
-✅ 测试用例设计完成
-⏳ 集成测试待执行
-⏳ CI/CD 流水线待搭建
+⚠️  嵌入式协议栈：ICCE 较完整，CCC/ICCOA 为原型级（CCC 认证链路未实现）
+✅ 原生 Android/iOS SDK 开发完成（真机与 Wallet 验证待补）
+✅ 云端服务开发完成（Go hub + dkcs + Java adapters，可试商用）
+✅ 安全设计文档完成（SE050 硬件闭环待实现）
+⚠️  嵌入式 C 单测 196/196 通过（主机环境，硬件层为桩）
+⏳ 真实硬件 HIL 待执行（当前 SIL 10/46 通过，36 项硬件域跳过）
+⏳ 量产认证（ICCE/CCC/ICCOA、Apple/Google Wallet）未启动
 ```
 
 ## 🏗️ 系统架构

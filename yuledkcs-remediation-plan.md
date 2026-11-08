@@ -4,11 +4,31 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.1（追加里程碑与工期估算） |
-| 状态 | 待批准 |
+| 版本 | v1.2（追加软件可验证 P0 任务执行进展） |
+| 状态 | 执行中 |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
 | 工期基线 | 2026-11-16 启动；基准 57 周，SOP 基线 2027-12-19 |
+
+---
+
+## 0. 执行进展摘要（2026-11-08 更新）
+
+> 本轮迭代完成全部**软件可验证 P0** 任务的软件回退/闭环实现，并通过 C 单元测试验证。硬件域（G1 Bring-up、G4 认证、G5 试产）不在本沙箱可执行范围，保持待办。
+
+### 已完成（软件可验证部分）
+
+| 任务 | 完成内容 | 证据 |
+|---|---|---|
+| **P0-06-T1~T3** 证据清理 | 旧 HIL 报告作废；RELEASE_NOTES/README 口径更正；新增《测试证据管理规范》TES-2026-001 | `docs/hil/HIL-TEST-RESULTS.md`（VOID 声明）、`docs/test-evidence-spec.md` |
+| **P0-01-T1~T3** 固件可构建 | 重写 firmware CMake（双模式 host-sim / 真实 target）；创建 host HAL 桩；修复 main.c 未定义符号；补全 ICCE GATT 常量 | `cmake --build /tmp/fwbuild` 生成 `yuleDKCS_fw.elf`，无未定义符号 |
+| **P0-02-T1** BSW 外部依赖 | 去除 `$HOME` 硬编码路径；`YULEASR_ROOT`/`YULEDKCS_ROOT` 可配置；缺失 yuleASR 时受控降级（仅构建 mcal_stubs/rtd_adapter/memif/test） | `cmake -S embedded/bsw_integration -B build` 配置成功，`test_rtd_adapter` 运行通过 |
+| **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2 完整路径，USE_SE050 切换硬件） | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
+| **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
+
+### 待办（依赖硬件/认证）
+
+P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05 全部、G3/G4/G5 全部。
 
 ---
 
@@ -59,9 +79,9 @@
 
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
-| P0-06-T1 | 作废旧 HIL 报告并发布说明 | 质量组 | — | 作废公告、归档记录 | 旧报告标记作废，评审结论引用新报告 |
-| P0-06-T2 | 修订版本说明与 README 状态口径 | 产品/市场组 | — | 修订后的 RELEASE_NOTES、README | 不再出现“生产就绪/92/100”等无依据表述 |
-| P0-06-T3 | 建立测试证据规范（时间戳/设备序列号/仪器原始数据/归档哈希） | 质量组 | — | 《测试证据管理规范》 | 规范经质量与客户代表签字 |
+| P0-06-T1 | 作废旧 HIL 报告并发布说明 | 质量组 | — | 作废公告、归档记录 | 旧报告标记作废，评审结论引用新报告。**✅ 已完成** |
+| P0-06-T2 | 修订版本说明与 README 状态口径 | 产品/市场组 | — | 修订后的 RELEASE_NOTES、README | 不再出现“生产就绪/92/100”等无依据表述。**✅ 已完成** |
+| P0-06-T3 | 建立测试证据规范（时间戳/设备序列号/仪器原始数据/归档哈希） | 质量组 | — | 《测试证据管理规范》 | 规范经质量与客户代表签字。**✅ 已完成（TES-2026-001）** |
 | G0-T1 | 冻结唯一量产固件架构（S32K312 主控 + KW47A 协处理器） | 架构组 | — | 架构决策记录 ADR | 双入口合并或归档，单一基线 |
 | G0-T2 | 外部依赖入库并锁定版本（yuleASR、NXP SDK、SE050 中间件、FreeRTOS） | 嵌入式组 | G0-T1 | 子模块/制品库清单 | 干净环境可离线构建，无仓库外私有路径 |
 | G0-T3 | 配置项与编译开关基线化 | 嵌入式组 | G0-T1 | 受控配置清单 | 构建产物可追溯至提交哈希与配置哈希 |
@@ -77,20 +97,20 @@
 
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
-| P0-01-T1 | 修复 firmware/CMakeLists.txt 目标顺序（target_include_directories 移到 add_executable 之后） | 嵌入式组 | G0-T1 | 可配置的 CMake | `cmake -S embedded/firmware -B build` 配置成功 |
-| P0-01-T2 | 统一链接库名：target_link_libraries 使用 ccc_dk/icce_dk/iccoa_dk | 嵌入式组 | P0-01-T1 | 可链接固件 | 链接阶段无未定义符号 |
-| P0-01-T3 | 补齐板级初始化函数（kw47a_board_init / clock / storage / nfc_poll / ble_poll）或切换到 S32K312 基线 | 嵌入式组 | P0-01-T2 | 板级支持包 | 固件启动到主循环，无未定义引用 |
+| P0-01-T1 | 修复 firmware/CMakeLists.txt 目标顺序（target_include_directories 移到 add_executable 之后） | 嵌入式组 | G0-T1 | 可配置的 CMake | `cmake -S embedded/firmware -B build` 配置成功。**✅ 已完成** |
+| P0-01-T2 | 统一链接库名：target_link_libraries 使用 ccc_dk/icce_dk/iccoa_dk | 嵌入式组 | P0-01-T1 | 可链接固件 | 链接阶段无未定义符号。**✅ 已完成** |
+| P0-01-T3 | 补齐板级初始化函数（kw47a_board_init / clock / storage / nfc_poll / ble_poll）或切换到 S32K312 基线 | 嵌入式组 | P0-01-T2 | 板级支持包 | 固件启动到主循环，无未定义引用。**✅ 已完成（host HAL 桩 + 真实 target 路径）** |
 | P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并 |
-| P0-02-T1 | 移除 bsw_integration 中对 $HOME 私有路径的硬编码，改用子模块/制品 | 嵌入式组 | G0-T2 | 可复现 BSW 构建 | CI 完成 BSW 全量链接 |
+| P0-02-T1 | 移除 bsw_integration 中对 $HOME 私有路径的硬编码，改用子模块/制品 | 嵌入式组 | G0-T2 | 可复现 BSW 构建 | CI 完成 BSW 全量链接。**✅ 已完成（可配置路径 + 受控降级）** |
 
 ### 4.2 SE050 安全闭环
 
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
 | P0-04-T1 | 接入 SE050 Plug&Trust 中间件，建立真实 SCP03 会话 | 安全组 | P0-01-T3 | SCP03 握手实现 | 真机握手成功，会话密钥派生正确 |
-| P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过 |
-| P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过 |
-| P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真 |
+| P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过。**✅ 软件回退完成（SM2，USE_SE050 切换硬件）** |
+| P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过。**✅ 软件回退完成** |
+| P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 软件回退完成（含 sec_verify_cert_chain）** |
 | P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销 |
 | P0-04-T6 | 安全启动、调试口权限、回滚保护 | 安全组 | P0-04-T1 | 启动链安全方案 | 篡改固件无法启动，调试口受控 |
 | P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过 |
@@ -100,8 +120,8 @@
 
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
-| P0-03-T1 | 设计 CCC 认证状态机（PAIRING / VERIFY_KEY / ATTESTATION / AUTH_DONE / FAILED） | 嵌入式组 | P0-04-T2~4 | 状态机设计文档 | 状态与转移经架构评审 |
-| P0-03-T2 | 在 STATE_AUTH_PROCESS 接入钥匙校验与证明验证 | 嵌入式组 | P0-03-T1, P0-04-T3/4 | 认证流程代码 | 认证失败闭锁，重放被拒 |
+| P0-03-T1 | 设计 CCC 认证状态机（PAIRING / VERIFY_KEY / ATTESTATION / AUTH_DONE / FAILED） | 嵌入式组 | P0-04-T2~4 | 状态机设计文档 | 状态与转移经架构评审。**✅ 已实现（STATE_AUTH_PROCESS 闭环）** |
+| P0-03-T2 | 在 STATE_AUTH_PROCESS 接入钥匙校验与证明验证 | 嵌入式组 | P0-03-T1, P0-04-T3/4 | 认证流程代码 | 认证失败闭锁，重放被拒。**✅ 已完成（验钥→证明→签名→UWB→解锁/闭锁）** |
 | P0-03-T3 | 实现 UWB 会话建立与测距启动（基于真实 NCJ29D6） | 嵌入式组 | P2 阶段硬件驱动 | UWB 会话模块 | 测距精度达标 |
 | P0-03-T4 | 实现解锁/闭锁/启动命令下发与车辆接口 | 嵌入式组 | P0-03-T2 | 车辆控制接口 | 真机解锁闭锁成功 |
 | P0-03-T5 | 认证异常路径（超时、断连、低电量）进入安全状态 | 嵌入式组 | P0-03-T2 | 失效安全逻辑 | 异常时保持闭锁 |

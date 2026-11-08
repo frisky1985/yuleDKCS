@@ -4,80 +4,104 @@ project(yuleDKCS-firmware C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# ── Target ──────────────────────────────────────────────────
-set(TARGET yuleDKCS_kw47a)
-set(MCU KW47A)
-set(MCU_CORE cortex-m33)
+# ── Target name ─────────────────────────────────────────────
+set(TARGET yuleDKCS_fw)
+set(FW_VERSION "2.3.0-rc1")
 
-# ── Options ──────────────────────────────────────────────────
-option(BUILD_CCC   "Build CCC protocol stack"   ON)
-option(BUILD_ICCE  "Build ICCE protocol stack"   ON)
-option(BUILD_ICCOA "Build ICCOA protocol stack"  ON)
-option(USE_SE050   "Use SE050 secure element"    ON)
-option(USE_FREERTOS "Use FreeRTOS"              ON)
-option(ENABLE_MISRA "Enable MISRA checks"        OFF)
+# ── Options ─────────────────────────────────────────────────
+option(BUILD_CCC          "Build CCC protocol stack"   ON)
+option(BUILD_ICCE         "Build ICCE protocol stack"   ON)
+option(BUILD_ICCOA        "Build ICCOA protocol stack"  ON)
+option(USE_SE050          "Use SE050 secure element"    ON)
+option(FIRMWARE_HOST_SIM  "Build host-simulation firmware (no MCU/SDK)" OFF)
 
-# ── Directories ──────────────────────────────────────────────
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+# Auto-detect: if no cross-compiler, default to host simulation so the
+# firmware is buildable in CI / developer environments without NXP SDK.
+if(NOT CMAKE_CROSSCOMPILING AND NOT FIRMWARE_HOST_SIM)
+    set(FIRMWARE_HOST_SIM ON)
+    message(STATUS "yuleDKCS firmware: HOST SIMULATION build (cross-compiler not detected)")
+endif()
 
-# ── Hardware Abstraction Layer ───────────────────────────────
+# ── HAL ─────────────────────────────────────────────────────
 add_subdirectory(hal)
 
-# ── Protocol Stacks ──────────────────────────────────────────
+# ── Protocol stacks (define static libs) ────────────────────
+set(PROTOCOL_LIBS "")
+set(PROTOCOL_INCLUDES "")
+
 if(BUILD_CCC)
     add_subdirectory(${CMAKE_SOURCE_DIR}/../ccc_protocol ccc)
-    target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../ccc_protocol/include)
+    list(APPEND PROTOCOL_LIBS ccc_dk)
+    list(APPEND PROTOCOL_INCLUDES ${CMAKE_SOURCE_DIR}/../ccc_protocol/include)
 endif()
-
 if(BUILD_ICCE)
     add_subdirectory(${CMAKE_SOURCE_DIR}/../icce_protocol icce)
-    target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../icce_protocol/include)
+    list(APPEND PROTOCOL_LIBS icce_dk)
+    list(APPEND PROTOCOL_INCLUDES ${CMAKE_SOURCE_DIR}/../icce_protocol/include)
 endif()
-
 if(BUILD_ICCOA)
     add_subdirectory(${CMAKE_SOURCE_DIR}/../iccoa_protocol iccoa)
-    target_include_directories(${TARGET} PRIVATE
-        ${CMAKE_SOURCE_DIR}/../iccoa_protocol/include)
+    list(APPEND PROTOCOL_LIBS iccoa_dk)
+    list(APPEND PROTOCOL_INCLUDES ${CMAKE_SOURCE_DIR}/../iccoa_protocol/include)
 endif()
 
-# ── Application ──────────────────────────────────────────────
+# ── Application (creates ${TARGET}) ─────────────────────────
 add_subdirectory(src)
 
-# ── SDK (external, download on first build) ──────────────────
-include(FetchContent)
-FetchContent_Declare(
-    mcux_sdk
-    GIT_REPOSITORY https://github.com/NXP/mcux-sdk.git
-    GIT_TAG        release/2.16.x
-)
-FetchContent_MakeAvailable(mcux_sdk)
+# Propagate protocol include directories to the application.
+target_include_directories(${TARGET} PRIVATE ${PROTOCOL_INCLUDES})
 
-# ── Linker ───────────────────────────────────────────────────
-target_link_options(${TARGET} PRIVATE
-    -T ${CMAKE_SOURCE_DIR}/hal/kw47a/kw47a_flash.ld
-    --specs=nano.specs --specs=nosys.specs)
+# Link HAL + protocol stacks.
+target_link_libraries(${TARGET} PRIVATE hal ${PROTOCOL_LIBS})
 
-# ── Compiler Flags ───────────────────────────────────────────
-target_compile_options(${TARGET} PRIVATE
-    -mcpu=${MCU_CORE} -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-    -Wall -Wextra -Wpedantic -Werror
-    -fstack-protector-strong -fstack-clash-protection
-    $<$<CONFIG:DEBUG>:-Og -g3>
-    $<$<CONFIG:RELEASE>:-O2 -flto>)
+# Common compile definitions.
+target_compile_definitions(${TARGET} PRIVATE FW_VERSION="${FW_VERSION}")
+if(BUILD_CCC)
+    target_compile_definitions(${TARGET} PRIVATE BUILD_CCC=1)
+endif()
+if(BUILD_ICCE)
+    target_compile_definitions(${TARGET} PRIVATE BUILD_ICCE=1)
+endif()
+if(BUILD_ICCOA)
+    target_compile_definitions(${TARGET} PRIVATE BUILD_ICCOA=1)
+endif()
 
-target_link_options(${TARGET} PRIVATE
-    -mcpu=${MCU_CORE} -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-    $<$<CONFIG:RELEASE>:-flto>)
+set_target_properties(${TARGET} PROPERTIES SUFFIX ".elf" PREFIX "")
 
-# ── Generated Firmware ───────────────────────────────────────
-set_target_properties(${TARGET} PROPERTIES
-    SUFFIX ".elf"
-    PREFIX "")
+# ── Mode-specific configuration ─────────────────────────────
+if(FIRMWARE_HOST_SIM)
+    # Host simulation: no MCU flags, no NXP SDK. Useful for CI build
+    # integrity and protocol-stack link verification.
+    target_compile_definitions(${TARGET} PRIVATE FIRMWARE_HOST_SIM=1)
+    target_compile_options(${TARGET} PRIVATE -Wall -Wextra)
+else()
+    # Real target: NXP KW47A, MCUXpresso SDK, ARM Cortex-M33.
+    set(MCU_CORE cortex-m33)
+    include(FetchContent)
+    FetchContent_Declare(
+        mcux_sdk
+        GIT_REPOSITORY https://github.com/NXP/mcux-sdk.git
+        GIT_TAG        release/2.16.x
+    )
+    FetchContent_MakeAvailable(mcux_sdk)
 
-add_custom_command(TARGET ${TARGET} POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary ${TARGET}.elf ${TARGET}.bin
-    COMMAND ${CMAKE_OBJCOPY} -O ihex   ${TARGET}.elf ${TARGET}.hex
-    COMMAND ${CMAKE_SIZE}    ${TARGET}.elf
-    COMMENT "Generating firmware binaries...")
+    target_compile_definitions(${TARGET} PRIVATE USE_SE050=1)
+    target_compile_options(${TARGET} PRIVATE
+        -mcpu=${MCU_CORE} -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
+        -Wall -Wextra -Wpedantic -Werror
+        -fstack-protector-strong -fstack-clash-protection
+        $<$<CONFIG:DEBUG>:-Og -g3>
+        $<$<CONFIG:RELEASE>:-O2 -flto>)
+
+    target_link_options(${TARGET} PRIVATE
+        -T ${CMAKE_SOURCE_DIR}/hal/kw47a/kw47a_flash.ld
+        -mcpu=${MCU_CORE} -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
+        --specs=nano.specs --specs=nosys.specs
+        $<$<CONFIG:RELEASE>:-flto>)
+
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${TARGET}> ${TARGET}.bin
+        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${TARGET}> ${TARGET}.hex
+        COMMAND ${CMAKE_SIZE}    $<TARGET_FILE:${TARGET}>
+        COMMENT "Generating firmware binaries (bin/hex)...")
+endif()
