@@ -498,10 +498,16 @@ static void scp03_derive_session_keys(const uint8_t static_enc[16],
  * Wraps the platform I2C HAL for SE050 communication.
  *
  * SE050 I2C protocol:
- *   - Write: I2C address (0x48 << 1) + APDU length prefix + APDU bytes
- *   - Read:  I2C address (0x48 << 1 | 1) + response bytes
- *   - Retry: Poll until response available (up to N retries)
+ *   - Real hardware requires T=1' block framing (NXP AN12413), implemented
+ *     in se050_t1oi2c.c and enabled by default.
+ *   - SE050_USE_T1OI2C=0 restores the legacy raw-APDU path (host mocks only).
  */
+
+#include "se050_t1oi2c.h"
+
+#ifndef SE050_USE_T1OI2C
+#define SE050_USE_T1OI2C 1
+#endif
 
 /* SE050 I2C transaction timeout (approximate ms per retry) */
 #define SCP03_I2C_RETRY_MS      1U
@@ -524,6 +530,16 @@ extern int32_t i2c_transfer(uint8_t dev, uint8_t addr,
  */
 static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
 {
+#if SE050_USE_T1OI2C
+    uint16_t copied = 0;
+    int rc = se050_t1_read_cached(buffer, len, &copied);
+    (void)i2c_addr;
+    /* A truncated cached response still yields valid leading bytes. */
+    if (rc == SE050_T1_OK || rc == SE050_T1_ERR_BUFFER) {
+        return 0;
+    }
+    return SCP03_ERR_HW;
+#else
     uint32_t retries;
     int32_t  result;
 
@@ -550,6 +566,7 @@ static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
     }
 
     return SCP03_ERR_HW;
+#endif
 }
 
 /**
@@ -562,11 +579,16 @@ static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
  */
 static int scp03_i2c_write(uint8_t i2c_addr, const uint8_t *data, uint16_t len)
 {
+#if SE050_USE_T1OI2C
+    return (se050_t1_send_apdu(i2c_addr, data, len) == SE050_T1_OK)
+               ? 0 : SCP03_ERR_HW;
+#else
     int32_t result;
 
     result = i2c_transfer(i2c_addr, i2c_addr, data, len, NULL, 0);
 
     return (result == 0) ? 0 : SCP03_ERR_HW;
+#endif
 }
 
 /* ========================================================================

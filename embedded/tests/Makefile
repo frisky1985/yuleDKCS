@@ -30,6 +30,7 @@ CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
               $(CCC_SRC)/nfc/nfc_st25r501.c \
               $(CCC_SRC)/security/security.c \
               $(CCC_SRC)/security/se050_scp03.c \
+              $(CCC_SRC)/security/se050_t1oi2c.c \
               $(CCC_SRC)/security/crypto_random.c \
               $(CCC_SRC)/keymgmt/key_mgmt.c
 
@@ -189,8 +190,11 @@ test_iccoa: $(BUILD)/test_iccoa_dk_core.o \
 test_ccc: $(BUILD)/test_ccc_dk_core.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+          $(BUILD)/security.o $(BUILD)/se050_scp03.o \
+          $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
+          $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+          $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
           $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
@@ -212,7 +216,8 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
               $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
               $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-              $(BUILD)/security.o $(BUILD)/se050_scp03.o $(BUILD)/crypto_random.o \
+              $(BUILD)/security.o $(BUILD)/se050_scp03.o \
+              $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
               $(BUILD)/key_mgmt.o \
               $(BUILD)/icce_dk_core.o $(BUILD)/icce_edge.o \
               $(BUILD)/icce_security.o $(BUILD)/icce_uwb.o \
@@ -235,7 +240,8 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/crypto_random.o \
+          $(BUILD)/security.o \
+          $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_security.o \
           $(BUILD)/icce_uwb.o \

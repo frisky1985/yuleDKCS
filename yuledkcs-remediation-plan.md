@@ -25,10 +25,12 @@
 | **P0-02-T1** BSW 外部依赖 | 去除 `$HOME` 硬编码路径；`YULEASR_ROOT`/`YULEDKCS_ROOT` 可配置；缺失 yuleASR 时受控降级（仅构建 mcal_stubs/rtd_adapter/memif/test） | `cmake -S embedded/bsw_integration -B build` 配置成功，`test_rtd_adapter` 运行通过 |
 | **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2 完整路径，USE_SE050 切换硬件） | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
 | **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
+| **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
+| **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
 ### 待办（依赖硬件/认证）
 
-P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05 全部、G3/G4/G5 全部。
+P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05-T1/T3~T8、G3/G4/G5 全部。P0-05-T2 软件侧已完成，真机验证按 G1-BR-2026-001 §3 执行。
 
 ---
 
@@ -136,7 +138,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
 | P0-05-T1 | 引入 NXP RTD / MCUXpresso SDK，替换 MCAL 桩代码 | 硬件组 | G0-T2 | 真实 MCAL | MCU 时钟/电源/看门狗/存储验证通过 |
-| P0-05-T2 | 集成 SE050 Plug&Trust 驱动 | 硬件组 | P0-05-T1 | SE050 驱动 | 芯片初始化与 APDU 通信正常 |
+| P0-05-T2 | 集成 SE050 Plug&Trust 驱动 | 硬件组 | P0-05-T1 | SE050 驱动 | 芯片初始化与 APDU 通信正常。**🔶 软件侧就绪：T=1' 传输层 + 模拟卡单测 15/15；真机验证见 G1-BR-2026-001 §3** |
 | P0-05-T3 | 集成 NCJ29D6 UWB 厂商驱动 | 硬件组 | P0-05-T1 | UWB 驱动 | 测距初始化、IRQ、数据读取正常 |
 | P0-05-T4 | 集成 ST25R501 NFC 厂商驱动 | 硬件组 | P0-05-T1 | NFC 驱动 | 场检测与 OOB 交换正常 |
 | P0-05-T5 | 集成 KW47A BLE 驱动 | 硬件组 | P0-05-T1 | BLE 驱动 | 连接、配对、吞吐达标 |

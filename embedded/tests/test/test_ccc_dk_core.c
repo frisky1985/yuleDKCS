@@ -464,11 +464,10 @@ void test_ccc_full_lifecycle(void)
 }
 
 /* ========================================================================
- *  CCC_SEC_003 — 签名接口契约 + fail-closed 验签语义
+ *  CCC_SEC_003 — 签名接口契约 + 验签语义
  * ========================================================================
- * sec_sign 目前为 SE050 集成前的桩实现 (仅返回 CCC_OK + sig_len=64, 不产出
- * 有效签名); sec_verify 为 fail-closed 安全设计 (未集成 HSM 时拒绝一切验签)。
- * 此测试验证这两个真实契约, 而非 stub 时代的"伪验签通过"行为。
+ * sec_sign/sec_verify 已由软件回退实现 (SM2, USE_SE050 可切硬件).
+ * 此测试验证真实契约: 设备密钥自签自验通过, 篡改签名必须拒绝.
  */
 void test_security_sign_verify(void)
 {
@@ -479,14 +478,20 @@ void test_security_sign_verify(void)
     memset(sig, 0xAA, sizeof(sig));
     uint32_t sig_len = sizeof(sig);
 
-    /* 桩签名: 返回 OK 且声明 64 字节签名长度 */
+    /* 真实签名: 返回 OK 且输出 64 字节 */
     ccc_status_t ret = sec_sign(data, sizeof(data), sig, &sig_len);
     TEST_ASSERT_EQUAL(CCC_OK, ret);
     TEST_ASSERT_EQUAL(64, sig_len);
 
-    /* fail-closed: 无真实 HSM 密钥时验签必须拒绝 (安全默认) */
-    verify_result_e vr = sec_verify(data, sizeof(data), sig, sig_len);
-    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID, vr);
+    /* 设备密钥自验签应通过 (开发测试密钥, 量产替换为 SE050 预置密钥) */
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify(data, sizeof(data), sig, sig_len));
+
+    /* 篡改后必须拒绝 */
+    sig[0] ^= 0xFF;
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
+                      sec_verify(data, sizeof(data), sig, sig_len));
+    sig[0] ^= 0xFF;
 
     /* NULL/长度错误参数同样拒绝 */
     TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,

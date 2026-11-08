@@ -8,6 +8,7 @@
 
 #include "hal_interface.h"
 #include "kw47a_board.h"
+#include "bringup_selftest.h"
 
 /* Protocol stack entry points */
 extern int ccc_dk_init(void);
@@ -92,6 +93,10 @@ int main(void)
     }
 
     protocol_init();
+
+#if defined(BRINGUP_SELFTEST)
+    (void)bringup_selftest_run(NULL);
+#endif
 
     hal_debug_printf("yuleDKCS ready — awaiting BLE connection\n");
 

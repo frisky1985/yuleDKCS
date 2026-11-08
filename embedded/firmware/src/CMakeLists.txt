@@ -1,5 +1,6 @@
 add_executable(${TARGET}
     main.c
+    bringup_selftest.c
 )
 
 target_include_directories(${TARGET} PRIVATE
