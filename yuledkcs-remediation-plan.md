@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.2（追加软件可验证 P0 任务执行进展） |
+| 版本 | v1.3（追加验签对端公钥、证书链与 attestation 链路进展） |
 | 状态 | 执行中 |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
@@ -12,9 +12,9 @@
 
 ---
 
-## 0. 执行进展摘要（2026-11-08 更新）
+## 0. 执行进展摘要（2026-11-09 更新）
 
-> 本轮迭代完成全部**软件可验证 P0** 任务的软件回退/闭环实现，并通过 C 单元测试验证。硬件域（G1 Bring-up、G4 认证、G5 试产）不在本沙箱可执行范围，保持待办。
+> 本轮迭代完成全部**软件可验证 P0** 任务的软件回退/闭环实现，并通过 C 单元测试验证；其中验签/证书链/attestation 已由占位实现升级为真实密码链路（显式对端公钥 + 最小 X.509 解析 + P-256 验签 + 证书链锚定）。硬件域（G1 Bring-up、G4 认证、G5 试产）不在本沙箱可执行范围，保持待办。
 
 ### 已完成（软件可验证部分）
 
@@ -23,7 +23,7 @@
 | **P0-06-T1~T3** 证据清理 | 旧 HIL 报告作废；RELEASE_NOTES/README 口径更正；新增《测试证据管理规范》TES-2026-001 | `docs/hil/HIL-TEST-RESULTS.md`（VOID 声明）、`docs/test-evidence-spec.md` |
 | **P0-01-T1~T3** 固件可构建 | 重写 firmware CMake（双模式 host-sim / 真实 target）；创建 host HAL 桩；修复 main.c 未定义符号；补全 ICCE GATT 常量 | `cmake --build /tmp/fwbuild` 生成 `yuleDKCS_fw.elf`，无未定义符号 |
 | **P0-02-T1** BSW 外部依赖 | 去除 `$HOME` 硬编码路径；`YULEASR_ROOT`/`YULEDKCS_ROOT` 可配置；缺失 yuleASR 时受控降级（仅构建 mcal_stubs/rtd_adapter/memif/test） | `cmake -S embedded/bsw_integration -B build` 配置成功，`test_rtd_adapter` 运行通过 |
-| **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2 完整路径，USE_SE050 切换硬件） | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
+| **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2/P-256 完整路径，USE_SE050 切换硬件）；验签与证书链已升级为真实链路，见下条 | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
 | **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
 | **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
 | **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证/R-MAC 篡改/密文篡改）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：53/53 通过（AES 加解密/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建、加密签名 APDU、C-MAC 链式、R-MAC 完整性） |
@@ -117,11 +117,11 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 |---|---|---|---|---|---|
 | P0-04-T1 | 接入 SE050 Plug&Trust 中间件，建立真实 SCP03 会话 | 安全组 | P0-01-T3 | SCP03 握手实现 | 真机握手成功，会话密钥派生正确 |
 | P0-04-T2 | 实现 sec_sign：经 SCP03 通道调用 SE050 ECDSA 硬件签名 | 安全组 | P0-04-T1 | 真实签名接口 | 输出 64 字节 r‖s，标准向量通过。**✅ 软件回退完成（SM2）；✅ 签名 APDU 已封装（INS 0x62 + C-MAC/R-MAC + AES-CBC 加密），vSE050 仿真 53/53；真机待 G1 验证** |
-| P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过。**✅ 软件回退完成** |
-| P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 软件回退完成（含 sec_verify_cert_chain）** |
+| P0-04-T3 | 实现 sec_verify：加载公钥、ECDSA 验签 | 安全组 | P0-04-T1 | 真实验签接口 | 正/负向向量通过。**✅ 已完成（软件）：移除内置开发公钥回退，对端公钥须经 `sec_set_peer_public_key()` 或证书链显式供给；SM2/P-256 独立域实现；未供给即 `VERIFY_SIGN_INVALID`（fail-closed）；真机 SE050 验签待 G1** |
+| P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 已完成（软件）：真实 device_id/key_id/固件度量；最小 X.509 DER 解析与逐跳签名验证（issuer==subject + 上张证书 + root 锚定，可选可信时间强制有效期）；设备公钥/证书链双路径验签，篡改度量/身份/安全状态均拒绝；真机与云端联调待 G1/G4** |
 | P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销。**✅ 在线 PUT KEY 个性化与 REPLACE KEYS 轮换已实现并通过 vSE050 仿真；✅ 密钥层级/生命周期/注入与轮换流程已梳理（`docs/security/se050-provision-guide.md` v1.1.0）；✅ HSM 派生接口与软件参考实现（`embedded/tools/provision`，`test_provision` 16/16）；PKCS#11 后端、产线工位与真机验证待完成** |
 | P0-04-T6 | 安全启动、调试口权限、回滚保护 | 安全组 | P0-04-T1 | 启动链安全方案 | 篡改固件无法启动，调试口受控 |
-| P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过 |
+| P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过。**◐ P-256 验签/签名与 X.509 证书链已用 OpenSSL 生成夹具交叉验证（`test_security_chain` 12/12）；SM2/SM3/SM4 标准向量与独立密码测试报告待补** |
 | P0-04-T8 | 第三方密码审计与渗透测试 | 安全组 | P0-04-T2~7 | 审计报告 | 无未修复高危 |
 
 ### 4.3 CCC 认证链路
