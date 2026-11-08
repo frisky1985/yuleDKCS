@@ -519,21 +519,25 @@ extern int32_t i2c_transfer(uint8_t dev, uint8_t addr,
                              uint8_t *rx, uint16_t rx_len);
 
 /**
- * @brief Read raw bytes from SE050 over I2C with retry.
+ * @brief Read a response APDU from SE050 over I2C.
  *
- * The SE050 may need time to process. We retry until data is available.
+ * The SE050 may need time to process. In T=1' mode the transport performs
+ * the read retries; otherwise we poll until data is available.
  *
  * @param i2c_addr   SE050 I2C address
  * @param buffer     [out] Response buffer
- * @param len        Number of bytes to read
+ * @param len        Capacity of @p buffer in bytes
+ * @param out_len    [out] Number of response bytes actually received
  * @return 0 on success, negative on error
  */
-static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
+static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len,
+                          uint16_t *out_len)
 {
 #if SE050_USE_T1OI2C
     uint16_t copied = 0;
     int rc = se050_t1_read_cached(buffer, len, &copied);
     (void)i2c_addr;
+    if (out_len != NULL) *out_len = copied;
     /* A truncated cached response still yields valid leading bytes. */
     if (rc == SE050_T1_OK || rc == SE050_T1_ERR_BUFFER) {
         return 0;
@@ -553,6 +557,7 @@ static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
             /* Verify we got non-zero data (SE050 returns 0xFF if not ready) */
             if (buffer[0] != 0xFFU)
             {
+                if (out_len != NULL) *out_len = len;
                 return 0;
             }
         }
@@ -565,6 +570,7 @@ static int scp03_i2c_read(uint8_t i2c_addr, uint8_t *buffer, uint16_t len)
         }
     }
 
+    if (out_len != NULL) *out_len = 0;
     return SCP03_ERR_HW;
 #endif
 }
@@ -784,8 +790,9 @@ int se050_scp03_apdu_plain(uint8_t i2c_addr,
         /* Case 4: expect response data + SW */
         uint16_t max_read = (*resp_len < SCP03_MAX_APDU_RESP) ? *resp_len : SCP03_MAX_APDU_RESP;
         uint8_t read_buffer[SCP03_MAX_APDU_RESP + 2];
+        uint16_t rlen = 0;
 
-        ret = scp03_i2c_read(i2c_addr, read_buffer, max_read);
+        ret = scp03_i2c_read(i2c_addr, read_buffer, max_read, &rlen);
         if (ret != 0)
         {
             return SCP03_ERR_HW;
@@ -793,7 +800,6 @@ int se050_scp03_apdu_plain(uint8_t i2c_addr,
 
         /* Copy response, strip SW for the caller */
         {
-            uint16_t rlen = max_read;
             uint16_t sw;
 
             ret = scp03_parse_response(read_buffer, rlen, &rlen, &sw);
@@ -821,15 +827,15 @@ int se050_scp03_apdu_plain(uint8_t i2c_addr,
         /* Case 2: Read response data */
         uint16_t max_read = (*resp_len < SCP03_MAX_APDU_RESP) ? *resp_len : SCP03_MAX_APDU_RESP;
         uint8_t read_buffer[SCP03_MAX_APDU_RESP + 2];
+        uint16_t rlen = 0;
 
-        ret = scp03_i2c_read(i2c_addr, read_buffer, max_read + 2);
+        ret = scp03_i2c_read(i2c_addr, read_buffer, (uint16_t)(max_read + 2U), &rlen);
         if (ret != 0)
         {
             return SCP03_ERR_HW;
         }
 
         {
-            uint16_t rlen = max_read + 2;
             uint16_t sw;
 
             ret = scp03_parse_response(read_buffer, rlen, &rlen, &sw);
@@ -1086,8 +1092,10 @@ int se050_scp03_open_session(scp03_session_t *session, uint8_t i2c_addr)
         /* Read response */
         {
             uint8_t read_buffer[4]; /* SW1 SW2 only + possible data */
-            ret = scp03_i2c_read(i2c_addr, read_buffer, 4);
-            if (ret != 0)
+            uint16_t rlen = 0;
+
+            ret = scp03_i2c_read(i2c_addr, read_buffer, 4, &rlen);
+            if (ret != 0 || rlen < 2U)
             {
                 se050_scp03_close_session(session);
                 return SCP03_ERR_HW;
@@ -1303,10 +1311,11 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
     {
         uint8_t read_buffer[SCP03_MAX_APDU_RESP + 2];
         uint16_t read_len;
+        uint16_t total_len = 0;
 
         read_len = (*resp_len < SCP03_MAX_APDU_RESP) ? *resp_len : SCP03_MAX_APDU_RESP;
 
-        ret = scp03_i2c_read(i2c_addr, read_buffer, read_len + 2);
+        ret = scp03_i2c_read(i2c_addr, read_buffer, (uint16_t)(read_len + 2U), &total_len);
         if (ret != 0)
         {
             return SCP03_ERR_HW;
@@ -1314,8 +1323,6 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
 
         /* Parse response: data + SW */
         {
-            uint16_t total_len = read_len + 2;
-
             ret = scp03_parse_response(read_buffer, total_len, &resp_data_len, &sw);
             if (ret != 0)
             {

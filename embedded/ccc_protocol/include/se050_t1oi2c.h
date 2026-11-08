@@ -45,14 +45,27 @@ extern "C" {
 #define SE050_T1_ERR_PROTOCOL  (-5)    /**< Unexpected block / retry exhausted */
 
 /**
- * @brief Platform I/O hooks. All hooks are mandatory.
+ * @brief Platform I/O hooks.
+ *
+ * write/read are mandatory. delay_us is optional and is invoked between
+ * read retries; it lets a simulation backend advance a virtual clock
+ * instead of busy-spinning (and maps to a real platform delay on target).
  *
  * @param addr  7-bit SE050 I2C address (0x48)
  */
 typedef struct {
     int (*write)(uint8_t addr, const uint8_t *buf, uint16_t len);
     int (*read)(uint8_t addr, uint8_t *buf, uint16_t len);
+    void (*delay_us)(uint32_t us);
 } se050_t1_io_t;
+
+/*
+ * A real SE050 holds the I2C transaction (clock stretching / NACK) while it
+ * is busy, so the first read of a response block must be retried. The retry
+ * budget also covers SCP03 command processing time and S(WTX) handling.
+ */
+#define SE050_T1_READ_RETRY_MAX       100U   /**< Attempts per block header */
+#define SE050_T1_READ_RETRY_DELAY_US  1000U  /**< Delay between attempts (us) */
 
 /**
  * @brief Install custom I/O hooks (tests / alternative HAL).

@@ -24,7 +24,7 @@ static int default_read(uint8_t addr, uint8_t *buf, uint16_t len)
                ? 0 : -1;
 }
 
-static const se050_t1_io_t g_default_io = { default_write, default_read };
+static const se050_t1_io_t g_default_io = { default_write, default_read, NULL };
 static const se050_t1_io_t *g_io = &g_default_io;
 
 void se050_t1_set_io(const se050_t1_io_t *io)
@@ -122,6 +122,27 @@ static int t1_write_frame(const uint8_t *frame, uint16_t len, uint8_t addr)
     return (g_io->write(addr, frame, len) == 0) ? SE050_T1_OK : SE050_T1_ERR_IO;
 }
 
+/*
+ * The SE050 does not ACK the I2C read until it has a block ready (clock
+ * stretching / NACK). Retry the header read before giving up; delay_us is
+ * optional and lets the caller advance a virtual clock.
+ */
+static int t1_read_header(uint8_t addr, uint8_t *header)
+{
+    uint32_t attempt;
+
+    for (attempt = 0; attempt < SE050_T1_READ_RETRY_MAX; attempt++) {
+        if (g_io->read(addr, header, 3U) == 0) {
+            return SE050_T1_OK;
+        }
+        if (g_io->delay_us != NULL) {
+            g_io->delay_us(SE050_T1_READ_RETRY_DELAY_US);
+        }
+    }
+
+    return SE050_T1_ERR_IO;
+}
+
 static int t1_read_frame(uint8_t addr,
                          uint8_t *pcb,
                          uint8_t *inf, uint16_t inf_size, uint16_t *inf_len)
@@ -130,7 +151,7 @@ static int t1_read_frame(uint8_t addr,
     uint8_t  frame[SE050_T1_MAX_FRAME];
     uint16_t len;
 
-    if (g_io->read(addr, header, 3U) != 0) return SE050_T1_ERR_IO;
+    if (t1_read_header(addr, header) != SE050_T1_OK) return SE050_T1_ERR_IO;
 
     len = t1_inf_len(header[1], header[2]);
     if (len > SE050_T1_MAX_INF) return SE050_T1_ERR_FRAME;

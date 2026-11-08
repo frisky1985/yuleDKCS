@@ -171,11 +171,15 @@ $(BUILD)/test_se050_scp03.o: $(TEST_DIR)/test_se050_scp03.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_se050_scp03_lib.o: $(TEST_DIR)/test_se050_scp03.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SE050_SCP03_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_vse050_scp03.o: $(TEST_DIR)/test_vse050_scp03.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/vse050_sim.o: $(TESTDIR)/support/vse050_sim.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_all
 
 all: test_all
 
@@ -226,6 +230,12 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
               $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
               $(BUILD)/dk_unified.o $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
+test_vse050: $(BUILD)/test_vse050_scp03.o $(BUILD)/vse050_sim.o \
+             $(BUILD)/se050_t1oi2c.o $(BUILD)/se050_scp03.o \
+             $(BUILD)/crypto_random.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 

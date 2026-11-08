@@ -26,6 +26,7 @@
 | **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2 完整路径，USE_SE050 切换硬件） | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
 | **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
 | **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
+| **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：30/30 通过（AES/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建） |
 | **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
 ### 待办（依赖硬件/认证）
@@ -138,7 +139,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | TaskID | 任务 | 负责角色 | 依赖 | 关键产出 | 验收标准 |
 |---|---|---|---|---|---|
 | P0-05-T1 | 引入 NXP RTD / MCUXpresso SDK，替换 MCAL 桩代码 | 硬件组 | G0-T2 | 真实 MCAL | MCU 时钟/电源/看门狗/存储验证通过 |
-| P0-05-T2 | 集成 SE050 Plug&Trust 驱动 | 硬件组 | P0-05-T1 | SE050 驱动 | 芯片初始化与 APDU 通信正常。**🔶 软件侧就绪：T=1' 传输层 + 模拟卡单测 15/15；真机验证见 G1-BR-2026-001 §3** |
+| P0-05-T2 | 集成 SE050 Plug&Trust 驱动 | 硬件组 | P0-05-T1 | SE050 驱动 | 芯片初始化与 APDU 通信正常。**🔶 软件侧就绪：T=1' 传输层 + 模拟卡单测 15/15；vSE050 异步 SCP03 仿真 30/30；真机验证见 G1-BR-2026-001 §3（仿真不能替代密钥隔离/侧信道证据）** |
 | P0-05-T3 | 集成 NCJ29D6 UWB 厂商驱动 | 硬件组 | P0-05-T1 | UWB 驱动 | 测距初始化、IRQ、数据读取正常 |
 | P0-05-T4 | 集成 ST25R501 NFC 厂商驱动 | 硬件组 | P0-05-T1 | NFC 驱动 | 场检测与 OOB 交换正常 |
 | P0-05-T5 | 集成 KW47A BLE 驱动 | 硬件组 | P0-05-T1 | BLE 驱动 | 连接、配对、吞吐达标 |

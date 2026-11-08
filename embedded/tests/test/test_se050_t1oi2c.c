@@ -183,7 +183,7 @@ static void reset_card(void)
 
 int main(void)
 {
-    se050_t1_io_t io = { mock_write, mock_read };
+    se050_t1_io_t io = { mock_write, mock_read, NULL };
     se050_t1_set_io(&io);
 
     printf("=== SE050 T=1' transport tests ===\n");
