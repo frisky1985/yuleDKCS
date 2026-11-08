@@ -13,6 +13,7 @@
  */
 
 #include "se050_scp03.h"
+#include "se050_apdu.h"
 #include "se050_t1oi2c.h"
 #include "crypto_random.h"
 #include "vse050_sim.h"
@@ -214,6 +215,73 @@ static void test_session_restart(void)
     se050_scp03_deinit(&s);
 }
 
+static void test_sign_apdu(void)
+{
+    vse050_config_t cfg;
+    scp03_session_t s;
+    uint8_t hash[32];
+    uint8_t sig[64];
+    uint8_t sig2[64];
+    int rc;
+
+    printf("\n[9] ECDSA sign APDU over the secure channel\n");
+    vse050_sim_default_config(&cfg);
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "session open for signing");
+
+    (void)memset(hash, 0xA5, sizeof(hash));
+
+    rc = se050_apdu_sign(&s, 0x48, 0x02, hash, sig);
+    CHECK(rc == SE050_APDU_OK, "sign APDU accepted");
+    CHECK(vse050_sim_sign_count() == 1, "card produced one signature (74-byte reply)");
+
+    rc = se050_apdu_sign(&s, 0x48, 0x02, hash, sig2);
+    CHECK(rc == SE050_APDU_OK, "second sign accepted (C-MAC chaining)");
+    CHECK(memcmp(sig, sig2, sizeof(sig)) == 0, "model output is deterministic");
+    CHECK(vse050_sim_sign_count() == 2, "card produced two signatures");
+
+    hash[0] ^= 0xFFU;
+    rc = se050_apdu_sign(&s, 0x48, 0x02, hash, sig2);
+    CHECK(rc == SE050_APDU_OK, "sign accepted for a different digest");
+    CHECK(memcmp(sig, sig2, sizeof(sig)) != 0, "signature depends on the digest");
+
+    rc = se050_apdu_sign(&s, 0x48, 0x7F, hash, sig2);
+    CHECK(rc == SE050_APDU_ERR_SW, "unknown key id surfaces SW 6A88");
+    CHECK(se050_scp03_is_open(&s), "channel survives a command error");
+
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, NULL, sig2) == SE050_APDU_ERR_PARAM,
+          "NULL hash rejected");
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, NULL) == SE050_APDU_ERR_PARAM,
+          "NULL signature buffer rejected");
+
+    se050_scp03_close_session(&s);
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, sig2) == SE050_APDU_ERR_CHANNEL,
+          "sign rejected without an open channel");
+
+    se050_scp03_deinit(&s);
+}
+
+static void test_sign_rmac_tamper(void)
+{
+    vse050_config_t cfg;
+    scp03_session_t s;
+    uint8_t hash[32];
+    uint8_t sig[64];
+
+    printf("\n[10] Response integrity (tampered R-MAC)\n");
+    vse050_sim_default_config(&cfg);
+    cfg.corrupt_rmac = 1;
+    vse050_sim_init(&cfg);
+    CHECK(open_fresh_session(&s) == SCP03_OK, "session open before tamper");
+
+    (void)memset(hash, 0x5A, sizeof(hash));
+    CHECK(se050_apdu_sign(&s, 0x48, 0x02, hash, sig) == SE050_APDU_ERR_INTEGRITY,
+          "tampered R-MAC rejected");
+    CHECK(!se050_scp03_is_open(&s), "channel closed after integrity failure");
+
+    se050_scp03_deinit(&s);
+}
+
 int main(void)
 {
     printf("=== vSE050 asynchronous SCP03 simulation ===\n");
@@ -228,6 +296,8 @@ int main(void)
     test_wrong_keys();
     test_ext_auth_rejected();
     test_session_restart();
+    test_sign_apdu();
+    test_sign_rmac_tamper();
 
     printf("\n=== 结果: %d passed, %d failed ===\n", g_pass, g_fail);
     return (g_fail == 0) ? 0 : 1;

@@ -6,12 +6,16 @@
  */
 
 #include "vse050_sim.h"
+#include "se050_apdu.h"
 
 #include <string.h>
 
 #define VSE050_MAX_CMD     1024U
 #define VSE050_MAX_RESP     512U
 #define VSE050_QUEUE_DEPTH    2U
+
+/** Only key object 0x02 (device key) is provisioned in the model. */
+#define VSE050_DEVICE_KEY_ID 0x02U
 
 /* ========================================================================
  *  Internal: AES-128 (FIPS 197) — encryption only, standalone
@@ -312,6 +316,9 @@ typedef struct {
     uint8_t  s_enc[16];
     uint8_t  s_mac[16];
     uint8_t  s_rmac[16];
+    uint8_t  cmac_iv[16];
+    uint8_t  rmac_iv[16];
+    uint32_t sign_count;
     uint8_t  wtx_pending;
 } vs_dev_t;
 
@@ -495,8 +502,125 @@ static void vs_handle_ext_auth(void)
     }
     (void)memset(host_crypto, 0, sizeof(host_crypto));
 
+    /* SCP03 chaining state: C-MAC IV = AES-ECB(S-MAC, 0^16), R-MAC IV = 0 */
+    {
+        vs_aes_ctx_t ctx;
+        uint8_t zero_block[16];
+
+        (void)memset(zero_block, 0, sizeof(zero_block));
+        vs_aes_expand(&ctx, s_dev.s_mac);
+        vs_aes_encrypt(&ctx, zero_block, s_dev.cmac_iv);
+        (void)memset(s_dev.rmac_iv, 0, sizeof(s_dev.rmac_iv));
+
+        (void)memset(&ctx, 0, sizeof(ctx));
+        (void)memset(zero_block, 0, sizeof(zero_block));
+    }
+
     s_dev.state = VSE050_STATE_OPEN;
     vs_set_sw(0x9000U);
+}
+
+/* Append the SCP03 R-MAC (8 bytes) to the current response payload. */
+static void vs_append_rmac(void)
+{
+    uint8_t  input[16U + VSE050_MAX_RESP];
+    uint8_t  mac[16];
+    uint16_t len = s_dev.resp_len;
+
+    if ((uint32_t)len + SCP03_CMAC_TRUNC > VSE050_MAX_RESP - 2U) return;
+
+    (void)memcpy(input, s_dev.rmac_iv, 16U);
+    (void)memcpy(&input[16], s_dev.resp, len);
+    vse050_sim_aes_cmac(s_dev.s_rmac, input, (uint16_t)(16U + len), mac);
+    (void)memcpy(s_dev.rmac_iv, mac, 16U);
+    (void)memcpy(&s_dev.resp[len], mac, SCP03_CMAC_TRUNC);
+
+    if (s_dev.cfg.corrupt_rmac != 0U) {
+        s_dev.resp[len] ^= 0xFFU;   /* one-shot integrity fault */
+        s_dev.cfg.corrupt_rmac = 0;
+    }
+
+    s_dev.resp_len = (uint16_t)(len + SCP03_CMAC_TRUNC);
+
+    (void)memset(input, 0, sizeof(input));
+    (void)memset(mac, 0, sizeof(mac));
+}
+
+static void vs_handle_sign(void)
+{
+    uint8_t  mac[16];
+    uint8_t  input[16U + 64U];
+    uint16_t body_len;
+    uint32_t key_id;
+    uint8_t  diff;
+    uint16_t i;
+    uint8_t  b;
+
+    if (s_dev.state != VSE050_STATE_OPEN) {
+        vs_set_sw(0x6985U);
+        return;
+    }
+
+    /* cmd = CLA INS P1 P2 Lc data... C-MAC(8) */
+    if (s_dev.cmd_len != (uint16_t)(5U + SE050_APDU_SIGN_INPUT_SIZE + SCP03_CMAC_TRUNC) ||
+        s_dev.cmd[2] != 0x00U || s_dev.cmd[3] != 0x00U ||
+        s_dev.cmd[4] != SE050_APDU_SIGN_INPUT_SIZE) {
+        vs_set_sw(0x6700U);
+        return;
+    }
+
+    body_len = (uint16_t)(s_dev.cmd_len - SCP03_CMAC_TRUNC);
+
+    /* Verify the host C-MAC: CMAC(S-MAC, C-MAC_IV || body). */
+    (void)memcpy(input, s_dev.cmac_iv, 16U);
+    (void)memcpy(&input[16], s_dev.cmd, body_len);
+    vse050_sim_aes_cmac(s_dev.s_mac, input, (uint16_t)(16U + body_len), mac);
+
+    diff = 0U;
+    for (i = 0; i < SCP03_CMAC_TRUNC; i++) {
+        diff |= (uint8_t)(mac[i] ^ s_dev.cmd[body_len + i]);
+    }
+    (void)memcpy(s_dev.cmac_iv, mac, 16U);
+    (void)memset(input, 0, sizeof(input));
+    (void)memset(mac, 0, sizeof(mac));
+
+    if (diff != 0U) {
+        s_dev.state = VSE050_STATE_RESET;
+        vs_set_sw(0x6982U);
+        return;
+    }
+
+    if (s_dev.cfg.sign_disabled != 0U) {
+        vs_set_sw(0x6982U);
+        return;
+    }
+
+    key_id = ((uint32_t)s_dev.cmd[5] << 24) | ((uint32_t)s_dev.cmd[6] << 16) |
+             ((uint32_t)s_dev.cmd[7] << 8) | (uint32_t)s_dev.cmd[8];
+    if (key_id != VSE050_DEVICE_KEY_ID) {
+        vs_set_sw(0x6A88U);
+        return;
+    }
+
+    /*
+     * Deterministic placeholder output: 4 x CMAC(S-ENC, block_idx || id || hash).
+     * NOT a valid ECDSA signature — the model has no private-key arithmetic.
+     * It exists so the host side can validate framing, C-MAC chaining, R-MAC
+     * verification and response parsing.
+     */
+    for (b = 0; b < 4U; b++) {
+        uint8_t seed[1U + SE050_APDU_SIGN_INPUT_SIZE];
+        seed[0] = b;
+        (void)memcpy(&seed[1], &s_dev.cmd[5], SE050_APDU_SIGN_INPUT_SIZE);
+        vse050_sim_aes_cmac(s_dev.s_enc, seed, sizeof(seed),
+                            &s_dev.resp[(uint16_t)b * 16U]);
+        (void)memset(seed, 0, sizeof(seed));
+    }
+    s_dev.resp_len = SE050_APDU_SIGNATURE_SIZE;
+
+    vs_append_rmac();
+    vs_set_sw(0x9000U);
+    s_dev.sign_count++;
 }
 
 static void vs_process_apdu(void)
@@ -525,6 +649,8 @@ static void vs_process_apdu(void)
         vs_handle_init_update();
     } else if ((cla & 0x04U) != 0U && ins == 0x82U) {
         vs_handle_ext_auth();
+    } else if ((cla & 0x04U) != 0U && ins == SE050_APDU_INS_ECDSA_SIGN) {
+        vs_handle_sign();
     } else {
         vs_set_sw(0x6D00U);
     }
@@ -762,6 +888,7 @@ uint32_t vse050_sim_nack_polls(void)   { return s_dev.nack_polls; }
 uint32_t vse050_sim_wtx_count(void)    { return s_dev.wtx_count; }
 uint32_t vse050_sim_crc_errors(void)   { return s_dev.crc_errors; }
 uint32_t vse050_sim_auth_failures(void){ return s_dev.auth_failures; }
+uint32_t vse050_sim_sign_count(void)   { return s_dev.sign_count; }
 uint16_t vse050_sim_apdu_count(void)   { return s_dev.apdu_count; }
 
 /*

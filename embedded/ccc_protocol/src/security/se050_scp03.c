@@ -1309,21 +1309,33 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
 
     /* Read response */
     {
-        uint8_t read_buffer[SCP03_MAX_APDU_RESP + 2];
+        /*
+         * A secured response is: data || R-MAC (8) || SW1 SW2.
+         * Request data capacity + R-MAC + SW so the T=1' transport returns
+         * the complete block instead of truncating it.
+         */
+        uint8_t read_buffer[SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U];
         uint16_t read_len;
         uint16_t total_len = 0;
+        uint32_t want = (uint32_t)(*resp_len) + SCP03_CMAC_SIZE + 2U;
 
-        read_len = (*resp_len < SCP03_MAX_APDU_RESP) ? *resp_len : SCP03_MAX_APDU_RESP;
+        if (want > (uint32_t)(SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U))
+        {
+            want = (uint32_t)(SCP03_MAX_APDU_RESP + SCP03_CMAC_SIZE + 2U);
+        }
+        read_len = (uint16_t)want;
 
-        ret = scp03_i2c_read(i2c_addr, read_buffer, (uint16_t)(read_len + 2U), &total_len);
+        ret = scp03_i2c_read(i2c_addr, read_buffer, read_len, &total_len);
         if (ret != 0)
         {
             return SCP03_ERR_HW;
         }
 
-        /* Parse response: data + SW */
+        /* Parse response: data [|| R-MAC] || SW */
         {
-            ret = scp03_parse_response(read_buffer, total_len, &resp_data_len, &sw);
+            uint16_t data_len;
+
+            ret = scp03_parse_response(read_buffer, total_len, &data_len, &sw);
             if (ret != 0)
             {
                 return ret;
@@ -1334,9 +1346,62 @@ int se050_scp03_apdu(scp03_session_t *session, uint8_t i2c_addr,
                 return SCP03_ERR_SW;
             }
 
-            if (resp_data_len > *resp_len)
+            /*
+             * Verify and strip the R-MAC. Per GP SCP03 the R-MAC covers the
+             * response data with the R-MAC chaining value as prefix. Any
+             * failure means the response cannot be trusted: terminate the
+             * secure channel instead of returning attacker-controlled data.
+             */
+            if (data_len > 0U)
+            {
+                uint8_t  rmac_input[SCP03_BLOCK_SIZE + SCP03_MAX_APDU_RESP];
+                uint8_t  rmac_full[SCP03_BLOCK_SIZE];
+                uint16_t payload_len;
+                uint16_t k;
+                uint8_t  diff;
+
+                if (data_len < SCP03_CMAC_SIZE)
+                {
+                    se050_scp03_close_session(session);
+                    return SCP03_ERR_CMAC;
+                }
+
+                payload_len = (uint16_t)(data_len - SCP03_CMAC_SIZE);
+
+                (void)memcpy(rmac_input, session->rmac_iv, SCP03_BLOCK_SIZE);
+                (void)memcpy(rmac_input + SCP03_BLOCK_SIZE, read_buffer, payload_len);
+
+                scp03_aes_cmac(session->s_rmac, rmac_input,
+                               (uint16_t)(SCP03_BLOCK_SIZE + payload_len),
+                               rmac_full);
+
+                diff = 0U;
+                for (k = 0; k < SCP03_CMAC_TRUNC; k++)
+                {
+                    diff |= (uint8_t)(rmac_full[k] ^ read_buffer[payload_len + k]);
+                }
+
+                (void)memcpy(session->rmac_iv, rmac_full, SCP03_BLOCK_SIZE);
+
+                se050_scp03_secure_zero(rmac_input, sizeof(rmac_input));
+                se050_scp03_secure_zero(rmac_full, sizeof(rmac_full));
+
+                if (diff != 0U)
+                {
+                    se050_scp03_close_session(session);
+                    return SCP03_ERR_CMAC;
+                }
+
+                data_len = payload_len;
+            }
+
+            if (data_len > *resp_len)
             {
                 resp_data_len = *resp_len;
+            }
+            else
+            {
+                resp_data_len = data_len;
             }
 
             (void)memcpy(resp, read_buffer, resp_data_len);

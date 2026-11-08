@@ -30,6 +30,7 @@ CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
               $(CCC_SRC)/nfc/nfc_st25r501.c \
               $(CCC_SRC)/security/security.c \
               $(CCC_SRC)/security/se050_scp03.c \
+              $(CCC_SRC)/security/se050_apdu.c \
               $(CCC_SRC)/security/se050_t1oi2c.c \
               $(CCC_SRC)/security/crypto_random.c \
               $(CCC_SRC)/keymgmt/key_mgmt.c
@@ -235,7 +236,7 @@ test_unified: $(BUILD)/test_unified.o \
 
 test_vse050: $(BUILD)/test_vse050_scp03.o $(BUILD)/vse050_sim.o \
              $(BUILD)/se050_t1oi2c.o $(BUILD)/se050_scp03.o \
-             $(BUILD)/crypto_random.o
+             $(BUILD)/se050_apdu.o $(BUILD)/crypto_random.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 

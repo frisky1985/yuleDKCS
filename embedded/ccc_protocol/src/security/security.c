@@ -21,6 +21,7 @@
 #include "crypto_engine.h"      /* SHA-256, AES-256-GCM, SM2/SM3 */
 #include "crypto_random.h"      /* [P1-1] TRNG-backed crypto_random_bytes() */
 #include "se050_scp03.h"        /* [P0-1] SCP03 secure channel implementation */
+#include "se050_apdu.h"         /* [P0-04] SE050 command layer (sign APDU) */
 /* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
 void *pvPortMalloc(size_t xSize);
 void vPortFree(void *pv);
@@ -685,26 +686,47 @@ ccc_status_t sec_sign(const uint8_t *data, uint32_t len, uint8_t *sig, uint32_t 
     *sig_len = 64;
 
 #ifdef USE_SE050
-    /* 硬件路径: 通过 SCP03 安全通道让 SE050 签名 */
-    uint8_t hash[32];
-    if (crypto_sha256(data, (size_t)len, hash) != CRYPTO_SUCCESS)
-        return CCC_ERR_SECURITY;
-    /* se050 签名 APDU 在此发送; 主机构建无 SE050 时回退到软件路径 */
-    int hw_ret = hal_se050_ecdsa_sign((const uint8_t *)SE050_SLOT_DEVICE_KEY, hash, sig);
-    if (hw_ret == 0) return CCC_OK;
-    /* 硬件不可用, 回退到软件 */
-#endif
+    /* 硬件路径: 经 SCP03 安全通道发送 EC-DSA 签名 APDU.
+     * 私钥始终留在 SE050 内部, 只有 hash 过总线, 只有签名回来.
+     * 硬件路径失败时不静默降级到软件密钥 —— 那会让设备在无安全元件
+     * 的情况下继续以开发密钥签名. */
+    {
+        uint8_t hash[32];
+        int rc;
 
-    /* 软件回退: crypto_engine ECDSA P-256 / SM2 */
-    size_t sl = 64;
-    int ret = crypto_sign(g_dev_priv_key, sizeof(g_dev_priv_key),
-                          data, (size_t)len, sig, &sl);
-    if (ret != CRYPTO_SUCCESS) {
-        *sig_len = 0;
-        return CCC_ERR_SECURITY;
+        if (crypto_sha256(data, (size_t)len, hash) != CRYPTO_SUCCESS)
+        {
+            return CCC_ERR_SECURITY;
+        }
+
+        rc = se050_apdu_sign(&g_scp03_session, SE050_I2C_ADDR,
+                             (uint32_t)SE050_SLOT_DEVICE_KEY, hash, sig);
+
+        sec_secure_zero(hash, sizeof(hash));
+
+        if (rc != SE050_APDU_OK)
+        {
+            *sig_len = 0;
+            return CCC_ERR_SECURITY;
+        }
+
+        *sig_len = SE050_APDU_SIGNATURE_SIZE;
+        return CCC_OK;
     }
-    *sig_len = (uint32_t)sl;
-    return CCC_OK;
+#else
+    /* 软件回退: crypto_engine ECDSA P-256 / SM2 */
+    {
+        size_t sl = 64;
+        int ret = crypto_sign(g_dev_priv_key, sizeof(g_dev_priv_key),
+                              data, (size_t)len, sig, &sl);
+        if (ret != CRYPTO_SUCCESS) {
+            *sig_len = 0;
+            return CCC_ERR_SECURITY;
+        }
+        *sig_len = (uint32_t)sl;
+        return CCC_OK;
+    }
+#endif
 }
 
 verify_result_e sec_verify(const uint8_t *data, uint32_t len, const uint8_t *sig, uint32_t sig_len)
