@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.3（追加验签对端公钥、证书链与 attestation 链路进展） |
+| 版本 | v1.4（追加 CI 门禁与密码向量覆盖进展） |
 | 状态 | 执行中 |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
@@ -32,11 +32,12 @@
 | **P0-04-T5（密钥个性化）** SCP03 PUT KEY | 新增 `se050_scp03_put_key()`：在 OPEN 通道上用 CLA 0x8C + AES-CBC 加密下发 K-ENC/K-MAC/K-RMAC（INS 0xD8，P1=新 key version），成功后主机静态密钥与卡片密钥同步切换，旧默认传输密钥失效；卡侧 vSE050 支持 PUT KEY、key version/seq 推进与拒绝注入 | `test_vse050_scp03`：69/69 通过（个性化后旧零密钥重连 `SCP03_ERR_CRYPTOGRAM`、新密钥重连成功、未开通道拒绝、卡片拒绝 SW 6985、NULL 参数拒绝） |
 | **P0-04-T5（密钥轮换）** SCP03 REPLACE KEYS | 新增 `se050_scp03_replace_keys()`，`se050_scp03_rotate_keys()` 改为真实轮换：在 OPEN 通道上以 INS 0xD2 + AES-CBC 加密下发 8 字节 nonce，双方用 AES-CMAC 从旧静态密钥确定性派生新 K-ENC/K-MAC/K-RMAC（新密钥不上线）；成功后关闭并重建通道，旧密钥失效；卡侧 vSE050 支持派生、版本/seq 推进与拒绝注入 | `test_vse050_scp03`：91/91 通过（轮换后重连成功、旧密钥重连 `SCP03_ERR_CRYPTOGRAM`、轮换通道上签名可用、连续两次轮换、未开通道拒绝、卡片拒绝 SW 6985） |
 | **P0-04-T3/T4（真实验签链路）** | 移除 `sec_verify` 内置开发公钥回退，改为启动时显式供给对端公钥；新增最小 X.509 DER 解析器（证书/TBSCertificate/SPKI/有效期/ECDSA-Sig-Value）与真实证书链验证（逐跳 issuer==subject + 上张证书签名 + root 公钥锚定，可选可信时间强制有效期）；`sec_attestation` 使用真实 device_id/key_id/固件度量，`sec_verify_attestation` 校验度量、身份、安全状态、链/设备公钥与签名；新增独立实现的 ECDSA P-256 验签/签名（`crypto/p256.c`，P-256 域参数独立于 SM2） | `test_security_chain`：12/12（OpenSSL 生成链/证书夹具、错误 root、篡改证书、有效期前后、断链、未供给、设备钥匙证明、证书链证明）；全量 `make test_all` 224 项通过；host-sim 固件链接通过 |
+| **P0-01-T4** CI 门禁 | `.github/workflows/ci.yml`：L2 嵌入式测试升级为全量套件（`test_all` + `test_vse050` + `test_provision`），新增独立 `l2-embedded-firmware` 作业以 host-sim 配置并链接完整固件（协议库 `-Werror`），任一步失败阻断合并 | 本地等价命令通过（224+91+16 项，0 失败）；`cmake -S embedded/firmware -B ... && cmake --build` 生成 `yuleDKCS_fw.elf`；工作流 YAML 解析校验通过 |
 | **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
 ### 待办（依赖硬件/认证）
 
-P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05-T1/T3~T8、G3/G4/G5 全部。P0-05-T2 软件侧已完成，真机验证按 G1-BR-2026-001 §3 执行。
+P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05-T1/T3~T8、G3/G4/G5 全部。P0-05-T2 软件侧已完成，真机验证按 G1-BR-2026-001 §3 执行。
 
 ---
 
@@ -108,7 +109,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | P0-01-T1 | 修复 firmware/CMakeLists.txt 目标顺序（target_include_directories 移到 add_executable 之后） | 嵌入式组 | G0-T1 | 可配置的 CMake | `cmake -S embedded/firmware -B build` 配置成功。**✅ 已完成** |
 | P0-01-T2 | 统一链接库名：target_link_libraries 使用 ccc_dk/icce_dk/iccoa_dk | 嵌入式组 | P0-01-T1 | 可链接固件 | 链接阶段无未定义符号。**✅ 已完成** |
 | P0-01-T3 | 补齐板级初始化函数（kw47a_board_init / clock / storage / nfc_poll / ble_poll）或切换到 S32K312 基线 | 嵌入式组 | P0-01-T2 | 板级支持包 | 固件启动到主循环，无未定义引用。**✅ 已完成（host HAL 桩 + 真实 target 路径）** |
-| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并 |
+| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并。**✅ 已完成：`.github/workflows/ci.yml` 新增 L2 固件门禁（host-sim 配置+链接完整固件）并将嵌入式单测扩展为 `test_all`+`test_vse050`+`test_provision` 全量套件；本地等价命令验证通过（224+91+16 项，0 失败）** |
 | P0-02-T1 | 移除 bsw_integration 中对 $HOME 私有路径的硬编码，改用子模块/制品 | 嵌入式组 | G0-T2 | 可复现 BSW 构建 | CI 完成 BSW 全量链接。**✅ 已完成（可配置路径 + 受控降级）** |
 
 ### 4.2 SE050 安全闭环
@@ -121,7 +122,7 @@ P0-01-T4（CI 门禁）、P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）�
 | P0-04-T4 | 实现 sec_attestation：设备 ID、固件哈希、证明签名、证书链验证 | 安全组 | P0-04-T1 | 证明接口 | 证明可被云端独立验真。**✅ 已完成（软件）：真实 device_id/key_id/固件度量；最小 X.509 DER 解析与逐跳签名验证（issuer==subject + 上张证书 + root 锚定，可选可信时间强制有效期）；设备公钥/证书链双路径验签，篡改度量/身份/安全状态均拒绝；真机与云端联调待 G1/G4** |
 | P0-04-T5 | 密钥层级设计与产线注入流程 | 安全组 | P0-04-T1 | 密钥管理方案 | 根密钥→设备密钥层级清晰，支持吊销。**✅ 在线 PUT KEY 个性化与 REPLACE KEYS 轮换已实现并通过 vSE050 仿真；✅ 密钥层级/生命周期/注入与轮换流程已梳理（`docs/security/se050-provision-guide.md` v1.1.0）；✅ HSM 派生接口与软件参考实现（`embedded/tools/provision`，`test_provision` 16/16）；PKCS#11 后端、产线工位与真机验证待完成** |
 | P0-04-T6 | 安全启动、调试口权限、回滚保护 | 安全组 | P0-04-T1 | 启动链安全方案 | 篡改固件无法启动，调试口受控 |
-| P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过。**◐ P-256 验签/签名与 X.509 证书链已用 OpenSSL 生成夹具交叉验证（`test_security_chain` 12/12）；SM2/SM3/SM4 标准向量与独立密码测试报告待补** |
+| P0-04-T7 | 国密 SM2/SM3/SM4 与 ECDSA 标准向量 + OpenSSL 交叉验证 | 安全组 | P0-04-T2/3 | 密码测试报告 | 全部标准向量通过。**◐ 标准向量已覆盖：`test_sm_crypto` 59/59（GB/T 32905 SM3、GB/T 32907 SM4-ECB/CBC、GB/T 32918.2 A.2 SM2 验签、GCM/往返/篡改/边界）；P-256 验签与 X.509 证书链已用 OpenSSL 夹具交叉验证（`test_security_chain` 12/12）；独立密码测试报告待归档** |
 | P0-04-T8 | 第三方密码审计与渗透测试 | 安全组 | P0-04-T2~7 | 审计报告 | 无未修复高危 |
 
 ### 4.3 CCC 认证链路

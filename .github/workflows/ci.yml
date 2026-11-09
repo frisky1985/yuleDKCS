@@ -133,13 +133,13 @@ jobs:
           path: backend/cloud/hub/tests/integration/test-output/
           retention-days: 7
 
-      # ── Embedded C 单元测试 ──
-      - name: Embedded C Unit Tests (ICCOA/CCC/ICCE/Unified)
+      # ── Embedded C 单元测试（全量门禁，P0-01-T4）──
+      - name: Embedded C Test Suite (protocol + crypto + security + SE050 sim)
         working-directory: embedded/tests
         run: |
           make clean
-          make test_iccoa test_ccc test_icce 2>&1
-          echo "✅ C unit tests complete"
+          make -j"$(nproc)" test_all test_vse050 test_provision 2>&1
+          echo "✅ Embedded C test gate complete (all suites, failure = CI fail)"
 
       - name: Upload C test report
         if: always()
@@ -190,6 +190,47 @@ jobs:
             --enable=errcheck
             --out-format=colored-line-number
           only-new-issues: true
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # L2 — 嵌入式固件全量构建门禁 (P0-01-T4)
+  # 以 host-sim 模式配置并链接完整固件（含 CCC/ICCE/ICCOA 协议栈），
+  # 协议库以 -Werror 编译；任何未定义符号/编译错误即阻断合并。
+  # ═══════════════════════════════════════════════════════════════════════
+
+  l2-embedded-firmware:
+    name: L2 — Embedded Firmware Build Gate
+    runs-on: ubuntu-latest
+    needs: [l1-unit-and-vet]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify build tools
+        run: |
+          cmake --version
+          cc --version
+
+      - name: Configure firmware (host simulation)
+        run: |
+          cmake -S embedded/firmware -B "${RUNNER_TEMP}/fwbuild" \
+                -DFIRMWARE_HOST_SIM=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build firmware (protocol libs -Werror)
+        run: cmake --build "${RUNNER_TEMP}/fwbuild" -j"$(nproc)"
+
+      - name: Verify ELF artifact
+        run: |
+          ELF="${RUNNER_TEMP}/fwbuild/src/yuleDKCS_fw.elf"
+          test -x "$ELF"
+          file "$ELF"
+          echo "✅ Firmware linked successfully: $ELF"
+
+      - name: Upload firmware artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-host-sim
+          path: ${{ runner.temp }}/fwbuild/src/yuleDKCS_fw.elf
+          retention-days: 7
 
   # ═══════════════════════════════════════════════════════════════════════
   # L2.5 — E2E 测试 (carsim + scenarios + security) — L2 通过后触发
