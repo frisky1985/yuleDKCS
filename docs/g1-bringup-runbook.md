@@ -4,9 +4,9 @@
 |---|---|
 | 文档编号 | G1-BR-2026-001 |
 | 关联计划 | RMP-2026-001 §5（P2 阶段 / P0-05 / G1 门禁） |
-| 版本 | v1.0 |
+| 版本 | v1.1（补充安全启动、认证链路与 PKCS#11 真机验证） |
 | 适用硬件 | KW47A EVB + ST25R501 + NCJ29D6 + SE050 |
-| 前置条件 | 固件可在 host-sim 与真实 target 构建通过；T=1' 传输层单测通过 |
+| 前置条件 | 固件可在 host-sim 与真实 target 构建通过；软件侧 P0 已闭环（`test_all` 247 项 0 失败，含安全启动 13/13）；T=1' 传输层单测通过 |
 
 > 本指导书用于**首次上电**（bring-up）与门禁取证。每一步都给出可观测的通过判据，
 > 结果需按 TES-2026-001《测试证据管理规范》留档（设备序列号、仪器原始数据、时间戳、归档哈希）。
@@ -28,12 +28,13 @@
 ```bash
 cmake -S embedded/firmware -B build-arm \
       -DCMAKE_TOOLCHAIN_FILE=<arm-toolchain>.cmake \
-      -DBRINGUP_SELFTEST=ON
+      -DBRINGUP_SELFTEST=ON \
+      -DSECURE_BOOT=ON          # 验证安全启动时启用
 cmake --build build-arm
 # 产物: build-arm/src/yuleDKCS_fw.elf / .bin / .hex
 ```
 
-`-DBRINGUP_SELFTEST=ON` 会在启动后打印 7 项自检结果：
+`-DBRINGUP_SELFTEST=ON` 会在启动后打印 7 项基础自检；启用 `SECURE_BOOT=ON` 时追加第 08 项：
 
 ```
 [BRINGUP] === G1 hardware self-test ===
@@ -41,7 +42,8 @@ cmake --build build-arm
 [BRINGUP] 02 storage            PASS
 [BRINGUP] 03 se050-init         PASS
 ...
-[BRINGUP] RESULT: 7 passed, 0 failed, 0 skipped
+[BRINGUP] 08 secure-boot        PASS
+[BRINGUP] RESULT: 8 passed, 0 failed, 0 skipped
 ```
 
 ---
@@ -100,8 +102,40 @@ cmake --build build-arm
 | 3.4.1 | 调用 `se050_scp03_provision_keys()` 注入 K_ENC/K_MAC/K_RMAC | 个性化后默认全 0 密钥无法再建链 |
 | 3.4.2 | 密钥写入产线密钥库并记录序列号 | 一机一密，可追溯 |
 | 3.4.3 | 重新上电复测 | 仅个性化密钥可建链 |
+| 3.4.4 | 产线工位 PKCS#11 适配器注入 MK 并派生传输密钥 | MK 不出 HSM；派生 K_ENC/K_MAC/K_RMAC 与软件参考实现指纹一致（`hsm_provision_fingerprint`） |
+| 3.4.5 | 同 UID/版本重复派生 | 结果确定一致；更换版本或 UID 结果不同 |
+| 3.4.6 | 工位日志与密钥指纹归档 | 一机一密可追溯；日志不含明文密钥 |
 
 > **红线**：默认全 0 传输密钥不得用于任何客户样机或量产件。
+> 工位适配器通过 `hsm_prov_pkcs11_ops_t` 注入，禁止把 MK 读入产线 PC 内存。
+
+### 3.5 PUT KEY / REPLACE KEYS 真机验证（P0-04-T5）
+
+| # | 步骤 | 通过判据 |
+|---|---|---|
+| 3.5.1 | 使用派生密钥执行 PUT KEY（INS `0xD8`） | 返回 `9000`；指定 key id 可读回元数据 |
+| 3.5.2 | 断开后仅用新密钥重建 SCP03 | `9000`，状态 `SCP03_STATE_OPEN` |
+| 3.5.3 | 执行 REPLACE KEYS（INS `0xD2`） | 返回 `9000`，密钥版本号单调 +1 |
+| 3.5.4 | 连续 3 次轮换演练 | 每次轮换后新版本可建链；旧版本行为按卡策略记录实测结果 |
+| 3.5.5 | 轮换中途掉电/复位 | 旧密钥仍可用（可用性），不得变砖；日志与卡状态一致 |
+
+> 轮换失败不得清除唯一可用密钥；失败必须告警并保留旧版本回退能力。
+
+### 3.6 CCC 认证链路真机联调（P0-04-T3/T4）
+
+前提：产线已通过 `sec_set_peer_trust_root()` 预置设备信任根；手机侧持有由该根签发的 leaf→intermediate 链与 attestation 材料。
+
+| # | 步骤 | 通过判据 |
+|---|---|---|
+| 3.6.1 | 读取预置根指纹并重启 | 根指纹不变；运行期无法被 BLE 报文覆盖 |
+| 3.6.2 | 手机下发证书链 + attestation | 链验证通过，叶子公钥注册成功，`sec_verify` 通过 |
+| 3.6.3 | 手机伪造自带 root 的链路 | 必须拒绝（对端 `root_pub_key` 不参与锚定），状态 `LOCKED` |
+| 3.6.4 | 篡改链 / 过期证书 | 拒绝并锁定，串口日志给出 `VERIFY_CERT_INVALID` 原因 |
+| 3.6.5 | 无链、仅预置对端公钥 | 签名正确则通过；未预置必须 `LOCKED` |
+| 3.6.6 | 云端独立验真 | 云端用同一根验证 attestation（device_id/key_id/fw_hash/security_state）通过 |
+| 3.6.7 | 设置可信时间后重放过期链 | 按 `not_before/not_after` 拒绝 |
+
+> 真机必须调用 `sec_set_trusted_time()` 注入可信时间，否则有效期强制不生效（软件默认放行）。
 
 ---
 
@@ -145,17 +179,37 @@ cmake --build build-arm
 | 7.1 | 手机→BLE→认证→UWB→解锁 | 状态机 `STANDBY→BLE_CONNECTED→AUTH_PROCESS→UWB_RANGING→UNLOCKED` |
 | 7.2 | 离开→闭锁 | 距离超阈值后 `LOCKED`，无误闭锁 |
 | 7.3 | 断电/复位 | 上电后安全状态为 `LOCKED` |
-| 7.4 | 全量自检 | 7/7 PASS，0 SKIP |
+| 7.4 | 全量自检 | 8/8 PASS，0 SKIP（未启用 `SECURE_BOOT` 时为 7/7） |
 
 ---
 
-## 8. 证据与门禁
+## 8. 安全启动真机验证（P0-04-T6）
+
+前提：软件链路已通过（`test_secure_boot` 13/13）；固件以 `-DSECURE_BOOT=ON` 构建；清单由 `secboot_tool sign` 生成，受信公钥由产线写入。
+
+| # | 步骤 | 通过判据 |
+|---|---|---|
+| 8.1 | 烧录合法镜像 + 清单 + 受信公钥，复位 | 正常启动，串口输出 secure boot OK |
+| 8.2 | 篡改镜像 1 字节后复位 | 拒绝启动，`BAD_HASH`，进入安全停机 |
+| 8.3 | 篡改签名或替换错误公钥 | 拒绝启动，`BAD_SIGNATURE` / `KEY_MISMATCH` |
+| 8.4 | 烧录低于当前 anti_rollback 的旧镜像 | 拒绝启动，`ROLLBACK` |
+| 8.5 | 首次写入 OTP/eFuse 计数器并回读 | 与清单值一致；写入后不可回退、不可改写 |
+| 8.6 | 生命周期切到 PROD/RMA 后连接调试器 | SWD/JTAG 拒绝访问；仅 DEV 可调试 |
+| 8.7 | 自检 08 secure-boot | PASS |
+| 8.8 | 断电/复位重复 8.1–8.4 | 结果一致，不存在绕过路径 |
+
+> 证据：串口原始日志、示波器复位时序、OTP 回读值、调试器拒绝截图、镜像与清单 SHA-256。
+> **红线**：量产件必须关闭调试口并固化 OTP；任一项失败阻断 G1/G5。
+
+---
+
+## 9. 证据与门禁
 
 - 每步记录：日期时间、EVB 序列号、固件提交哈希、仪器截图/原始数据文件、结果。
 - 归档到证据库并计算 SHA-256，登记到证据索引。
-- G1 判定：§2–§7 全部通过且无开放 P0 问题；质量、硬件、架构三方签字。
+- G1 判定：§2–§8 全部通过且无开放 P0 问题；质量、硬件、架构三方签字。
 
-## 9. 失败处理原则
+## 10. 失败处理原则
 
 1. 先复现，再改代码；禁止用"跳过用例"方式关闭问题。
 2. 电气/时序问题优先用示波器/逻辑分析仪定位，不在未取证前修改驱动常量。
