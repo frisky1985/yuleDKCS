@@ -4,8 +4,8 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.5（追加 PKCS#11 派生后端与 CCC 认证信任锚加固） |
-| 状态 | 执行中 |
+| 版本 | v1.6（软件侧 P0 完成盘点 + 剩余外部条件） |
+| 状态 | 执行中（软件侧 P0 已完成；硬件真机、第三方审计与认证待外部条件） |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
 | 工期基线 | 2026-11-16 启动；基准 57 周，SOP 基线 2027-12-19 |
@@ -14,7 +14,7 @@
 
 ## 0. 执行进展摘要（2026-11-09 更新）
 
-> 本轮迭代完成全部**软件可验证 P0** 任务的软件回退/闭环实现，并通过 C 单元测试验证；其中验签/证书链/attestation 已由占位实现升级为真实密码链路（显式对端公钥 + 最小 X.509 解析 + P-256 验签 + 证书链锚定）。硬件域（G1 Bring-up、G4 认证、G5 试产）不在本沙箱可执行范围，保持待办。
+> 本轮迭代完成全部**软件可验证 P0** 任务的软件回退/闭环实现，并通过 C 单元测试验证：验签/证书链/attestation 已由占位实现升级为真实密码链路（显式对端公钥 + 最小 X.509 解析 + P-256 验签 + 设备预置信任根锚定）；产线密钥派生工具新增可插拔 PKCS#11 后端（MK 不出 HSM）；CCC 认证路径不再信任对端自带 root。硬件域（G1 Bring-up、G4 认证、G5 试产）与第三方审计/厂商适配不在本沙箱可执行范围，保持待办，明细见 §0.2。
 
 ### 已完成（软件可验证部分）
 
@@ -24,7 +24,7 @@
 | **P0-01-T1~T3** 固件可构建 | 重写 firmware CMake（双模式 host-sim / 真实 target）；创建 host HAL 桩；修复 main.c 未定义符号；补全 ICCE GATT 常量 | `cmake --build /tmp/fwbuild` 生成 `yuleDKCS_fw.elf`，无未定义符号 |
 | **P0-02-T1** BSW 外部依赖 | 去除 `$HOME` 硬编码路径；`YULEASR_ROOT`/`YULEDKCS_ROOT` 可配置；缺失 yuleASR 时受控降级（仅构建 mcal_stubs/rtd_adapter/memif/test） | `cmake -S embedded/bsw_integration -B build` 配置成功，`test_rtd_adapter` 运行通过 |
 | **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2/P-256 完整路径，USE_SE050 切换硬件）；验签与证书链已升级为真实链路，见下条 | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
-| **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁 | `test_ccc_auth`：11/11 通过（成功→UNLOCKED，签名/证明篡改→LOCKED） |
+| **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→签名→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁；信任锚只接受设备预置根 | `test_ccc_dk_core`：31/31 通过（无链无公钥→LOCKED、直连公钥→UNLOCKED、真实证书链→UNLOCKED、篡改链→LOCKED；旧 `test_ccc_auth.c` 已废弃未构建） |
 | **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
 | **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证/R-MAC 篡改/密文篡改）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：53/53 通过（AES 加解密/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建、加密签名 APDU、C-MAC 链式、R-MAC 完整性） |
 | **P0-04-T2（签名 APDU）** | 新增 `se050_apdu_sign()`：INS 0x62 签名命令经 SCP03 发送（key id 4 + SHA-256 32），校验 64 字节 r‖s；`sec_sign` 的 USE_SE050 路径改走该接口并移除静默软件降级；`se050_scp03_apdu` 增加 R-MAC 校验与剥离（失败即关闭通道） | `test_vse050_scp03` 签名段 13/13；未知 key→6A88、无通道→拒绝、R-MAC 篡改→关闭通道；固件 USE_SE050 构建通过 |
@@ -37,9 +37,18 @@
 | **CCC 认证信任锚加固** P0-04-T3/T4 | 新增 `sec_set_peer_trust_root()`/`sec_clear_peer_trust_root()`/`sec_peer_public_key_provisioned()`；`sec_verify_cert_chain()` 仅以设备预置根锚定，BLE 对端自带 `root_pub_key` 一律忽略（保留 ABI）；无链时要求已预置对端公钥，否则 fail-closed 锁定 | `test_security_chain`：15/15（含未预置锚、预置错误锚、对端 root 被忽略）；`test_ccc_dk_core`：31/31（无链无公钥→LOCKED、直连公钥→UNLOCKED、真实链+错误 root 参数→UNLOCKED、篡改链→LOCKED） |
 | **G1 Bring-up（软件侧）** | 新增 7 项 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB）；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确；`docs/g1-bringup-runbook.md` |
 
-### 待办（依赖硬件/认证）
+### 0.2 剩余待外部条件（软件侧已无 P0 阻塞项）
 
-P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/车辆接口/一致性）、P0-05-T1/T3~T8、G3/G4/G5 全部。P0-05-T2 软件侧已完成，真机验证按 G1-BR-2026-001 §3 执行。
+| 类别 | 待完成事项 | 外部依赖 / 前置条件 | 验收判据 |
+|---|---|---|---|
+| 硬件真机 | P0-04-T1、P0-04-T5 真机验证；P0-05-T1/T2/T3~T8；G1 Bring-up | SE050、NCJ29D6、ST25R501 样件；G1 台架与车辆接口 | 真机 SCP03 握手与密钥隔离取证；UWB/NFC/SE 实测记录（仿真不能替代侧信道与隔离证据） |
+| 产线密钥体系 | 厂商 PKCS#11 适配器落地、产线工位集成、密钥注入与吊销演练 | HSM 厂商 PKCS#11 模块与设备；密钥管理服务；产线工位 | 工位端到端派生/注入通过；密钥指纹入库；吊销与轮换演练通过 |
+| 安全启动 | P0-04-T6：启动链签名、调试口权限、回滚保护 | 芯片 ROM/安全启动能力与签名密钥；调试口策略 | 篡改固件无法启动；调试口受控；回滚保护验证通过 |
+| 第三方安全 | P0-04-T8：密码审计与渗透测试；P0-04-T7 独立密码测试报告归档 | 第三方实验室排期与样机 | 审计/渗透报告无未修复高危；密码测试报告归档 |
+| 车辆与 HIL | P0-03-T3~T6；G3 全量 HIL 与三协议一致性；手机真机矩阵 | 车辆台架、UWB 真机、Android/iOS 主流机型与 Wallet 环境 | 37 项 HIL、CCC/ICCE/ICCOA 一致性用例、手机兼容矩阵通过 |
+| 认证与 OEM | G4：ICCE/CCC/ICCOA 认证、Apple/Google Wallet 接入；G5 试产验证 | 认证机构席位、TSP/Wallet 合作名额、EMC/射频实验室、OEM 审核 | 证书在有效期内且覆盖量产型号；Wallet 上线许可；试产与 OTA 回滚证据 |
+
+> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成，真机验证按 G1-BR-2026-001 §3 执行；其余软件可验证 P0 项均已有实现与单测证据，不再列为阻塞。
 
 ---
 
@@ -111,7 +120,7 @@ P0-04-T1/T5~T8（SE050 真机/密钥层级/审计）、P0-03-T3~T6（UWB 真机/
 | P0-01-T1 | 修复 firmware/CMakeLists.txt 目标顺序（target_include_directories 移到 add_executable 之后） | 嵌入式组 | G0-T1 | 可配置的 CMake | `cmake -S embedded/firmware -B build` 配置成功。**✅ 已完成** |
 | P0-01-T2 | 统一链接库名：target_link_libraries 使用 ccc_dk/icce_dk/iccoa_dk | 嵌入式组 | P0-01-T1 | 可链接固件 | 链接阶段无未定义符号。**✅ 已完成** |
 | P0-01-T3 | 补齐板级初始化函数（kw47a_board_init / clock / storage / nfc_poll / ble_poll）或切换到 S32K312 基线 | 嵌入式组 | P0-01-T2 | 板级支持包 | 固件启动到主循环，无未定义引用。**✅ 已完成（host HAL 桩 + 真实 target 路径）** |
-| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并。**✅ 已完成：`.github/workflows/ci.yml` 新增 L2 固件门禁（host-sim 配置+链接完整固件）并将嵌入式单测扩展为 `test_all`+`test_vse050`+`test_provision` 全量套件；本地等价命令验证通过（224+91+16 项，0 失败）** |
+| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并。**✅ 已完成：`.github/workflows/ci.yml` 新增 L2 固件门禁（host-sim 配置+链接完整固件）并将嵌入式单测扩展为 `test_all`+`test_vse050`+`test_provision` 全量套件；本地等价命令验证通过（234+91+20 项，0 失败）** |
 | P0-02-T1 | 移除 bsw_integration 中对 $HOME 私有路径的硬编码，改用子模块/制品 | 嵌入式组 | G0-T2 | 可复现 BSW 构建 | CI 完成 BSW 全量链接。**✅ 已完成（可配置路径 + 受控降级）** |
 
 ### 4.2 SE050 安全闭环
