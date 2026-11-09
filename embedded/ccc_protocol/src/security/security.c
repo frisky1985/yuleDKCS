@@ -67,6 +67,14 @@ static uint16_t g_peer_pub_len;
 static uint8_t  g_peer_key_type;
 static bool     g_peer_pub_valid;
 
+/* Device-provisioned trust anchor for peer certificate chains.
+ * Never populated from peer-supplied data: only sec_set_peer_trust_root()
+ * (factory provisioning / device key store) may set it. */
+static uint8_t  g_peer_trust_root[64];
+static uint16_t g_peer_trust_root_len;
+static uint8_t  g_peer_trust_root_type;
+static bool     g_peer_trust_root_set;
+
 static uint8_t  g_dev_id[16];
 static uint8_t  g_dev_key_id[16];
 static bool     g_identity_set;
@@ -890,6 +898,44 @@ void sec_clear_peer_public_key(void)
     g_peer_pub_valid = false;
 }
 
+int sec_peer_public_key_provisioned(void)
+{
+    return g_peer_pub_valid ? 1 : 0;
+}
+
+/**
+ * Provision the device-side trust anchor used to verify peer certificate
+ * chains. This is the only source of chain trust: peer-supplied roots carried
+ * in BLE frames are never used.
+ */
+ccc_status_t sec_set_peer_trust_root(uint8_t key_type, const uint8_t *pub, uint16_t len)
+{
+    if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
+
+    if (key_type == SEC_KEY_TYPE_P256) {
+        /* Reject points that are not on the P-256 curve. */
+        if (crypto_p256_pubkey_valid(pub) != CRYPTO_SUCCESS) {
+            return CCC_ERR_INVALID_PARAM;
+        }
+    } else if (key_type != SEC_KEY_TYPE_SM2) {
+        return CCC_ERR_INVALID_PARAM;
+    }
+
+    (void)memcpy(g_peer_trust_root, pub, 64);
+    g_peer_trust_root_len = 64;
+    g_peer_trust_root_type = key_type;
+    g_peer_trust_root_set = true;
+    return CCC_OK;
+}
+
+void sec_clear_peer_trust_root(void)
+{
+    sec_secure_zero(g_peer_trust_root, sizeof(g_peer_trust_root));
+    g_peer_trust_root_len = 0;
+    g_peer_trust_root_type = 0;
+    g_peer_trust_root_set = false;
+}
+
 void sec_set_trusted_time(uint32_t unix_secs)
 {
     g_trusted_time = unix_secs;
@@ -1059,7 +1105,13 @@ verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
  * ========================================================================
  * cert_chain is a concatenation of DER certificates (leaf first). Each
  * certificate must be signed by its issuer; the top-most certificate must be
- * signed by root_pub_key. Validity is enforced when a trusted time is set.
+ * signed by the device-provisioned trust anchor (sec_set_peer_trust_root()).
+ * Validity is enforced when a trusted time is set.
+ *
+ * SECURITY: root_pub_key / root_key_len are retained only for ABI
+ * compatibility. They originate from the BLE peer and are therefore
+ * UNTRUSTED: they are ignored. Anchoring uses the device-provisioned root
+ * exclusively, so a self-signed chain shipped with its own root cannot pass.
  */
 
 verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_len,
@@ -1068,8 +1120,25 @@ verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_
     uint8_t leaf_pub[64];
     verify_result_e r;
 
+    (void)root_pub_key;
+    (void)root_key_len;
+
+    /* No device trust anchor provisioned: fail closed. */
+    if (!g_peer_trust_root_set || g_peer_trust_root_len != 64U) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    /* cert_chain is a P-256 X.509 chain: an SM2 anchor cannot validate it. */
+    if (g_peer_trust_root_type != SEC_KEY_TYPE_P256) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    if (cert_chain == NULL || chain_len < 2U) {
+        return VERIFY_CERT_INVALID;
+    }
+
     r = sec_verify_chain_internal(cert_chain, chain_len,
-                                  root_pub_key, root_key_len, leaf_pub);
+                                  g_peer_trust_root, g_peer_trust_root_len, leaf_pub);
     if (r == VERIFY_OK) {
         /* Subsequent sec_verify() calls authenticate as the leaf. */
         (void)memcpy(g_peer_pub, leaf_pub, sizeof(g_peer_pub));

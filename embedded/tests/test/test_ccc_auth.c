@@ -1,6 +1,10 @@
 /*
  * test_ccc_auth.c — 验证 CCC STATE_AUTH_PROCESS 闭环
  *
+ * ⚠ 已废弃（未纳入 Makefile 构建）：本文件使用伪造证书链，与现行
+ *   “设备预置信任锚 + 真实 X.509 链”的安全语义不符。认证闭环覆盖已迁移到
+ *   test_ccc_dk_core.c（认证接线用例）与 test_security_chain.c（链验证用例）。
+ *
  * 流程: ccc_dk_init → 生成证明/签名 → ccc_dk_set_auth_data →
  *       ccc_dk_run (触发 AUTH_PROCESS) → 验证状态转换
  *

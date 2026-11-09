@@ -59,6 +59,7 @@ static const uint8_t k_fw_hash[32] = {
 static void reset_security(void)
 {
     sec_clear_peer_public_key();
+    sec_clear_peer_trust_root();
     sec_set_trusted_time(0);
     (void)sec_init();
 }
@@ -135,6 +136,8 @@ static void test_chain_ok_and_registers_peer(void)
 
     reset_security();
     sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
 
     /* 未经验证链前，没有对端公钥，验签必须失败 */
     TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
@@ -150,6 +153,71 @@ static void test_chain_ok_and_registers_peer(void)
     sec_clear_peer_public_key();
     TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID,
                       sec_verify(k_auth_msg, K_AUTH_MSG_LEN, k_leaf_auth_sig, 64));
+
+    /* 清理，避免污染后续用例 */
+    sec_clear_peer_trust_root();
+    TEST_ASSERT_FALSE(sec_peer_public_key_provisioned());
+}
+
+/* 没有预置信任锚时，即使链本身完整也必须失败。 */
+static void test_chain_requires_trust_root(void)
+{
+    uint8_t chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len = build_leaf_int_chain(chain, sizeof(chain));
+
+    reset_security();
+    sec_set_trusted_time(T_VALID);
+
+    /* 对端自带的 root 也不得被当作锚 */
+    TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+    TEST_ASSERT_FALSE(sec_peer_public_key_provisioned());
+
+    sec_clear_peer_trust_root();
+}
+
+/* 预置了错误的根公钥时，用正确的链也必须失败。 */
+static void test_chain_rejects_wrong_provisioned_root(void)
+{
+    uint8_t chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len = build_leaf_int_chain(chain, sizeof(chain));
+
+    reset_security();
+    sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256,
+                                              k_wrong_root_pub, 64));
+
+    TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_clear_peer_trust_root();
+}
+
+/* 对端传入的 root 参数必须被忽略：预置正确 root 时仍应成功。 */
+static void test_chain_ignores_peer_supplied_root(void)
+{
+    uint8_t chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len = build_leaf_int_chain(chain, sizeof(chain));
+
+    reset_security();
+    sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
+
+    /* 故意传入错误的 root，结果不受影响 */
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify_cert_chain(chain, chain_len, k_wrong_root_pub, 64));
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify(k_auth_msg, K_AUTH_MSG_LEN, k_leaf_auth_sig, 64));
+
+    /* 传 NULL root 同样不影响锚定 */
+    sec_clear_peer_public_key();
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify_cert_chain(chain, chain_len, NULL, 0));
+
+    sec_clear_peer_public_key();
+    sec_clear_peer_trust_root();
 }
 
 static void test_chain_rejects_wrong_root(void)
@@ -159,8 +227,13 @@ static void test_chain_rejects_wrong_root(void)
 
     reset_security();
     sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256,
+                                              k_wrong_root_pub, 64));
     TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
                       sec_verify_cert_chain(chain, chain_len, k_wrong_root_pub, 64));
+
+    sec_clear_peer_trust_root();
 }
 
 static void test_chain_rejects_tampered_cert(void)
@@ -170,9 +243,13 @@ static void test_chain_rejects_tampered_cert(void)
 
     reset_security();
     sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
     chain[sizeof(k_leaf_der) - 1U] ^= 0x01U; /* corrupt leaf signature */
     TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
                       sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_clear_peer_trust_root();
 }
 
 static void test_chain_enforces_validity(void)
@@ -181,6 +258,8 @@ static void test_chain_enforces_validity(void)
     uint16_t chain_len = build_leaf_int_chain(chain, sizeof(chain));
 
     reset_security();
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
 
     sec_set_trusted_time(T_FUTURE);
     TEST_ASSERT_EQUAL(VERIFY_KEY_EXPIRED,
@@ -193,6 +272,8 @@ static void test_chain_enforces_validity(void)
     sec_set_trusted_time(T_VALID);
     TEST_ASSERT_EQUAL(VERIFY_OK,
                       sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_clear_peer_trust_root();
 }
 
 static void test_chain_rejects_broken_issuer_link(void)
@@ -202,6 +283,8 @@ static void test_chain_rejects_broken_issuer_link(void)
 
     reset_security();
     sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
 
     (void)memcpy(chain, k_leaf_der, sizeof(k_leaf_der));
     (void)memcpy(chain + sizeof(k_leaf_der), k_device_der, sizeof(k_device_der));
@@ -210,6 +293,8 @@ static void test_chain_rejects_broken_issuer_link(void)
     /* leaf.issuer(Intermediate) != device.subject(Device) */
     TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
                       sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_clear_peer_trust_root();
 }
 
 /* ── 4. 远程证明 ──────────────────────────────────────────── */
@@ -307,12 +392,27 @@ static void test_provisioning_arg_validation(void)
 {
     uint8_t buf[600] = {0};
 
+    reset_security();
+
     TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
                       sec_set_peer_public_key(SEC_KEY_TYPE_P256, NULL, 64));
     TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
                       sec_set_peer_public_key(SEC_KEY_TYPE_P256, buf, 63));
     TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
                       sec_set_peer_public_key(0, buf, 64));
+
+    /* 信任锚: NULL / 长度错误 / 非法类型 / P-256 非曲线上点均拒绝 */
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, NULL, 64));
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, buf, 63));
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
+                      sec_set_peer_trust_root(0, buf, 64));
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, buf, 64));
+    /* SM2 只做长度校验, 全零点接受 */
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_SM2, buf, 64));
 
     TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, sec_set_attestation_cert(NULL, 10));
     TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, sec_set_attestation_cert(buf, 0));
@@ -327,6 +427,10 @@ static void test_provisioning_arg_validation(void)
                       sec_verify_cert_chain(NULL, 10, k_root_pub, 64));
     TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
                       sec_verify_cert_chain(k_leaf_der, sizeof(k_leaf_der), NULL, 64));
+
+    sec_clear_peer_trust_root();
+    TEST_ASSERT_EQUAL(VERIFY_CERT_INVALID,
+                      sec_verify_cert_chain(NULL, 10, k_root_pub, 64));
 }
 
 int run_security_chain_tests(void)
@@ -338,6 +442,9 @@ int run_security_chain_tests(void)
     RUN_TEST(test_p256_rejects_invalid_inputs);
     RUN_TEST(test_x509_parse_leaf);
     RUN_TEST(test_chain_ok_and_registers_peer);
+    RUN_TEST(test_chain_requires_trust_root);
+    RUN_TEST(test_chain_rejects_wrong_provisioned_root);
+    RUN_TEST(test_chain_ignores_peer_supplied_root);
     RUN_TEST(test_chain_rejects_wrong_root);
     RUN_TEST(test_chain_rejects_tampered_cert);
     RUN_TEST(test_chain_enforces_validity);

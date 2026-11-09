@@ -320,6 +320,214 @@ static void test_deinit_zeroizes_context(void)
 }
 
 /* ========================================================================
+ * PKCS#11 适配层桩（fake aes_cmac）
+ * ======================================================================== */
+
+#define FAKE_MAX_CALLS 3U
+
+static int     s_fake_session;
+static int     s_fake_calls;
+static int     s_fake_fail_at = -1; /* 从 0 开始的调用序号；-1 表示不失败 */
+static char    s_fake_label[FAKE_MAX_CALLS][8];
+static uint8_t s_fake_data[FAKE_MAX_CALLS][24];
+static size_t  s_fake_len[FAKE_MAX_CALLS];
+
+static void fake_reset(void)
+{
+    s_fake_calls = 0;
+    s_fake_fail_at = -1;
+    (void)memset(s_fake_label, 0, sizeof(s_fake_label));
+    (void)memset(s_fake_data, 0, sizeof(s_fake_data));
+    (void)memset(s_fake_len, 0, sizeof(s_fake_len));
+}
+
+/* 把 label 字符与 data 字节折叠成确定性 16 字节输出 */
+static void fake_expected(const char *key_label,
+                          const uint8_t *data, size_t len,
+                          uint8_t out[HSM_PROV_KEY_LEN])
+{
+    uint8_t acc = 0xA5U;
+    size_t  i;
+
+    while (*key_label != '\0') {
+        acc = (uint8_t)((uint8_t)(acc * 31U) + (uint8_t)*key_label);
+        key_label++;
+    }
+    for (i = 0; i < len; i++) {
+        acc = (uint8_t)((uint8_t)(acc * 31U) + data[i]);
+    }
+    for (i = 0; i < HSM_PROV_KEY_LEN; i++) {
+        out[i] = (uint8_t)(acc ^ (uint8_t)(i * 0x11U));
+    }
+}
+
+static int fake_aes_cmac(void *session, const char *key_label,
+                         const uint8_t *data, size_t len,
+                         uint8_t out[HSM_PROV_KEY_LEN])
+{
+    int idx = s_fake_calls++;
+
+    if ((session != (void *)&s_fake_session) || (key_label == NULL) ||
+        (data == NULL) || (out == NULL) || (len > sizeof(s_fake_data[0]))) {
+        return -1;
+    }
+    if ((s_fake_fail_at >= 0) && (idx >= s_fake_fail_at)) {
+        return -1;
+    }
+    if ((size_t)idx < FAKE_MAX_CALLS) {
+        (void)strncpy(s_fake_label[idx], key_label, sizeof(s_fake_label[idx]) - 1U);
+        (void)memcpy(s_fake_data[idx], data, len);
+        s_fake_len[idx] = len;
+    }
+    fake_expected(key_label, data, len, out);
+    return 0;
+}
+
+static hsm_prov_config_t make_pkcs11_config(const hsm_prov_pkcs11_ops_t *ops)
+{
+    hsm_prov_config_t cfg;
+
+    (void)memset(&cfg, 0, sizeof(cfg));
+    cfg.backend = HSM_PROV_BACKEND_PKCS11;
+    cfg.pkcs11 = ops;
+    return cfg;
+}
+
+/* ========================================================================
+ * PKCS#11 后端
+ * ======================================================================== */
+
+static void test_init_pkcs11_requires_ops(void)
+{
+    hsm_prov_ctx_t ctx;
+    hsm_prov_pkcs11_ops_t ops;
+    hsm_prov_config_t cfg;
+
+    cfg = make_pkcs11_config(NULL);
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_UNAVAILABLE, hsm_provision_init(&ctx, &cfg));
+    TEST_ASSERT_EQUAL_UINT8(0U, ctx.ready);
+
+    ops.session = &s_fake_session;
+    ops.aes_cmac = NULL;
+    cfg = make_pkcs11_config(&ops);
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_UNAVAILABLE, hsm_provision_init(&ctx, &cfg));
+    TEST_ASSERT_EQUAL_UINT8(0U, ctx.ready);
+
+    ops.session = NULL;
+    ops.aes_cmac = fake_aes_cmac;
+    cfg = make_pkcs11_config(&ops);
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_UNAVAILABLE, hsm_provision_init(&ctx, &cfg));
+    TEST_ASSERT_EQUAL_UINT8(0U, ctx.ready);
+}
+
+static void test_pkcs11_derive_uses_injected_cmac(void)
+{
+    static const uint8_t ids[3] = { 0x01U, 0x02U, 0x03U };
+    static const char *const labels[3] = { "K-ENC", "K-MAC", "K-RMAC" };
+    hsm_prov_ctx_t ctx;
+    hsm_prov_key_set_t set;
+    hsm_prov_pkcs11_ops_t ops;
+    hsm_prov_config_t cfg;
+    const uint8_t *dst[3];
+    uint8_t input[1U + 1U + HSM_PROV_UID_LEN + 1U];
+    uint8_t expect[HSM_PROV_KEY_LEN];
+    size_t i;
+
+    fake_reset();
+    ops.session = &s_fake_session;
+    ops.aes_cmac = fake_aes_cmac;
+    cfg = make_pkcs11_config(&ops);
+    cfg.mk = NULL;      /* PKCS#11 模式不依赖软件 MK */
+    cfg.mk_len = 0U;
+    cfg.allow_software = 0U;
+
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_OK, hsm_provision_init(&ctx, &cfg));
+    TEST_ASSERT_EQUAL_UINT8(1U, ctx.ready);
+    TEST_ASSERT_EQUAL_UINT8(0U, ctx.mk_len);
+
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_OK,
+                          hsm_provision_derive_transport(&ctx, V_UID, 0x01U, &set));
+    TEST_ASSERT_EQUAL_INT(3, s_fake_calls);
+    TEST_ASSERT_EQUAL_UINT8(0x01U, set.key_version);
+
+    /* 期望的派生输入：0x01 || key_id || UID || version */
+    input[0] = 0x01U;
+    (void)memcpy(&input[2], V_UID, HSM_PROV_UID_LEN);
+    input[2U + HSM_PROV_UID_LEN] = 0x01U;
+
+    dst[0] = set.k_enc;
+    dst[1] = set.k_mac;
+    dst[2] = set.k_rmac;
+
+    for (i = 0; i < 3U; i++) {
+        input[1] = ids[i];
+        TEST_ASSERT_EQUAL_STRING(labels[i], s_fake_label[i]);
+        TEST_ASSERT_EQUAL_UINT((unsigned)sizeof(input), (unsigned)s_fake_len[i]);
+        TEST_ASSERT_EQUAL_MEMORY(input, s_fake_data[i], sizeof(input));
+        fake_expected(labels[i], input, sizeof(input), expect);
+        TEST_ASSERT_EQUAL_MEMORY(expect, dst[i], HSM_PROV_KEY_LEN);
+    }
+
+    hsm_provision_key_set_clear(&set);
+    hsm_provision_deinit(&ctx);
+    assert_all_zero(&ctx, sizeof(ctx)); /* 含 ops 指针 */
+}
+
+static void test_pkcs11_derive_crypto_failure_zeroes_output(void)
+{
+    hsm_prov_ctx_t ctx;
+    hsm_prov_key_set_t set;
+    hsm_prov_pkcs11_ops_t ops;
+    hsm_prov_config_t cfg;
+
+    fake_reset();
+    s_fake_fail_at = 1; /* 第二次调用失败 */
+    ops.session = &s_fake_session;
+    ops.aes_cmac = fake_aes_cmac;
+    cfg = make_pkcs11_config(&ops);
+
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_OK, hsm_provision_init(&ctx, &cfg));
+    (void)memset(&set, 0xAA, sizeof(set));
+
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_CRYPTO,
+                          hsm_provision_derive_transport(&ctx, V_UID, 0x01U, &set));
+    TEST_ASSERT_EQUAL_INT(2, s_fake_calls);
+    assert_all_zero(&set, sizeof(set));
+
+    hsm_provision_deinit(&ctx);
+}
+
+static void test_pkcs11_derive_rejects_bad_params(void)
+{
+    hsm_prov_ctx_t ctx;
+    hsm_prov_key_set_t set;
+    hsm_prov_pkcs11_ops_t ops;
+    hsm_prov_config_t cfg;
+    uint8_t zero_uid[HSM_PROV_UID_LEN];
+
+    fake_reset();
+    ops.session = &s_fake_session;
+    ops.aes_cmac = fake_aes_cmac;
+    cfg = make_pkcs11_config(&ops);
+
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_OK, hsm_provision_init(&ctx, &cfg));
+
+    (void)memset(zero_uid, 0, sizeof(zero_uid));
+    (void)memset(&set, 0xAA, sizeof(set));
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_PARAM,
+                          hsm_provision_derive_transport(&ctx, zero_uid, 0x01U, &set));
+    assert_all_zero(&set, sizeof(set));
+
+    (void)memset(&set, 0xAA, sizeof(set));
+    TEST_ASSERT_EQUAL_INT(HSM_PROV_ERR_PARAM,
+                          hsm_provision_derive_transport(&ctx, V_UID, 0x00U, &set));
+    assert_all_zero(&set, sizeof(set));
+
+    TEST_ASSERT_EQUAL_INT(0, s_fake_calls);
+    hsm_provision_deinit(&ctx);
+}
+
+/* ========================================================================
  * 运行入口
  * ======================================================================== */
 
@@ -342,6 +550,10 @@ int run_se050_provision_tests(void)
     RUN_TEST(test_fingerprint_rejects_null);
     RUN_TEST(test_key_set_clear);
     RUN_TEST(test_deinit_zeroizes_context);
+    RUN_TEST(test_init_pkcs11_requires_ops);
+    RUN_TEST(test_pkcs11_derive_uses_injected_cmac);
+    RUN_TEST(test_pkcs11_derive_crypto_failure_zeroes_output);
+    RUN_TEST(test_pkcs11_derive_rejects_bad_params);
     UNITY_END();
 }
 

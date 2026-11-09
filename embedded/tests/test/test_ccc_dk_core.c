@@ -14,6 +14,9 @@
 
 #include "unity.h"
 #include "ccc_digital_key.h"
+#include "crypto_engine.h"
+#include "p256.h"
+#include "cert_fixtures.h"
 
 /* Forward declarations for internal functions not in public header */
 /* NFC LPCD internal types */
@@ -524,6 +527,119 @@ void test_security_sign_verify(void)
 }
 
 /* ========================================================================
+ *  CCC_AUTH — 认证闭环接线 (信任锚 / 直连公钥 / 证书链)
+ * ========================================================================
+ * sec 模块是全局状态: 每个用例前后清理 peer 公钥与信任锚, 避免相互影响.
+ */
+
+static void reset_auth_security(void)
+{
+    sec_clear_peer_public_key();
+    sec_clear_peer_trust_root();
+}
+
+/* 无证书链且未预置对端公钥: 认证必须安全失败并落地 STATE_LOCKED. */
+void test_ccc_auth_no_chain_without_peer_key_locks(void)
+{
+    uint8_t data[] = "ccc-auth-no-chain";
+    uint8_t sig[64] = {0};
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_init());
+    TEST_ASSERT_FALSE(sec_peer_public_key_provisioned());
+
+    ccc_dk_set_auth_data(NULL, 0, NULL, 0, NULL,
+                         data, sizeof(data), sig, sizeof(sig));
+    TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
+
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
+    TEST_ASSERT_EQUAL(STATE_LOCKED, ccc_dk_get_state());
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());
+}
+
+/* 无证书链但已预置直连对端公钥 (SM2): 验签通过, UWB 不可用时回退解锁. */
+void test_ccc_auth_direct_peer_key_unlocks(void)
+{
+    uint8_t data[] = "ccc-auth-direct";
+    uint8_t sig[64];
+    uint32_t sig_len = sizeof(sig);
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_init());
+
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_public_key(SEC_KEY_TYPE_SM2,
+                                              k_dev_pub_sm2, 64));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_sign(data, sizeof(data), sig, &sig_len));
+    TEST_ASSERT_EQUAL(64, sig_len);
+
+    ccc_dk_set_auth_data(NULL, 0, NULL, 0, NULL,
+                         data, sizeof(data), sig, sig_len);
+    TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
+
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
+    /* UWB 会话 1 不存在 -> 回退到 UNLOCKED (host 模式) */
+    TEST_ASSERT_EQUAL(STATE_UNLOCKED, ccc_dk_get_state());
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());
+}
+
+/* 证书链路径: 预置设备信任锚, 对端传入的 root 参数被忽略.
+ * 完整链 + 叶子私钥挑战签名 -> 认证通过; 篡改链 -> LOCKED. */
+void test_ccc_auth_cert_chain_path(void)
+{
+    uint8_t chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len;
+    uint8_t data[] = "ccc-auth-chain";
+    uint8_t hash[32];
+    uint8_t sig[64];
+
+    (void)memcpy(chain, k_leaf_der, sizeof(k_leaf_der));
+    (void)memcpy(chain + sizeof(k_leaf_der), k_int_der, sizeof(k_int_der));
+    chain_len = (uint16_t)(sizeof(k_leaf_der) + sizeof(k_int_der));
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_init());
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
+
+    /* 签名在 ccc_dk_init 之后进行: sec_init() 完成 TRNG/引擎初始化 */
+    TEST_ASSERT_EQUAL(CRYPTO_SUCCESS,
+                      crypto_sha256(data, sizeof(data), hash));
+    TEST_ASSERT_EQUAL(CRYPTO_SUCCESS,
+                      crypto_p256_sign(k_leaf_priv, hash, sig));
+
+    /* 故意传入错误的 root: 必须被忽略, 锚定仍用设备预置的 k_root_pub */
+    ccc_dk_set_auth_data(chain, chain_len, k_wrong_root_pub, 64, NULL,
+                         data, sizeof(data), sig, sizeof(sig));
+    TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
+
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
+    TEST_ASSERT_EQUAL(STATE_UNLOCKED, ccc_dk_get_state());
+
+    /* 复位后提交被篡改的链: 必须锁定 */
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_init());
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
+
+    chain[chain_len - 1U] ^= 0x01U;
+    ccc_dk_set_auth_data(chain, chain_len, k_wrong_root_pub, 64, NULL,
+                         data, sizeof(data), sig, sizeof(sig));
+    TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
+
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
+    TEST_ASSERT_EQUAL(STATE_LOCKED, ccc_dk_get_state());
+
+    reset_auth_security();
+    TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());
+}
+
+/* ========================================================================
  *  CCC_NFC_010 — NFC LPCD 低功耗检测模式
  * ======================================================================== */
 void test_nfc_lpcd_mode(void)
@@ -891,6 +1007,9 @@ int run_ccc_core_tests(void)
     RUN_TEST(test_uwb_threshold_and_callback);
     RUN_TEST(test_ccc_full_lifecycle);
     RUN_TEST(test_security_sign_verify);
+    RUN_TEST(test_ccc_auth_no_chain_without_peer_key_locks);
+    RUN_TEST(test_ccc_auth_direct_peer_key_unlocks);
+    RUN_TEST(test_ccc_auth_cert_chain_path);
     RUN_TEST(test_nfc_lpcd_mode);
     RUN_TEST(test_nfc_send_recv);
     RUN_TEST(test_nfc_oob_exchange);

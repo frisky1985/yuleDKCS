@@ -72,12 +72,26 @@ typedef struct {
     uint8_t key_version;              /**< 与派生输入一致的版本号 */
 } hsm_prov_key_set_t;
 
+/**
+ * @brief PKCS#11 后端适配层（由调用方注入，避免依赖 pkcs11.h / dlopen）。
+ *
+ * 厂商适配器内部可用 C_SignInit(CKM_AES_CMAC) + C_Sign 实现 @ref aes_cmac，
+ * 保证 MK 永不出 HSM。本模块只持有指针，不负责会话生命周期。
+ */
+typedef struct {
+    void *session;   /* 调用方持有的 HSM 会话，不透明 */
+    int (*aes_cmac)(void *session, const char *key_label,
+                    const uint8_t *data, size_t len, uint8_t out[16]);
+    /* 返回 0 成功，非 0 失败 */
+} hsm_prov_pkcs11_ops_t;
+
 /** 初始化配置 */
 typedef struct {
     hsm_prov_backend_e backend;
     const uint8_t     *mk;             /**< 仅 SOFTWARE 后端使用 */
     size_t             mk_len;         /**< 16 / 24 / 32；生产推荐 32 */
     uint8_t            allow_software; /**< SOFTWARE 后端必须置 1 */
+    const hsm_prov_pkcs11_ops_t *pkcs11; /**< 仅 PKCS11 后端使用；不得为 NULL */
 } hsm_prov_config_t;
 
 /**
@@ -91,6 +105,7 @@ typedef struct {
     uint8_t            mk[HSM_PROV_MK_MAX_LEN];
     uint8_t            mk_len;
     uintptr_t          session; /**< 预留给 PKCS#11 会话句柄 */
+    const hsm_prov_pkcs11_ops_t *pkcs11; /**< PKCS11 后端 vtable（不拥有会话） */
     uint8_t            ready;
 } hsm_prov_ctx_t;
 
@@ -98,7 +113,8 @@ typedef struct {
  * @brief 初始化上下文。
  *
  * - SOFTWARE：要求 @p cfg->allow_software == 1，mk_len ∈ {16,24,32}。
- * - PKCS11：当前返回 HSM_PROV_ERR_UNAVAILABLE（接口预留）。
+ * - PKCS11：要求 @p cfg->pkcs11 及其 aes_cmac/session 均非 NULL；
+ *   不要求 mk，MK 由 HSM 内部持有。
  *
  * @return HSM_PROV_OK 或错误码。失败时上下文保持未初始化。
  */

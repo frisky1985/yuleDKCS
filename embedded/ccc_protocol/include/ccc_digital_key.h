@@ -322,6 +322,19 @@ verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_
 ccc_status_t sec_set_peer_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len);
 void         sec_clear_peer_public_key(void);
 
+/* Device-provisioned certificate-chain trust anchor.
+ *
+ * The chain trust anchor MUST come from device provisioning (e.g. factory
+ * key store), never from the BLE peer. sec_verify_cert_chain() anchors only
+ * on this key; the root_pub_key argument it still accepts for ABI
+ * compatibility is treated as untrusted input and ignored. */
+ccc_status_t sec_set_peer_trust_root(uint8_t key_type, const uint8_t *pub, uint16_t len);
+void         sec_clear_peer_trust_root(void);
+
+/** Non-zero when a peer public key is available (set explicitly or registered
+ *  by a successfully verified certificate chain). */
+int          sec_peer_public_key_provisioned(void);
+
 /** Trusted wall-clock time for certificate validity checks (0 = disabled). */
 void         sec_set_trusted_time(uint32_t unix_secs);
 

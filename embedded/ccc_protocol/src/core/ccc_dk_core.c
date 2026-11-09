@@ -103,15 +103,29 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
  * ------------------------------------------------------------------- */
 static ccc_status_t process_authentication(void)
 {
+    verify_result_e vr;
+
     if (!g_auth.pending) return CCC_ERR_BUSY;
 
-    /* Step 1: 验证对端数字钥匙证书链 */
-    verify_result_e vr = sec_verify_cert_chain(g_auth.cert_chain, g_auth.cert_chain_len,
-                                               g_auth.root_pub_key, g_auth.root_key_len);
-    if (vr != VERIFY_OK) {
-        g_auth.pending = false;
-        transition_state(STATE_LOCKED);
-        return CCC_ERR_SECURITY;
+    /* Step 1: 验证对端数字钥匙证书链 (信任锚仅来自设备预置).
+     *
+     * SECURITY: 对端可自带 root_pub_key, 该参数不可信并被忽略;
+     * sec_verify_cert_chain() 只使用 sec_set_peer_trust_root() 预置的锚.
+     * 无证书链时, 必须已有预置的对端公钥 (直连公钥路径), 否则安全失败. */
+    if (g_auth.cert_chain_len == 0U) {
+        if (!sec_peer_public_key_provisioned()) {
+            g_auth.pending = false;
+            transition_state(STATE_LOCKED);
+            return CCC_ERR_SECURITY;
+        }
+    } else {
+        vr = sec_verify_cert_chain(g_auth.cert_chain, g_auth.cert_chain_len,
+                                   g_auth.root_pub_key, g_auth.root_key_len);
+        if (vr != VERIFY_OK) {
+            g_auth.pending = false;
+            transition_state(STATE_LOCKED);
+            return CCC_ERR_SECURITY;
+        }
     }
 
     /* Step 2: 验证设备远程证明 (固件完整性 + 签名) */

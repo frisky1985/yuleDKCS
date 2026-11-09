@@ -5,7 +5,8 @@
  * 自包含实现（AES-128/192/256、AES-CMAC、SHA-256），不依赖 OpenSSL 或
  * 固件密码库，便于产线工具独立部署与交叉验证。
  *
- * 仅 SOFTWARE 后端在此实现；PKCS#11 后端保留接口，待接入真实 HSM。
+ * 仅 SOFTWARE 后端在此实现；PKCS#11 后端通过调用方注入的 ops vtable
+ * （@ref hsm_prov_pkcs11_ops_t）委托给厂商适配层，MK 不出 HSM。
  */
 
 #include "se050_hsm_provision.h"
@@ -466,6 +467,11 @@ static const uint8_t s_hsm_fp_domain[20] = {
     'A','N','S','P','O','R','T','-','V','1'
 };
 
+/* HSM 内密钥标签（与软件后端 key_id 一一对应） */
+static const char *const s_hsm_key_labels[3] = {
+    "K-ENC", "K-MAC", "K-RMAC"
+};
+
 static int hsm_is_zero(const uint8_t *p, size_t len)
 {
     size_t i;
@@ -511,8 +517,15 @@ hsm_prov_status_e hsm_provision_init(hsm_prov_ctx_t *ctx,
     }
 
     if (cfg->backend == HSM_PROV_BACKEND_PKCS11) {
-        /* 生产后端待接入；接口已固定，避免上层反复改动。 */
-        return HSM_PROV_ERR_UNAVAILABLE;
+        /* 厂商适配层由调用方注入；缺少任一必需项即视为后端不可用。 */
+        if ((cfg->pkcs11 == NULL) || (cfg->pkcs11->aes_cmac == NULL) ||
+            (cfg->pkcs11->session == NULL)) {
+            return HSM_PROV_ERR_UNAVAILABLE;
+        }
+        ctx->backend = HSM_PROV_BACKEND_PKCS11;
+        ctx->pkcs11 = cfg->pkcs11;
+        ctx->ready = 1U;
+        return HSM_PROV_OK;
     }
 
     return HSM_PROV_ERR_PARAM;
@@ -565,8 +578,21 @@ hsm_prov_status_e hsm_provision_derive_transport(
     key_ids[2] = HSM_KEY_ID_RMAC;
 
     for (i = 0; i < 3U; i++) {
+        int rc;
+
         input[1] = key_ids[i];
-        if (hsm_cmac(ctx->mk, (size_t)ctx->mk_len, input, sizeof(input), dest[i]) != 0) {
+        if (ctx->backend == HSM_PROV_BACKEND_PKCS11) {
+            if ((ctx->pkcs11 == NULL) || (ctx->pkcs11->aes_cmac == NULL)) {
+                hsm_zeroize(input, sizeof(input));
+                hsm_zeroize(out, sizeof(*out));
+                return HSM_PROV_ERR_CRYPTO;
+            }
+            rc = ctx->pkcs11->aes_cmac(ctx->pkcs11->session, s_hsm_key_labels[i],
+                                       input, sizeof(input), dest[i]);
+        } else {
+            rc = hsm_cmac(ctx->mk, (size_t)ctx->mk_len, input, sizeof(input), dest[i]);
+        }
+        if (rc != 0) {
             hsm_zeroize(input, sizeof(input));
             hsm_zeroize(out, sizeof(*out));
             return HSM_PROV_ERR_CRYPTO;
