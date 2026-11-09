@@ -9,6 +9,13 @@
 #include "bringup_selftest.h"
 #include "hal_interface.h"
 
+#if defined(SECURE_BOOT)
+#include "secure_boot.h"
+#if defined(BUILD_CCC)
+#include "crypto_random.h"
+#endif
+#endif
+
 #include <string.h>
 
 enum { BK_PASS = 0, BK_FAIL = 1, BK_SKIP = 2 };
@@ -128,6 +135,63 @@ static void check_uwb(void)
 #endif
 }
 
+/* 08 — Secure-boot KAT (sign -> verify -> tamper -> reject) */
+#if defined(SECURE_BOOT)
+/* KAT vector mirrors tests/support/cert_fixtures.h k_device_priv/k_device_pub
+ * (P-256, test-only key). */
+static const uint8_t k_sb_kat_priv[32] = {
+    0xAC,0x1C,0xB5,0xD8,0xAE,0xD2,0x55,0x21,0x09,0xF2,0x28,0xB0,
+    0xD0,0x6B,0xA8,0x39,0x60,0xE2,0x5E,0xBE,0x14,0x52,0xB4,0x6B,
+    0xCD,0x0D,0xC9,0xD8,0x8E,0xB5,0x1A,0xD6,
+};
+static const uint8_t k_sb_kat_pub[64] = {
+    0xF0,0x6E,0xC6,0x11,0x20,0xDD,0xC9,0xB0,0xEF,0xF2,0x6E,0x26,
+    0x07,0xEF,0x40,0x45,0x09,0x4D,0x7C,0x73,0xE4,0x90,0xFE,0xC5,
+    0x1D,0x8B,0xDC,0x28,0x18,0x44,0x4D,0x7D,0x29,0x5F,0xEC,0xF7,
+    0x51,0x53,0x58,0xCA,0x86,0xB4,0x2D,0xD0,0xE6,0x0F,0x91,0xFE,
+    0x02,0xC6,0x2D,0xA7,0x95,0x80,0xBA,0x3C,0x6B,0xFB,0x4B,0x15,
+    0x80,0xFD,0x58,0x0B,
+};
+
+static void check_secure_boot(void)
+{
+    static const uint8_t image[] = "YULE-SECURE-BOOT-KAT";
+    static const uint8_t key_id[SB_KEY_ID_SIZE] = {
+        0x10,0x20,0x30,0x40,0x50,0x60,0x70,0x80,
+        0x90,0xA0,0xB0,0xC0,0xD0,0xE0,0xF0,0x01,
+    };
+    uint8_t  manifest[SB_MANIFEST_SIZE];
+    size_t   manifest_len = 0;
+    uint8_t  tampered[sizeof(image)];
+    sb_verify_result_t result;
+    int ok;
+
+#if defined(BUILD_CCC)
+    (void)crypto_random_init();
+#endif
+
+    ok = (sb_manifest_sign(k_sb_kat_priv, SB_KEY_TYPE_P256, 7U, 5U,
+                           image, sizeof(image), key_id,
+                           manifest, sizeof(manifest), &manifest_len) == SB_OK) &&
+         (manifest_len == SB_MANIFEST_SIZE) &&
+         (sb_verify_image(image, sizeof(image),
+                          manifest, manifest_len,
+                          k_sb_kat_pub, SB_KEY_TYPE_P256,
+                          5U, &result) == SB_OK);
+
+    if (ok) {
+        (void)memcpy(tampered, image, sizeof(image));
+        tampered[0] ^= 0x01U;
+        ok = (sb_verify_image(tampered, sizeof(tampered),
+                              manifest, manifest_len,
+                              k_sb_kat_pub, SB_KEY_TYPE_P256,
+                              5U, &result) == SB_ERR_BAD_HASH);
+    }
+
+    report(8, "secure-boot", ok ? BK_PASS : BK_FAIL, NULL);
+}
+#endif /* SECURE_BOOT */
+
 int bringup_selftest_run(bringup_result_t *result)
 {
     memset(&g_res, 0, sizeof(g_res));
@@ -141,6 +205,9 @@ int bringup_selftest_run(bringup_result_t *result)
     check_ble();
     check_nfc();
     check_uwb();
+#if defined(SECURE_BOOT)
+    check_secure_boot();
+#endif
 
     hal_debug_printf("[BRINGUP] RESULT: %u passed, %u failed, %u skipped\n",
                      (unsigned)g_res.passed, (unsigned)g_res.failed,

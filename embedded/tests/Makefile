@@ -17,6 +17,7 @@ CCC_SRC   := $(ROOT)/ccc_protocol/src
 ICCE_SRC  := $(ROOT)/icce_protocol/src
 UNI_SRC   := $(ROOT)/unified_protocol/src
 PROV_SRC  := $(ROOT)/tools/provision/src
+SECBOOT_SRC := $(ROOT)/secure_boot/src
 
 # Source files
 ICCOA_SRCS := $(ICCOA_SRC)/iccoa/iccoa_dk_core.c \
@@ -79,6 +80,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/ccc_protocol/src/security \
             -I$(ROOT)/icce_protocol/src/crypto \
             -I$(ROOT)/icce_protocol/src/decision \
+            -I$(ROOT)/secure_boot/include \
             -I$(VENDOR)/unity
 
 # Real dk_logger.h declares dk_logger_log with va_list but DK_LOG macro
@@ -121,6 +123,9 @@ $(foreach f,$(CCC_SRCS),  $(eval $(call cc_src,$(f))))
 $(foreach f,$(ICCE_SRCS), $(eval $(call cc_src,$(f))))
 
 $(BUILD)/dk_unified.o: $(UNI_SRC_FILE) | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+$(BUILD)/secure_boot.o: $(SECBOOT_SRC)/secure_boot.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 $(BUILD)/unity.o: $(VENDOR)/unity/unity.c | $(BUILD)
@@ -189,13 +194,17 @@ $(BUILD)/test_security_chain.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_security_chain_lib.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURITY_CHAIN_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_secure_boot.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_secure_boot_lib.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURE_BOOT_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_secure_boot test_all
 
 all: test_all
 
@@ -272,6 +281,13 @@ test_chain: $(BUILD)/test_security_chain.o \
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
+test_secure_boot: $(BUILD)/test_secure_boot.o $(BUILD)/secure_boot.o \
+                  $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+                  $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+                  $(BUILD)/crypto_random.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
@@ -280,6 +296,8 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_se050_scp03_lib.o \
           $(BUILD)/test_se050_provision_lib.o $(BUILD)/se050_hsm_provision.o \
           $(BUILD)/test_security_chain_lib.o \
+          $(BUILD)/test_secure_boot_lib.o \
+          $(BUILD)/secure_boot.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
           $(BUILD)/iccoa_dk40.o $(BUILD)/iccoa_ble.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \

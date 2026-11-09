@@ -217,6 +217,14 @@ jobs:
       - name: Build firmware (protocol libs -Werror)
         run: cmake --build "${RUNNER_TEMP}/fwbuild" -j"$(nproc)"
 
+      - name: Build firmware with secure boot gate
+        run: |
+          cmake -S embedded/firmware -B "${RUNNER_TEMP}/fwbuild-sb" \
+                -DFIRMWARE_HOST_SIM=ON -DSECURE_BOOT=ON -DBRINGUP_SELFTEST=ON \
+                -DCMAKE_BUILD_TYPE=Release
+          cmake --build "${RUNNER_TEMP}/fwbuild-sb" -j"$(nproc)"
+          "${RUNNER_TEMP}/fwbuild-sb/src/yuleDKCS_fw.elf"
+
       - name: Verify ELF artifact
         run: |
           ELF="${RUNNER_TEMP}/fwbuild/src/yuleDKCS_fw.elf"

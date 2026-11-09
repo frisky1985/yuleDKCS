@@ -10,10 +10,69 @@
 #include "kw47a_board.h"
 #include "bringup_selftest.h"
 
+#if defined(SECURE_BOOT)
+#include "secure_boot.h"
+#endif
+
 /* Protocol stack entry points */
 extern int ccc_dk_init(void);
 extern int icce_dk_init(void);
 extern int iccoa_dk_init(void);
+
+/* Returned by system_init() when the secure-boot gate fails. */
+#define INIT_ERR_SECURE_BOOT (-2)
+
+#if defined(SECURE_BOOT)
+/*
+ * Secure-boot integration hooks. An assembly/provisioning step provides these
+ * symbols (typically a generated manifest object plus the boot partition and
+ * the trusted public key). They are weak so host builds still link and run.
+ */
+extern const uint8_t  sb_embedded_manifest[]   __attribute__((weak));
+extern const uint32_t sb_embedded_manifest_len __attribute__((weak));
+extern const uint8_t  sb_embedded_image[]      __attribute__((weak));
+extern const uint32_t sb_embedded_image_len    __attribute__((weak));
+extern const uint8_t  sb_embedded_pubkey[64]   __attribute__((weak));
+extern const uint8_t  sb_embedded_pubkey_type  __attribute__((weak));
+
+static int secure_boot_precheck(void)
+{
+    uint32_t image_len;
+    sb_verify_result_t result;
+    int rc;
+
+    /* No manifest linked in: development / host-sim image, skip the gate. */
+    if ((uintptr_t)(const void *)sb_embedded_manifest == (uintptr_t)0) {
+        hal_debug_printf("SECURE_BOOT: no manifest (SKIP)\n");
+        return 0;
+    }
+
+    /* A manifest without its image or trust anchor cannot be verified. */
+    if (((uintptr_t)(const void *)&sb_embedded_manifest_len == (uintptr_t)0) ||
+        ((uintptr_t)(const void *)sb_embedded_image == (uintptr_t)0) ||
+        ((uintptr_t)(const void *)&sb_embedded_image_len == (uintptr_t)0) ||
+        ((uintptr_t)(const void *)sb_embedded_pubkey == (uintptr_t)0) ||
+        ((uintptr_t)(const void *)&sb_embedded_pubkey_type == (uintptr_t)0)) {
+        hal_debug_printf("SECURE_BOOT: incomplete manifest bundle\n");
+        return -1;
+    }
+
+    image_len = sb_embedded_image_len;
+    rc = sb_verify_image(sb_embedded_image, (size_t)image_len,
+                         sb_embedded_manifest, (size_t)sb_embedded_manifest_len,
+                         sb_embedded_pubkey, sb_embedded_pubkey_type,
+                         0U, &result);
+    if (rc != SB_OK) {
+        hal_debug_printf("SECURE_BOOT: FAIL (err=%d)\n", rc);
+        return -1;
+    }
+
+    hal_debug_printf("SECURE_BOOT: OK (image_version=%u, counter=%u)\n",
+                     (unsigned)result.image_version,
+                     (unsigned)result.anti_rollback);
+    return 0;
+}
+#endif /* SECURE_BOOT */
 
 /* RTOS task handles (when USE_FREERTOS is enabled) */
 #if defined(USE_FREERTOS)
@@ -38,6 +97,13 @@ static int system_init(void)
 
     hal_debug_printf("\n\n=== yuleDKCS Firmware v" FW_VERSION " ===\n");
     hal_debug_printf("Target: NXP KW47A\n");
+
+#if defined(SECURE_BOOT)
+    if (secure_boot_precheck() != 0) {
+        hal_debug_printf("FATAL: secure boot verification failed — halted\n");
+        return INIT_ERR_SECURE_BOOT;
+    }
+#endif
 
     if (hal_se050_init() != 0) {
         hal_debug_printf("FATAL: SE050 init failed\n");
@@ -87,9 +153,17 @@ static int protocol_init(void)
 /* ── Main Entry Point ────────────────────────────────────── */
 int main(void)
 {
-    if (system_init() != 0) {
-        /* Blink error LED */
+    int init_rc = system_init();
+
+    if (init_rc != 0) {
+#if defined(FIRMWARE_HOST_SIM)
+        /* Host simulation: return an error instead of spinning forever so CI
+         * can detect a failed secure-boot gate. */
+        return (init_rc == INIT_ERR_SECURE_BOOT) ? 2 : 1;
+#else
+        /* Target: unrecoverable error — remain in a locked halt loop. */
         while (1);
+#endif
     }
 
     protocol_init();

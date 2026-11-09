@@ -15,6 +15,7 @@ option(BUILD_ICCOA        "Build ICCOA protocol stack"  ON)
 option(USE_SE050          "Use SE050 secure element"    ON)
 option(FIRMWARE_HOST_SIM  "Build host-simulation firmware (no MCU/SDK)" OFF)
 option(BRINGUP_SELFTEST   "Run hardware bring-up self-test at boot"   OFF)
+option(SECURE_BOOT        "Enable secure boot gate"                    OFF)
 
 # Auto-detect: if no cross-compiler, default to host simulation so the
 # firmware is buildable in CI / developer environments without NXP SDK.
@@ -59,6 +60,9 @@ target_link_libraries(${TARGET} PRIVATE hal ${PROTOCOL_LIBS})
 target_compile_definitions(${TARGET} PRIVATE FW_VERSION="${FW_VERSION}")
 if(BRINGUP_SELFTEST)
     target_compile_definitions(${TARGET} PRIVATE BRINGUP_SELFTEST=1)
+endif()
+if(SECURE_BOOT)
+    target_compile_definitions(${TARGET} PRIVATE SECURE_BOOT=1)
 endif()
 if(BUILD_CCC)
     target_compile_definitions(${TARGET} PRIVATE BUILD_CCC=1)
