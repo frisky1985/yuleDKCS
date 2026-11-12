@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | G1-BR-2026-001 |
 | 关联计划 | RMP-2026-001 §5（P2 阶段 / P0-05 / G1 门禁） |
-| 版本 | v1.2（增加串口采集脚本与证据归档规范） |
+| 版本 | v1.3（增加串口日志分析工具与判读规则） |
 | 适用硬件 | KW47A EVB + ST25R501 + NCJ29D6 + SE050 |
 | 前置条件 | 固件可在 host-sim 与真实 target 构建通过；软件侧 P0 已闭环（`test_all` 247 项 0 失败，含安全启动 13/13）；T=1' 传输层单测通过 |
 
@@ -227,7 +227,29 @@ python3 embedded/tools/bench/serial_capture.py \
 | `meta.json` | 主机、串口参数、git 提交、固件 SHA-256、行数/字节数、步骤列表 |
 | `serial.log.sha256` | 可直接 `sha256sum -c` 校验归档完整性 |
 
-### 9.2 归档要求
+### 9.3 日志分析
+
+使用 `embedded/tools/bench/analyze_serial_log.py` 单遍流式解析采集日志：
+
+```bash
+python3 embedded/tools/bench/analyze_serial_log.py \
+  bench-evidence/G1-20261112-104500/serial.log
+
+# 仅看问题行并附 2 行上下文
+python3 embedded/tools/bench/analyze_serial_log.py serial.log --only-problems --context 2
+# CI 严格门禁：警告也判失败；输出 JSON
+python3 embedded/tools/bench/analyze_serial_log.py serial.log --fail-on-warn --json
+```
+
+判读规则：🟢 正常；🟡 警告/跳过/采集中断；🔴 问题（FATAL/ERROR/FAIL/PANIC/
+HardFault/ASSERT、`SECURE_BOOT: FAIL`、`VERIFY_*` 失败码、认证失败）。
+`[BRINGUP] NN ... FAIL` 与 `RESULT: ... failed` 会同时计入问题。
+自动读取同目录 `meta.json`（台架标签、提交、固件哈希、采集时段）。
+`--expect <正则>` 可声明必须出现的记录（如 `BRINGUP\] RESULT`），缺失记为问题；
+`--ignore <正则>` 用于屏蔽负向测试中预期出现的失败行。
+退出码：0=通过，1=有问题（或 `--fail-on-warn` 有警告），2=参数/读取错误。
+
+### 9.4 归档要求
 
 - 每步记录：日期时间、EVB 序列号、固件提交哈希、仪器截图/原始数据文件、结果。
 - 串口日志与仪器截图放入同一证据目录，归档到证据库并登记证据索引。
