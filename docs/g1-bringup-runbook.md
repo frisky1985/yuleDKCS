@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | G1-BR-2026-001 |
 | 关联计划 | RMP-2026-001 §5（P2 阶段 / P0-05 / G1 门禁） |
-| 版本 | v1.1（补充安全启动、认证链路与 PKCS#11 真机验证） |
+| 版本 | v1.2（增加串口采集脚本与证据归档规范） |
 | 适用硬件 | KW47A EVB + ST25R501 + NCJ29D6 + SE050 |
 | 前置条件 | 固件可在 host-sim 与真实 target 构建通过；软件侧 P0 已闭环（`test_all` 247 项 0 失败，含安全启动 13/13）；T=1' 传输层单测通过 |
 
@@ -205,8 +205,32 @@ cmake --build build-arm
 
 ## 9. 证据与门禁
 
+### 9.1 串口日志采集（推荐）
+
+使用 `embedded/tools/bench/serial_capture.py`（仅 Python 3 标准库，Linux/macOS）：
+
+```bash
+python3 embedded/tools/bench/serial_capture.py \
+  --port /dev/ttyUSB0 --baud 115200 \
+  --firmware build-arm/src/yuleDKCS_fw.elf \
+  --label G1-EVB01 --operator "$USER"
+# 采集中输入 `3.5.2 新密钥重建SCP03` 回车插入步骤标记；输入 `q` 回车结束
+# 定时采集：追加 --duration 600
+```
+
+产出 `bench-evidence/G1-<时间>/`：
+
+| 文件 | 内容 |
+|---|---|
+| `serial.log` | 毫秒时间戳串口原始输出，含 START/END 与 MARKER |
+| `steps.tsv` | 步骤号、说明、时间、操作者 |
+| `meta.json` | 主机、串口参数、git 提交、固件 SHA-256、行数/字节数、步骤列表 |
+| `serial.log.sha256` | 可直接 `sha256sum -c` 校验归档完整性 |
+
+### 9.2 归档要求
+
 - 每步记录：日期时间、EVB 序列号、固件提交哈希、仪器截图/原始数据文件、结果。
-- 归档到证据库并计算 SHA-256，登记到证据索引。
+- 串口日志与仪器截图放入同一证据目录，归档到证据库并登记证据索引。
 - G1 判定：§2–§8 全部通过且无开放 P0 问题；质量、硬件、架构三方签字。
 
 ## 10. 失败处理原则

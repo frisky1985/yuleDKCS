@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.8（补充真机验证执行包与作业指导书 v1.1） |
+| 版本 | v1.9（增加台架串口日志采集脚本） |
 | 状态 | 执行中（软件侧 P0 已完成，含安全启动软件链路；硬件真机/ROM 信任根、第三方审计与认证待外部条件） |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
@@ -62,7 +62,7 @@
 | 单测门禁 | `test_all` 247 项、`test_vse050` 91 项、`test_provision` 20 项，0 失败；CI L2 已接入含 `SECURE_BOOT=ON` 固件构建 | ✅ 就绪 |
 | 密码夹具 | OpenSSL 生成的 root/intermediate/leaf 链与设备证书、P-256/SM2 密钥与签名向量（`tests/support/cert_fixtures.h`） | ✅ 就绪 |
 | 签名工具 | `embedded/tools/secboot`（CMake 可构建）：生成/校验镜像清单，支持 sign/verify | ✅ 就绪 |
-| 证据模板 | 每一步的通过判据、需采集的仪器数据与归档字段已写入 runbook §9 | ✅ 就绪 |
+| 证据模板 | 每一步的通过判据、需采集的仪器数据与归档字段已写入 runbook §9；串口采集脚本 `embedded/tools/bench/serial_capture.py` 输出毫秒时间戳日志、步骤标记、meta.json 与 SHA-256（pty 自测通过） | ✅ 就绪 |
 | 台架与样件 | KW47A EVB、ST25R501、NCJ29D6、SE050、J-Link、逻辑分析仪、示波器 | ⏳ 待外部提供 |
 | 产线 HSM | 厂商 PKCS#11 模块与工位 | ⏳ 待外部提供 |
 
