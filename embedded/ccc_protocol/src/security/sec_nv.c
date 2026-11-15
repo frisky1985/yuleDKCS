@@ -37,6 +37,7 @@ typedef struct {
     bool     present;      /* Bank 非全 0xFF */
     bool     valid;        /* 魔数/类型/版本/commit/CRC 全部通过 */
     uint32_t seq;
+    uint16_t flags;
     uint16_t payload_len;
 } sec_nv_bank_t;
 
@@ -157,6 +158,7 @@ static ccc_status_t nv_probe(uint32_t off, uint16_t bank_size, uint8_t type,
     info->present = false;
     info->valid = false;
     info->seq = 0;
+    info->flags = 0;
     info->payload_len = 0;
 
     st = nv_bank_blank(off, bank_size, &blank);
@@ -197,6 +199,7 @@ static ccc_status_t nv_probe(uint32_t off, uint16_t bank_size, uint8_t type,
 
     info->valid = true;
     info->seq = nv_rd32(&hdr[8]);
+    info->flags = nv_rd16(&hdr[6]);
     info->payload_len = payload_len;
     return CCC_OK;
 }
@@ -209,7 +212,8 @@ static ccc_status_t nv_probe(uint32_t off, uint16_t bank_size, uint8_t type,
  */
 static ccc_status_t nv_select(uint32_t off_a, uint32_t off_b, uint16_t bank_size,
                               uint8_t type, uint16_t max_payload,
-                              uint32_t *off, uint16_t *payload_len)
+                              uint32_t *off, uint16_t *payload_len,
+                              uint16_t *flags)
 {
     sec_nv_bank_t a;
     sec_nv_bank_t b;
@@ -227,11 +231,17 @@ static ccc_status_t nv_select(uint32_t off_a, uint32_t off_b, uint16_t bank_size
     if (b.valid && (!a.valid || b.seq > a.seq)) {
         *off = off_b;
         *payload_len = b.payload_len;
+        if (flags != NULL) {
+            *flags = b.flags;
+        }
         return CCC_OK;
     }
     if (a.valid) {
         *off = off_a;
         *payload_len = a.payload_len;
+        if (flags != NULL) {
+            *flags = a.flags;
+        }
         return CCC_OK;
     }
     if (a.present || b.present) {
@@ -285,8 +295,8 @@ static ccc_status_t nv_pick_save_bank(uint32_t off_a, uint32_t off_b,
 /* ── 记录写入 (提交协议) ──────────────────────────────────── */
 
 static ccc_status_t nv_write_record(uint32_t off, uint16_t bank_size, uint8_t type,
-                                    uint32_t seq, const uint8_t *payload,
-                                    uint16_t payload_len)
+                                    uint16_t flags, uint32_t seq,
+                                    const uint8_t *payload, uint16_t payload_len)
 {
     uint8_t hdr[SEC_NV_HDR_SIZE];
     uint8_t hdr_rb[SEC_NV_HDR_SIZE];
@@ -306,7 +316,7 @@ static ccc_status_t nv_write_record(uint32_t off, uint16_t bank_size, uint8_t ty
     nv_wr32(&hdr[0], SEC_NV_RECORD_MAGIC);
     hdr[4] = type;
     hdr[5] = SEC_NV_VERSION;
-    nv_wr16(&hdr[6], 0);                    /* flags */
+    nv_wr16(&hdr[6], flags);
     nv_wr32(&hdr[8], seq);
     nv_wr16(&hdr[12], payload_len);
     nv_wr16(&hdr[14], 0);                   /* reserved */
@@ -420,7 +430,8 @@ ccc_status_t sec_nv_save_crl(const uint8_t *blob, uint16_t len)
     }
 
     st = nv_write_record(off, (uint16_t)SEC_NV_CRL_BANK_SIZE, SEC_NV_TYPE_CRL,
-                         seq, payload, (uint16_t)(len + SEC_NV_CRL_META_SIZE));
+                         0U, seq, payload,
+                         (uint16_t)(len + SEC_NV_CRL_META_SIZE));
     if (st != CCC_OK) {
         return st;
     }
@@ -453,7 +464,7 @@ ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len)
     st = nv_select(SEC_NV_CRL_A_OFF, SEC_NV_CRL_B_OFF,
                    (uint16_t)SEC_NV_CRL_BANK_SIZE, SEC_NV_TYPE_CRL,
                    (uint16_t)(SEC_NV_MAX_CRL + SEC_NV_CRL_META_SIZE),
-                   &off, &payload_len);
+                   &off, &payload_len, NULL);
     if (st != CCC_OK) {
         return st;
     }
@@ -481,13 +492,20 @@ ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len)
 }
 
 /**
- * 保存 keystore blob: 双 Bank 轮换 + seq + CRC + commit-last。
- * keystore 不参与 OTP 水位/锁定, 因此不做任何 OTP 操作。
+ * 保存 keystore blob: 双 Bank 轮换 + seq + 头 flags epoch + CRC + commit-last。
+ * Flash 提交成功后才抬高 OTP 水位; 抬高失败不撤销已提交记录。
  */
 ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len)
 {
     uint32_t off;
     uint32_t seq;
+    uint32_t watermark = 0;
+    uint32_t base;
+    uint32_t new_epoch;
+    uint32_t max_epoch;
+    uint16_t record_len = 0;
+    uint16_t cur_epoch = 0;
+    bool     has_otp;
     ccc_status_t st;
 
     if (!nv_bound()) {
@@ -497,6 +515,28 @@ ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len)
         return CCC_ERR_PARAM;
     }
 
+    st = nv_select(SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
+                   (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE, SEC_NV_TYPE_KEYSTORE,
+                   (uint16_t)SEC_NV_MAX_KEYSTORE, &off, &record_len, &cur_epoch);
+    if (st == CCC_ERR_NOT_FOUND) {
+        cur_epoch = 0;
+    } else if (st != CCC_OK) {
+        return st;
+    }
+
+    has_otp = (g_ops.otp_keystore_epoch_read != NULL ||
+               g_ops.otp_keystore_epoch_raise != NULL);
+    max_epoch = has_otp ? SEC_NV_KEYSTORE_MAX_EPOCH : 255u;
+    base = cur_epoch;
+    if (g_ops.otp_keystore_epoch_read != NULL &&
+        g_ops.otp_keystore_epoch_read(&watermark) == 0 && watermark > base) {
+        base = watermark;
+    }
+    if (base >= max_epoch) {
+        return CCC_ERR_STATE;               /* 擦除/写 Flash 前拒绝 */
+    }
+    new_epoch = base + 1u;
+
     st = nv_pick_save_bank(SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
                            (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE,
                            SEC_NV_TYPE_KEYSTORE,
@@ -505,8 +545,17 @@ ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len)
         return st;
     }
 
-    return nv_write_record(off, (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE,
-                           SEC_NV_TYPE_KEYSTORE, seq, blob, len);
+    st = nv_write_record(off, (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE,
+                         SEC_NV_TYPE_KEYSTORE, (uint16_t)new_epoch,
+                         seq, blob, len);
+    if (st != CCC_OK) {
+        return st;
+    }
+    if (g_ops.otp_keystore_epoch_raise != NULL &&
+        g_ops.otp_keystore_epoch_raise(new_epoch) != 0) {
+        return CCC_ERR_HARDWARE;
+    }
+    return CCC_OK;
 }
 
 /**
@@ -516,7 +565,9 @@ ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len)
 ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len)
 {
     uint32_t off = 0;
+    uint32_t watermark = 0;
     uint16_t payload_len = 0;
+    uint16_t record_epoch = 0;
     ccc_status_t st;
 
     if (!nv_bound()) {
@@ -528,7 +579,8 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len)
 
     st = nv_select(SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
                    (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE, SEC_NV_TYPE_KEYSTORE,
-                   (uint16_t)SEC_NV_MAX_KEYSTORE, &off, &payload_len);
+                   (uint16_t)SEC_NV_MAX_KEYSTORE, &off, &payload_len,
+                   &record_epoch);
     if (st != CCC_OK) {
         return st;
     }
@@ -537,6 +589,13 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len)
     }
     if (g_ops.read(off + SEC_NV_HDR_SIZE, g_scratch, payload_len) != 0) {
         return CCC_ERR_HARDWARE;
+    }
+
+    /* OTP 读失败时降级跳过; 有效记录低于水位则拒绝整片 Flash 回滚。 */
+    if (g_ops.otp_keystore_epoch_read != NULL &&
+        g_ops.otp_keystore_epoch_read(&watermark) == 0 &&
+        (uint32_t)record_epoch < watermark) {
+        return CCC_ERR_SECURITY;
     }
 
     (void)memcpy(blob, g_scratch, payload_len);
@@ -571,7 +630,7 @@ ccc_status_t sec_nv_save_lock(const uint8_t station_id[16])
     }
 
     st = nv_write_record(off, (uint16_t)SEC_NV_LOCK_BANK_SIZE, SEC_NV_TYPE_LOCK,
-                         seq, payload, (uint16_t)SEC_NV_LOCK_PAYLOAD);
+                         0U, seq, payload, (uint16_t)SEC_NV_LOCK_PAYLOAD);
     if (st != CCC_OK) {
         return st;
     }
@@ -600,7 +659,7 @@ ccc_status_t sec_nv_load_lock(bool *locked)
 
     st = nv_select(SEC_NV_LOCK_A_OFF, SEC_NV_LOCK_B_OFF,
                    (uint16_t)SEC_NV_LOCK_BANK_SIZE, SEC_NV_TYPE_LOCK,
-                   (uint16_t)SEC_NV_LOCK_PAYLOAD, &off, &payload_len);
+                   (uint16_t)SEC_NV_LOCK_PAYLOAD, &off, &payload_len, NULL);
     if (st == CCC_OK) {
         if (payload_len != SEC_NV_LOCK_PAYLOAD ||
             g_ops.read(off + SEC_NV_HDR_SIZE, g_scratch, payload_len) != 0) {

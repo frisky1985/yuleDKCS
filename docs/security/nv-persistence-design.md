@@ -3,10 +3,10 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | SEC-NV-2026-001 |
-| 版本 | v1.4（8KB 扇区布局 + keystore 双 Bank 重构） |
+| 版本 | v1.5（keystore OTP 水位） |
 | 关联 | RMP-2026-001 §0.2；`sec_revocation.c`；`key_mgmt.c`；`kw47a_flash.ld` |
 | 目标 | 让 CRL（含 epoch）与 provisioning 锁定状态在复位/断电后保持，防回滚、防擦除绕过 |
-| 实现状态 | 软件侧已落地：`sec_nv`（CRL/Lock/Keystore 三组双 Bank）、`kw47a_nv` 绑定、Flash/OTP 驱动层；`test_security_nv` 13/13、`test_kw47a_nv` 7/7、`test_kw47a_drv` 10/10，`test_all` 284 项 0 失败；真机 PFLASH 时序、擦写缓存失效与 eFuse 位定义待验证 |
+| 实现状态 | 软件侧已落地：`sec_nv`（CRL/Lock/Keystore 三组双 Bank + 各自 OTP 水位）、`kw47a_nv` 绑定、Flash/OTP 驱动层；`test_security_nv` 18/18、`test_kw47a_nv` 7/7、`test_kw47a_drv` 12/12，`test_all` 291 项 0 失败；真机 PFLASH 时序、擦写缓存失效与 eFuse 位定义待验证 |
 
 ## 1. 现状与必须先修的问题
 
@@ -109,9 +109,10 @@ OTA 镜像上限 = `min(192KB,144KB) = 144KB`（当前镜像约 106KB，余量 3
 
 | 位/区 | 语义 | 写入时机 |
 |---|---|---|
-| `PROD_LOCK` | 量产锁定，一次性 | EOL 锁定流程最后一步 |
-| `DEBUG_LOCK` | 调试口永久关闭 | EOL 或试产结束 |
-| `CRL_EPOCH` | 单调水位，32 个单向位（bit i 置 1 表示 epoch ≥ i+1） | 每次成功安装 CRL 后 |
+| word0 bit0 `PROD_LOCK` | 量产锁定，一次性 | EOL 锁定流程最后一步 |
+| word0 bit1 `DEBUG_LOCK` | 调试口永久关闭 | EOL 或试产结束 |
+| word1 `CRL_EPOCH` | 单调水位，31 个单向位（bit i 置 1 表示 epoch ≥ i+1） | 每次成功安装 CRL 后 |
+| word2+word3 `KS_EPOCH` | keystore 单调水位，62 个单向位，跨 word 连续计数 | 每次成功保存 keystore 后 |
 
 无 OTP 时，水位由 Flash 双 Bank 的 `seq` 兜底；残余风险见 §9。
 
@@ -121,7 +122,7 @@ OTA 镜像上限 = `min(192KB,144KB) = 144KB`（当前镜像约 106KB，余量 3
 - 由 `key_mgmt` 构造/解析；`sec_nv` 只按 `type=3` 原样存取，不做密钥语义解析。
 - 双 Bank 轮换 + `seq` + CRC + commit 最后写：commit 前掉电保留上一代；单 Bank 损坏回退另一 Bank；两 Bank 均损坏返回 `CCC_ERR_SECURITY`。
 - 最大记录 5747B（`MAX_KEYS=8` 时），受 `SEC_NV_MAX_KEYSTORE=6144B` 与 8KB Bank 约束；SE050 仍为第一优先级，NV 为回退路径。
-- Keystore 不使用 OTP 水位：其防回滚依赖双 Bank `seq` 与安全启动计数（残余风险见 §9）。
+- **OTP 水位（word2+word3，62 位一元码）**：记录头 `flags` 复用为 keystore epoch；保存时 `new_epoch = max(记录 epoch, OTP 水位) + 1`，Flash 提交后再抬水位；加载时 `记录 epoch < OTP 水位` → `CCC_ERR_SECURITY`，可识别“整片 Flash 回滚到旧镜像”攻击。水位耗尽（62 次，无 OTP 时 255 次）返回 `CCC_ERR_STATE` 且不写 Flash；OTP 抬高失败返回 `CCC_ERR_HARDWARE`，但记录已提交、加载仍放行（不砖机）；OTP 读失败按降级跳过校验。一元读按**连续置位**计数，跨 word 部分烧写不会虚高水位。
 
 ## 5. 提交协议（掉电安全）
 
@@ -207,14 +208,15 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 6. 在擦除、payload 写完、commit 前/后四个断点断电 → 始终能选出有效记录；
 7. 两 Bank 全坏 → 锁定并拒绝 attestation；
 8. Keystore 往返/复位保持、两代覆盖取最新、commit 前掉电保留上一代、单 Bank 损坏回退、双损坏拒绝、参数与未绑定错误；
-9. `SEC_NV_*` 越界或 Bank 重叠在编译期失败（`_Static_assert`）。
+9. Keystore OTP 水位：连续保存水位 1→2、Flash 回滚快照 + 水位保留 → `CCC_ERR_SECURITY`、抬高失败返回硬件错误但记录可加载、无 OTP 降级、62 次耗尽拒绝且 Flash 不变；
+10. `SEC_NV_*` 越界或 Bank 重叠在编译期失败（`_Static_assert`）。
 
 ## 9. 残余风险与对策
 
 | 风险 | 对策 |
 |---|---|
 | 无 OTP 时可整体回滚 Flash | 调试熔断 + 安全启动防回滚计数；或在阶段 2 使用 SE050 单调计数器 |
-| Keystore 无 OTP 水位 | 双 Bank `seq` 防重放；密钥 blob 由 SE050 优先承载，NV 仅回退；后续可迁移至 SE050 对象存储 |
+| Keystore 水位耗尽（62 次） | EOL 流程预算保存次数（配对/轮换合计 <62）；超限返回 `CCC_ERR_STATE` 并拒绝写，需重新规划或迁移 SE050 对象存储 |
 | Flash 物理读取 | 调试口永久关闭；密钥仅存 SE050，NV 不含明文密钥 |
 | 擦写寿命 | CRL/锁定/密钥更新低频；8KB Bank 轮换，远低于 10 万次 |
 | 写入期间掉电 | §5 协议保证“旧或新”至少一份有效 |
@@ -246,10 +248,11 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 | `sec_security_init()` 上电恢复并接入固件启动 | ✅ 已实现（未绑定时打印 RAM-only 告警） |
 | `sec_lock_provisioning()` 持久化 | ✅ 已实现 |
 | 地址修正（`key_mgmt`、链接脚本） | ✅ 已修正 |
-| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 13/13 通过（含 keystore 5 项） |
+| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 18/18 通过（含 keystore 双 Bank 5 项 + OTP 水位 5 项） |
+| Keystore OTP 水位（word2+word3，62 位一元码） | ✅ 已实现：epoch 存记录头 flags、保存后抬水位、回滚快照拒绝、耗尽保护、无 OTP 降级；`test_kw47a_drv` 跨 word 计数 12/12 |
 | 8KB 扇区布局（6 Bank，48KB） | ✅ 已实现：`FLASH_B` 144KB、`STORAGE` `0x74000`，几何门禁与 8KB 扇区匹配 |
 | Keystore 双 Bank 重构（替代 `virt_flash_*`） | ✅ 已实现：SE050 优先，NV 回退；commit 前掉电回退上一代 |
-| 板级 KW47A Flash/OTP 驱动 | 🟨 代码完成：Flash LL（页擦/编程/回读）+ OTP LL（单调位编程/epoch）+ MCUX PFLASH 适配 + eFuse 弱符号钩子；`test_kw47a_drv` 10/10；待真机验证时序/缓存失效 |
+| 板级 KW47A Flash/OTP 驱动 | 🟨 代码完成：Flash LL（页擦/编程/回读）+ OTP LL（单调位编程/epoch）+ MCUX PFLASH 适配 + eFuse 弱符号钩子；`test_kw47a_drv` 12/12；待真机验证时序/缓存失效 |
 | PFLASH 扇区几何 | ✅ 当前布局按 8KB 扇区对齐（Bank=扇区）；若器件扇区更小仍兼容，门禁按 `%` 校验 |
 | SE050 对象存储/单调计数器（阶段 2） | ⏳ 待 Plug&Trust 集成 |
 | Flash 实际容量确认（512KB / 1MB） | ⏳ 待硬件确认（当前布局在 512KB 内有效） |

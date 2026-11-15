@@ -35,6 +35,8 @@ static uint32_t g_write_attempts;
 
 static bool     g_otp_lock;
 static uint32_t g_otp_epoch;
+static uint32_t g_otp_ks_epoch;
+static bool     g_fail_otp_ks_raise;
 
 static int fake_read(uint32_t off, void *buf, uint16_t len)
 {
@@ -102,10 +104,39 @@ static int fake_otp_epoch_raise(uint32_t epoch)
     return 0;
 }
 
+static int fake_otp_keystore_epoch_read(uint32_t *epoch)
+{
+    if (epoch == NULL) {
+        return -1;
+    }
+    *epoch = g_otp_ks_epoch;
+    return 0;
+}
+
+static int fake_otp_keystore_epoch_raise(uint32_t epoch)
+{
+    if (g_fail_otp_ks_raise) {
+        return -1;
+    }
+    if (epoch > g_otp_ks_epoch) {
+        g_otp_ks_epoch = epoch;
+    }
+    return 0;
+}
+
 static const sec_nv_ops_t k_ops = {
     fake_read, fake_write, fake_erase,
     fake_otp_lock_read, fake_otp_lock_set,
-    fake_otp_epoch_read, fake_otp_epoch_raise
+    fake_otp_epoch_read, fake_otp_epoch_raise,
+    fake_otp_keystore_epoch_read, fake_otp_keystore_epoch_raise
+};
+
+/* 旧式位置初始化不提供末尾回调，保持 keystore 无 OTP 的兼容路径。 */
+static const sec_nv_ops_t k_ops_no_ks_otp = {
+    fake_read, fake_write, fake_erase,
+    fake_otp_lock_read, fake_otp_lock_set,
+    fake_otp_epoch_read, fake_otp_epoch_raise,
+    NULL, NULL
 };
 
 /* ── 测试环境 ─────────────────────────────────────────────── */
@@ -120,6 +151,8 @@ static void nv_reset_env(void)
     g_write_attempts = 0;
     g_otp_lock = false;
     g_otp_epoch = 0;
+    g_otp_ks_epoch = 0;
+    g_fail_otp_ks_raise = false;
 }
 
 static void nv_bind(void)
@@ -595,6 +628,9 @@ static void test_keystore_corruption_fallback(void)
     TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
     TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
 
+    /* 隔离 CRC 回退测试，避免旧 Bank 被 keystore OTP 防回滚拦截。 */
+    g_otp_ks_epoch = 0U;
+
     /* 活动 Bank B 的 payload 被篡改 → 回退到 Bank A */
     g_flash[SEC_NV_KEYSTORE_B_OFF + SEC_NV_HDR_SIZE + 4U] ^= 0xFFU;
     TEST_ASSERT_EQUAL(CCC_OK,
@@ -644,6 +680,136 @@ static void test_keystore_params(void)
                       sec_nv_load_keystore(out, 64U, &len));
 }
 
+/* ── 14. keystore OTP 水位随保存递增 ─────────────────────── */
+
+static void test_keystore_otp_epoch_advances(void)
+{
+    uint8_t  gen1[64];
+    uint8_t  gen2[64];
+    uint8_t  out[64];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    nv_bind();
+    (void)memset(gen1, 0x31, sizeof(gen1));
+    (void)memset(gen2, 0x32, sizeof(gen2));
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    TEST_ASSERT_EQUAL_UINT(1U, g_otp_ks_epoch);
+    TEST_ASSERT_EQUAL_UINT8(1U, g_flash[SEC_NV_KEYSTORE_A_OFF + 6U]);
+    TEST_ASSERT_EQUAL_UINT8(0U, g_flash[SEC_NV_KEYSTORE_A_OFF + 7U]);
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+    TEST_ASSERT_EQUAL_UINT(2U, g_otp_ks_epoch);
+    TEST_ASSERT_EQUAL_UINT8(2U, g_flash[SEC_NV_KEYSTORE_B_OFF + 6U]);
+    TEST_ASSERT_EQUAL_UINT8(0U, g_flash[SEC_NV_KEYSTORE_B_OFF + 7U]);
+
+    nv_simulate_reboot();
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen2), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen2, out, sizeof(gen2));
+}
+
+/* ── 15. 整片 Flash 回滚不能绕过 keystore OTP 水位 ───────── */
+
+static void test_keystore_rollback_protection(void)
+{
+    uint8_t  gen1[64];
+    uint8_t  gen2[64];
+    uint8_t  out[64];
+    uint8_t  flash_snapshot[SEC_NV_FLASH_SIZE];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    nv_bind();
+    (void)memset(gen1, 0x41, sizeof(gen1));
+    (void)memset(gen2, 0x42, sizeof(gen2));
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    (void)memcpy(flash_snapshot, g_flash, sizeof(g_flash));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+    TEST_ASSERT_EQUAL_UINT(2U, g_otp_ks_epoch);
+
+    /* 攻击者恢复第一代完整 Flash，但无法把 OTP 从 2 降到 1。 */
+    (void)memcpy(g_flash, flash_snapshot, sizeof(g_flash));
+    nv_simulate_reboot();
+    TEST_ASSERT_EQUAL(CCC_ERR_SECURITY,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+}
+
+/* ── 16. OTP 抬高失败不撤销已提交的 Flash 记录 ───────────── */
+
+static void test_keystore_otp_raise_failure(void)
+{
+    uint8_t  blob[64];
+    uint8_t  out[64];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    nv_bind();
+    (void)memset(blob, 0x51, sizeof(blob));
+    g_fail_otp_ks_raise = true;
+
+    TEST_ASSERT_EQUAL(CCC_ERR_HARDWARE,
+                      sec_nv_save_keystore(blob, (uint16_t)sizeof(blob)));
+    TEST_ASSERT_EQUAL_UINT(0U, g_otp_ks_epoch);
+    TEST_ASSERT_EQUAL_UINT8(1U, g_flash[SEC_NV_KEYSTORE_A_OFF + 6U]);
+
+    nv_simulate_reboot();
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(blob), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(blob, out, sizeof(blob));
+}
+
+/* ── 17. 无 keystore OTP 回调时 flags 仍递增到 u8 上限 ────── */
+
+static void test_keystore_without_otp(void)
+{
+    uint8_t  gen1[64];
+    uint8_t  gen2[64];
+    uint8_t  out[64];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_bind(&k_ops_no_ks_otp));
+    (void)memset(gen1, 0x61, sizeof(gen1));
+    (void)memset(gen2, 0x62, sizeof(gen2));
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+    TEST_ASSERT_EQUAL_UINT(0U, g_otp_ks_epoch);
+    TEST_ASSERT_EQUAL_UINT8(1U, g_flash[SEC_NV_KEYSTORE_A_OFF + 6U]);
+    TEST_ASSERT_EQUAL_UINT8(2U, g_flash[SEC_NV_KEYSTORE_B_OFF + 6U]);
+
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen2), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen2, out, sizeof(gen2));
+}
+
+/* ── 18. OTP 水位耗尽时拒绝保存且 Flash 不变 ─────────────── */
+
+static void test_keystore_otp_epoch_exhausted(void)
+{
+    uint8_t  gen1[64];
+    uint8_t  gen2[64];
+    uint8_t  flash_snapshot[SEC_NV_FLASH_SIZE];
+
+    nv_reset_env();
+    nv_bind();
+    (void)memset(gen1, 0x71, sizeof(gen1));
+    (void)memset(gen2, 0x72, sizeof(gen2));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    (void)memcpy(flash_snapshot, g_flash, sizeof(g_flash));
+
+    g_otp_ks_epoch = SEC_NV_KEYSTORE_MAX_EPOCH;
+    TEST_ASSERT_EQUAL(CCC_ERR_STATE,
+                      sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+    TEST_ASSERT_EQUAL_MEMORY(flash_snapshot, g_flash, sizeof(g_flash));
+}
+
 #ifndef TEST_LIB_MODE
 void setUp(void)
 {
@@ -672,6 +838,11 @@ int run_security_nv_tests(void)
     RUN_TEST(test_keystore_power_cut_before_commit);
     RUN_TEST(test_keystore_corruption_fallback);
     RUN_TEST(test_keystore_params);
+    RUN_TEST(test_keystore_otp_epoch_advances);
+    RUN_TEST(test_keystore_rollback_protection);
+    RUN_TEST(test_keystore_otp_raise_failure);
+    RUN_TEST(test_keystore_without_otp);
+    RUN_TEST(test_keystore_otp_epoch_exhausted);
     RUN_TEST(test_lock_persistence);    /* 终态锁定, 必须最后执行 */
 
     UNITY_END();

@@ -3,7 +3,7 @@
  * @brief KW47A 内部 Flash 页擦/编程 + eFuse OTP 低层驱动测试
  *
  * 假 Flash：静态 8KB，base=0x1000/size=0x2000/page=512，支持故障注入。
- * 假 OTP：2 个 32 位 word，program 只允许 0→1，支持失败注入。
+ * 假 OTP：4 个 32 位 word，program 只允许 0→1，支持失败注入。
  */
 
 #include "unity.h"
@@ -312,7 +312,7 @@ static void test_flash_read_bounds_and_unbound(void)
 }
 
 /* ── 假 OTP ─────────────────────────────────────────────── */
-#define OTP_WORDS 2u
+#define OTP_WORDS 4u
 
 static uint32_t g_otp[OTP_WORDS];
 static int      g_otp_program_rc;
@@ -481,6 +481,47 @@ static void test_otp_program_only_sets_bits(void)
     TEST_ASSERT_EQUAL_UINT(0x3u, g_otp[KW47A_OTP_WORD_LOCK]);
 }
 
+/* 11) keystore epoch 跨 word 单调抬升、封顶与低位幂等 */
+static void test_otp_keystore_epoch_monotonic(void)
+{
+    otp_env_reset();
+
+    TEST_ASSERT_EQUAL_UINT(0u, kw47a_otp_keystore_epoch_read());
+    TEST_ASSERT_EQUAL_INT(0, kw47a_otp_keystore_epoch_raise(31u));
+    TEST_ASSERT_EQUAL_UINT(31u, kw47a_otp_keystore_epoch_read());
+    TEST_ASSERT_EQUAL_UINT(0x7FFFFFFFu, g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH]);
+    TEST_ASSERT_EQUAL_UINT(0u, g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH + 1u]);
+
+    TEST_ASSERT_EQUAL_INT(0, kw47a_otp_keystore_epoch_raise(32u));
+    TEST_ASSERT_EQUAL_UINT(32u, kw47a_otp_keystore_epoch_read());
+    TEST_ASSERT_EQUAL_UINT(0x7FFFFFFFu, g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH]);
+    TEST_ASSERT_EQUAL_UINT(1u, g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH + 1u]);
+
+    TEST_ASSERT_EQUAL_INT(0, kw47a_otp_keystore_epoch_raise(62u));
+    TEST_ASSERT_EQUAL_UINT(62u, kw47a_otp_keystore_epoch_read());
+    TEST_ASSERT_EQUAL_UINT(0x7FFFFFFFu,
+                           g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH + 1u]);
+
+    TEST_ASSERT_EQUAL_INT(-1, kw47a_otp_keystore_epoch_raise(63u));
+    TEST_ASSERT_EQUAL_UINT(62u, kw47a_otp_keystore_epoch_read());
+    TEST_ASSERT_EQUAL_INT(0, kw47a_otp_keystore_epoch_raise(31u));
+    TEST_ASSERT_EQUAL_UINT(62u, kw47a_otp_keystore_epoch_read());
+}
+
+/* 12) word3 高位有缺口时只统计从 bit0 起连续的 1 */
+static void test_otp_keystore_epoch_contiguous_gap(void)
+{
+    otp_env_reset();
+
+    g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH] = 0x7FFFFFFFu;
+    g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH + 1u] = 0x4000000Bu;
+    TEST_ASSERT_EQUAL_UINT(33u, kw47a_otp_keystore_epoch_read());
+
+    /* word3 bit0 为 0 时，即使更高位为 1，水位也停在 word2 末尾。 */
+    g_otp[KW47A_OTP_WORD_KEYSTORE_EPOCH + 1u] = 0x2u;
+    TEST_ASSERT_EQUAL_UINT(31u, kw47a_otp_keystore_epoch_read());
+}
+
 int run_kw47a_drv_tests(void)
 {
     UNITY_BEGIN();
@@ -494,6 +535,8 @@ int run_kw47a_drv_tests(void)
     RUN_TEST(test_otp_lock_set_idempotent);
     RUN_TEST(test_otp_epoch_monotonic);
     RUN_TEST(test_otp_program_only_sets_bits);
+    RUN_TEST(test_otp_keystore_epoch_monotonic);
+    RUN_TEST(test_otp_keystore_epoch_contiguous_gap);
     UNITY_END();
 }
 

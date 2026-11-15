@@ -17,7 +17,7 @@
  *   0  magic "YRNV" (0x564E5259)
  *   4  type (1=CRL, 2=LOCK, 3=KEYSTORE)
  *   5  version = 1
- *   6  flags (u16, 0)
+ *   6  flags (u16, CRL/LOCK=0; KEYSTORE=epoch, OTP 1..62 / 无 OTP 1..255)
  *   8  seq (u32)
  *   12 payload_len (u16)
  *   14 reserved (u16)
@@ -52,6 +52,7 @@ extern "C" {
 #define SEC_NV_LOCK_BANK_SIZE  0x2000u      /* 8KB */
 #define SEC_NV_MAX_KEYSTORE    6144u
 #define SEC_NV_MAX_CRL         640u
+#define SEC_NV_KEYSTORE_MAX_EPOCH 62u   /* OTP word2+word3 一元编码 */
 
 #define SEC_NV_HDR_SIZE        32u
 #define SEC_NV_RECORD_MAGIC    0x564E5259u  /* "YRNV" little-endian */
@@ -73,6 +74,8 @@ typedef struct {
     int  (*otp_lock_set)(void);
     int  (*otp_epoch_read)(uint32_t *epoch);
     int  (*otp_epoch_raise)(uint32_t epoch);
+    int  (*otp_keystore_epoch_read)(uint32_t *epoch);
+    int  (*otp_keystore_epoch_raise)(uint32_t epoch);
 } sec_nv_ops_t;
 
 /** 绑定平台 NV/OTP 回调 (结构体按值复制)。未绑定时所有读/写返回 CCC_ERR_NOT_INIT。 */
@@ -87,10 +90,10 @@ ccc_status_t sec_nv_save_crl(const uint8_t *blob, uint16_t len);
 /** 加载最新有效 CRL blob; epoch 低于 OTP 水位时返回 CCC_ERR_STATE。 */
 ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len);
 
-/** 保存 keystore blob (双 Bank 记录, 不做 OTP 操作)。 */
+/** 保存 keystore blob; 记录头 flags 为递增 epoch, Flash 提交后抬高 OTP 水位。 */
 ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len);
 
-/** 加载最新有效 keystore blob; 输出实际长度。 */
+/** 加载最新有效 keystore blob; epoch 低于 OTP 水位时返回 CCC_ERR_SECURITY。 */
 ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 
 /** 保存锁定记录 (station_id 可为 NULL); 成功后置 OTP 量产锁定。 */

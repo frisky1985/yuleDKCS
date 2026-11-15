@@ -3,7 +3,8 @@
  *
  * 位定义：
  *   word0: bit0 = PROD_LOCK, bit1 = DEBUG_LOCK
- *   word1: unary epoch 水位, bit i 置位表示 epoch >= i+1
+ *   word1: CRL unary epoch 水位, bit i 置位表示 epoch >= i+1
+ *   word2+word3: keystore unary epoch 水位, 各使用 bit0..bit30
  *
  * eFuse 只能 0→1，因此所有操作都是 new = old | mask，并在编程后回读校验。
  */
@@ -21,6 +22,7 @@ extern "C" {
 #define KW47A_OTP_WORD_LOCK   0u
 #define KW47A_OTP_WORD_EPOCH  1u
 #define KW47A_OTP_MAX_EPOCH   31u   /* 水位上限（使用 bit0..bit30） */
+#define KW47A_OTP_WORD_KEYSTORE_EPOCH 2u   /* word2+word3, 62 bits unary */
 
 typedef struct {
     uint32_t (*read_word)(uint32_t idx);
@@ -43,6 +45,12 @@ uint32_t kw47a_otp_epoch_read(void);
 
 /* 置 bit0..epoch-1；epoch 已达成返回 0；epoch > 31 或未绑定返回 -1。 */
 int kw47a_otp_ll_epoch_raise(uint32_t epoch);
+
+/* 统计 word2/word3 低位连续 1 的个数；未绑定返回 0。 */
+uint32_t kw47a_otp_keystore_epoch_read(void);
+
+/* keystore epoch 已达成返回 0；epoch > 62 或未绑定返回 -1。 */
+int kw47a_otp_keystore_epoch_raise(uint32_t epoch);
 
 /*
  * SDK/板级集成方覆盖的弱符号 OTP 端口。

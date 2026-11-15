@@ -12,6 +12,9 @@
 
 #include "hal_interface.h"
 #include "sec_nv.h"
+#if KW47A_HAS_OTP
+#include "kw47a_otp_ll.h"
+#endif
 
 static bool s_bound;
 static bool s_hw_inited;
@@ -80,6 +83,20 @@ static int otp_epoch_raise_cb(uint32_t epoch)
 {
     return hal_otp_epoch_raise(epoch);
 }
+
+static int otp_keystore_epoch_read_cb(uint32_t *epoch)
+{
+    if (epoch == NULL) {
+        return -1;
+    }
+    *epoch = kw47a_otp_keystore_epoch_read();
+    return 0;
+}
+
+static int otp_keystore_epoch_raise_cb(uint32_t epoch)
+{
+    return kw47a_otp_keystore_epoch_raise(epoch);
+}
 #endif
 
 static const sec_nv_ops_t s_ops = {
@@ -91,11 +108,15 @@ static const sec_nv_ops_t s_ops = {
     .otp_lock_set = otp_lock_set_cb,
     .otp_epoch_read = otp_epoch_read_cb,
     .otp_epoch_raise = otp_epoch_raise_cb,
+    .otp_keystore_epoch_read = otp_keystore_epoch_read_cb,
+    .otp_keystore_epoch_raise = otp_keystore_epoch_raise_cb,
 #else
     .otp_lock_read = NULL,
     .otp_lock_set = NULL,
     .otp_epoch_read = NULL,
     .otp_epoch_raise = NULL,
+    .otp_keystore_epoch_read = NULL,
+    .otp_keystore_epoch_raise = NULL,
 #endif
 };
 
@@ -114,6 +135,9 @@ int kw47a_nv_init(void)
     if (hal_nv_flash_read(0U, probe, sizeof(probe)) != 0) {
         return -1;
     }
+#if KW47A_HAS_OTP
+    (void)kw47a_otp_ll_bind_default();
+#endif
     if (sec_nv_bind(&s_ops) != CCC_OK) {
         return -1;
     }
