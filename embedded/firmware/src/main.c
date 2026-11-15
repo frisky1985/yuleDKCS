@@ -8,6 +8,7 @@
 
 #include "hal_interface.h"
 #include "kw47a_board.h"
+#include "kw47a_nv.h"
 #include "bringup_selftest.h"
 #include "ccc_digital_key.h"
 
@@ -120,6 +121,9 @@ static int system_init(void)
     if (hal_storage_init() != 0) {
         hal_debug_printf("WARN: Storage init failed\n");
     }
+
+    /* 绑定板级 NV Flash/OTP；失败则保持未绑定并降级为纯 RAM. */
+    (void)kw47a_nv_init();
 
     /* 从 Flash/OTP 恢复产线锁定与 CRL；未绑定 NV 时降级为纯 RAM. */
     {

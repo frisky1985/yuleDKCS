@@ -88,6 +88,20 @@ int hal_storage_read(const char *key, uint8_t *data, uint16_t *len)
 { (void)key; (void)data; if (len) *len = 0; return -1; }
 int hal_storage_delete(const char *key)             { (void)key; return 0; }
 
+/* ── NV partition / OTP (host simulation: unavailable) ──── */
+int hal_nv_flash_read(uint32_t offset, void *data, uint32_t len)
+{ (void)offset; (void)data; (void)len; return -1; }
+int hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len)
+{ (void)offset; (void)data; (void)len; return -1; }
+int hal_nv_flash_erase(uint32_t offset, uint32_t len)
+{ (void)offset; (void)len; return -1; }
+
+int hal_otp_lock_read(void)                         { return 0; }
+int hal_otp_lock_set(void)                          { return -1; }
+int hal_otp_epoch_read(uint32_t *epoch)
+{ if (epoch) *epoch = 0; return -1; }
+int hal_otp_epoch_raise(uint32_t epoch)             { (void)epoch; return -1; }
+
 /* ── Debug ───────────────────────────────────────────────── */
 void hal_debug_printf(const char *fmt, ...)
 {

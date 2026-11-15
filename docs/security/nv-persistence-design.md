@@ -3,10 +3,10 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | SEC-NV-2026-001 |
-| 版本 | v1.1（软件侧落地，补充实施状态） |
+| 版本 | v1.2（新增 KW47A NV 绑定骨架与测试） |
 | 关联 | RMP-2026-001 §0.2；`sec_revocation.c`；`key_mgmt.c`；`kw47a_flash.ld` |
 | 目标 | 让 CRL（含 epoch）与 provisioning 锁定状态在复位/断电后保持，防回滚、防擦除绕过 |
-| 实现状态 | 软件侧已落地（`sec_nv.c/h`，`test_security_nv` 8/8，`test_all` 262 项 0 失败）；板级 Flash/OTP 驱动与 SE050 对象存储为后续硬件相关项 |
+| 实现状态 | 软件侧已落地（`sec_nv.c/h` + `kw47a_nv.c/h` 绑定骨架，`test_security_nv` 8/8、`test_kw47a_nv` 7/7，`test_all` 269 项 0 失败）；板级 MCUX SDK Flash/OTP 实现与 SE050 对象存储为后续硬件相关项 |
 
 ## 1. 现状与必须先修的问题
 
@@ -231,6 +231,6 @@ ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用
 | `sec_lock_provisioning()` 持久化 | ✅ 已实现 |
 | 地址修正（`key_mgmt`、链接脚本） | ✅ 已修正 |
 | 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 8/8 通过 |
-| 板级 KW47A Flash/OTP 驱动 | ⏳ 待硬件 |
+| 板级 KW47A Flash/OTP 驱动 | 🟨 骨架完成：`hal_nv_flash_*`/`hal_otp_*` 契约 + `kw47a_nv_init()` 绑定 + `test_kw47a_nv` 7/7；MCUX SDK 具体调用待硬件 |
 | SE050 对象存储/单调计数器（阶段 2） | ⏳ 待 Plug&Trust 集成 |
 | Flash 实际容量确认（512KB / 1MB） | ⏳ 待硬件确认 |

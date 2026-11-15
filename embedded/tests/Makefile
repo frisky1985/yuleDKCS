@@ -85,6 +85,9 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/secure_boot/include \
             -I$(VENDOR)/unity
 
+# KW47A NV binding (hal_interface.h / kw47a_nv.h)
+NV_INCLUDES := -I$(ROOT)/firmware/hal -I$(ROOT)/firmware/hal/kw47a
+
 # Real dk_logger.h declares dk_logger_log with va_list but DK_LOG macro
 # passes raw args; the UNIT_TEST branch fixes the declaration for tests.
 CFLAGS   := -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
@@ -208,13 +211,19 @@ $(BUILD)/test_secure_boot.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_secure_boot_lib.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURE_BOOT_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_kw47a_nv.o: $(TEST_DIR)/test_kw47a_nv.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) $(NV_INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_kw47a_nv_lib.o: $(TEST_DIR)/test_kw47a_nv.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) $(NV_INCLUDES) -DTEST_KW47A_NV_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/kw47a_nv.o: $(ROOT)/firmware/hal/kw47a/kw47a_nv.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) $(NV_INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_revocation test_nv test_secure_boot test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_revocation test_nv test_kw47a_nv test_secure_boot test_all
 
 all: test_all
 
@@ -311,6 +320,16 @@ test_nv: $(BUILD)/test_security_nv.o \
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
+test_kw47a_nv: $(BUILD)/test_kw47a_nv.o $(BUILD)/kw47a_nv.o \
+            $(BUILD)/security.o $(BUILD)/sec_nv.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
+            $(BUILD)/se050_scp03.o \
+            $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
+            $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+            $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+            $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
 test_secure_boot: $(BUILD)/test_secure_boot.o $(BUILD)/secure_boot.o \
                   $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
                   $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
@@ -328,6 +347,7 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_security_chain_lib.o \
           $(BUILD)/test_security_revocation_lib.o \
           $(BUILD)/test_security_nv_lib.o \
+          $(BUILD)/test_kw47a_nv_lib.o $(BUILD)/kw47a_nv.o \
           $(BUILD)/test_secure_boot_lib.o \
           $(BUILD)/secure_boot.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \

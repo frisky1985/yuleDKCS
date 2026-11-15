@@ -56,6 +56,24 @@ int  hal_storage_write(const char *key, const uint8_t *data, uint16_t len);
 int  hal_storage_read(const char *key, uint8_t *data, uint16_t *len);
 int  hal_storage_delete(const char *key);
 
+/* ── Non-volatile partition (sec_nv backend) ──────────────
+ * offset 相对 NV 分区基址（KW47A: 0x7C000，16KB），不是绝对地址。
+ * len 为字节数；返回 0 成功，<0 失败。
+ * 读操作必须在未擦除时也能工作，供 sec_nv 区分空白(0xFF)与损坏。
+ */
+int  hal_nv_flash_read(uint32_t offset, void *data, uint32_t len);
+int  hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len);
+int  hal_nv_flash_erase(uint32_t offset, uint32_t len);
+
+/* ── OTP / eFuse（可选）────────────────────────────────────
+ * hal_otp_lock_read: 1=已锁, 0=未锁, <0=不可用/错误。
+ * 目标平台无 OTP 时可为空实现；此时 sec_nv 依赖双 Bank seq 防回滚。
+ */
+int  hal_otp_lock_read(void);
+int  hal_otp_lock_set(void);
+int  hal_otp_epoch_read(uint32_t *epoch);
+int  hal_otp_epoch_raise(uint32_t epoch);
+
 /* ── Debug ───────────────────────────────────────────────── */
 void hal_debug_printf(const char *fmt, ...);
 

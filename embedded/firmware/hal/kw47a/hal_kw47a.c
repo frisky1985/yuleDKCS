@@ -123,3 +123,50 @@ int hal_se050_generate_random(uint8_t *buffer, uint16_t len)
 {
     return se05x_random(s_se050_i2c, buffer, len);
 }
+
+/* ── NV partition / OTP（驱动骨架）────────────────────────────
+ * offset 相对 NV 分区基址（kw47a_nv.h: 0x7C000），非绝对地址。
+ * 目标实现：MCUXpresso fsl_flash 的 FLASH_Erase/FLASH_Program，
+ * 每次操作前按页对齐；OTP 使用 KW47A eFuse 驱动。
+ * 在厂商驱动接入前保持返回 -1：kw47a_nv_init() 会判定不可用，
+ * sec_nv 不绑定，系统降级为 RAM-only，不会误判为已锁定。
+ */
+int hal_nv_flash_read(uint32_t offset, void *data, uint32_t len)
+{
+    (void)offset; (void)data; (void)len;
+    return -1; /* TODO(target): flash_cache/FLASH_Read + memcpy */
+}
+
+int hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len)
+{
+    (void)offset; (void)data; (void)len;
+    return -1; /* TODO(target): FLASH_Program，按 4/8 字节对齐分块 */
+}
+
+int hal_nv_flash_erase(uint32_t offset, uint32_t len)
+{
+    (void)offset; (void)len;
+    return -1; /* TODO(target): FLASH_Erase(Page/Sector)，按扇区对齐 */
+}
+
+int hal_otp_lock_read(void)
+{
+    return 0; /* TODO(target): 读 eFuse PROD_LOCK 位 */
+}
+
+int hal_otp_lock_set(void)
+{
+    return -1; /* TODO(target): 烧写 eFuse PROD_LOCK（不可逆） */
+}
+
+int hal_otp_epoch_read(uint32_t *epoch)
+{
+    if (epoch) *epoch = 0;
+    return -1; /* TODO(target): 读 eFuse CRL_EPOCH 水位 */
+}
+
+int hal_otp_epoch_raise(uint32_t epoch)
+{
+    (void)epoch;
+    return -1; /* TODO(target): 按位烧写 eFuse，仅允许单调递增 */
+}

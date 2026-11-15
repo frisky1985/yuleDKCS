@@ -151,6 +151,8 @@ cmake --build build-arm
 | 3.7.6 | 复位后重复 3.7.5 | 已绑定 NV 时锁定保持；未绑定（RAM-only 降级）需产线流程每次上电重新加锁，串口打印 `NV persistence not bound` |
 
 > 量产前必须按 `docs/security/nv-persistence-design.md`（SEC-NV-2026-001）把 CRL（epoch/列表）与锁定状态绑定到 Flash/OTP，确保掉电不回退、不可通过复位绕过；验收项见该文档 §11。
+>
+> 绑定入口：`kw47a_nv_init()`（启动时先于 `sec_security_init()` 调用），板级需实现 `hal_nv_flash_read/write/erase` 与可选 `hal_otp_*`（`hal_interface.h` 契约）。探测失败时自动保持未绑定并打印 `NV persistence not bound (RAM-only)`，不会误判为已锁定。
 
 ---
 
