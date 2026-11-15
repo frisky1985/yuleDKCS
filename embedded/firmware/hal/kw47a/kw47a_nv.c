@@ -14,6 +14,25 @@
 #include "sec_nv.h"
 
 static bool s_bound;
+static bool s_hw_inited;
+
+#if defined(KW47A_MCUX_SDK)
+/* MCUX PFLASH 适配层（kw47a_flash_mcux.c，仅 SDK 构建存在）。 */
+int kw47a_flash_mcux_bind(void);
+#endif
+
+/*
+ * 绑定 Flash 硬件端口。非 SDK 构建直接返回 -1（主机保持 RAM-only）。
+ * kw47a_nv_init() 只调用一次；失败则保持未绑定。
+ */
+int kw47a_nv_flash_hw_init(void)
+{
+#if defined(KW47A_MCUX_SDK)
+    return kw47a_flash_mcux_bind();
+#else
+    return -1;
+#endif
+}
 
 static int nv_read(uint32_t off, void *buf, uint16_t len)
 {
@@ -85,6 +104,11 @@ int kw47a_nv_init(void)
     uint8_t probe[4];
 
     s_bound = false;
+
+    if (!s_hw_inited) {
+        s_hw_inited = true;
+        (void)kw47a_nv_flash_hw_init();
+    }
 
     /* 探测：读失败（如 host 桩返回 -1）则保持未绑定，降级 RAM-only。 */
     if (hal_nv_flash_read(0U, probe, sizeof(probe)) != 0) {

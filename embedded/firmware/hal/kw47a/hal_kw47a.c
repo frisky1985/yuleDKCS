@@ -7,6 +7,9 @@
 
 #include "hal_interface.h"
 #include "kw47a_board.h"
+#include "kw47a_flash_ll.h"
+#include "kw47a_otp_ll.h"
+#include "sec_nv.h"
 
 /* MCUXpresso SDK headers (included via SDK download) */
 #include "fsl_clock.h"
@@ -124,49 +127,120 @@ int hal_se050_generate_random(uint8_t *buffer, uint16_t len)
     return se05x_random(s_se050_i2c, buffer, len);
 }
 
-/* ── NV partition / OTP（驱动骨架）────────────────────────────
- * offset 相对 NV 分区基址（kw47a_nv.h: 0x7C000），非绝对地址。
- * 目标实现：MCUXpresso fsl_flash 的 FLASH_Erase/FLASH_Program，
- * 每次操作前按页对齐；OTP 使用 KW47A eFuse 驱动。
- * 在厂商驱动接入前保持返回 -1：kw47a_nv_init() 会判定不可用，
- * sec_nv 不绑定，系统降级为 RAM-only，不会误判为已锁定。
+/* ── NV partition / OTP（经平台无关 LL 层）────────────────────
+ * offset 相对 NV 分区基址（SEC_NV_FLASH_BASE: 0x7C000），非绝对地址。
+ * Flash 操作由 kw47a_flash_ll_* 完成（MCUX 适配层在 kw47a_flash_mcux.c，
+ * 由 kw47a_nv_flash_hw_init() 绑定）；OTP 转发 kw47a_otp_ll_*。
+ * 未绑定时 LL 层返回 -1，kw47a_nv_init() 判定不可用并降级 RAM-only。
  */
+static int nv_check_range(uint32_t offset, uint32_t len)
+{
+    if (offset >= SEC_NV_FLASH_SIZE || len > (SEC_NV_FLASH_SIZE - offset)) {
+        return -1;
+    }
+    return 0;
+}
+
 int hal_nv_flash_read(uint32_t offset, void *data, uint32_t len)
 {
-    (void)offset; (void)data; (void)len;
-    return -1; /* TODO(target): flash_cache/FLASH_Read + memcpy */
+    if (data == NULL || len == 0u || nv_check_range(offset, len) != 0) {
+        return -1;
+    }
+    return kw47a_flash_ll_read(SEC_NV_FLASH_BASE + offset,
+                               (uint8_t *)data, len);
 }
 
 int hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len)
 {
-    (void)offset; (void)data; (void)len;
-    return -1; /* TODO(target): FLASH_Program，按 4/8 字节对齐分块 */
+    const uint8_t *src = (const uint8_t *)data;
+    uint32_t done = 0;
+
+    if (src == NULL || len == 0u || nv_check_range(offset, len) != 0) {
+        return -1;
+    }
+    if ((offset % 4u) != 0u) {
+        return -1;
+    }
+
+    /* LL 层要求 4 字节对齐的编程单元；尾字节用 0xFF 补齐（擦除态无副作用）。 */
+    while ((len - done) >= 4u) {
+        if (kw47a_flash_ll_program(SEC_NV_FLASH_BASE + offset + done,
+                                   src + done, 4u) != 0) {
+            return -1;
+        }
+        done += 4u;
+    }
+    if (done < len) {
+        uint8_t tail[4] = { 0xFFu, 0xFFu, 0xFFu, 0xFFu };
+        uint32_t i;
+
+        if (nv_check_range(offset + done, 4u) != 0) {
+            return -1;
+        }
+        for (i = 0; i < (len - done); i++) {
+            tail[i] = src[done + i];
+        }
+        if (kw47a_flash_ll_program(SEC_NV_FLASH_BASE + offset + done,
+                                   tail, 4u) != 0) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 int hal_nv_flash_erase(uint32_t offset, uint32_t len)
 {
-    (void)offset; (void)len;
-    return -1; /* TODO(target): FLASH_Erase(Page/Sector)，按扇区对齐 */
+    uint32_t page = kw47a_flash_ll_page_size();
+    uint32_t done;
+
+    if (len == 0u || nv_check_range(offset, len) != 0) {
+        return -1;
+    }
+    if (page == 0u || (offset % page) != 0u || (len % page) != 0u) {
+        return -1;
+    }
+    for (done = 0; done < len; done += page) {
+        if (kw47a_flash_ll_erase(SEC_NV_FLASH_BASE + offset + done) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static void otp_bind_once(void)
+{
+    static int bound;
+
+    if (!bound) {
+        bound = 1;
+        (void)kw47a_otp_ll_bind_default();
+    }
 }
 
 int hal_otp_lock_read(void)
 {
-    return 0; /* TODO(target): 读 eFuse PROD_LOCK 位 */
+    otp_bind_once();
+    return kw47a_otp_ll_lock_read() ? 1 : 0;
 }
 
 int hal_otp_lock_set(void)
 {
-    return -1; /* TODO(target): 烧写 eFuse PROD_LOCK（不可逆） */
+    otp_bind_once();
+    return kw47a_otp_ll_lock_set();
 }
 
 int hal_otp_epoch_read(uint32_t *epoch)
 {
-    if (epoch) *epoch = 0;
-    return -1; /* TODO(target): 读 eFuse CRL_EPOCH 水位 */
+    if (epoch == NULL) {
+        return -1;
+    }
+    otp_bind_once();
+    *epoch = kw47a_otp_ll_epoch_read();
+    return 0;
 }
 
 int hal_otp_epoch_raise(uint32_t epoch)
 {
-    (void)epoch;
-    return -1; /* TODO(target): 按位烧写 eFuse，仅允许单调递增 */
+    otp_bind_once();
+    return kw47a_otp_ll_epoch_raise(epoch);
 }

@@ -28,6 +28,7 @@ extern int run_security_chain_tests(void);
 extern int run_secure_boot_tests(void);
 extern int run_security_revocation_tests(void);
 extern int run_security_nv_tests(void);
+extern int run_kw47a_drv_tests(void);
 extern int run_kw47a_nv_tests(void);
 
 int main(void)
@@ -82,6 +83,9 @@ int main(void)
      * must not precede the suites above (they assert the unlocked state). */
     printf("\n--- Security NV Persistence (CRL / Lock) Tests ---\n");
     ret += run_security_nv_tests();
+
+    printf("\n--- KW47A Flash/OTP Low-Level Driver Tests ---\n");
+    ret += run_kw47a_drv_tests();
 
     printf("\n--- KW47A NV Binding (sec_nv_ops_t) Tests ---\n");
     ret += run_kw47a_nv_tests();

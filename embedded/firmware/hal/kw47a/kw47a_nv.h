@@ -33,6 +33,12 @@ int      kw47a_nv_init(void);
 bool     kw47a_nv_bound(void);
 uint32_t kw47a_nv_base(void);
 
+/*
+ * 绑定内部 Flash 硬件端口：SDK 构建调用 kw47a_flash_mcux_bind()，
+ * 非 SDK 构建返回 -1。kw47a_nv_init() 在探测前自动调用一次。
+ */
+int      kw47a_nv_flash_hw_init(void);
+
 #ifdef __cplusplus
 }
 #endif

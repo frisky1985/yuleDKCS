@@ -153,6 +153,8 @@ cmake --build build-arm
 > 量产前必须按 `docs/security/nv-persistence-design.md`（SEC-NV-2026-001）把 CRL（epoch/列表）与锁定状态绑定到 Flash/OTP，确保掉电不回退、不可通过复位绕过；验收项见该文档 §11。
 >
 > 绑定入口：`kw47a_nv_init()`（启动时先于 `sec_security_init()` 调用），板级需实现 `hal_nv_flash_read/write/erase` 与可选 `hal_otp_*`（`hal_interface.h` 契约）。探测失败时自动保持未绑定并打印 `NV persistence not bound (RAM-only)`，不会误判为已锁定。
+>
+> 若已启用 `KW47A_MCUX_SDK` 仍显示未绑定：先查 PFLASH 扇区大小。当前 16KB 布局要求扇区 ≤1KB 且各 Bank 按扇区对齐；扇区为 8KB 时几何门禁会拒绝绑定，需按实际扇区重划分区（见设计文档 §12）。
 
 ---
 

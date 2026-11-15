@@ -8,6 +8,9 @@ if(FIRMWARE_HOST_SIM)
     add_library(hal STATIC
         host/hal_host.c
         kw47a/kw47a_nv.c
+        kw47a/kw47a_flash_ll.c
+        kw47a/kw47a_otp_ll.c
+        kw47a/kw47a_flash_mcux.c
     )
     target_include_directories(hal PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -17,6 +20,9 @@ else()
     add_library(hal STATIC
         kw47a/hal_kw47a.c
         kw47a/kw47a_nv.c
+        kw47a/kw47a_flash_ll.c
+        kw47a/kw47a_otp_ll.c
+        kw47a/kw47a_flash_mcux.c
     )
     target_include_directories(hal PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
