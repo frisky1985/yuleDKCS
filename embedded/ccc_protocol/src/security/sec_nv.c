@@ -13,13 +13,25 @@
 
 _Static_assert(SEC_NV_FLASH_BASE + SEC_NV_FLASH_SIZE <= 0x00080000u,
                "NV partition exceeds 512KB flash");
-_Static_assert(SEC_NV_CRL_A_OFF + 2u * SEC_NV_CRL_BANK_SIZE <= SEC_NV_FLASH_SIZE,
-               "CRL banks exceed NV partition");
-_Static_assert(SEC_NV_LOCK_A_OFF + 2u * SEC_NV_LOCK_BANK_SIZE <= SEC_NV_FLASH_SIZE,
+/* 三组双 Bank 依次排布, 每组不越界且与下一组不重叠。 */
+_Static_assert(SEC_NV_KEYSTORE_A_OFF + 2u * SEC_NV_KEYSTORE_BANK_SIZE <=
+                   SEC_NV_CRL_A_OFF,
+               "keystore banks overlap CRL banks");
+_Static_assert(SEC_NV_KEYSTORE_B_OFF + SEC_NV_KEYSTORE_BANK_SIZE <=
+                   SEC_NV_CRL_A_OFF,
+               "keystore bank B overlaps CRL banks");
+_Static_assert(SEC_NV_CRL_A_OFF + 2u * SEC_NV_CRL_BANK_SIZE <=
+                   SEC_NV_LOCK_A_OFF,
+               "CRL banks overlap Lock banks");
+_Static_assert(SEC_NV_LOCK_A_OFF + 2u * SEC_NV_LOCK_BANK_SIZE <=
+                   SEC_NV_FLASH_SIZE,
                "Lock banks exceed NV partition");
 _Static_assert(SEC_NV_HDR_SIZE + SEC_NV_MAX_CRL + SEC_NV_CRL_META_SIZE <=
                    SEC_NV_CRL_BANK_SIZE,
                "max CRL record does not fit a bank");
+_Static_assert(SEC_NV_HDR_SIZE + SEC_NV_MAX_KEYSTORE <=
+                   SEC_NV_KEYSTORE_BANK_SIZE,
+               "max keystore record does not fit a bank");
 
 typedef struct {
     bool     present;      /* Bank 非全 0xFF */
@@ -31,8 +43,8 @@ typedef struct {
 static sec_nv_ops_t g_ops;
 static bool         g_bound;
 
-/* 单 Bank 扫描/回读临时缓冲 (非记录缓存) */
-static uint8_t g_scratch[SEC_NV_CRL_BANK_SIZE];
+/* 单 Bank 扫描/回读临时缓冲 (非记录缓存; 覆盖最大 payload) */
+static uint8_t g_scratch[SEC_NV_MAX_KEYSTORE];
 
 /* ── 小端读写 ─────────────────────────────────────────────── */
 
@@ -105,51 +117,86 @@ static bool nv_bound(void)
 /* ── Bank 扫描 ────────────────────────────────────────────── */
 
 /**
- * 读取整个 Bank 并判定: 空白 / 有记录且有效 / 非空白但无效(损坏)。
+ * 分块检查整个 Bank 是否为擦除态 (0xFF)。g_scratch 只需覆盖最大 payload,
+ * 因而 Bank 大于 scratch 时按块读取。
+ */
+static ccc_status_t nv_bank_blank(uint32_t off, uint16_t bank_size, bool *blank)
+{
+    uint32_t done = 0;
+
+    while (done < bank_size) {
+        uint32_t left = (uint32_t)bank_size - done;
+        uint16_t n = (uint16_t)((left > sizeof(g_scratch)) ? sizeof(g_scratch)
+                                                           : left);
+        if (g_ops.read(off + done, g_scratch, n) != 0) {
+            return CCC_ERR_HARDWARE;
+        }
+        if (!nv_all_ff(g_scratch, n)) {
+            *blank = false;
+            return CCC_OK;
+        }
+        done += n;
+    }
+    *blank = true;
+    return CCC_OK;
+}
+
+/**
+ * 读取 Bank 并判定: 空白 / 有记录且有效 / 非空白但无效(损坏)。
  * 返回 CCC_ERR_HARDWARE 仅表示底层读失败。
  */
 static ccc_status_t nv_probe(uint32_t off, uint16_t bank_size, uint8_t type,
                              uint16_t max_payload, sec_nv_bank_t *info)
 {
+    uint8_t  hdr[SEC_NV_HDR_SIZE];
     uint16_t payload_len;
     uint32_t crc;
+    bool     blank;
+    ccc_status_t st;
 
     info->present = false;
     info->valid = false;
     info->seq = 0;
     info->payload_len = 0;
 
-    if (g_ops.read(off, g_scratch, bank_size) != 0) {
-        return CCC_ERR_HARDWARE;
+    st = nv_bank_blank(off, bank_size, &blank);
+    if (st != CCC_OK) {
+        return st;
     }
-    if (nv_all_ff(g_scratch, bank_size)) {
+    if (blank) {
         return CCC_OK;
     }
     info->present = true;
 
-    if (nv_rd32(&g_scratch[0]) != SEC_NV_RECORD_MAGIC) {
+    if (g_ops.read(off, hdr, (uint16_t)SEC_NV_HDR_SIZE) != 0) {
+        return CCC_ERR_HARDWARE;
+    }
+    if (nv_rd32(&hdr[0]) != SEC_NV_RECORD_MAGIC) {
         return CCC_OK;                       /* 非空白但无记录 → 损坏 */
     }
-    if (g_scratch[4] != type || g_scratch[5] != SEC_NV_VERSION) {
+    if (hdr[4] != type || hdr[5] != SEC_NV_VERSION) {
         return CCC_OK;
     }
-    payload_len = nv_rd16(&g_scratch[12]);
+    payload_len = nv_rd16(&hdr[12]);
     if (payload_len > max_payload ||
         (uint32_t)SEC_NV_HDR_SIZE + (uint32_t)payload_len > bank_size) {
         return CCC_OK;
     }
-    if (nv_rd32(&g_scratch[20]) != SEC_NV_COMMIT_MAGIC) {
+    if (nv_rd32(&hdr[20]) != SEC_NV_COMMIT_MAGIC) {
         return CCC_OK;                       /* commit 未写 → 半写记录 */
     }
+    if (payload_len > 0U &&
+        g_ops.read(off + SEC_NV_HDR_SIZE, g_scratch, payload_len) != 0) {
+        return CCC_ERR_HARDWARE;
+    }
 
-    crc = nv_rd32(&g_scratch[16]);
-    if (crc != nv_crc32(&g_scratch[0], 16, &g_scratch[SEC_NV_HDR_SIZE],
-                        payload_len)) {
+    crc = nv_rd32(&hdr[16]);
+    if (crc != nv_crc32(&hdr[0], 16, g_scratch, payload_len)) {
         return CCC_OK;
     }
 
     info->valid = true;
-    info->seq = nv_rd32(&g_scratch[8]);
+    info->seq = nv_rd32(&hdr[8]);
     info->payload_len = payload_len;
     return CCC_OK;
 }
@@ -327,7 +374,11 @@ ccc_status_t sec_nv_init(void)
     if (!nv_bound()) {
         return CCC_ERR_NOT_INIT;
     }
-    if (SEC_NV_CRL_B_OFF + SEC_NV_CRL_BANK_SIZE > SEC_NV_FLASH_SIZE ||
+    if (SEC_NV_KEYSTORE_A_OFF + SEC_NV_KEYSTORE_BANK_SIZE > SEC_NV_FLASH_SIZE ||
+        SEC_NV_KEYSTORE_B_OFF + SEC_NV_KEYSTORE_BANK_SIZE > SEC_NV_FLASH_SIZE ||
+        SEC_NV_CRL_A_OFF + SEC_NV_CRL_BANK_SIZE > SEC_NV_FLASH_SIZE ||
+        SEC_NV_CRL_B_OFF + SEC_NV_CRL_BANK_SIZE > SEC_NV_FLASH_SIZE ||
+        SEC_NV_LOCK_A_OFF + SEC_NV_LOCK_BANK_SIZE > SEC_NV_FLASH_SIZE ||
         SEC_NV_LOCK_B_OFF + SEC_NV_LOCK_BANK_SIZE > SEC_NV_FLASH_SIZE) {
         return CCC_ERR_PARAM;
     }
@@ -426,6 +477,70 @@ ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len)
 
     (void)memcpy(blob, g_scratch, crl_len);
     *len = crl_len;
+    return CCC_OK;
+}
+
+/**
+ * 保存 keystore blob: 双 Bank 轮换 + seq + CRC + commit-last。
+ * keystore 不参与 OTP 水位/锁定, 因此不做任何 OTP 操作。
+ */
+ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len)
+{
+    uint32_t off;
+    uint32_t seq;
+    ccc_status_t st;
+
+    if (!nv_bound()) {
+        return CCC_ERR_NOT_INIT;
+    }
+    if (blob == NULL || len == 0U || len > (uint16_t)SEC_NV_MAX_KEYSTORE) {
+        return CCC_ERR_PARAM;
+    }
+
+    st = nv_pick_save_bank(SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
+                           (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE,
+                           SEC_NV_TYPE_KEYSTORE,
+                           (uint16_t)SEC_NV_MAX_KEYSTORE, &off, &seq);
+    if (st != CCC_OK) {
+        return st;
+    }
+
+    return nv_write_record(off, (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE,
+                           SEC_NV_TYPE_KEYSTORE, seq, blob, len);
+}
+
+/**
+ * 加载最新有效 keystore blob; *len 返回实际 payload 长度。
+ * 两 Bank 均空白 → CCC_ERR_NOT_FOUND; 存在损坏 Bank → CCC_ERR_SECURITY。
+ */
+ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len)
+{
+    uint32_t off = 0;
+    uint16_t payload_len = 0;
+    ccc_status_t st;
+
+    if (!nv_bound()) {
+        return CCC_ERR_NOT_INIT;
+    }
+    if (blob == NULL || len == NULL || cap == 0U) {
+        return CCC_ERR_PARAM;
+    }
+
+    st = nv_select(SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
+                   (uint16_t)SEC_NV_KEYSTORE_BANK_SIZE, SEC_NV_TYPE_KEYSTORE,
+                   (uint16_t)SEC_NV_MAX_KEYSTORE, &off, &payload_len);
+    if (st != CCC_OK) {
+        return st;
+    }
+    if (payload_len > cap) {
+        return CCC_ERR_PARAM;
+    }
+    if (g_ops.read(off + SEC_NV_HDR_SIZE, g_scratch, payload_len) != 0) {
+        return CCC_ERR_HARDWARE;
+    }
+
+    (void)memcpy(blob, g_scratch, payload_len);
+    *len = payload_len;
     return CCC_OK;
 }
 

@@ -77,10 +77,10 @@ int kw47a_flash_mcux_bind(void)
     }
 
     /*
-     * 几何安全门禁：NV 每个记录 Bank 必须能被物理扇区整除，且所有 Bank
+     * 几何安全门禁：要求每个记录 Bank 能被物理扇区整除，且所有 Bank
      * 起始偏移按扇区对齐，否则单扇区擦除会越过 Bank 破坏相邻记录。
-     * 当前 16KB 布局要求扇区 ≤ 1KB；若实际器件为 8KB 扇区，必须重新
-     * 规划分区（见 docs/security/nv-persistence-design.md），此处拒绝绑定
+     * 当前 8KB Bank 兼容 8KB 扇区；若实际器件扇区更大，必须重新规划
+     * 分区（见 docs/security/nv-persistence-design.md），此处拒绝绑定
      * 并安全降级 RAM-only，绝不冒险擦除。
      */
     if (sector_size == 0u ||

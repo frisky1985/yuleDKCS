@@ -93,7 +93,8 @@ static void test_init_binds_and_reports_layout(void)
 
     TEST_ASSERT_EQUAL_INT(0, kw47a_nv_init());
     TEST_ASSERT_TRUE(kw47a_nv_bound());
-    TEST_ASSERT_EQUAL_UINT(0x0007C000u, kw47a_nv_base());
+    TEST_ASSERT_EQUAL_UINT(SEC_NV_FLASH_BASE, kw47a_nv_base());
+    TEST_ASSERT_EQUAL_UINT(SEC_NV_FLASH_SIZE, KW47A_NV_SIZE);
 }
 
 static void test_lock_roundtrip_survives_reinit(void)

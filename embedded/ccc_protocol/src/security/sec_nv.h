@@ -1,17 +1,21 @@
 /**
  * @file sec_nv.h
- * @brief CRL 与产线锁定状态的掉电保持 (NV 分区, 平台通过 ops 注入)
+ * @brief CRL / keystore / 产线锁定状态的掉电保持 (NV 分区, 平台通过 ops 注入)
  *
- * 分区 (512KB Flash 方案 A, 16KB NV):
- *   +0x0000 4KB  Key store (由 key_mgmt 使用, 本模块不解析)
- *   +0x1000 2KB  CRL Bank A
- *   +0x1800 2KB  CRL Bank B
- *   +0x2000 1KB  Lock Bank A
- *   +0x2400 1KB  Lock Bank B
+ * 分区 (512KB Flash, 48KB NV = 6 x 8KB 物理扇区, 基址 0x74000):
+ *   +0x0000 8KB  Key store Bank A (由 key_mgmt 使用, 本模块不解析)
+ *   +0x2000 8KB  Key store Bank B
+ *   +0x4000 8KB  CRL Bank A
+ *   +0x6000 8KB  CRL Bank B
+ *   +0x8000 8KB  Lock Bank A
+ *   +0xA000 8KB  Lock Bank B
+ *
+ * 每个 Bank 独占一个 8KB 物理扇区, 擦除粒度为扇区; Bank 内的记录只占
+ * 头部 + payload, 其余保持 0xFF。
  *
  * 记录格式 (32B 头, 全部小端显式读写):
  *   0  magic "YRNV" (0x564E5259)
- *   4  type (1=CRL, 2=LOCK)
+ *   4  type (1=CRL, 2=LOCK, 3=KEYSTORE)
  *   5  version = 1
  *   6  flags (u16, 0)
  *   8  seq (u32)
@@ -34,23 +38,27 @@
 extern "C" {
 #endif
 
-#define SEC_NV_FLASH_BASE      0x0007C000u   /* 512KB 方案 A */
-#define SEC_NV_FLASH_SIZE      0x00004000u
+#define SEC_NV_FLASH_BASE      0x00074000u  /* 512KB 方案 A, 6 x 8KB 扇区 */
+#define SEC_NV_FLASH_SIZE      0x0000C000u  /* 48KB */
 #define SEC_NV_KEYSTORE_OFF    0x0000u
+#define SEC_NV_KEYSTORE_A_OFF  0x0000u
+#define SEC_NV_KEYSTORE_B_OFF  0x00002000u
+#define SEC_NV_KEYSTORE_BANK_SIZE 0x2000u   /* 8KB */
+#define SEC_NV_CRL_A_OFF       0x00004000u
+#define SEC_NV_CRL_B_OFF       0x00006000u
+#define SEC_NV_CRL_BANK_SIZE   0x2000u      /* 8KB */
+#define SEC_NV_LOCK_A_OFF      0x00008000u
+#define SEC_NV_LOCK_B_OFF      0x0000A000u
+#define SEC_NV_LOCK_BANK_SIZE  0x2000u      /* 8KB */
+#define SEC_NV_MAX_KEYSTORE    6144u
 #define SEC_NV_MAX_CRL         640u
-
-#define SEC_NV_CRL_A_OFF       0x1000u
-#define SEC_NV_CRL_B_OFF       0x1800u
-#define SEC_NV_CRL_BANK_SIZE   0x0800u      /* 2KB */
-#define SEC_NV_LOCK_A_OFF      0x2000u
-#define SEC_NV_LOCK_B_OFF      0x2400u
-#define SEC_NV_LOCK_BANK_SIZE  0x0400u      /* 1KB */
 
 #define SEC_NV_HDR_SIZE        32u
 #define SEC_NV_RECORD_MAGIC    0x564E5259u  /* "YRNV" little-endian */
 #define SEC_NV_COMMIT_MAGIC    0x544D4F43u  /* "COMT" little-endian */
 #define SEC_NV_TYPE_CRL        1u
 #define SEC_NV_TYPE_LOCK       2u
+#define SEC_NV_TYPE_KEYSTORE   3u
 #define SEC_NV_VERSION         1u
 
 /* CRL 记录 payload = 签名 CRL blob + 8B 元数据; Lock payload 固定 24B. */
@@ -78,6 +86,12 @@ ccc_status_t sec_nv_save_crl(const uint8_t *blob, uint16_t len);
 
 /** 加载最新有效 CRL blob; epoch 低于 OTP 水位时返回 CCC_ERR_STATE。 */
 ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len);
+
+/** 保存 keystore blob (双 Bank 记录, 不做 OTP 操作)。 */
+ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len);
+
+/** 加载最新有效 keystore blob; 输出实际长度。 */
+ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 
 /** 保存锁定记录 (station_id 可为 NULL); 成功后置 OTP 量产锁定。 */
 ccc_status_t sec_nv_save_lock(const uint8_t station_id[16]);

@@ -3,18 +3,18 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | SEC-NV-2026-001 |
-| 版本 | v1.3（Flash/OTP 驱动层与几何门禁） |
+| 版本 | v1.4（8KB 扇区布局 + keystore 双 Bank 重构） |
 | 关联 | RMP-2026-001 §0.2；`sec_revocation.c`；`key_mgmt.c`；`kw47a_flash.ld` |
 | 目标 | 让 CRL（含 epoch）与 provisioning 锁定状态在复位/断电后保持，防回滚、防擦除绕过 |
-| 实现状态 | 软件侧已落地：`sec_nv`、`kw47a_nv` 绑定、Flash/OTP 驱动层（`kw47a_flash_ll`/`kw47a_otp_ll`/`kw47a_flash_mcux`）；`test_security_nv` 8/8、`test_kw47a_nv` 7/7、`test_kw47a_drv` 10/10，`test_all` 279 项 0 失败；真机 PFLASH API、扇区几何与 eFuse 位定义待验证 |
+| 实现状态 | 软件侧已落地：`sec_nv`（CRL/Lock/Keystore 三组双 Bank）、`kw47a_nv` 绑定、Flash/OTP 驱动层；`test_security_nv` 13/13、`test_kw47a_nv` 7/7、`test_kw47a_drv` 10/10，`test_all` 284 项 0 失败；真机 PFLASH 时序、擦写缓存失效与 eFuse 位定义待验证 |
 
 ## 1. 现状与必须先修的问题
 
 | # | 问题 | 影响 | 处理 |
 |---|---|---|---|
-| F1 | `key_mgmt.c` 使用 `KEYSTORE_FLASH_ADDR 0x080E0000`（STM32 占位地址） | KW47A 上密钥实际未持久化 | 已修正为 `SEC_NV_FLASH_BASE + 0x0000`（`0x7C000`） |
-| F2 | `kw47a_flash.ld` 的 `STORAGE` 位于 `0x00080000`，而 Flash 仅 512KB（末地址 `0x7FFFF`） | 分区越界，链接/烧录异常 | 已修正：`FLASH_B` 缩为 176KB，`STORAGE` 移至 `0x7C000`/16KB |
-| F3 | `virt_flash_read/write/erase` 仅有 weak 桩，返回 -1 | 无真实 NV 读写 | 板级实现 KW47A Flash 驱动 |
+| F1 | `key_mgmt.c` 使用 `KEYSTORE_FLASH_ADDR 0x080E0000`（STM32 占位地址） | KW47A 上密钥实际未持久化 | 已修正：keystore 改为 NV 双 Bank 记录（基址 `0x74000`），并具备掉电回退 |
+| F2 | `kw47a_flash.ld` 的 `STORAGE` 位于 `0x00080000`，而 Flash 仅 512KB（末地址 `0x7FFFF`） | 分区越界，链接/烧录异常 | 已修正：`FLASH_B` 缩为 144KB，`STORAGE` 移至 `0x74000`/48KB |
+| F3 | `virt_flash_read/write/erase` 仅有 weak 桩，返回 -1 | 无真实 NV 读写 | 已由 `sec_nv` Keystore 双 Bank 记录替代，并经 KW47A Flash 驱动落地 |
 | F4 | `sec_revocation` 与锁定状态仅驻留 RAM | 复位即可绕过锁定、重放旧 CRL | 本文方案 |
 | F5 | SE050 仅有 SCP03/签名 APDU，无对象存储/单调计数器接口 | 无法直接用作 NV 根 | 列为阶段 2，接口预留 |
 | F6 | Bootloader “write-protected via SE050” 尚未实现 | NV 分区可被物理改写 | 调试熔断 + 写保护，G1 验证 |
@@ -41,34 +41,34 @@
 
 `kw47a_board.h` 标注 512KB，但 `STORAGE` 放在 `0x80000`，两者矛盾。必须先确认实际型号容量，二选一：
 
-**方案 A：512KB（推荐按此实现，兼容性最好）**
+**方案 A：512KB（已按此实现，兼容 8KB 物理扇区）**
 
 | 区域 | 起止 | 大小 | 说明 |
 |---|---|---|---|
 | Boot header | `0x00000000–0x000003FF` | 1KB | 不变 |
 | Bootloader | `0x00000400–0x0001FFFF` | 127KB | 不变 |
 | Slot A | `0x00020000–0x0004FFFF` | 192KB | 不变 |
-| Slot B | `0x00050000–0x0007BFFF` | 176KB | 尾部让出 16KB |
-| **NV** | `0x0007C000–0x0007FFFF` | 16KB | 本文新增 |
+| Slot B | `0x00050000–0x00073FFF` | 144KB | 尾部让出 48KB |
+| **NV** | `0x00074000–0x0007FFFF` | 48KB | 6 × 8KB 物理扇区 |
 
-OTA 镜像上限 = `min(192KB,176KB) = 176KB`，CI 增加 `arm-none-eabi-size` 门禁。
+OTA 镜像上限 = `min(192KB,144KB) = 144KB`（当前镜像约 106KB，余量 38KB），CI 增加 `arm-none-eabi-size` 门禁。
 
-**方案 B：容量 ≥1MB 时**：保留 A/B 各 192KB，NV 使用 `0x00080000–0x00083FFF`（现有 `STORAGE` 位置）。
+**方案 B：容量 ≥1MB 时**：可保持 A/B 各 192KB，将 NV 上移至 `0x00080000`；NV 内部布局不变，仅改 `SEC_NV_FLASH_BASE` 与链接脚本 `STORAGE`。当前实现选择方案 A，保证 512KB 器件可用。
 
-两方案均由板级头文件宏定义，链接脚本与代码共用，并用 `static_assert(NV_BASE + NV_SIZE <= FLASH_SIZE)` 锁定。
+两方案均由板级头文件宏定义，链接脚本与代码共用，并用 `_Static_assert` 锁定 Bank 边界与不重叠。
 
-### 3.2 NV 分区内部（16KB）
+### 3.2 NV 分区内部（48KB，6 × 8KB）
 
 | 偏移 | 大小 | 用途 |
 |---|---|---|
-| `+0x0000` | 4KB | Key store（替换 F1 的占位地址，沿用现有 blob 格式） |
-| `+0x1000` | 2KB | CRL Bank A |
-| `+0x1800` | 2KB | CRL Bank B |
-| `+0x2000` | 1KB | Lock Bank A |
-| `+0x2400` | 1KB | Lock Bank B |
-| `+0x2800` | 1KB | 设备身份/出生记录缓存（预留） |
-| `+0x2C00` | 1KB | 防回滚计数镜像（预留） |
-| `+0x3000` | 4KB | 预留（诊断/日志） |
+| `+0x0000` | 8KB | Keystore Bank A |
+| `+0x2000` | 8KB | Keystore Bank B |
+| `+0x4000` | 8KB | CRL Bank A |
+| `+0x6000` | 8KB | CRL Bank B |
+| `+0x8000` | 8KB | Lock Bank A |
+| `+0xA000` | 8KB | Lock Bank B |
+
+每个 Bank 独占一个 8KB 物理扇区，擦除粒度为扇区；记录仅占头部 + payload，其余保持 0xFF。Keystore 最大记录 5747B，受 `SEC_NV_MAX_KEYSTORE=6144B` 约束（编译期断言）。
 
 ## 4. 记录格式
 
@@ -77,7 +77,7 @@ OTA 镜像上限 = `min(192KB,176KB) = 176KB`，CI 增加 `arm-none-eabi-size` �
 | 偏移 | 字段 | 说明 |
 |---|---|---|
 | 0 | magic `u32` | 字节 `"YRNV"`，LE 值 `0x564E5259` |
-| 4 | type `u8` | 1=CRL，2=LOCK |
+| 4 | type `u8` | 1=CRL，2=LOCK，3=KEYSTORE |
 | 5 | version `u8` | 1 |
 | 6 | flags `u16` | 保留，0 |
 | 8 | seq `u32` | 单调递增，跨 Bank 取最大有效值 |
@@ -114,6 +114,14 @@ OTA 镜像上限 = `min(192KB,176KB) = 176KB`，CI 增加 `arm-none-eabi-size` �
 | `CRL_EPOCH` | 单调水位，32 个单向位（bit i 置 1 表示 epoch ≥ i+1） | 每次成功安装 CRL 后 |
 
 无 OTP 时，水位由 Flash 双 Bank 的 `seq` 兜底；残余风险见 §9。
+
+### 4.5 Keystore 记录
+
+- payload = 现有密钥 blob：`magic(4) "KEYS"` + `version(2)` + `count(1)` + `count × ccc_digital_key_t` + `crc32(4)`。
+- 由 `key_mgmt` 构造/解析；`sec_nv` 只按 `type=3` 原样存取，不做密钥语义解析。
+- 双 Bank 轮换 + `seq` + CRC + commit 最后写：commit 前掉电保留上一代；单 Bank 损坏回退另一 Bank；两 Bank 均损坏返回 `CCC_ERR_SECURITY`。
+- 最大记录 5747B（`MAX_KEYS=8` 时），受 `SEC_NV_MAX_KEYSTORE=6144B` 与 8KB Bank 约束；SE050 仍为第一优先级，NV 为回退路径。
+- Keystore 不使用 OTP 水位：其防回滚依赖双 Bank `seq` 与安全启动计数（残余风险见 §9）。
 
 ## 5. 提交协议（掉电安全）
 
@@ -172,19 +180,24 @@ typedef struct {
 } sec_nv_ops_t;
 
 ccc_status_t sec_nv_bind(const sec_nv_ops_t *ops);
-ccc_status_t sec_nv_init(void);              /* 上电加载 lock + CRL */
+ccc_status_t sec_nv_init(void);              /* 校验分区边界 */
 ccc_status_t sec_nv_save_crl(const uint8_t *blob, uint16_t len);
-ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用 */
+ccc_status_t sec_nv_load_crl(uint8_t *blob, uint16_t cap, uint16_t *len);
+ccc_status_t sec_nv_save_lock(const uint8_t station_id[16]);
+ccc_status_t sec_nv_load_lock(bool *locked);
+ccc_status_t sec_nv_save_keystore(const uint8_t *blob, uint16_t len);
+ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 ```
 
 - `sec_revocation_install()`：RAM 校验通过 → `sec_nv_save_crl()` → OTP 水位；
-- `sec_lock_provisioning()`：先写 Flash Lock 记录 → 再写 OTP（若可用）；任一步失败仍保持 RAM 锁定并返回诊断；
-- 未绑定 ops 时保持当前 RAM 行为，并置 `SEC_NV_DEGRADED` 告警；
-- 所有 offset 由 `NV_BASE` 派生，禁止业务层出现绝对地址。
+- `sec_lock_provisioning()`：先置 RAM 锁定 → 写 Flash Lock 记录 → 再写 OTP（若可用）；任一步失败仍保持 RAM 锁定并返回诊断；
+- `key_mgmt`：SE050 失败 → `sec_nv_save_keystore()/load_keystore()`；
+- 未绑定 ops 时保持 RAM 行为并打印 `NV persistence not bound (RAM-only)`；
+- 所有 offset 由 `SEC_NV_FLASH_BASE` 派生，业务层不出现绝对地址。
 
 ## 8. 测试方案
 
-以 16KB RAM 假 Flash + 可注入故障的 OTP 桩实现 `sec_nv_ops_t`：
+以 48KB RAM 假 Flash（6 × 8KB Bank）+ 可注入故障的 OTP 桩实现 `sec_nv_ops_t`：
 
 1. CRL 安装 → 模拟复位（保留 Flash、清 RAM、`sec_nv_init`）→ 查询仍命中；
 2. 重启后安装更低 epoch → 拒绝；更高 epoch → 接受；
@@ -193,17 +206,20 @@ ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用
 5. Lock 记录 CRC 损坏 → 复位后按锁定处理；
 6. 在擦除、payload 写完、commit 前/后四个断点断电 → 始终能选出有效记录；
 7. 两 Bank 全坏 → 锁定并拒绝 attestation；
-8. `NV_BASE/NV_SIZE` 越界用例在编译期失败（`static_assert`）。
+8. Keystore 往返/复位保持、两代覆盖取最新、commit 前掉电保留上一代、单 Bank 损坏回退、双损坏拒绝、参数与未绑定错误；
+9. `SEC_NV_*` 越界或 Bank 重叠在编译期失败（`_Static_assert`）。
 
 ## 9. 残余风险与对策
 
 | 风险 | 对策 |
 |---|---|
 | 无 OTP 时可整体回滚 Flash | 调试熔断 + 安全启动防回滚计数；或在阶段 2 使用 SE050 单调计数器 |
+| Keystore 无 OTP 水位 | 双 Bank `seq` 防重放；密钥 blob 由 SE050 优先承载，NV 仅回退；后续可迁移至 SE050 对象存储 |
 | Flash 物理读取 | 调试口永久关闭；密钥仅存 SE050，NV 不含明文密钥 |
-| 擦写寿命 | CRL/锁定更新低频；2KB Bank 轮换，远低于 10 万次 |
+| 擦写寿命 | CRL/锁定/密钥更新低频；8KB Bank 轮换，远低于 10 万次 |
 | 写入期间掉电 | §5 协议保证“旧或新”至少一份有效 |
 | Bootloader 区写保护与 NV 写入冲突 | NV 放在 Slot B 尾部（方案 A），不动 Bootloader |
+| 镜像尺寸门禁 | Slot B 143KB 可用；当前镜像约 106KB，CI 需加 `arm-none-eabi-size` 上限检查 |
 
 ## 10. 落地顺序
 
@@ -230,8 +246,10 @@ ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用
 | `sec_security_init()` 上电恢复并接入固件启动 | ✅ 已实现（未绑定时打印 RAM-only 告警） |
 | `sec_lock_provisioning()` 持久化 | ✅ 已实现 |
 | 地址修正（`key_mgmt`、链接脚本） | ✅ 已修正 |
-| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 8/8 通过 |
-| 板级 KW47A Flash/OTP 驱动 | 🟨 代码完成：Flash LL（页擦/编程/回读）+ OTP LL（单调位编程/epoch）+ MCUX PFLASH 适配 + eFuse 弱符号钩子；`test_kw47a_drv` 10/10；待真机验证 API/时序 |
-| PFLASH 扇区几何 | ⚠️ 当前 16KB 布局要求扇区 ≤1KB 且 Bank 按扇区对齐；若实际为 8KB 扇区，`kw47a_flash_mcux_bind()` 拒绝绑定（安全降级 RAM-only），需按实际扇区重划为 4×8KB Bank |
+| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 13/13 通过（含 keystore 5 项） |
+| 8KB 扇区布局（6 Bank，48KB） | ✅ 已实现：`FLASH_B` 144KB、`STORAGE` `0x74000`，几何门禁与 8KB 扇区匹配 |
+| Keystore 双 Bank 重构（替代 `virt_flash_*`） | ✅ 已实现：SE050 优先，NV 回退；commit 前掉电回退上一代 |
+| 板级 KW47A Flash/OTP 驱动 | 🟨 代码完成：Flash LL（页擦/编程/回读）+ OTP LL（单调位编程/epoch）+ MCUX PFLASH 适配 + eFuse 弱符号钩子；`test_kw47a_drv` 10/10；待真机验证时序/缓存失效 |
+| PFLASH 扇区几何 | ✅ 当前布局按 8KB 扇区对齐（Bank=扇区）；若器件扇区更小仍兼容，门禁按 `%` 校验 |
 | SE050 对象存储/单调计数器（阶段 2） | ⏳ 待 Plug&Trust 集成 |
-| Flash 实际容量确认（512KB / 1MB） | ⏳ 待硬件确认 |
+| Flash 实际容量确认（512KB / 1MB） | ⏳ 待硬件确认（当前布局在 512KB 内有效） |

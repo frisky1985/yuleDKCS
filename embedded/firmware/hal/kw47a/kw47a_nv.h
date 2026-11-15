@@ -3,7 +3,7 @@
  *
  * 把 sec_nv 的双 Bank 记录引擎绑定到板级 NV Flash/OTP。
  * 分区布局见 docs/security/nv-persistence-design.md：
- *   0x7C000..0x7FFFF (16KB)，keystore / CRL A/B / LOCK A/B。
+ *   0x74000..0x7FFFF (48KB)，keystore / CRL A/B / LOCK A/B，6 x 8KB 扇区。
  */
 
 #ifndef KW47A_NV_H
@@ -16,8 +16,8 @@
 extern "C" {
 #endif
 
-#define KW47A_NV_BASE   0x0007C000u
-#define KW47A_NV_SIZE   0x00004000u
+#define KW47A_NV_BASE   0x00074000u
+#define KW47A_NV_SIZE   0x0000C000u
 
 /* 1 = 使用 eFuse 作为锁定/epoch 根；0 = 仅双 Bank Flash。 */
 #ifndef KW47A_HAS_OTP

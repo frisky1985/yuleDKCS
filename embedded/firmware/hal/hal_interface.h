@@ -57,7 +57,7 @@ int  hal_storage_read(const char *key, uint8_t *data, uint16_t *len);
 int  hal_storage_delete(const char *key);
 
 /* ── Non-volatile partition (sec_nv backend) ──────────────
- * offset 相对 NV 分区基址（KW47A: 0x7C000，16KB），不是绝对地址。
+ * offset 相对 NV 分区基址（KW47A: 0x74000，48KB），不是绝对地址。
  * len 为字节数；返回 0 成功，<0 失败。
  * 读操作必须在未擦除时也能工作，供 sec_nv 区分空白(0xFF)与损坏。
  */

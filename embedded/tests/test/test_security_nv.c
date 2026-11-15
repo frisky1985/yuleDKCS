@@ -1,9 +1,10 @@
 /**
  * @file test_security_nv.c
- * @brief CRL / 产线锁定 NV 持久化测试 (16KB 假 Flash + 故障注入 + OTP 模拟)
+ * @brief keystore / CRL / 产线锁定 NV 持久化测试 (48KB 假 Flash + 故障注入 + OTP 模拟)
  *
  * 覆盖: 空白分区、CRL 往返、篡改回退、OTP 回滚保护、四个掉电断点、
- *       锁定持久化/损坏 fail-closed、上电恢复 CRL、未绑定与参数校验。
+ *       锁定持久化/损坏 fail-closed、上电恢复 CRL、未绑定与参数校验,
+ *       以及 keystore 双 Bank 往返/最新代/commit 前掉电/损坏回退/参数校验。
  */
 
 #include "unity.h"
@@ -473,6 +474,176 @@ static void test_lock_persistence(void)
     TEST_ASSERT_TRUE(locked);
 }
 
+/* ── 9. keystore 保存/加载往返 (模拟复位) ─────────────────── */
+
+static void test_keystore_roundtrip(void)
+{
+    uint8_t  blob[1024];
+    uint8_t  out[1024];
+    uint16_t out_len = 0;
+    uint16_t i;
+
+    nv_reset_env();
+    nv_bind();
+
+    for (i = 0; i < (uint16_t)sizeof(blob); i++) {
+        blob[i] = (uint8_t)(i * 7u + 3u);
+    }
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(blob, (uint16_t)sizeof(blob)));
+
+    nv_simulate_reboot();
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(blob), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(blob, out, sizeof(blob));
+}
+
+/* ── 10. 覆盖两代后加载最新, 且 seq 递增 ──────────────────── */
+
+static void test_keystore_latest_generation(void)
+{
+    uint8_t  gen1[256];
+    uint8_t  gen2[256];
+    uint8_t  gen3[256];
+    uint8_t  out[256];
+    uint16_t out_len = 0;
+    uint32_t seq_a;
+    uint32_t seq_b;
+
+    nv_reset_env();
+    nv_bind();
+
+    (void)memset(gen1, 0x11, sizeof(gen1));
+    (void)memset(gen2, 0x22, sizeof(gen2));
+    (void)memset(gen3, 0x33, sizeof(gen3));
+
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen2), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen2, out, sizeof(gen2));
+
+    /* 第 2 代记录落在 Bank B, seq = 1 (小端) */
+    seq_b = (uint32_t)g_flash[SEC_NV_KEYSTORE_B_OFF + 8U] |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_B_OFF + 9U] << 8) |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_B_OFF + 10U] << 16) |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_B_OFF + 11U] << 24);
+    TEST_ASSERT_EQUAL_UINT(1U, seq_b);
+
+    /* 第 3 代回到 Bank A, seq 继续递增 */
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen3, (uint16_t)sizeof(gen3)));
+    seq_a = (uint32_t)g_flash[SEC_NV_KEYSTORE_A_OFF + 8U] |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_A_OFF + 9U] << 8) |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_A_OFF + 10U] << 16) |
+            ((uint32_t)g_flash[SEC_NV_KEYSTORE_A_OFF + 11U] << 24);
+    TEST_ASSERT_EQUAL_UINT(2U, seq_a);
+
+    nv_simulate_reboot();
+    out_len = 0;
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen3), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen3, out, sizeof(gen3));
+}
+
+/* ── 11. commit 前掉电: 仍加载上一代 ──────────────────────── */
+
+static void test_keystore_power_cut_before_commit(void)
+{
+    uint8_t  gen1[1024];
+    uint8_t  gen2[1024];
+    uint8_t  out[1024];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    nv_bind();
+
+    (void)memset(gen1, 0xAA, sizeof(gen1));
+    (void)memset(gen2, 0x55, sizeof(gen2));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+
+    /* 头 + payload 写成功, commit 写失败 */
+    g_fail_after_writes = 2;
+    g_write_attempts = 0;
+    TEST_ASSERT_NOT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+    g_fail_after_writes = -1;
+
+    nv_simulate_reboot();
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen1), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen1, out, sizeof(gen1));
+}
+
+/* ── 12. 损坏回退: 活动 Bank 损坏 → 另一 Bank; 双损坏 → SECURITY ── */
+
+static void test_keystore_corruption_fallback(void)
+{
+    uint8_t  gen1[128];
+    uint8_t  gen2[128];
+    uint8_t  out[128];
+    uint16_t out_len = 0;
+
+    nv_reset_env();
+    nv_bind();
+
+    (void)memset(gen1, 0x01, sizeof(gen1));
+    (void)memset(gen2, 0x02, sizeof(gen2));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen1, (uint16_t)sizeof(gen1)));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_save_keystore(gen2, (uint16_t)sizeof(gen2)));
+
+    /* 活动 Bank B 的 payload 被篡改 → 回退到 Bank A */
+    g_flash[SEC_NV_KEYSTORE_B_OFF + SEC_NV_HDR_SIZE + 4U] ^= 0xFFU;
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+    TEST_ASSERT_EQUAL_UINT(sizeof(gen1), out_len);
+    TEST_ASSERT_EQUAL_MEMORY(gen1, out, sizeof(gen1));
+
+    /* 两个 Bank 均损坏 → 无有效记录, fail closed */
+    g_flash[SEC_NV_KEYSTORE_A_OFF + SEC_NV_HDR_SIZE + 4U] ^= 0xFFU;
+    out_len = 0;
+    TEST_ASSERT_EQUAL(CCC_ERR_SECURITY,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &out_len));
+}
+
+/* ── 13. keystore 参数校验 ────────────────────────────────── */
+
+static void test_keystore_params(void)
+{
+    uint8_t  blob[128];
+    uint8_t  out[SEC_NV_MAX_KEYSTORE];
+    uint16_t len = 0;
+
+    nv_reset_env();
+    (void)memset(blob, 0x5A, sizeof(blob));
+
+    /* 未绑定 */
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_INIT,
+                      sec_nv_save_keystore(blob, (uint16_t)sizeof(blob)));
+    TEST_ASSERT_EQUAL(CCC_ERR_NOT_INIT,
+                      sec_nv_load_keystore(out, (uint16_t)sizeof(out), &len));
+
+    nv_bind();
+    TEST_ASSERT_EQUAL(CCC_OK, sec_nv_init());
+
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM, sec_nv_save_keystore(NULL, 64U));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM, sec_nv_save_keystore(blob, 0U));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM,
+                      sec_nv_save_keystore(blob, (uint16_t)(SEC_NV_MAX_KEYSTORE + 1U)));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM, sec_nv_load_keystore(NULL, 64U, &len));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM, sec_nv_load_keystore(out, 0U, &len));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM, sec_nv_load_keystore(out, 64U, NULL));
+
+    /* 调用方缓冲区不足 */
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_save_keystore(blob, (uint16_t)sizeof(blob)));
+    TEST_ASSERT_EQUAL(CCC_ERR_PARAM,
+                      sec_nv_load_keystore(out, 64U, &len));
+}
+
 #ifndef TEST_LIB_MODE
 void setUp(void)
 {
@@ -496,6 +667,11 @@ int run_security_nv_tests(void)
     RUN_TEST(test_power_cut_recovery);
     RUN_TEST(test_init_restores_crl);
     RUN_TEST(test_unbound_and_params);
+    RUN_TEST(test_keystore_roundtrip);
+    RUN_TEST(test_keystore_latest_generation);
+    RUN_TEST(test_keystore_power_cut_before_commit);
+    RUN_TEST(test_keystore_corruption_fallback);
+    RUN_TEST(test_keystore_params);
     RUN_TEST(test_lock_persistence);    /* 终态锁定, 必须最后执行 */
 
     UNITY_END();

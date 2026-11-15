@@ -128,7 +128,7 @@ int hal_se050_generate_random(uint8_t *buffer, uint16_t len)
 }
 
 /* ── NV partition / OTP（经平台无关 LL 层）────────────────────
- * offset 相对 NV 分区基址（SEC_NV_FLASH_BASE: 0x7C000），非绝对地址。
+ * offset 相对 NV 分区基址（SEC_NV_FLASH_BASE: 0x74000），非绝对地址。
  * Flash 操作由 kw47a_flash_ll_* 完成（MCUX 适配层在 kw47a_flash_mcux.c，
  * 由 kw47a_nv_flash_hw_init() 绑定）；OTP 转发 kw47a_otp_ll_*。
  * 未绑定时 LL 层返回 -1，kw47a_nv_init() 判定不可用并降级 RAM-only。

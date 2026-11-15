@@ -16,7 +16,7 @@ void vPortFree(void *pv);
  * 存储格式: [magic(4)][version(2)][key_count(1)][keys(N*sizeof(ccc_digital_key_t))][crc32(4)]
  *
  * 兼容性:
- *   - 无 SE050 环境 (仿真/CI): 回退到加密 Flash (virt_flash_*)
+ *   - SE050 优先; 不可用时回退 NV 双 Bank 记录 (sec_nv_save/load_keystore)
  *   - 都不可用: 返回 CCC_ERR_HARDWARE, 不阻塞启动
  */
 
@@ -24,15 +24,10 @@ void vPortFree(void *pv);
 #define KEYSTORE_MAGIC      0x4B455953  /* "KEYS" */
 #define KEYSTORE_VERSION    0x0001
 
-/* 虚拟 Flash 接口 (非 SE050 环境下的回退, 例如 MCU 内部 Flash) */
-/* 声明为 weak, 可被平台覆盖 */
-__attribute__((weak)) int virt_flash_write(uint32_t addr, const uint8_t *data, uint16_t len)  { (void)addr; (void)data; (void)len; return -1; }
-__attribute__((weak)) int virt_flash_read(uint32_t addr, uint8_t *data, uint16_t len)   { (void)addr; (void)data; (void)len; return -1; }
-__attribute__((weak)) int virt_flash_erase(uint32_t addr, uint16_t len)                  { (void)addr; (void)len; return -1; }
-
-/* 存储地址: NV 分区内的 key store 槽 (见 sec_nv.h) */
-#define KEYSTORE_FLASH_ADDR  (SEC_NV_FLASH_BASE + SEC_NV_KEYSTORE_OFF)
-#define KEYSTORE_FLASH_SIZE  4096
+/* 最坏情况记录 (含头/尾) 必须落在 NV keystore Bank 的单条记录上限内。 */
+_Static_assert(4u + 2u + 1u + MAX_KEYS * sizeof(ccc_digital_key_t) + 4u <=
+                   SEC_NV_MAX_KEYSTORE,
+               "keystore blob exceeds SEC_NV_MAX_KEYSTORE");
 
 /* volatile memset: 安全清零 (编译器屏障) */
 static inline void keystore_secure_zero(void *ptr, size_t len)
@@ -143,60 +138,47 @@ static ccc_status_t save_keys(void)  /* [P0-4] */
         return CCC_OK;
     }
 
-    /* SE050 不可用: 回退到 Flash 存储 (如 FOTA 保留区) */
-    ret = (ccc_status_t)virt_flash_erase(KEYSTORE_FLASH_ADDR, KEYSTORE_FLASH_SIZE);
-    if (ret != 0) {
-        keystore_secure_zero(blob, blob_len);
-        vPortFree(blob);
-        return CCC_ERR_HARDWARE;
-    }
-
-    /* Flash 写入 (分页写入) */
-    uint16_t remaining = blob_len;
-    uint16_t offset = 0;
-    while (remaining > 0) {
-        uint16_t chunk = (remaining > 256) ? 256 : remaining;
-        if (virt_flash_write(KEYSTORE_FLASH_ADDR + offset, blob + offset, chunk) != 0) {
-            keystore_secure_zero(blob, blob_len);
-            vPortFree(blob);
-            return CCC_ERR_HARDWARE;
-        }
-        offset += chunk;
-        remaining -= chunk;
-    }
-
+    /* SE050 不可用: 回退到 NV 双 Bank 记录 */
+    ret = sec_nv_save_keystore(blob, blob_len);
     keystore_secure_zero(blob, blob_len);
     vPortFree(blob);
+    if (ret != CCC_OK) {
+        return CCC_ERR_HARDWARE;
+    }
     return CCC_OK;
 }
 
 /* ========================================================================
  *  load_keys — [P0-4] 从非易失存储恢复密钥
  * ========================================================================
- * 启动时自动调用, 尝试从 SE050 → Flash 依次恢复。
+ * 启动时自动调用, 尝试从 SE050 → NV 双 Bank 记录 依次恢复。
  * 包含版本检查、CRC 完整性校验。
  */
 static ccc_status_t load_keys(void)  /* [P0-4] */
 {
-    uint8_t *blob = (uint8_t *)pvPortMalloc(KEYSTORE_FLASH_SIZE);
+    uint8_t *blob = (uint8_t *)pvPortMalloc(SEC_NV_MAX_KEYSTORE);
     if (!blob) return CCC_ERR_NO_MEM;
     uint16_t blob_len = 0;
     ccc_status_t ret;
 
     /* 尝试 SE050 读取 */
-    uint16_t se050_len = KEYSTORE_FLASH_SIZE;
+    uint16_t se050_len = SEC_NV_MAX_KEYSTORE;
     ret = sec_load_key((const uint8_t *)"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01",
                         blob, &se050_len);
     if (ret == CCC_OK) {
         blob_len = se050_len;
     } else {
-        /* 回退到 Flash 读取 */
-        uint16_t flash_len = KEYSTORE_FLASH_SIZE;
-        if (virt_flash_read(KEYSTORE_FLASH_ADDR, blob, flash_len) != 0) {
+        /* 回退到 NV 双 Bank 记录 */
+        ret = sec_nv_load_keystore(blob, (uint16_t)SEC_NV_MAX_KEYSTORE, &blob_len);
+        if (ret == CCC_ERR_NOT_FOUND || ret == CCC_ERR_NOT_INIT ||
+            ret == CCC_ERR_HARDWARE) {
             vPortFree(blob);
-            return CCC_ERR_HARDWARE;
+            return ret;
         }
-        blob_len = flash_len;
+        if (ret != CCC_OK) {
+            vPortFree(blob);
+            return CCC_ERR_SECURITY;
+        }
     }
 
     if (blob_len < 11) { /* min: 4 + 2 + 1 + 0 + 4 = 11 */
