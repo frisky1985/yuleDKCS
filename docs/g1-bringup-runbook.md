@@ -150,7 +150,7 @@ cmake --build build-arm
 | 3.7.5 | `sec_lock_provisioning()` 后写信任根/对端公钥/身份/固件度量 | 返回 `CCC_ERR_STATE`；clear 为空操作；`sec_set_trusted_time()` 仍成功 |
 | 3.7.6 | 复位后重复 3.7.5 | 当前锁定状态驻留 RAM，需产线流程每次上电重新加锁；NV 绑定后应保持锁定 |
 
-> 量产前必须按 RMP-2026-001 §0.2“产线持久化与 EOL”把 CRL（epoch/列表）与锁定状态绑定到 Flash/OTP，确保掉电不回退、不可通过复位绕过。
+> 量产前必须按 `docs/security/nv-persistence-design.md`（SEC-NV-2026-001）把 CRL（epoch/列表）与锁定状态绑定到 Flash/OTP，确保掉电不回退、不可通过复位绕过；验收项见该文档 §11。
 
 ---
 
