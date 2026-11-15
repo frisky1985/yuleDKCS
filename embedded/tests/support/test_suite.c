@@ -26,6 +26,7 @@ extern int run_se050_scp03_tests(void);
 extern int run_se050_provision_tests(void);
 extern int run_security_chain_tests(void);
 extern int run_secure_boot_tests(void);
+extern int run_security_revocation_tests(void);
 
 int main(void)
 {
@@ -70,6 +71,10 @@ int main(void)
 
     printf("\n--- Secure Boot (Manifest/Signature/Rollback) Tests ---\n");
     ret += run_secure_boot_tests();
+
+    /* Runs last: provisioning lock is terminal (no unlock API). */
+    printf("\n--- Security Revocation / Provisioning Lock Tests ---\n");
+    ret += run_security_revocation_tests();
 
     printf("\n============================================\n");
     if (ret == 0) {

@@ -34,6 +34,8 @@ extern "C" {
 #define CCC_ERR_NOT_FOUND       (-8)
 #define CCC_ERR_ALREADY_EXISTS  (-9)
 #define CCC_ERR_DENIED          (-10)
+#define CCC_ERR_PARAM           (-11)  /* Malformed input (bad blob/length) */
+#define CCC_ERR_STATE           (-12)  /* State conflict (replay / locked) */
 
 /* ========================================================================
  *  Common Types
@@ -352,6 +354,29 @@ ccc_status_t sec_set_attestation_root(const uint8_t *pub, uint16_t len);
 
 /** Provision the device public key, used when no attestation cert is present. */
 ccc_status_t sec_set_device_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len);
+
+/* ========================================================================
+ *  Production provisioning lock (量产一次性锁定)
+ * ========================================================================
+ * Called ONCE by the production line after all provisioning data is written
+ * (typically right after boot on the production jig). There is deliberately
+ * no unlock API: once locked, every provisioning write below returns
+ * CCC_ERR_STATE and the clear APIs become no-ops (existing state is kept):
+ *   sec_set_peer_public_key / sec_clear_peer_public_key
+ *   sec_set_peer_trust_root / sec_clear_peer_trust_root
+ *   sec_set_device_identity / sec_set_firmware_measurement
+ *   sec_set_attestation_cert / sec_set_attestation_root
+ *   sec_set_device_public_key
+ *
+ * sec_set_trusted_time() is NOT affected: field time calibration must remain
+ * available for certificate validity checks.
+ */
+
+/** Lock provisioning writes for the rest of this power cycle. */
+void sec_lock_provisioning(void);
+
+/** true once sec_lock_provisioning() has been called. */
+bool sec_provisioning_locked(void);
 
 /* GATT Service Registration ([P0-2]) */
 ccc_status_t  ble_register_gatt_service(void);

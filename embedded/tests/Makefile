@@ -31,6 +31,7 @@ CCC_SRCS   := $(CCC_SRC)/core/ccc_dk_core.c \
               $(CCC_SRC)/ble/ble_kw47a.c \
               $(CCC_SRC)/nfc/nfc_st25r501.c \
               $(CCC_SRC)/security/security.c \
+              $(CCC_SRC)/security/sec_revocation.c \
               $(CCC_SRC)/security/sec_x509.c \
               $(CCC_SRC)/security/se050_scp03.c \
               $(CCC_SRC)/security/se050_apdu.c \
@@ -194,6 +195,10 @@ $(BUILD)/test_security_chain.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_security_chain_lib.o: $(TEST_DIR)/test_security_chain.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURITY_CHAIN_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_security_revocation.o: $(TEST_DIR)/test_security_revocation.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_security_revocation_lib.o: $(TEST_DIR)/test_security_revocation.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_SECURITY_REVOCATION_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_secure_boot.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_secure_boot_lib.o: $(TEST_DIR)/test_secure_boot.c | $(BUILD)
@@ -204,7 +209,7 @@ $(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_secure_boot test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_revocation test_secure_boot test_all
 
 all: test_all
 
@@ -219,7 +224,7 @@ test_iccoa: $(BUILD)/test_iccoa_dk_core.o \
 test_ccc: $(BUILD)/test_ccc_dk_core.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/sec_x509.o \
+          $(BUILD)/security.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
           $(BUILD)/se050_scp03.o \
           $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
@@ -246,7 +251,7 @@ test_unified: $(BUILD)/test_unified.o \
               $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
               $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
               $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-              $(BUILD)/security.o $(BUILD)/sec_x509.o \
+              $(BUILD)/security.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
               $(BUILD)/se050_scp03.o \
               $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
               $(BUILD)/key_mgmt.o \
@@ -272,7 +277,17 @@ test_provision: $(BUILD)/test_se050_provision.o $(BUILD)/se050_hsm_provision.o \
 	$(BUILD)/$@
 
 test_chain: $(BUILD)/test_security_chain.o \
-            $(BUILD)/security.o $(BUILD)/sec_x509.o \
+            $(BUILD)/security.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
+            $(BUILD)/se050_scp03.o \
+            $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
+            $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
+            $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
+            $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
+	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
+test_revocation: $(BUILD)/test_security_revocation.o \
+            $(BUILD)/security.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
             $(BUILD)/se050_scp03.o \
             $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
             $(BUILD)/crypto_engine.o $(BUILD)/crypto_utils.o \
@@ -296,6 +311,7 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_se050_scp03_lib.o \
           $(BUILD)/test_se050_provision_lib.o $(BUILD)/se050_hsm_provision.o \
           $(BUILD)/test_security_chain_lib.o \
+          $(BUILD)/test_security_revocation_lib.o \
           $(BUILD)/test_secure_boot_lib.o \
           $(BUILD)/secure_boot.o \
           $(BUILD)/iccoa_dk_core.o $(BUILD)/iccoa_dk30.o \
@@ -303,7 +319,7 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/iccoa_auth.o $(BUILD)/iccoa_service.o \
           $(BUILD)/ccc_dk_core.o $(BUILD)/ble_kw47a.o \
           $(BUILD)/nfc_st25r501.o $(BUILD)/uwb_ncj29d6.o \
-          $(BUILD)/security.o $(BUILD)/sec_x509.o \
+          $(BUILD)/security.o $(BUILD)/sec_revocation.o $(BUILD)/sec_x509.o \
           $(BUILD)/se050_t1oi2c.o $(BUILD)/crypto_random.o \
           $(BUILD)/key_mgmt.o \
           $(BUILD)/icce_dk_core.o $(BUILD)/icce_security.o \

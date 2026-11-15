@@ -26,6 +26,7 @@
 #include "sec_x509.h"           /* Minimal DER/X.509 parser */
 #include "sm2.h"                /* SM2 verify (ICCE software fallback) */
 #include "sm3.h"                /* SM3 hash (ICCE software fallback) */
+#include "sec_revocation.h"     /* Signed device revocation list (CRL) */
 /* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
 void *pvPortMalloc(size_t xSize);
 void vPortFree(void *pv);
@@ -94,6 +95,11 @@ static bool     g_device_pub_set;
 
 static uint32_t g_trusted_time;
 static bool     g_trusted_time_set;
+
+/* 产线配置一次性锁定: 由产线流程在上电后调用 sec_lock_provisioning().
+ * 没有任何解锁 API — 一旦锁定, 所有身份/密钥/信任锚 provisioning 写入
+ * 都被拒绝, 直至下次复位 (复位后锁定状态同样清零, 由产线流程重新加锁). */
+static bool     g_provisioning_locked;
 
 #ifdef USE_SE050
 #define SEC_DEFAULT_DEVICE_KEY_TYPE SEC_KEY_TYPE_P256
@@ -876,8 +882,28 @@ static verify_result_e sec_verify_chain_internal(const uint8_t *chain, uint16_t 
  *  Peer / device key provisioning (P0-04 T4)
  * ======================================================================== */
 
+/* ========================================================================
+ *  Provisioning lock (量产一次性锁定)
+ * ========================================================================
+ * 锁定后所有 provisioning 写入 (身份/固件度量/证书/信任锚/对端公钥)
+ * 一律返回 CCC_ERR_STATE, 两个 clear API 变为 no-op (保留已注册状态).
+ * sec_set_trusted_time() 故意不受锁定影响: 现场校时必须始终可用.
+ * 不提供解锁 API.
+ */
+
+void sec_lock_provisioning(void)
+{
+    g_provisioning_locked = true;
+}
+
+bool sec_provisioning_locked(void)
+{
+    return g_provisioning_locked;
+}
+
 ccc_status_t sec_set_peer_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len)
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
     if (key_type != SEC_KEY_TYPE_P256 && key_type != SEC_KEY_TYPE_SM2) {
         return CCC_ERR_INVALID_PARAM;
@@ -892,6 +918,7 @@ ccc_status_t sec_set_peer_public_key(uint8_t key_type, const uint8_t *pub, uint1
 
 void sec_clear_peer_public_key(void)
 {
+    if (g_provisioning_locked) return;
     sec_secure_zero(g_peer_pub, sizeof(g_peer_pub));
     g_peer_pub_len = 0;
     g_peer_key_type = 0;
@@ -910,6 +937,7 @@ int sec_peer_public_key_provisioned(void)
  */
 ccc_status_t sec_set_peer_trust_root(uint8_t key_type, const uint8_t *pub, uint16_t len)
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
 
     if (key_type == SEC_KEY_TYPE_P256) {
@@ -930,6 +958,7 @@ ccc_status_t sec_set_peer_trust_root(uint8_t key_type, const uint8_t *pub, uint1
 
 void sec_clear_peer_trust_root(void)
 {
+    if (g_provisioning_locked) return;
     sec_secure_zero(g_peer_trust_root, sizeof(g_peer_trust_root));
     g_peer_trust_root_len = 0;
     g_peer_trust_root_type = 0;
@@ -944,6 +973,7 @@ void sec_set_trusted_time(uint32_t unix_secs)
 
 ccc_status_t sec_set_device_identity(const uint8_t device_id[16], const uint8_t key_id[16])
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (device_id == NULL || key_id == NULL) return CCC_ERR_INVALID_PARAM;
     (void)memcpy(g_dev_id, device_id, 16);
     (void)memcpy(g_dev_key_id, key_id, 16);
@@ -953,6 +983,7 @@ ccc_status_t sec_set_device_identity(const uint8_t device_id[16], const uint8_t 
 
 ccc_status_t sec_set_firmware_measurement(const uint8_t hash[32])
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (hash == NULL) return CCC_ERR_INVALID_PARAM;
     (void)memcpy(g_fw_measurement, hash, 32);
     g_fw_measurement_set = true;
@@ -961,6 +992,7 @@ ccc_status_t sec_set_firmware_measurement(const uint8_t hash[32])
 
 ccc_status_t sec_set_attestation_cert(const uint8_t *der, uint16_t len)
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (der == NULL || len == 0U || len > SEC_ATT_CERT_MAX) {
         return CCC_ERR_INVALID_PARAM;
     }
@@ -971,6 +1003,7 @@ ccc_status_t sec_set_attestation_cert(const uint8_t *der, uint16_t len)
 
 ccc_status_t sec_set_attestation_root(const uint8_t *pub, uint16_t len)
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
     (void)memcpy(g_att_root, pub, 64);
     g_att_root_set = true;
@@ -979,6 +1012,7 @@ ccc_status_t sec_set_attestation_root(const uint8_t *pub, uint16_t len)
 
 ccc_status_t sec_set_device_public_key(uint8_t key_type, const uint8_t *pub, uint16_t len)
 {
+    if (g_provisioning_locked) return CCC_ERR_STATE;
     if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
     if (key_type != SEC_KEY_TYPE_P256 && key_type != SEC_KEY_TYPE_SM2) {
         return CCC_ERR_INVALID_PARAM;
@@ -1095,6 +1129,13 @@ verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
                             (uint32_t)offsetof(ccc_attestation_t, signature),
                             att->signature, sizeof(att->signature)) != VERIFY_OK) {
         return VERIFY_SIGN_INVALID;
+    }
+
+    /* 6. Device revocation list gate: only trusted after the device has proven
+     *    possession of its private key, so an unauthenticated caller cannot
+     *    probe revocation state with a forged device_id. */
+    if (sec_revocation_is_revoked(att->device_id)) {
+        return VERIFY_KEY_REVOKED;
     }
 
     return VERIFY_OK;
