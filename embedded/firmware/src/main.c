@@ -9,6 +9,7 @@
 #include "hal_interface.h"
 #include "kw47a_board.h"
 #include "bringup_selftest.h"
+#include "ccc_digital_key.h"
 
 #if defined(SECURE_BOOT)
 #include "secure_boot.h"
@@ -118,6 +119,20 @@ static int system_init(void)
 
     if (hal_storage_init() != 0) {
         hal_debug_printf("WARN: Storage init failed\n");
+    }
+
+    /* 从 Flash/OTP 恢复产线锁定与 CRL；未绑定 NV 时降级为纯 RAM. */
+    {
+        ccc_status_t st = sec_security_init();
+
+        if (st == CCC_ERR_NOT_INIT) {
+            hal_debug_printf("WARN: NV persistence not bound (RAM-only)\n");
+        } else if (st != CCC_OK) {
+            hal_debug_printf("WARN: security NV restore failed (%d)\n", (int)st);
+        }
+        if (sec_provisioning_locked()) {
+            hal_debug_printf("SECURITY: provisioning locked\n");
+        }
     }
 
     return 0;

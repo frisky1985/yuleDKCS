@@ -3,16 +3,17 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | SEC-NV-2026-001 |
-| 版本 | v1.0 |
+| 版本 | v1.1（软件侧落地，补充实施状态） |
 | 关联 | RMP-2026-001 §0.2；`sec_revocation.c`；`key_mgmt.c`；`kw47a_flash.ld` |
 | 目标 | 让 CRL（含 epoch）与 provisioning 锁定状态在复位/断电后保持，防回滚、防擦除绕过 |
+| 实现状态 | 软件侧已落地（`sec_nv.c/h`，`test_security_nv` 8/8，`test_all` 262 项 0 失败）；板级 Flash/OTP 驱动与 SE050 对象存储为后续硬件相关项 |
 
 ## 1. 现状与必须先修的问题
 
 | # | 问题 | 影响 | 处理 |
 |---|---|---|---|
-| F1 | `key_mgmt.c` 使用 `KEYSTORE_FLASH_ADDR 0x080E0000`（STM32 占位地址） | KW47A 上密钥实际未持久化 | 统一改用本文 NV 分区基址 |
-| F2 | `kw47a_flash.ld` 的 `STORAGE` 位于 `0x00080000`，而 Flash 仅 512KB（末地址 `0x7FFFF`） | 分区越界，链接/烧录异常 | 确认芯片容量后按 §3 重排并加 `static_assert` |
+| F1 | `key_mgmt.c` 使用 `KEYSTORE_FLASH_ADDR 0x080E0000`（STM32 占位地址） | KW47A 上密钥实际未持久化 | 已修正为 `SEC_NV_FLASH_BASE + 0x0000`（`0x7C000`） |
+| F2 | `kw47a_flash.ld` 的 `STORAGE` 位于 `0x00080000`，而 Flash 仅 512KB（末地址 `0x7FFFF`） | 分区越界，链接/烧录异常 | 已修正：`FLASH_B` 缩为 176KB，`STORAGE` 移至 `0x7C000`/16KB |
 | F3 | `virt_flash_read/write/erase` 仅有 weak 桩，返回 -1 | 无真实 NV 读写 | 板级实现 KW47A Flash 驱动 |
 | F4 | `sec_revocation` 与锁定状态仅驻留 RAM | 复位即可绕过锁定、重放旧 CRL | 本文方案 |
 | F5 | SE050 仅有 SCP03/签名 APDU，无对象存储/单调计数器接口 | 无法直接用作 NV 根 | 列为阶段 2，接口预留 |
@@ -209,7 +210,7 @@ ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用
 1. 确认 Flash 容量与 OTP 能力，修正 F1/F2 地址与链接脚本；
 2. 实现 `sec_nv` 与假 Flash 故障注入测试（不依赖硬件）；
 3. 板级 KW47A Flash/OTP 驱动，接入 `sec_nv_ops_t`；
-4. 启动早期调用 `sec_nv_init()`，EOL 调用锁定与 CRL 安装；
+4. 启动早期调用 `sec_security_init()`（内部执行 `sec_nv_init()`），EOL 调用锁定与 CRL 安装；
 5. G1 §3.7 增加“复位后仍锁定 / 旧 CRL 被拒”验收项。
 
 ## 11. 验收标准
@@ -219,3 +220,17 @@ ccc_status_t sec_nv_save_lock(void);         /* 由 sec_lock_provisioning 调用
 - 任一写入阶段断电：设备可启动且记录为旧值或新值，无“双无效”；
 - Lock 记录损坏：设备按已锁定运行，不提供 provisioning 写入；
 - 量产件无法通过复位/重新上电恢复未锁定状态。
+
+## 12. 实施状态
+
+| 项 | 状态 |
+|---|---|
+| `sec_nv` 双 Bank + CRC + commit-last | ✅ 已实现 |
+| CRL/Lock 保存与加载、OTP 水位比较 | ✅ 已实现 |
+| `sec_security_init()` 上电恢复并接入固件启动 | ✅ 已实现（未绑定时打印 RAM-only 告警） |
+| `sec_lock_provisioning()` 持久化 | ✅ 已实现 |
+| 地址修正（`key_mgmt`、链接脚本） | ✅ 已修正 |
+| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 8/8 通过 |
+| 板级 KW47A Flash/OTP 驱动 | ⏳ 待硬件 |
+| SE050 对象存储/单调计数器（阶段 2） | ⏳ 待 Plug&Trust 集成 |
+| Flash 实际容量确认（512KB / 1MB） | ⏳ 待硬件确认 |

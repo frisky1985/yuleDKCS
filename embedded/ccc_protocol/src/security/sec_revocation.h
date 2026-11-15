@@ -56,6 +56,17 @@ extern "C" {
 ccc_status_t sec_revocation_install(const uint8_t *blob, uint16_t len,
                                     const uint8_t root_pub[64], uint8_t key_type);
 
+/**
+ * @brief 上电恢复: 与 install 相同的校验, 但绝不写回 NV。
+ *
+ * @retval CCC_OK           恢复成功
+ * @retval CCC_ERR_PARAM    格式非法
+ * @retval CCC_ERR_SECURITY 验签失败
+ * @retval CCC_ERR_STATE    epoch <= 已恢复 epoch
+ */
+ccc_status_t sec_revocation_restore(const uint8_t *blob, uint16_t len,
+                                    const uint8_t root_pub[64], uint8_t key_type);
+
 /** 查询 device_id 是否在已安装列表中; 未安装任何列表时恒为 false。 */
 bool         sec_revocation_is_revoked(const uint8_t device_id[16]);
 

@@ -27,6 +27,7 @@ extern int run_se050_provision_tests(void);
 extern int run_security_chain_tests(void);
 extern int run_secure_boot_tests(void);
 extern int run_security_revocation_tests(void);
+extern int run_security_nv_tests(void);
 
 int main(void)
 {
@@ -75,6 +76,11 @@ int main(void)
     /* Runs last: provisioning lock is terminal (no unlock API). */
     printf("\n--- Security Revocation / Provisioning Lock Tests ---\n");
     ret += run_security_revocation_tests();
+
+    /* Runs last: resets the provisioning lock via the UNIT_TEST hook, so it
+     * must not precede the suites above (they assert the unlocked state). */
+    printf("\n--- Security NV Persistence (CRL / Lock) Tests ---\n");
+    ret += run_security_nv_tests();
 
     printf("\n============================================\n");
     if (ret == 0) {

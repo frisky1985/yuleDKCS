@@ -1,7 +1,8 @@
 /*
  * NXP KW47A Linker Script
  * Flash: 512KB, SRAM: 256KB
- * A/B OTA partition layout
+ * A/B OTA partition layout: Slot B 尾部让出 16KB 作为 NV 分区
+ * (CRL / 产线锁定 / keystore), 见 docs/security/nv-persistence-design.md。
  */
 
 MEMORY
@@ -12,10 +13,10 @@ MEMORY
 
     /* Application slots (A/B swap for OTA) */
     FLASH_A      (rx)  : ORIGIN = 0x00020000, LENGTH = 0x00030000  /* 192KB */
-    FLASH_B      (rx)  : ORIGIN = 0x00050000, LENGTH = 0x00030000  /* 192KB */
+    FLASH_B      (rx)  : ORIGIN = 0x00050000, LENGTH = 0x0002C000  /* 176KB (尾部 16KB 让给 NV) */
 
-    /* Persistent storage (keys, config, logs) */
-    STORAGE      (rx)  : ORIGIN = 0x00080000, LENGTH = 0x00004000  /* 16KB */
+    /* Persistent storage (keys, CRL, provisioning lock) */
+    STORAGE      (rx)  : ORIGIN = 0x0007C000, LENGTH = 0x00004000  /* 16KB */
 
     SRAM                 : ORIGIN = 0x20000000, LENGTH = 0x00040000  /* 256KB */
 }

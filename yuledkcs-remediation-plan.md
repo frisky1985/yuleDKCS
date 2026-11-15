@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.12（新增 NV 持久化设计 SEC-NV-2026-001） |
+| 版本 | v1.13（NV 持久化软件侧落地） |
 | 状态 | 执行中（软件侧 P0 已完成，并补充吊销/产线锁定；硬件真机/ROM 信任根、持久化与 EOL、第三方审计与认证待外部条件） |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
@@ -31,12 +31,13 @@
 | **P0-05-T3（数据加密）** SCP03 AES-CBC | 新增 `se050_scp03_apdu_enc()`：CLA 0x8C，ISO 7816-4 填充 + AES-128-CBC（S-ENC）；命令 ICV 链接上一 R-MAC，响应 ICV 取命令 C-MAC；R-MAC 覆盖密文，解密/去填充失败即关闭通道 | `test_vse050_scp03`：53/53 通过（AES 解密 FIPS-197 KAT、36→48 字节命令密文、64→80 字节响应密文、密文篡改→C-MAC 拒绝） |
 | **P0-04-T5（密钥个性化）** SCP03 PUT KEY | 新增 `se050_scp03_put_key()`：在 OPEN 通道上用 CLA 0x8C + AES-CBC 加密下发 K-ENC/K-MAC/K-RMAC（INS 0xD8，P1=新 key version），成功后主机静态密钥与卡片密钥同步切换，旧默认传输密钥失效；卡侧 vSE050 支持 PUT KEY、key version/seq 推进与拒绝注入 | `test_vse050_scp03`：69/69 通过（个性化后旧零密钥重连 `SCP03_ERR_CRYPTOGRAM`、新密钥重连成功、未开通道拒绝、卡片拒绝 SW 6985、NULL 参数拒绝） |
 | **P0-04-T5（密钥轮换）** SCP03 REPLACE KEYS | 新增 `se050_scp03_replace_keys()`，`se050_scp03_rotate_keys()` 改为真实轮换：在 OPEN 通道上以 INS 0xD2 + AES-CBC 加密下发 8 字节 nonce，双方用 AES-CMAC 从旧静态密钥确定性派生新 K-ENC/K-MAC/K-RMAC（新密钥不上线）；成功后关闭并重建通道，旧密钥失效；卡侧 vSE050 支持派生、版本/seq 推进与拒绝注入 | `test_vse050_scp03`：91/91 通过（轮换后重连成功、旧密钥重连 `SCP03_ERR_CRYPTOGRAM`、轮换通道上签名可用、连续两次轮换、未开通道拒绝、卡片拒绝 SW 6985） |
-| **P0-04-T3/T4（真实验签链路）** | 移除 `sec_verify` 内置开发公钥回退，改为启动时显式供给对端公钥；新增最小 X.509 DER 解析器（证书/TBSCertificate/SPKI/有效期/ECDSA-Sig-Value）与真实证书链验证（逐跳 issuer==subject + 上张证书签名 + **设备预置信任根**锚定，可选可信时间强制有效期）；`sec_attestation` 使用真实 device_id/key_id/固件度量，`sec_verify_attestation` 校验度量、身份、安全状态、链/设备公钥与签名；新增独立实现的 ECDSA P-256 验签/签名（`crypto/p256.c`，P-256 域参数独立于 SM2） | `test_security_chain`：15/15（OpenSSL 生成链/证书夹具、错误 root、篡改证书、有效期前后、断链、未供给、设备钥匙证明、证书链证明、未预置/错误信任锚、对端 root 被忽略）；全量 `make test_all` 254 项通过；host-sim 固件链接通过 |
+| **P0-04-T3/T4（真实验签链路）** | 移除 `sec_verify` 内置开发公钥回退，改为启动时显式供给对端公钥；新增最小 X.509 DER 解析器（证书/TBSCertificate/SPKI/有效期/ECDSA-Sig-Value）与真实证书链验证（逐跳 issuer==subject + 上张证书签名 + **设备预置信任根**锚定，可选可信时间强制有效期）；`sec_attestation` 使用真实 device_id/key_id/固件度量，`sec_verify_attestation` 校验度量、身份、安全状态、链/设备公钥与签名；新增独立实现的 ECDSA P-256 验签/签名（`crypto/p256.c`，P-256 域参数独立于 SM2） | `test_security_chain`：15/15（OpenSSL 生成链/证书夹具、错误 root、篡改证书、有效期前后、断链、未供给、设备钥匙证明、证书链证明、未预置/错误信任锚、对端 root 被忽略）；全量 `make test_all` 262 项通过；host-sim 固件链接通过 |
 | **P0-01-T4** CI 门禁 | `.github/workflows/ci.yml`：L2 嵌入式测试升级为全量套件（`test_all` + `test_vse050` + `test_provision`），新增独立 `l2-embedded-firmware` 作业以 host-sim 配置并链接完整固件（协议库 `-Werror`），并在同一作业内追加 `SECURE_BOOT=ON` 构建与运行门禁，任一步失败阻断合并 | 本地等价命令通过（254+91+20 项，0 失败）；`cmake -S embedded/firmware -B ... && cmake --build` 生成 `yuleDKCS_fw.elf`（含 SECURE_BOOT=ON）；工作流 YAML 解析校验通过 |
 | **产线密钥派生工具（HSM 接口）** 支撑 P0-04-T5 | 新增可插拔 PKCS#11 后端：`hsm_prov_pkcs11_ops_t`（调用方注入 session + AES-CMAC 回调），MK 永不出 HSM；未注入完整 ops 时保持 `UNAVAILABLE` fail-closed；派生输入仍为 `0x01‖key_id‖UID‖version`，回调失败清零输出并返回 `ERR_CRYPTO`；软件后端行为不变 | `test_provision`：20/20（软件 KAT 向量、PKCS#11 注入派生恰好 3 次、缺件不可用、回调失败清零、全零 UID/version 拒绝） |
 | **CCC 认证信任锚加固** P0-04-T3/T4 | 新增 `sec_set_peer_trust_root()`/`sec_clear_peer_trust_root()`/`sec_peer_public_key_provisioned()`；`sec_verify_cert_chain()` 仅以设备预置根锚定，BLE 对端自带 `root_pub_key` 一律忽略（保留 ABI）；无链时要求已预置对端公钥，否则 fail-closed 锁定 | `test_security_chain`：15/15（含未预置锚、预置错误锚、对端 root 被忽略）；`test_ccc_dk_core`：31/31（无链无公钥→LOCKED、直连公钥→UNLOCKED、真实链+错误 root 参数→UNLOCKED、篡改链→LOCKED） |
-| **安全启动（软件链路）** P0-04-T6 | 新增 `embedded/secure_boot/`：130 字节显式序列化清单（魔数/格式/算法/版本/防回滚计数/长度/SHA-256/密钥 ID/签名），签名覆盖前 66 字节；P-256 与 SM2 验签；防回滚计数器单调提交；调试口仅 DEV 生命周期放行；新增 `tools/secboot` 签名/校验工具；固件早期门禁（弱符号注入 manifest/image/pubkey，缺失 manifest 时 host-sim SKIP，验签失败停机）；Bring-up 自检第 08 项 | `test_secure_boot`：13/13；`test_all`：13 套件 254 项 0 失败；`SECURE_BOOT=ON` host-sim 构建并运行（SKIP + 自检 PASS），CI 增加安全启动构建步骤；真机 ROM/OTP/调试熔断待 G1 |
-| **设备吊销与产线锁定**（量产安全增强） | 新增 `sec_revocation.c/h`：`YRV1` 显式小端列表（epoch/issued_at/≤32 条 device_id/签名），P-256(SHA-256) 与 SM2(SM3) 验签；epoch 严格递增防重放；格式/验签失败原子回滚不影响已装列表；attestation 验签后按设备 ID 拒绝并返回 `VERIFY_KEY_REVOKED`。新增 `sec_lock_provisioning()`：锁定 9 个 provisioning 写入接口（信任根/对端公钥/身份/固件度量/attestation 材料），clear 变 no-op，现场校时不受限，无解锁 API | `test_security_revocation` 7/7（安装/查询、篡改、epoch 重放、格式边界、reset、吊销 attestation、锁定）；`test_all` 13 套件 254 项 0 失败；固件 host-sim 构建/运行通过 |
+| **安全启动（软件链路）** P0-04-T6 | 新增 `embedded/secure_boot/`：130 字节显式序列化清单（魔数/格式/算法/版本/防回滚计数/长度/SHA-256/密钥 ID/签名），签名覆盖前 66 字节；P-256 与 SM2 验签；防回滚计数器单调提交；调试口仅 DEV 生命周期放行；新增 `tools/secboot` 签名/校验工具；固件早期门禁（弱符号注入 manifest/image/pubkey，缺失 manifest 时 host-sim SKIP，验签失败停机）；Bring-up 自检第 08 项 | `test_secure_boot`：13/13；`test_all`：13 套件 262 项 0 失败；`SECURE_BOOT=ON` host-sim 构建并运行（SKIP + 自检 PASS），CI 增加安全启动构建步骤；真机 ROM/OTP/调试熔断待 G1 |
+| **设备吊销与产线锁定**（量产安全增强） | 新增 `sec_revocation.c/h`：`YRV1` 显式小端列表（epoch/issued_at/≤32 条 device_id/签名），P-256(SHA-256) 与 SM2(SM3) 验签；epoch 严格递增防重放；格式/验签失败原子回滚不影响已装列表；attestation 验签后按设备 ID 拒绝并返回 `VERIFY_KEY_REVOKED`。新增 `sec_lock_provisioning()`：锁定 9 个 provisioning 写入接口（信任根/对端公钥/身份/固件度量/attestation 材料），clear 变 no-op，现场校时不受限，无解锁 API | `test_security_revocation` 7/7（安装/查询、篡改、epoch 重放、格式边界、reset、吊销 attestation、锁定）；`test_all` 13 套件 262 项 0 失败；固件 host-sim 构建/运行通过 |
+| **NV 持久化（CRL / 产线锁定）** 支撑量产 | 新增 `sec_nv.c/h`：16KB NV 分区、CRL/Lock 双 Bank、32B 记录头（`YRNV`/seq/CRC-32/`COMT` 最后写）、空白与损坏区分、OTP epoch 水位防回滚；`sec_security_init()` 上电恢复锁定与 CRL 并接入固件启动；`sec_lock_provisioning()` 持久化；修正 `key_mgmt` 的 STM32 占位地址（改 `0x7C000`）与链接脚本 `STORAGE` 越界（`FLASH_B` 让出 16KB） | `test_security_nv` 8/8（空白、往返、篡改回退、回滚、4 个掉电断点、锁定持久化、上电恢复 CRL、未绑定/参数）；`test_all` 14 套件 **262 项 0 失败**；host-sim 启动输出 `NV persistence not bound (RAM-only)` 降级告警；板级 Flash/OTP 驱动待实现 |
 | **G1 Bring-up（软件侧）** | 新增 7 项基础 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB），并在 `SECURE_BOOT=1` 时追加第 08 项安全启动 KAT 自检；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确（含 `08 secure-boot PASS`）；`docs/g1-bringup-runbook.md` |
 
 ### 0.2 剩余待外部条件（软件侧已无 P0 阻塞项）
@@ -47,11 +48,11 @@
 | 产线密钥体系 | 厂商 PKCS#11 适配器落地、产线工位集成、密钥注入与吊销演练 | HSM 厂商 PKCS#11 模块与设备；密钥管理服务；产线工位 | 工位端到端派生/注入通过；密钥指纹入库；吊销与轮换演练通过 |
 | 安全启动（真机部分） | P0-04-T6：ROM 信任根、OTP/eFuse 计数器固化、调试口熔断、量产镜像签名 | 芯片 ROM/安全启动能力与签名密钥；OTP/eFuse 烧录设备；调试口策略 | 篡改固件无法启动；防回滚计数不可回写；调试口在 PROD/RMA 永久关闭 |
 | 第三方安全 | P0-04-T8：密码审计与渗透测试；P0-04-T7 独立密码测试报告归档 | 第三方实验室排期与样机 | 审计/渗透报告无未修复高危；密码测试报告归档 |
-| 产线持久化与 EOL | CRL（epoch/列表）与产线锁定状态的掉电保持；EOL 工位流程（密钥注入、加锁、吊销、出厂记录） | 板级 Flash/OTP 分区与读写接口；EOL 工位与 MES；密钥管理服务 | 复位/断电后锁定状态与 CRL epoch 不回退；EOL 记录可追溯；吊销与轮换演练通过。**设计已完成：`docs/security/nv-persistence-design.md`（SEC-NV-2026-001），含分区、记录格式、掉电提交协议与验收标准；待确认 Flash 容量/OTP 能力后实施** |
+| 产线持久化与 EOL | CRL（epoch/列表）与产线锁定状态的掉电保持；EOL 工位流程（密钥注入、加锁、吊销、出厂记录） | 板级 Flash/OTP 分区与读写接口；EOL 工位与 MES；密钥管理服务 | 复位/断电后锁定状态与 CRL epoch 不回退；EOL 记录可追溯；吊销与轮换演练通过。**软件侧已完成：`sec_nv.c/h` + `test_security_nv` 8/8，设计见 `docs/security/nv-persistence-design.md`（SEC-NV-2026-001）；待板级 Flash/OTP 驱动、Flash 容量确认与 EOL 工位集成** |
 | 车辆与 HIL | P0-03-T3~T6；G3 全量 HIL 与三协议一致性；手机真机矩阵 | 车辆台架、UWB 真机、Android/iOS 主流机型与 Wallet 环境 | 37 项 HIL、CCC/ICCE/ICCOA 一致性用例、手机兼容矩阵通过 |
 | 认证与 OEM | G4：ICCE/CCC/ICCOA 认证、Apple/Google Wallet 接入；G5 试产验证 | 认证机构席位、TSP/Wallet 合作名额、EMC/射频实验室、OEM 审核 | 证书在有效期内且覆盖量产型号；Wallet 上线许可；试产与 OTA 回滚证据 |
 
-> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成；其余软件可验证 P0 项均已有实现与单测证据，不再列为阻塞。设备吊销与产线锁定已实现，但状态当前驻留 RAM，掉电保持需按本表“产线持久化与 EOL”绑定板级 Flash/OTP。
+> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成；其余软件可验证 P0 项均已有实现与单测证据，不再列为阻塞。设备吊销与产线锁定的 NV 持久化软件链路已实现（双 Bank + CRC + commit-last + OTP 水位），未绑定板级 Flash/OTP 时降级为 RAM-only 并打印告警。
 
 ### 0.3 真机验证执行包（已就绪，待台架）
 
@@ -59,9 +60,9 @@
 
 | 执行包 | 内容 | 状态 |
 |---|---|---|
-| 作业指导书 | `docs/g1-bringup-runbook.md` v1.1：§2 上电基础、§3 SE050/T=1'/SCP03、§3.4 产线密钥与 PKCS#11 工位、§3.5 PUT KEY/REPLACE KEYS、§3.6 CCC 证书链/attestation、§4–§7 NFC/UWB/BLE/E2E、§8 安全启动、§9 证据门禁 | ✅ 就绪 |
+| 作业指导书 | `docs/g1-bringup-runbook.md` v1.4：§2 上电基础、§3 SE050/T=1'/SCP03、§3.4 产线密钥与 PKCS#11 工位、§3.5 PUT KEY/REPLACE KEYS、§3.6 CCC 证书链/attestation、§3.7 吊销与锁定、§4–§7 NFC/UWB/BLE/E2E、§8 安全启动、§9 证据门禁 | ✅ 就绪 |
 | 固件产物 | `BRINGUP_SELFTEST=ON`（7 项）+ `SECURE_BOOT=ON`（第 08 项）host-sim 已验证；真实 target 构建命令已写入 §1 | ✅ 就绪（待交叉编译链验证） |
-| 单测门禁 | `test_all` 247 项、`test_vse050` 91 项、`test_provision` 20 项，0 失败；CI L2 已接入含 `SECURE_BOOT=ON` 固件构建 | ✅ 就绪 |
+| 单测门禁 | `test_all` 262 项、`test_vse050` 91 项、`test_provision` 20 项，0 失败；CI L2 已接入含 `SECURE_BOOT=ON` 固件构建 | ✅ 就绪 |
 | 密码夹具 | OpenSSL 生成的 root/intermediate/leaf 链与设备证书、P-256/SM2 密钥与签名向量（`tests/support/cert_fixtures.h`） | ✅ 就绪 |
 | 签名工具 | `embedded/tools/secboot`（CMake 可构建）：生成/校验镜像清单，支持 sign/verify | ✅ 就绪 |
 | 证据模板 | 每一步的通过判据、需采集的仪器数据与归档字段已写入 runbook §9；采集脚本 `serial_capture.py` 输出毫秒时间戳日志、步骤标记、meta.json 与 SHA-256；分析脚本 `analyze_serial_log.py` 按日志规则单遍解析，逐行/按步骤标记 🟢🟡🔴，支持 `--expect`/`--ignore`/`--json` 与 CI 退出码（两者均经 pty/样例自测） | ✅ 就绪 |
@@ -138,7 +139,7 @@
 | P0-01-T1 | 修复 firmware/CMakeLists.txt 目标顺序（target_include_directories 移到 add_executable 之后） | 嵌入式组 | G0-T1 | 可配置的 CMake | `cmake -S embedded/firmware -B build` 配置成功。**✅ 已完成** |
 | P0-01-T2 | 统一链接库名：target_link_libraries 使用 ccc_dk/icce_dk/iccoa_dk | 嵌入式组 | P0-01-T1 | 可链接固件 | 链接阶段无未定义符号。**✅ 已完成** |
 | P0-01-T3 | 补齐板级初始化函数（kw47a_board_init / clock / storage / nfc_poll / ble_poll）或切换到 S32K312 基线 | 嵌入式组 | P0-01-T2 | 板级支持包 | 固件启动到主循环，无未定义引用。**✅ 已完成（host HAL 桩 + 真实 target 路径）** |
-| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并。**✅ 已完成：`.github/workflows/ci.yml` 新增 L2 固件门禁（host-sim 配置+链接完整固件）并将嵌入式单测扩展为 `test_all`+`test_vse050`+`test_provision` 全量套件；本地等价命令验证通过（234+91+20 项，0 失败）** |
+| P0-01-T4 | 将固件全量构建加入 CI 门禁 | DevOps | P0-01-T3 | CI 配置 | CI 失败即阻断合并。**✅ 已完成：`.github/workflows/ci.yml` 新增 L2 固件门禁（host-sim 配置+链接完整固件）并将嵌入式单测扩展为 `test_all`+`test_vse050`+`test_provision` 全量套件；本地等价命令验证通过（262+91+20 项，0 失败）** |
 | P0-02-T1 | 移除 bsw_integration 中对 $HOME 私有路径的硬编码，改用子模块/制品 | 嵌入式组 | G0-T2 | 可复现 BSW 构建 | CI 完成 BSW 全量链接。**✅ 已完成（可配置路径 + 受控降级）** |
 
 ### 4.2 SE050 安全闭环

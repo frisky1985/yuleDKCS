@@ -7,6 +7,7 @@
  */
 
 #include "sec_revocation.h"
+#include "sec_nv.h"          /* CRL 持久化 */
 #include "crypto_engine.h"   /* crypto_sha256 */
 #include "p256.h"            /* crypto_p256_verify */
 #include "sm2.h"             /* sm2_verify_hash */
@@ -51,8 +52,9 @@ static void sec_rev_zero(void *ptr, size_t len)
     }
 }
 
-ccc_status_t sec_revocation_install(const uint8_t *blob, uint16_t len,
-                                    const uint8_t root_pub[64], uint8_t key_type)
+static ccc_status_t install_impl(const uint8_t *blob, uint16_t len,
+                                 const uint8_t root_pub[64], uint8_t key_type,
+                                 bool persist)
 {
     uint8_t  tmp_entries[SEC_REVOCATION_MAX_ENTRIES][SEC_REVOCATION_DEVICE_ID_LEN];
     uint8_t  hash[32];
@@ -148,7 +150,27 @@ ccc_status_t sec_revocation_install(const uint8_t *blob, uint16_t len,
     g_rev_installed = true;
 
     sec_rev_zero(tmp_entries, sizeof(tmp_entries));
+
+    /* RAM 已原子更新; 持久化失败时返回该错误 (未绑定 NV 视为降级). */
+    if (persist) {
+        ccc_status_t nv = sec_nv_save_crl(blob, len);
+        if (nv != CCC_OK && nv != CCC_ERR_NOT_INIT) {
+            return nv;
+        }
+    }
     return CCC_OK;
+}
+
+ccc_status_t sec_revocation_install(const uint8_t *blob, uint16_t len,
+                                    const uint8_t root_pub[64], uint8_t key_type)
+{
+    return install_impl(blob, len, root_pub, key_type, true);
+}
+
+ccc_status_t sec_revocation_restore(const uint8_t *blob, uint16_t len,
+                                    const uint8_t root_pub[64], uint8_t key_type)
+{
+    return install_impl(blob, len, root_pub, key_type, false);
 }
 
 bool sec_revocation_is_revoked(const uint8_t device_id[16])

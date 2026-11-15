@@ -372,11 +372,25 @@ ccc_status_t sec_set_device_public_key(uint8_t key_type, const uint8_t *pub, uin
  * available for certificate validity checks.
  */
 
-/** Lock provisioning writes for the rest of this power cycle. */
-void sec_lock_provisioning(void);
+/** Lock provisioning writes; persists the lock state to NV when bound.
+ *  Returns CCC_OK when the RAM lock is set (NV unavailable degrades to RAM
+ *  only), or the persistence error. The RAM lock stays set on failure. */
+ccc_status_t sec_lock_provisioning(void);
 
-/** true once sec_lock_provisioning() has been called. */
+/** true once sec_lock_provisioning() has been called or NV reports locked. */
 bool sec_provisioning_locked(void);
+
+/** Power-on restore: load provisioning lock + CRL from NV. No record is not
+ *  an error; returns the first real error. */
+ccc_status_t sec_security_init(void);
+
+/** Provision the CRL verification root (device trust anchor, never peer data). */
+ccc_status_t sec_set_revocation_root(uint8_t key_type, const uint8_t *pub, uint16_t len);
+
+#ifdef UNIT_TEST
+/** Test-only: clear every provisioning static (including the lock) and CRL RAM. */
+void         sec_test_reset_security(void);
+#endif
 
 /* GATT Service Registration ([P0-2]) */
 ccc_status_t  ble_register_gatt_service(void);

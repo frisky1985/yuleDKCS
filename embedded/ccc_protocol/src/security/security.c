@@ -27,6 +27,7 @@
 #include "sm2.h"                /* SM2 verify (ICCE software fallback) */
 #include "sm3.h"                /* SM3 hash (ICCE software fallback) */
 #include "sec_revocation.h"     /* Signed device revocation list (CRL) */
+#include "sec_nv.h"             /* CRL / provisioning lock NV persistence */
 /* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
 void *pvPortMalloc(size_t xSize);
 void vPortFree(void *pv);
@@ -98,8 +99,14 @@ static bool     g_trusted_time_set;
 
 /* 产线配置一次性锁定: 由产线流程在上电后调用 sec_lock_provisioning().
  * 没有任何解锁 API — 一旦锁定, 所有身份/密钥/信任锚 provisioning 写入
- * 都被拒绝, 直至下次复位 (复位后锁定状态同样清零, 由产线流程重新加锁). */
+ * 都被拒绝. 锁定状态持久化到 NV (sec_nv_save_lock), 复位后由
+ * sec_security_init() 重新置位. */
 static bool     g_provisioning_locked;
+
+/* 预置的 CRL 验签根公钥 (仅由 provisioning 写入, 绝不来自对端). */
+static uint8_t  g_revocation_root[64];
+static uint8_t  g_revocation_root_type;
+static bool     g_revocation_root_set;
 
 #ifdef USE_SE050
 #define SEC_DEFAULT_DEVICE_KEY_TYPE SEC_KEY_TYPE_P256
@@ -891,10 +898,114 @@ static verify_result_e sec_verify_chain_internal(const uint8_t *chain, uint16_t 
  * 不提供解锁 API.
  */
 
-void sec_lock_provisioning(void)
+ccc_status_t sec_lock_provisioning(void)
 {
+    ccc_status_t st;
+
+    /* RAM 先锁定: 即使持久化失败, 本次上电也不再接受 provisioning 写入. */
     g_provisioning_locked = true;
+
+    st = sec_nv_save_lock(NULL);
+    if (st == CCC_ERR_NOT_INIT) {
+        return CCC_OK;      /* 平台未接入 NV: 降级为纯 RAM 锁定 */
+    }
+    return st;
 }
+
+ccc_status_t sec_security_init(void)
+{
+    ccc_status_t first_err = CCC_OK;
+    ccc_status_t st;
+    bool locked = false;
+
+    st = sec_nv_init();
+    if (st != CCC_OK) {
+        return st;
+    }
+
+    /* Lock: Flash 有效记录或 OTP 任一为锁即锁; 记录损坏按已锁定处理. */
+    st = sec_nv_load_lock(&locked);
+    if (locked || st == CCC_ERR_SECURITY) {
+        g_provisioning_locked = true;
+    }
+    if (st != CCC_OK && st != CCC_ERR_NOT_FOUND) {
+        first_err = st;
+    }
+
+    /* CRL: 只有预置了吊销根才能验签恢复. */
+    if (g_revocation_root_set) {
+        uint8_t blob[SEC_NV_MAX_CRL];
+        uint16_t len = 0;
+
+        st = sec_nv_load_crl(blob, (uint16_t)sizeof(blob), &len);
+        if (st == CCC_OK) {
+            st = sec_revocation_restore(blob, len, g_revocation_root,
+                                        g_revocation_root_type);
+        }
+        if (st != CCC_OK && st != CCC_ERR_NOT_FOUND && first_err == CCC_OK) {
+            first_err = st;
+        }
+    }
+
+    return first_err;
+}
+
+ccc_status_t sec_set_revocation_root(uint8_t key_type, const uint8_t *pub, uint16_t len)
+{
+    if (g_provisioning_locked) return CCC_ERR_STATE;
+    if (pub == NULL || len != 64U) return CCC_ERR_INVALID_PARAM;
+    if (key_type != SEC_KEY_TYPE_P256 && key_type != SEC_KEY_TYPE_SM2) {
+        return CCC_ERR_INVALID_PARAM;
+    }
+
+    (void)memcpy(g_revocation_root, pub, 64);
+    g_revocation_root_type = key_type;
+    g_revocation_root_set = true;
+    return CCC_OK;
+}
+
+#ifdef UNIT_TEST
+void sec_test_reset_security(void)
+{
+    g_provisioning_locked = false;
+
+    sec_secure_zero(g_peer_pub, sizeof(g_peer_pub));
+    g_peer_pub_len = 0;
+    g_peer_key_type = 0;
+    g_peer_pub_valid = false;
+
+    sec_secure_zero(g_peer_trust_root, sizeof(g_peer_trust_root));
+    g_peer_trust_root_len = 0;
+    g_peer_trust_root_type = 0;
+    g_peer_trust_root_set = false;
+
+    sec_secure_zero(g_dev_id, sizeof(g_dev_id));
+    sec_secure_zero(g_dev_key_id, sizeof(g_dev_key_id));
+    g_identity_set = false;
+
+    sec_secure_zero(g_fw_measurement, sizeof(g_fw_measurement));
+    g_fw_measurement_set = false;
+
+    sec_secure_zero(g_att_cert, sizeof(g_att_cert));
+    g_att_cert_len = 0;
+
+    sec_secure_zero(g_att_root, sizeof(g_att_root));
+    g_att_root_set = false;
+
+    sec_secure_zero(g_device_pub, sizeof(g_device_pub));
+    g_device_key_type = 0;
+    g_device_pub_set = false;
+
+    g_trusted_time = 0;
+    g_trusted_time_set = false;
+
+    sec_secure_zero(g_revocation_root, sizeof(g_revocation_root));
+    g_revocation_root_type = 0;
+    g_revocation_root_set = false;
+
+    sec_revocation_reset();
+}
+#endif /* UNIT_TEST */
 
 bool sec_provisioning_locked(void)
 {

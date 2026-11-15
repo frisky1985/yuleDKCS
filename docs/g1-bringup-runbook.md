@@ -148,7 +148,7 @@ cmake --build build-arm
 | 3.7.3 | 篡改条目/签名或使用错误公钥 | 拒绝（`CCC_ERR_SECURITY`），已装列表保持不变 |
 | 3.7.4 | 被吊销设备走 attestation | 返回 `VERIFY_KEY_REVOKED`，认证锁定 |
 | 3.7.5 | `sec_lock_provisioning()` 后写信任根/对端公钥/身份/固件度量 | 返回 `CCC_ERR_STATE`；clear 为空操作；`sec_set_trusted_time()` 仍成功 |
-| 3.7.6 | 复位后重复 3.7.5 | 当前锁定状态驻留 RAM，需产线流程每次上电重新加锁；NV 绑定后应保持锁定 |
+| 3.7.6 | 复位后重复 3.7.5 | 已绑定 NV 时锁定保持；未绑定（RAM-only 降级）需产线流程每次上电重新加锁，串口打印 `NV persistence not bound` |
 
 > 量产前必须按 `docs/security/nv-persistence-design.md`（SEC-NV-2026-001）把 CRL（epoch/列表）与锁定状态绑定到 Flash/OTP，确保掉电不回退、不可通过复位绕过；验收项见该文档 §11。
 

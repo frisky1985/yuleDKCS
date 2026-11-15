@@ -4,6 +4,7 @@
  */
 
 #include "ccc_digital_key.h"
+#include "sec_nv.h"             /* NV 分区基址 (KEYSTORE 偏移) */
 /* pvPortMalloc / vPortFree — 来自 FreeRTOS heap 管理, stubs 在 freertos_stubs.c */
 void *pvPortMalloc(size_t xSize);
 void vPortFree(void *pv);
@@ -29,8 +30,8 @@ __attribute__((weak)) int virt_flash_write(uint32_t addr, const uint8_t *data, u
 __attribute__((weak)) int virt_flash_read(uint32_t addr, uint8_t *data, uint16_t len)   { (void)addr; (void)data; (void)len; return -1; }
 __attribute__((weak)) int virt_flash_erase(uint32_t addr, uint16_t len)                  { (void)addr; (void)len; return -1; }
 
-/* 存储地址: 生产环境由 linker script 分配 */
-#define KEYSTORE_FLASH_ADDR  0x080E0000  /* 例如 STM32 最后一页 */
+/* 存储地址: NV 分区内的 key store 槽 (见 sec_nv.h) */
+#define KEYSTORE_FLASH_ADDR  (SEC_NV_FLASH_BASE + SEC_NV_KEYSTORE_OFF)
 #define KEYSTORE_FLASH_SIZE  4096
 
 /* volatile memset: 安全清零 (编译器屏障) */
