@@ -3,10 +3,10 @@
 | 项 | 内容 |
 |---|---|
 | 文档编号 | SEC-NV-2026-001 |
-| 版本 | v1.5（keystore OTP 水位） |
+| 版本 | v1.6（mock MCUX + 全写序列掉电穷举） |
 | 关联 | RMP-2026-001 §0.2；`sec_revocation.c`；`key_mgmt.c`；`kw47a_flash.ld` |
 | 目标 | 让 CRL（含 epoch）与 provisioning 锁定状态在复位/断电后保持，防回滚、防擦除绕过 |
-| 实现状态 | 软件侧已落地：`sec_nv`（CRL/Lock/Keystore 三组双 Bank + 各自 OTP 水位）、`kw47a_nv` 绑定、Flash/OTP 驱动层；`test_security_nv` 18/18、`test_kw47a_nv` 7/7、`test_kw47a_drv` 12/12，`test_all` 291 项 0 失败；真机 PFLASH 时序、擦写缓存失效与 eFuse 位定义待验证 |
+| 实现状态 | 软件侧已落地：`sec_nv`（CRL/Lock/Keystore 三组双 Bank + 各自 OTP 水位）、`kw47a_nv` 绑定、Flash/OTP 驱动层、mock MCUX 适配验证；`test_security_nv` 20/20、`test_mcux` 8/8、`test_kw47a_nv` 7/7、`test_kw47a_drv` 12/12，`test_all` 293 项 0 失败；真机 PFLASH 时序、擦写缓存失效与 eFuse 位定义待验证 |
 
 ## 1. 现状与必须先修的问题
 
@@ -194,7 +194,8 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 - `sec_lock_provisioning()`：先置 RAM 锁定 → 写 Flash Lock 记录 → 再写 OTP（若可用）；任一步失败仍保持 RAM 锁定并返回诊断；
 - `key_mgmt`：SE050 失败 → `sec_nv_save_keystore()/load_keystore()`；
 - 未绑定 ops 时保持 RAM 行为并打印 `NV persistence not bound (RAM-only)`；
-- 所有 offset 由 `SEC_NV_FLASH_BASE` 派生，业务层不出现绝对地址。
+- 所有 offset 由 `SEC_NV_FLASH_BASE` 派生，业务层不出现绝对地址；
+- HAL 写/擦必须落在**单个 8KB Bank** 内，跨 Bank 返回错误，防止一次调用同时破坏 A/B 双份记录；读不受此限（`hal_kw47a.c::nv_check_single_bank`）。
 
 ## 8. 测试方案
 
@@ -209,7 +210,10 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 7. 两 Bank 全坏 → 锁定并拒绝 attestation；
 8. Keystore 往返/复位保持、两代覆盖取最新、commit 前掉电保留上一代、单 Bank 损坏回退、双损坏拒绝、参数与未绑定错误；
 9. Keystore OTP 水位：连续保存水位 1→2、Flash 回滚快照 + 水位保留 → `CCC_ERR_SECURITY`、抬高失败返回硬件错误但记录可加载、无 OTP 降级、62 次耗尽拒绝且 Flash 不变；
-10. `SEC_NV_*` 越界或 Bank 重叠在编译期失败（`_Static_assert`）。
+10. **全写序列逐字节断电**：293 个断电点（header/payload/commit 全覆盖），每次复位后加载结果只能是旧代或新代；
+11. **状态机 fuzz**：320 轮固定种子随机保存/腐蚀/回滚/复位，加载内容必须等于某次已提交代，epoch < 水位必须拒绝；
+12. **mock MCUX**（`test_mcux` 8 项）：`fsl_flash.h` RAM 后端真实编译 `kw47a_flash_mcux.c`，覆盖几何映射/门禁（16KB 拒绝、8/4/1KB 接受）、HAL 读写擦全链路、跨 Bank 拒绝、擦写失败与半写注入，以及 eFuse 弱符号默认绑定（lock、CRL/keystore epoch、跨 word、幂等、烧写失败保位）；
+13. `SEC_NV_*` 越界或 Bank 重叠在编译期失败（`_Static_assert`）。
 
 ## 9. 残余风险与对策
 
@@ -248,7 +252,8 @@ ccc_status_t sec_nv_load_keystore(uint8_t *blob, uint16_t cap, uint16_t *len);
 | `sec_security_init()` 上电恢复并接入固件启动 | ✅ 已实现（未绑定时打印 RAM-only 告警） |
 | `sec_lock_provisioning()` 持久化 | ✅ 已实现 |
 | 地址修正（`key_mgmt`、链接脚本） | ✅ 已修正 |
-| 假 Flash 故障注入测试（含 4 个掉电断点） | ✅ 18/18 通过（含 keystore 双 Bank 5 项 + OTP 水位 5 项） |
+| 假 Flash 故障注入测试（含 4 个掉电断点 + 293 点逐字节断电 + 320 轮 fuzz） | ✅ 20/20 通过 |
+| mock MCUX 适配与 eFuse 默认绑定 | ✅ `test_mcux` 8/8；修复两个真实产品 bug：HAL 跨 Bank 写/擦未隔离、OTP 转发符号名与 LL 头文件不一致 |
 | Keystore OTP 水位（word2+word3，62 位一元码） | ✅ 已实现：epoch 存记录头 flags、保存后抬水位、回滚快照拒绝、耗尽保护、无 OTP 降级；`test_kw47a_drv` 跨 word 计数 12/12 |
 | 8KB 扇区布局（6 Bank，48KB） | ✅ 已实现：`FLASH_B` 144KB、`STORAGE` `0x74000`，几何门禁与 8KB 扇区匹配 |
 | Keystore 双 Bank 重构（替代 `virt_flash_*`） | ✅ 已实现：SE050 优先，NV 回退；commit 前掉电回退上一代 |

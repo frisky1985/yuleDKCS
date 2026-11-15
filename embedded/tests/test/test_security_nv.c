@@ -32,6 +32,9 @@ static uint8_t  g_flash[SEC_NV_FLASH_SIZE];
 static int      g_fail_after_writes;   /* -1 = 永不失败 */
 static bool     g_fail_erase;
 static uint32_t g_write_attempts;
+static int32_t  g_power_cut_after_bytes; /* -1 = 不掉电 */
+static uint32_t g_power_write_bytes;
+static bool     g_power_cut;
 
 static bool     g_otp_lock;
 static uint32_t g_otp_epoch;
@@ -59,6 +62,30 @@ static int fake_write(uint32_t off, const void *buf, uint16_t len)
         g_write_attempts++;
         return -1;
     }
+    if (g_power_cut_after_bytes >= 0) {
+        uint32_t cutoff = (uint32_t)g_power_cut_after_bytes;
+        uint32_t n = len;
+
+        if (g_power_cut || g_power_write_bytes >= cutoff) {
+            g_power_cut = true;
+            g_write_attempts++;
+            return -1;
+        }
+        if (n > cutoff - g_power_write_bytes) {
+            n = cutoff - g_power_write_bytes;
+        }
+        (void)memcpy(&g_flash[off], buf, n);
+        g_power_write_bytes += n;
+        g_write_attempts++;
+        if (n != len) {
+            g_power_cut = true;
+            return -1;
+        }
+        if (g_power_write_bytes >= cutoff) {
+            g_power_cut = true;
+        }
+        return 0;
+    }
     g_write_attempts++;
     (void)memcpy(&g_flash[off], buf, len);
     return 0;
@@ -66,7 +93,7 @@ static int fake_write(uint32_t off, const void *buf, uint16_t len)
 
 static int fake_erase(uint32_t off, uint16_t len)
 {
-    if (g_fail_erase) {
+    if (g_fail_erase || g_power_cut) {
         return -1;
     }
     if (off > SEC_NV_FLASH_SIZE || (uint32_t)len > SEC_NV_FLASH_SIZE - off) {
@@ -115,7 +142,7 @@ static int fake_otp_keystore_epoch_read(uint32_t *epoch)
 
 static int fake_otp_keystore_epoch_raise(uint32_t epoch)
 {
-    if (g_fail_otp_ks_raise) {
+    if (g_fail_otp_ks_raise || g_power_cut) {
         return -1;
     }
     if (epoch > g_otp_ks_epoch) {
@@ -149,6 +176,9 @@ static void nv_reset_env(void)
     g_fail_after_writes = -1;
     g_fail_erase = false;
     g_write_attempts = 0;
+    g_power_cut_after_bytes = -1;
+    g_power_write_bytes = 0;
+    g_power_cut = false;
     g_otp_lock = false;
     g_otp_epoch = 0;
     g_otp_ks_epoch = 0;
@@ -810,6 +840,306 @@ static void test_keystore_otp_epoch_exhausted(void)
     TEST_ASSERT_EQUAL_MEMORY(flash_snapshot, g_flash, sizeof(g_flash));
 }
 
+/* ── 19. keystore 全写字节序列逐点掉电 ────────────────────── */
+
+static void test_power_loss_every_byte(void)
+{
+    uint8_t old_blob[256];
+    uint8_t new_blob[256];
+    uint8_t out[sizeof(new_blob)];
+    uint8_t flash_snapshot[SEC_NV_FLASH_SIZE];
+    uint16_t out_len;
+    uint32_t otp_snapshot;
+    uint32_t cut;
+    const uint32_t total_bytes = SEC_NV_HDR_SIZE + sizeof(new_blob) + 4u;
+    bool saw_old = false;
+    bool saw_new = false;
+
+    nv_reset_env();
+    nv_bind();
+    (void)memset(old_blob, 0x39, sizeof(old_blob));
+    (void)memset(new_blob, 0xC6, sizeof(new_blob));
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_nv_save_keystore(old_blob, sizeof(old_blob)));
+    TEST_ASSERT_EQUAL_UINT(1u, g_otp_ks_epoch);
+    (void)memcpy(flash_snapshot, g_flash, sizeof(flash_snapshot));
+    otp_snapshot = g_otp_ks_epoch;
+
+    for (cut = 0u; cut <= total_bytes; cut++) {
+        ccc_status_t st;
+        bool is_old;
+        bool is_new;
+
+        (void)memcpy(g_flash, flash_snapshot, sizeof(g_flash));
+        g_otp_ks_epoch = otp_snapshot;
+        g_fail_after_writes = -1;
+        g_fail_erase = false;
+        g_fail_otp_ks_raise = false;
+        g_write_attempts = 0u;
+        g_power_write_bytes = 0u;
+        g_power_cut = false;
+        g_power_cut_after_bytes = (int32_t)cut;
+        sec_nv_reset_for_test();
+        nv_bind();
+
+        (void)sec_nv_save_keystore(new_blob, sizeof(new_blob));
+        TEST_ASSERT_EQUAL_UINT(cut, g_power_write_bytes);
+
+        /* Reboot restores I/O, while flash and the pre-cut OTP state persist. */
+        g_power_cut_after_bytes = -1;
+        g_power_cut = false;
+        nv_simulate_reboot();
+        out_len = 0u;
+        st = sec_nv_load_keystore(out, sizeof(out), &out_len);
+        is_old = st == CCC_OK && out_len == sizeof(old_blob) &&
+                 memcmp(out, old_blob, sizeof(old_blob)) == 0;
+        is_new = st == CCC_OK && out_len == sizeof(new_blob) &&
+                 memcmp(out, new_blob, sizeof(new_blob)) == 0;
+        if (st != CCC_OK || (!is_old && !is_new)) {
+            printf("power-loss mismatch: cut=%u/%u status=%d len=%u\n",
+                   (unsigned int)cut, (unsigned int)total_bytes,
+                   (int)st, (unsigned int)out_len);
+        }
+        TEST_ASSERT_EQUAL(CCC_OK, st);
+        TEST_ASSERT_TRUE(is_old || is_new);
+        saw_old = saw_old || is_old;
+        saw_new = saw_new || is_new;
+    }
+    TEST_ASSERT_TRUE(saw_old);
+    TEST_ASSERT_TRUE(saw_new);
+}
+
+/* ── 20. 固定种子状态机 fuzz ─────────────────────────────── */
+
+#define FUZZ_SEED         0xC0FFEE11u
+#define FUZZ_ROUNDS       320u
+#define FUZZ_HISTORY_SIZE 24u
+#define FUZZ_BLOB_CAP     96u
+#define FUZZ_CRL_MAX_EPOCH 31u
+
+typedef struct {
+    uint8_t flash[SEC_NV_FLASH_SIZE];
+} fuzz_snapshot_t;
+
+typedef struct {
+    uint32_t epoch;
+    uint16_t len;
+    uint8_t data[FUZZ_BLOB_CAP];
+} fuzz_generation_t;
+
+static fuzz_snapshot_t g_fuzz_history[FUZZ_HISTORY_SIZE];
+static uint32_t g_fuzz_history_count;
+static uint32_t g_fuzz_history_next;
+static fuzz_generation_t g_fuzz_ks_generations[FUZZ_ROUNDS];
+static fuzz_generation_t g_fuzz_crl_generations[FUZZ_ROUNDS];
+static uint32_t g_fuzz_ks_count;
+static uint32_t g_fuzz_crl_count;
+
+static uint32_t fuzz_rand(uint32_t *state)
+{
+    uint32_t x = *state;
+
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *state = x;
+    return x;
+}
+
+static void fuzz_fill(uint8_t *blob, uint16_t len, uint32_t round,
+                      uint8_t salt)
+{
+    uint16_t i;
+
+    for (i = 0u; i < len; i++) {
+        blob[i] = (uint8_t)(i * 29u + round * 17u + salt);
+    }
+    blob[0] = (uint8_t)round;
+    blob[1] = (uint8_t)(round >> 8);
+    blob[2] = salt;
+}
+
+static void fuzz_record_snapshot(void)
+{
+    (void)memcpy(g_fuzz_history[g_fuzz_history_next].flash, g_flash,
+                 SEC_NV_FLASH_SIZE);
+    g_fuzz_history_next = (g_fuzz_history_next + 1u) % FUZZ_HISTORY_SIZE;
+    if (g_fuzz_history_count < FUZZ_HISTORY_SIZE) {
+        g_fuzz_history_count++;
+    }
+}
+
+static int fuzz_match_generation(const fuzz_generation_t *generations,
+                                 uint32_t count, const uint8_t *out,
+                                 uint16_t out_len)
+{
+    uint32_t i;
+
+    for (i = 0u; i < count; i++) {
+        if (generations[i].len == out_len &&
+            memcmp(generations[i].data, out, out_len) == 0) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
+static void fuzz_check(bool condition, uint32_t round, uint32_t op,
+                       const char *detail, int ks_status, int crl_status)
+{
+    if (!condition) {
+        printf("fuzz failure: seed=0x%08X round=%u op=%u %s "
+               "ks_status=%d crl_status=%d\n",
+               (unsigned int)FUZZ_SEED, (unsigned int)round,
+               (unsigned int)op, detail, ks_status, crl_status);
+    }
+    TEST_ASSERT_TRUE(condition);
+}
+
+static void test_state_machine_fuzz(void)
+{
+    static const uint32_t bank_offsets[] = {
+        SEC_NV_KEYSTORE_A_OFF, SEC_NV_KEYSTORE_B_OFF,
+        SEC_NV_CRL_A_OFF, SEC_NV_CRL_B_OFF,
+        SEC_NV_LOCK_A_OFF, SEC_NV_LOCK_B_OFF
+    };
+    uint32_t rng = FUZZ_SEED;
+    uint32_t round;
+    uint8_t blob[FUZZ_BLOB_CAP];
+    uint8_t ks_out[FUZZ_BLOB_CAP];
+    uint8_t crl_out[FUZZ_BLOB_CAP];
+
+    nv_reset_env();
+    nv_bind();
+    g_fuzz_history_count = 0u;
+    g_fuzz_history_next = 0u;
+    g_fuzz_ks_count = 0u;
+    g_fuzz_crl_count = 0u;
+
+    for (round = 0u; round < FUZZ_ROUNDS; round++) {
+        uint32_t op = fuzz_rand(&rng) % 6u;
+        ccc_status_t ks_st;
+        ccc_status_t crl_st;
+        uint16_t ks_len = 0u;
+        uint16_t crl_len = 0u;
+        int ks_match;
+        int crl_match;
+
+        switch (op) {
+        case 0u: {
+            uint16_t len = (uint16_t)(32u + fuzz_rand(&rng) % 65u);
+            ccc_status_t st;
+
+            fuzz_fill(blob, len, round, 0x4Bu);
+            st = sec_nv_save_keystore(blob, len);
+            fuzz_check(st == CCC_OK || st == CCC_ERR_SECURITY ||
+                       st == CCC_ERR_STATE, round, op, "save_keystore", st, 0);
+            if (st == CCC_OK) {
+                fuzz_generation_t *gen = &g_fuzz_ks_generations[g_fuzz_ks_count++];
+
+                gen->epoch = g_otp_ks_epoch;
+                gen->len = len;
+                (void)memcpy(gen->data, blob, len);
+                fuzz_record_snapshot();
+            }
+            break;
+        }
+        case 1u: {
+            const uint16_t len = 72u;
+            uint32_t epoch = g_otp_epoch + fuzz_rand(&rng) % 3u;
+            ccc_status_t st;
+
+            if (epoch > FUZZ_CRL_MAX_EPOCH) {
+                epoch = FUZZ_CRL_MAX_EPOCH;
+            }
+            fuzz_fill(blob, len, round, 0x43u);
+            crl_put_u32(&blob[8], epoch);
+            st = sec_nv_save_crl(blob, len);
+            fuzz_check(st == CCC_OK || st == CCC_ERR_SECURITY,
+                       round, op, "save_crl", 0, st);
+            if (st == CCC_OK) {
+                fuzz_generation_t *gen = &g_fuzz_crl_generations[g_fuzz_crl_count++];
+
+                gen->epoch = epoch;
+                gen->len = len;
+                (void)memcpy(gen->data, blob, len);
+                fuzz_record_snapshot();
+            }
+            break;
+        }
+        case 2u:
+            nv_simulate_reboot();
+            break;
+        case 3u: {
+            uint32_t bank = fuzz_rand(&rng) % 6u;
+            uint32_t pos = fuzz_rand(&rng) % SEC_NV_KEYSTORE_BANK_SIZE;
+            uint8_t mask = (uint8_t)(1u << (fuzz_rand(&rng) % 8u));
+
+            g_flash[bank_offsets[bank] + pos] ^= mask;
+            break;
+        }
+        case 4u:
+            if (g_fuzz_history_count > 0u) {
+                uint32_t idx = fuzz_rand(&rng) % g_fuzz_history_count;
+
+                (void)memcpy(g_flash, g_fuzz_history[idx].flash,
+                             SEC_NV_FLASH_SIZE);
+                nv_simulate_reboot(); /* Flash rolls back; OTP stays monotonic. */
+            }
+            break;
+        default: {
+            uint32_t which = fuzz_rand(&rng) % 3u;
+            uint32_t step = 1u + fuzz_rand(&rng) % 2u;
+
+            if (which == 0u) {
+                uint32_t next = g_otp_ks_epoch + step;
+                if (next > SEC_NV_KEYSTORE_MAX_EPOCH) {
+                    next = SEC_NV_KEYSTORE_MAX_EPOCH;
+                }
+                (void)fake_otp_keystore_epoch_raise(next);
+            } else if (which == 1u) {
+                uint32_t next = g_otp_epoch + step;
+                if (next > FUZZ_CRL_MAX_EPOCH) {
+                    next = FUZZ_CRL_MAX_EPOCH;
+                }
+                (void)fake_otp_epoch_raise(next);
+            }
+            break;
+        }
+        }
+
+        ks_st = sec_nv_load_keystore(ks_out, sizeof(ks_out), &ks_len);
+        crl_st = sec_nv_load_crl(crl_out, sizeof(crl_out), &crl_len);
+        fuzz_check(ks_st == CCC_OK || ks_st == CCC_ERR_NOT_FOUND ||
+                   ks_st == CCC_ERR_SECURITY, round, op,
+                   "unexpected keystore load status", ks_st, crl_st);
+        fuzz_check(crl_st == CCC_OK || crl_st == CCC_ERR_NOT_FOUND ||
+                   crl_st == CCC_ERR_SECURITY || crl_st == CCC_ERR_STATE,
+                   round, op, "unexpected CRL load status", ks_st, crl_st);
+
+        ks_match = (ks_st == CCC_OK) ?
+            fuzz_match_generation(g_fuzz_ks_generations, g_fuzz_ks_count,
+                                  ks_out, ks_len) : -1;
+        crl_match = (crl_st == CCC_OK) ?
+            fuzz_match_generation(g_fuzz_crl_generations, g_fuzz_crl_count,
+                                  crl_out, crl_len) : -1;
+        if (ks_st == CCC_OK) {
+            fuzz_check(ks_match >= 0, round, op,
+                       "keystore is not a committed generation", ks_st, crl_st);
+            fuzz_check(g_fuzz_ks_generations[ks_match].epoch >= g_otp_ks_epoch,
+                       round, op, "keystore epoch below OTP watermark",
+                       ks_st, crl_st);
+        }
+        if (crl_st == CCC_OK) {
+            fuzz_check(crl_match >= 0, round, op,
+                       "CRL is not a committed generation", ks_st, crl_st);
+            fuzz_check(g_fuzz_crl_generations[crl_match].epoch >= g_otp_epoch,
+                       round, op, "CRL epoch below OTP watermark",
+                       ks_st, crl_st);
+        }
+    }
+}
+
 #ifndef TEST_LIB_MODE
 void setUp(void)
 {
@@ -843,6 +1173,8 @@ int run_security_nv_tests(void)
     RUN_TEST(test_keystore_otp_raise_failure);
     RUN_TEST(test_keystore_without_otp);
     RUN_TEST(test_keystore_otp_epoch_exhausted);
+    RUN_TEST(test_power_loss_every_byte);
+    RUN_TEST(test_state_machine_fuzz);
     RUN_TEST(test_lock_persistence);    /* 终态锁定, 必须最后执行 */
 
     UNITY_END();

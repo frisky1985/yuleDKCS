@@ -87,6 +87,7 @@ INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
 
 # KW47A NV binding (hal_interface.h / kw47a_nv.h)
 NV_INCLUDES := -I$(ROOT)/firmware/hal -I$(ROOT)/firmware/hal/kw47a
+MCUX_INCLUDES := -I$(TESTDIR)/support/mcux_mock $(INCLUDES) $(NV_INCLUDES)
 
 # Real dk_logger.h declares dk_logger_log with va_list but DK_LOG macro
 # passes raw args; the UNIT_TEST branch fixes the declaration for tests.
@@ -226,13 +227,21 @@ $(BUILD)/kw47a_otp_ll.o: $(ROOT)/firmware/hal/kw47a/kw47a_otp_ll.c | $(BUILD)
 $(BUILD)/kw47a_nv.o: $(ROOT)/firmware/hal/kw47a/kw47a_nv.c \
                      $(BUILD)/kw47a_flash_ll.o $(BUILD)/kw47a_otp_ll.o | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) $(NV_INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/kw47a_flash_mcux_mock.o: $(ROOT)/firmware/hal/kw47a/kw47a_flash_mcux.c | $(BUILD)
+	$(CC) $(CFLAGS) $(MCUX_INCLUDES) -DKW47A_MCUX_SDK -Wno-int-to-pointer-cast -c -o $@ $<
+$(BUILD)/fsl_flash_mock.o: $(TESTDIR)/support/mcux_mock/fsl_flash_mock.c | $(BUILD)
+	$(CC) $(CFLAGS) $(MCUX_INCLUDES) -c -o $@ $<
+$(BUILD)/hal_kw47a_mcux_mock.o: $(ROOT)/firmware/hal/kw47a/hal_kw47a.c | $(BUILD)
+	$(CC) $(CFLAGS) $(MCUX_INCLUDES) -ffunction-sections -fdata-sections -c -o $@ $<
+$(BUILD)/test_kw47a_mcux.o: $(TEST_DIR)/test_kw47a_mcux.c | $(BUILD)
+	$(CC) $(CFLAGS) $(MCUX_INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/se050_hsm_provision.o: $(PROV_SRC)/se050_hsm_provision.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 
 #---------------------------------------------------------------------------
 # Standalone test binaries
 #---------------------------------------------------------------------------
-.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_revocation test_nv test_kw47a_nv test_drv test_kw47a_drv test_secure_boot test_all
+.PHONY: all clean test_iccoa test_ccc test_icce test_unified test_vse050 test_provision test_chain test_revocation test_nv test_kw47a_nv test_drv test_kw47a_drv test_mcux test_secure_boot test_all
 
 all: test_all
 
@@ -351,6 +360,14 @@ test_kw47a_drv: $(BUILD)/test_kw47a_drv.o \
             $(BUILD)/p256.o $(BUILD)/sm2.o $(BUILD)/sm3.o $(BUILD)/sm4.o \
             $(BUILD)/stubs_hal.o $(BUILD)/freertos_stubs.o $(BUILD)/unity.o
 	$(CC) -o $(BUILD)/$@ $^ $(LDFLAGS)
+	$(BUILD)/$@
+
+# Independent binary: SDK macros and strong OTP symbols must not enter test_all.
+test_mcux: $(BUILD)/test_kw47a_mcux.o $(BUILD)/fsl_flash_mock.o \
+           $(BUILD)/kw47a_flash_mcux_mock.o $(BUILD)/hal_kw47a_mcux_mock.o \
+           $(BUILD)/kw47a_flash_ll.o $(BUILD)/kw47a_otp_ll.o \
+           $(BUILD)/kw47a_nv.o $(BUILD)/sec_nv.o $(BUILD)/unity.o
+	$(CC) -Wl,--gc-sections -o $(BUILD)/$@ $^ $(LDFLAGS)
 	$(BUILD)/$@
 
 test_secure_boot: $(BUILD)/test_secure_boot.o $(BUILD)/secure_boot.o \

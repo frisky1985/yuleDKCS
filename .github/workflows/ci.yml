@@ -138,7 +138,7 @@ jobs:
         working-directory: embedded/tests
         run: |
           make clean
-          make -j"$(nproc)" test_all test_vse050 test_provision 2>&1
+          make -j"$(nproc)" test_all test_vse050 test_provision test_mcux 2>&1
           echo "✅ Embedded C test gate complete (all suites, failure = CI fail)"
 
       - name: Upload C test report

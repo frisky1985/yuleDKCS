@@ -141,6 +141,15 @@ static int nv_check_range(uint32_t offset, uint32_t len)
     return 0;
 }
 
+/* 写/擦必须落在单个 Bank 内：所有 Bank 均为 8KB 且连续布局。
+ * 防止一次调用跨 Bank 同时破坏 A/B 两份记录，丧失掉电冗余。 */
+static int nv_check_single_bank(uint32_t offset, uint32_t len)
+{
+    const uint32_t bank = SEC_NV_KEYSTORE_BANK_SIZE;
+
+    return ((offset / bank) == ((offset + len - 1u) / bank)) ? 0 : -1;
+}
+
 int hal_nv_flash_read(uint32_t offset, void *data, uint32_t len)
 {
     if (data == NULL || len == 0u || nv_check_range(offset, len) != 0) {
@@ -155,7 +164,8 @@ int hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len)
     const uint8_t *src = (const uint8_t *)data;
     uint32_t done = 0;
 
-    if (src == NULL || len == 0u || nv_check_range(offset, len) != 0) {
+    if (src == NULL || len == 0u || nv_check_range(offset, len) != 0 ||
+        nv_check_single_bank(offset, len) != 0) {
         return -1;
     }
     if ((offset % 4u) != 0u) {
@@ -193,7 +203,8 @@ int hal_nv_flash_erase(uint32_t offset, uint32_t len)
     uint32_t page = kw47a_flash_ll_page_size();
     uint32_t done;
 
-    if (len == 0u || nv_check_range(offset, len) != 0) {
+    if (len == 0u || nv_check_range(offset, len) != 0 ||
+        nv_check_single_bank(offset, len) != 0) {
         return -1;
     }
     if (page == 0u || (offset % page) != 0u || (len % page) != 0u) {
@@ -220,13 +231,13 @@ static void otp_bind_once(void)
 int hal_otp_lock_read(void)
 {
     otp_bind_once();
-    return kw47a_otp_ll_lock_read() ? 1 : 0;
+    return kw47a_otp_lock_read() ? 1 : 0;
 }
 
 int hal_otp_lock_set(void)
 {
     otp_bind_once();
-    return kw47a_otp_ll_lock_set();
+    return kw47a_otp_lock_set();
 }
 
 int hal_otp_epoch_read(uint32_t *epoch)
@@ -235,7 +246,7 @@ int hal_otp_epoch_read(uint32_t *epoch)
         return -1;
     }
     otp_bind_once();
-    *epoch = kw47a_otp_ll_epoch_read();
+    *epoch = kw47a_otp_epoch_read();
     return 0;
 }
 

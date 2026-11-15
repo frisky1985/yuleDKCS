@@ -60,6 +60,8 @@ int  hal_storage_delete(const char *key);
  * offset 相对 NV 分区基址（KW47A: 0x74000，48KB），不是绝对地址。
  * len 为字节数；返回 0 成功，<0 失败。
  * 读操作必须在未擦除时也能工作，供 sec_nv 区分空白(0xFF)与损坏。
+ * 写/擦必须落在单个 Bank（8KB）内，跨 Bank 返回 <0，防止一次调用同时
+ * 破坏 A/B 双份记录；读不受此限。
  */
 int  hal_nv_flash_read(uint32_t offset, void *data, uint32_t len);
 int  hal_nv_flash_write(uint32_t offset, const void *data, uint32_t len);
