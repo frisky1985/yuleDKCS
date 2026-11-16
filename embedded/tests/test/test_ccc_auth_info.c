@@ -49,6 +49,7 @@ void test_auth_info_initial_state_unauthenticated(void) {
     TEST_ASSERT_FALSE(info.authenticated);
     TEST_ASSERT_FALSE(info.key_bound);
     TEST_ASSERT_EQUAL_MEMORY(g_zero_rights, info.access_rights, 4);
+    TEST_ASSERT_EQUAL_UINT(0u, info.session_id);
 
     (void)ccc_dk_deinit();
 }
@@ -68,6 +69,7 @@ void test_auth_failure_keeps_unauthenticated(void) {
     TEST_ASSERT_FALSE(info.authenticated);
     TEST_ASSERT_FALSE(info.key_bound);
     TEST_ASSERT_EQUAL_MEMORY(g_zero_rights, info.access_rights, 4);
+    TEST_ASSERT_EQUAL_UINT(0u, info.session_id);
 
     (void)ccc_dk_deinit();
 }

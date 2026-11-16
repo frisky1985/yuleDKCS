@@ -21,6 +21,7 @@ extern int run_ccc_frame_tests(void);
 extern int run_protocol_uuid_tests(void);
 extern int run_ccc_apdu_tests(void);
 extern int run_ccc_auth_info_tests(void);
+extern int run_ccc_oem_app_contract_tests(void);
 extern int run_icce_tests(void);
 extern int run_unified_tests(void);
 extern int run_edge_condition_tests(void);
@@ -63,6 +64,9 @@ int main(void)
 
     printf("\n--- CCC Auth Info / Key Binding ---\n");
     ret += run_ccc_auth_info_tests();
+
+    printf("\n--- CCC OEM App (Type 4) Contract ---\n");
+    ret += run_ccc_oem_app_contract_tests();
 
     printf("\n--- ICCE Protocol Tests ---\n");
     ret += run_icce_tests();

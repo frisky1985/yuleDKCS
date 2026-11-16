@@ -5,6 +5,7 @@
 
 #include "ccc_digital_key.h"
 #include "ccc_apdu.h"
+#include "crypto_random.h"
 
 /* -------------------------------------------------------------------
  *  Module Instances
@@ -60,6 +61,16 @@ static void mark_authenticated(void)
         (void)memcpy(g_auth_info.key_id, ks.key_id, KEY_ID_LEN);
         (void)memcpy(g_auth_info.access_rights, ks.access_rights, 4);
         g_auth_info.key_bound = true;
+    }
+
+    /* 随机会话标识, 供 OEM App (Type 4) 绑定会话/防重放.
+     * 生成失败或结果为 0 时保持 0: OEM 命令一律拒绝, 不影响认证本身. */
+    uint8_t sid[4];
+    if (crypto_random_bytes(sid, sizeof(sid)) == CRYPTO_RANDOM_OK) {
+        g_auth_info.session_id = ((uint32_t)sid[0] << 24)
+                               | ((uint32_t)sid[1] << 16)
+                               | ((uint32_t)sid[2] << 8)
+                               |  (uint32_t)sid[3];
     }
 }
 

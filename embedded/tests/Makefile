@@ -184,6 +184,10 @@ $(BUILD)/test_ccc_auth_info.o: $(TEST_DIR)/test_ccc_auth_info.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_ccc_auth_info_lib.o: $(TEST_DIR)/test_ccc_auth_info.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_ccc_oem_app_contract.o: $(TEST_DIR)/test_ccc_oem_app_contract.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_ccc_oem_app_contract_lib.o: $(TEST_DIR)/test_ccc_oem_app_contract.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_icce_lib.o: $(TEST_DIR)/test_icce.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_unified_lib.o: $(TEST_DIR)/test_unified.c | $(BUILD)
@@ -398,6 +402,7 @@ test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_ccc_frame_lib.o $(BUILD)/test_icce_lib.o \
           $(BUILD)/test_protocol_uuid_lib.o $(BUILD)/test_ccc_apdu_lib.o \
           $(BUILD)/test_ccc_auth_info_lib.o \
+          $(BUILD)/test_ccc_oem_app_contract_lib.o \
           $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
           $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
           $(BUILD)/test_se050_scp03_lib.o \

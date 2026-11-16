@@ -542,12 +542,15 @@ typedef struct {
  * authenticated: 证书链 + attestation + 挑战签名全部通过后才为 true;
  *                任何失败、重新认证、断开连接都会清零.
  * key_bound:     已绑定唯一 ACTIVE 钥匙; 为 false 时 access_rights 全 0,
- *                调用方必须拒绝一切车控指令 (fail-closed). */
+ *                调用方必须拒绝一切车控指令 (fail-closed).
+ * session_id:    认证通过时由 TRNG 生成的随机会话标识, 供 OEM App
+ *                (Message Type 4) 做会话绑定与防重放; 未认证/生成失败为 0. */
 typedef struct {
     bool    authenticated;
     bool    key_bound;
     uint8_t key_id[KEY_ID_LEN];
     uint8_t access_rights[4];
+    uint32_t session_id;
 } ccc_auth_info_t;
 
 ccc_status_t ccc_dk_init(void);
