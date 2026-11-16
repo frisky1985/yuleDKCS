@@ -175,14 +175,17 @@ void test_internal_auth_without_peer_key_fails_closed(void) {
     TEST_ASSERT_FALSE(ccc_apdu_is_authenticated());
 }
 
-/* ─── 车辆指令 ─── */
+/* ─── 车辆指令 (0xD2 为 NFC 私有命令, CCC BLE 通道不注册执行器) ─── */
 
-void test_vehicle_cmd_requires_auth(void) {
+void test_vehicle_cmd_disabled_returns_6d00(void) {
     reset_session();
-    TEST_ASSERT_EQUAL_HEX16(CCC_SW_OK, send(SELECT_APDU, 19));
-
     uint8_t cmd[7] = { 0x80, 0xD2, 0x01, 0x00, 0x01, 0xAA, 0x00 };
-    TEST_ASSERT_EQUAL_HEX16(CCC_SW_CONDITIONS_NOT_SAT, send(cmd, 7));
+
+    /* 未选 AID / 未认证: 行为一致, 均为 6D00, 不泄露会话状态 */
+    TEST_ASSERT_EQUAL_HEX16(CCC_SW_INS_NOT_SUPPORTED, send(cmd, 7));
+
+    TEST_ASSERT_EQUAL_HEX16(CCC_SW_OK, send(SELECT_APDU, 19));
+    TEST_ASSERT_EQUAL_HEX16(CCC_SW_INS_NOT_SUPPORTED, send(cmd, 7));
 }
 
 /* ─── 未知命令 / 类别 ─── */
@@ -244,7 +247,7 @@ int run_ccc_apdu_tests(void) {
     RUN_TEST(test_internal_auth_requires_challenge);
     RUN_TEST(test_internal_auth_without_peer_key_fails_closed);
 
-    RUN_TEST(test_vehicle_cmd_requires_auth);
+    RUN_TEST(test_vehicle_cmd_disabled_returns_6d00);
 
     RUN_TEST(test_unknown_ins_rejected);
     RUN_TEST(test_unsupported_cla_rejected);

@@ -60,8 +60,18 @@ extern const uint8_t CCC_APDU_DK_AID[CCC_APDU_AID_LEN];
 #define CCC_APDU_INS_SELECT         0xA4u  /**< SELECT (P1=0x04 按 AID) */
 #define CCC_APDU_INS_GET_CHALLENGE  0x84u  /**< GET CHALLENGE */
 #define CCC_APDU_INS_INTERNAL_AUTH  0x88u  /**< INTERNAL AUTHENTICATE */
-/** INS: 本项目车辆指令 (CLA=0x80, 载荷见 docs/sdk/NFC-INTEGRATION.md) */
-#define CCC_APDU_INS_VEHICLE_CMD    0xD2u
+
+/**
+ * INS 0xD2: 项目私有 NFC 车辆指令 (CLA=0x80, P1=01 解锁/02 上锁/03 启动).
+ *
+ * 来源: docs/sdk/NFC-INTEGRATION.md §4, 属 NFC 通道的私有约定.
+ * CCC-TS-101 v4.0 **不定义车控 INS** (SE 消息命令仅 Table 15-1 所列
+ * SELECT/AUTH0/AUTH1/EXCHANGE/CONTROL FLOW/CREATE RANGING KEY).
+ * 因此本常量禁止用于 CCC BLE 通道: 未注册指令回调时一律返回 6D00.
+ * OEM 自定义车控的规范入口是 Message Type 4 (Vehicle OEM App, Table 19-21),
+ * 不是 SE APDU 的私有 INS.
+ */
+#define CCC_APDU_INS_VEHICLE_CMD_NFC_PRIVATE  0xD2u
 
 /** 单帧 APDU 数据域上限 (BLE_MAX_PAYLOAD - 4B 帧头 - 5B APDU 开销) */
 #define CCC_APDU_MAX_DATA  235u

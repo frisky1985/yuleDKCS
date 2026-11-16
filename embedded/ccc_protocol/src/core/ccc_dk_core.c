@@ -166,7 +166,9 @@ static void ccc_ble_rx_handler(uint16_t conn_handle,
         }
     }
     /* 其他 msg_type (UWB_RANGING / DK_EVENT_NOTIFY / FRAMEWORK)
-     * 不属于 APDU 路由, 由各自模块处理. */
+     * 不属于 APDU 路由, 由各自模块处理.
+     * 注意: CCC_MSG_TYPE_VEHICLE_OEM_APP(4) 才是 OEM 自定义车控的规范入口
+     * (CCC-TS-101 Table 19-21), 不应把车控塞进 SE 的私有 INS. */
 }
 
 /* -------------------------------------------------------------------

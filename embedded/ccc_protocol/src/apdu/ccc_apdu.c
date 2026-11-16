@@ -204,11 +204,13 @@ static uint16_t do_vehicle_cmd(const ccc_apdu_t *a,
     if (a->cla != CCC_APDU_CLA_PROPRIETARY && a->cla != CCC_APDU_CLA_SECURE) {
         return sw_only(resp, cap, resp_len, CCC_SW_CLA_NOT_SUPPORTED);
     }
-    if (!s_authenticated) {
-        return sw_only(resp, cap, resp_len, CCC_SW_CONDITIONS_NOT_SAT);
-    }
+    /* 未注册执行器 = 本实现不支持该 INS.
+     * 先于认证判断返回 6D00: 避免因会话状态不同而产生行为差异, 也不泄露认证态. */
     if (s_cmd_cb == NULL) {
         return sw_only(resp, cap, resp_len, CCC_SW_INS_NOT_SUPPORTED);
+    }
+    if (!s_authenticated) {
+        return sw_only(resp, cap, resp_len, CCC_SW_CONDITIONS_NOT_SAT);
     }
 
     ccc_status_t st = s_cmd_cb(a->p1, a->data, a->lc);
@@ -249,7 +251,7 @@ uint16_t ccc_apdu_process(const uint8_t *req, uint16_t req_len,
         return do_get_challenge(&a, resp, resp_cap, resp_len);
     case CCC_APDU_INS_INTERNAL_AUTH:
         return do_internal_auth(&a, resp, resp_cap, resp_len);
-    case CCC_APDU_INS_VEHICLE_CMD:
+    case CCC_APDU_INS_VEHICLE_CMD_NFC_PRIVATE:
         return do_vehicle_cmd(&a, resp, resp_cap, resp_len);
     default:
         return sw_only(resp, resp_cap, resp_len, CCC_SW_INS_NOT_SUPPORTED);
