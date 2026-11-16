@@ -13,7 +13,7 @@
 ✅ 原生 Android/iOS SDK 开发完成（真机与 Wallet 验证待补）
 ✅ 云端服务开发完成（Go hub + dkcs + Java adapters，可试商用）
 ✅ 安全设计文档完成（SE050 硬件闭环待实现）
-⚠️  嵌入式 C 单测 196/196 通过（主机环境，硬件层为桩）
+⚠️  嵌入式 C 单测 299/299 通过（主机环境，硬件层为桩）
 ⏳ 真实硬件 HIL 待执行（当前 SIL 10/46 通过，36 项硬件域跳过）
 ⏳ 量产认证（ICCE/CCC/ICCOA、Apple/Google Wallet）未启动
 ```

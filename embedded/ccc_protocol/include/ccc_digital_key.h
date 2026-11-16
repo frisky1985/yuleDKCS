@@ -390,6 +390,12 @@ ccc_status_t sec_security_init(void);
 /** Provision the CRL verification root (device trust anchor, never peer data). */
 ccc_status_t sec_set_revocation_root(uint8_t key_type, const uint8_t *pub, uint16_t len);
 
+/** Install a signed CRL blob using the provisioned revocation root.
+ *  Works after provisioning lock (revocation must remain updateable).
+ *  Returns CCC_ERR_STATE when no root was provisioned, CCC_ERR_SECURITY on
+ *  bad signature, CCC_ERR_STATE on a replayed/older epoch. */
+ccc_status_t sec_install_revocation(const uint8_t *blob, uint16_t len);
+
 #ifdef UNIT_TEST
 /** Test-only: clear every provisioning static (including the lock) and CRL RAM. */
 void         sec_test_reset_security(void);

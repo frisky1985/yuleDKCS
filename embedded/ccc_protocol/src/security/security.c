@@ -843,6 +843,12 @@ static verify_result_e sec_verify_chain_internal(const uint8_t *chain, uint16_t 
         if (clen <= 0 || (uint16_t)clen > rem) return VERIFY_CERT_INVALID;
         if (sec_x509_parse(p, (uint16_t)clen, &c) != 0) return VERIFY_CERT_INVALID;
 
+        /* 吊销优先: 证书序列号或公钥命中已安装列表即拒绝。 */
+        if (sec_revocation_is_serial_revoked(c.serial, c.serial_len) ||
+            sec_revocation_is_pubkey_revoked(c.pub)) {
+            return VERIFY_KEY_REVOKED;
+        }
+
         if (c.has_validity) {
             /* fail-closed: 没有可信时间就无法判断有效期，一律拒绝。 */
             if (!g_trusted_time_set) {
@@ -987,6 +993,16 @@ ccc_status_t sec_set_revocation_root(uint8_t key_type, const uint8_t *pub, uint1
     g_revocation_root_type = key_type;
     g_revocation_root_set = true;
     return CCC_OK;
+}
+
+ccc_status_t sec_install_revocation(const uint8_t *blob, uint16_t len)
+{
+    /* 没有预置吊销根时无法验签 — fail-closed, 绝不接受未认证列表。 */
+    if (blob == NULL || len == 0U) return CCC_ERR_INVALID_PARAM;
+    if (!g_revocation_root_set) return CCC_ERR_STATE;
+
+    return sec_revocation_install(blob, len, g_revocation_root,
+                                  g_revocation_root_type);
 }
 
 #ifdef UNIT_TEST

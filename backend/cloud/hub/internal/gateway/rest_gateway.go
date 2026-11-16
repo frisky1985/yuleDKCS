@@ -24,6 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/revocation"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/token"
 )
@@ -145,6 +146,7 @@ type RESTGateway struct {
 	dkServer      service.DKServer
 	tlsCertFile   string
 	tlsKeyFile    string
+	revocation    *revocation.Service
 }
 
 func NewRESTGateway(grpcSrv *grpc.Server, logger *zap.Logger) *RESTGateway {
@@ -236,6 +238,9 @@ func (g *RESTGateway) Serve(addr string) error {
 
 	r.POST("/api/v1/auth/login", g.login) // 登录获取token
 
+	// ── 设备吊销列表 (公开: 内容已签名且只含哈希令牌) ──
+	r.GET("/api/v1/revocation/crl", g.getRevocationList)
+
 	// ── Mailbox API (公开 — 无需认证，安全由 mailbox_id 随机性 + E2E 加密保障) ──
 	mailbox := r.Group("/api/v1/mailbox")
 	{
@@ -294,6 +299,9 @@ func (g *RESTGateway) Serve(addr string) error {
 			tokens.GET("/:tokenId", g.verifyToken)
 			tokens.DELETE("/:tokenId", g.revokeToken)
 		}
+
+		// 设备吊销 (admin)
+		v1.POST("/revocation/entries", g.addRevocationEntry)
 
 		// 多设备管理
 		devices := v1.Group("/devices")

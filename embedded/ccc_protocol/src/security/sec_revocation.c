@@ -16,14 +16,12 @@
 #include <stddef.h>
 #include <string.h>
 
-#define SEC_REV_MAGIC_LEN   4U
-#define SEC_REV_VERSION     1U
-
 /* 已安装状态 (静态分配, 无动态内存) */
 static uint8_t  g_rev_entries[SEC_REVOCATION_MAX_ENTRIES][SEC_REVOCATION_DEVICE_ID_LEN];
 static uint16_t g_rev_count;
 static uint32_t g_rev_epoch;
 static uint8_t  g_rev_key_type;
+static uint8_t  g_rev_format;      /* 1 = raw device_id, 2 = token */
 static bool     g_rev_installed;
 
 static uint16_t sec_rev_read_u16(const uint8_t *p)
@@ -52,12 +50,37 @@ static void sec_rev_zero(void *ptr, size_t len)
     }
 }
 
+/* v2 令牌匹配: token = SHA-256(domain || data)[0..15]。 */
+static bool sec_rev_token_matches(const uint8_t token[SEC_REVOCATION_TOKEN_LEN],
+                                  uint8_t domain, const uint8_t *data, uint8_t len)
+{
+    uint8_t buf[1U + 64U];
+    uint8_t hash[32];
+    bool    hit;
+
+    if (token == NULL || data == NULL || len == 0U || len > 64U) {
+        return false;
+    }
+
+    buf[0] = domain;
+    (void)memcpy(&buf[1], data, (size_t)len);
+    if (crypto_sha256(buf, (size_t)len + 1U, hash) != CRYPTO_SUCCESS) {
+        sec_rev_zero(buf, sizeof(buf));
+        return false;
+    }
+    hit = (memcmp(hash, token, SEC_REVOCATION_TOKEN_LEN) == 0);
+    sec_rev_zero(hash, sizeof(hash));
+    sec_rev_zero(buf, sizeof(buf));
+    return hit;
+}
+
 static ccc_status_t install_impl(const uint8_t *blob, uint16_t len,
                                  const uint8_t root_pub[64], uint8_t key_type,
                                  bool persist)
 {
     uint8_t  tmp_entries[SEC_REVOCATION_MAX_ENTRIES][SEC_REVOCATION_DEVICE_ID_LEN];
     uint8_t  hash[32];
+    uint8_t  format;
     uint16_t entry_count;
     uint32_t signed_len;
     uint32_t epoch;
@@ -77,11 +100,14 @@ static ccc_status_t install_impl(const uint8_t *blob, uint16_t len,
     }
 
     /* ── 头部字段 ─────────────────────────────────────────── */
-    if (blob[0] != (uint8_t)'Y' || blob[1] != (uint8_t)'R' ||
-        blob[2] != (uint8_t)'V' || blob[3] != (uint8_t)'1') {
+    if (memcmp(blob, "YRV1", 4) == 0) {
+        format = SEC_REVOCATION_VERSION_V1;
+    } else if (memcmp(blob, "YRV2", 4) == 0) {
+        format = SEC_REVOCATION_VERSION_V2;
+    } else {
         return CCC_ERR_PARAM;
     }
-    if (blob[4] != SEC_REV_VERSION) {
+    if (blob[4] != format) {
         return CCC_ERR_PARAM;
     }
     if (blob[5] != key_type) {
@@ -147,6 +173,7 @@ static ccc_status_t install_impl(const uint8_t *blob, uint16_t len,
     g_rev_count = entry_count;
     g_rev_epoch = epoch;
     g_rev_key_type = key_type;
+    g_rev_format = format;
     g_rev_installed = true;
 
     sec_rev_zero(tmp_entries, sizeof(tmp_entries));
@@ -182,7 +209,57 @@ bool sec_revocation_is_revoked(const uint8_t device_id[16])
     }
 
     for (i = 0; i < g_rev_count; i++) {
-        if (memcmp(g_rev_entries[i], device_id, SEC_REVOCATION_DEVICE_ID_LEN) == 0) {
+        if (g_rev_format == SEC_REVOCATION_VERSION_V2) {
+            if (sec_rev_token_matches(g_rev_entries[i],
+                                      SEC_REVOCATION_DOMAIN_DEVICE_ID,
+                                      device_id,
+                                      SEC_REVOCATION_DEVICE_ID_LEN)) {
+                return true;
+            }
+        } else if (memcmp(g_rev_entries[i], device_id,
+                          SEC_REVOCATION_DEVICE_ID_LEN) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool sec_revocation_is_serial_revoked(const uint8_t *serial, uint8_t len)
+{
+    uint16_t i;
+
+    if (serial == NULL || len == 0U || len > 20U) {
+        return false;
+    }
+    if (!g_rev_installed || g_rev_format != SEC_REVOCATION_VERSION_V2) {
+        return false;
+    }
+
+    for (i = 0; i < g_rev_count; i++) {
+        if (sec_rev_token_matches(g_rev_entries[i],
+                                  SEC_REVOCATION_DOMAIN_SERIAL,
+                                  serial, len)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool sec_revocation_is_pubkey_revoked(const uint8_t pub[64])
+{
+    uint16_t i;
+
+    if (pub == NULL) {
+        return false;
+    }
+    if (!g_rev_installed || g_rev_format != SEC_REVOCATION_VERSION_V2) {
+        return false;
+    }
+
+    for (i = 0; i < g_rev_count; i++) {
+        if (sec_rev_token_matches(g_rev_entries[i],
+                                  SEC_REVOCATION_DOMAIN_PUBKEY,
+                                  pub, 64U)) {
             return true;
         }
     }
@@ -207,5 +284,6 @@ void sec_revocation_reset(void)
     g_rev_count = 0;
     g_rev_epoch = 0;
     g_rev_key_type = 0;
+    g_rev_format = 0;
     g_rev_installed = false;
 }

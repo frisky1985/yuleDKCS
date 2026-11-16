@@ -12,6 +12,7 @@
 #include "crypto_engine.h"
 #include "crypto_random.h"
 #include "p256.h"
+#include "sec_x509.h"
 #include "cert_fixtures.h"
 
 #include <stddef.h>
@@ -54,6 +55,8 @@ static const uint8_t k_fw_hash[32] = {
 
 /* 2050-01-01, after the fixture notAfter. */
 #define T_FUTURE  2524608000U
+/* Inside the fixture leaf validity window (2026-11-08 .. 2032-04-30). */
+#define T_VALID   1800000000U
 
 static uint8_t g_crl[CRL_MAX_LEN + 8];
 
@@ -107,6 +110,49 @@ static uint16_t build_crl(uint8_t *blob, uint32_t epoch,
     }
     if (id1 != NULL) {
         (void)memcpy(&blob[SEC_REVOCATION_HEADER_LEN + 16], id1, 16);
+    }
+    return crl_seal(blob, signed_len);
+}
+
+/* ── v2: 令牌列表构造 ─────────────────────────────────────── */
+
+static uint16_t crl_begin_v2(uint8_t *blob, uint32_t epoch, uint16_t count)
+{
+    (void)memset(blob, 0, CRL_MAX_LEN);
+    (void)memcpy(blob, "YRV2", 4);
+    blob[4] = SEC_REVOCATION_VERSION_V2;
+    blob[5] = SEC_KEY_TYPE_P256;
+    crl_put_u32(&blob[8], epoch);
+    crl_put_u32(&blob[12], 0x66000000U);
+    crl_put_u16(&blob[16], count);
+    return (uint16_t)(SEC_REVOCATION_HEADER_LEN +
+                      (uint32_t)count * SEC_REVOCATION_TOKEN_LEN);
+}
+
+static void crl_make_token(uint8_t domain, const uint8_t *data, uint8_t len,
+                           uint8_t out[SEC_REVOCATION_TOKEN_LEN])
+{
+    uint8_t buf[1U + 64U];
+    uint8_t hash[32];
+
+    buf[0] = domain;
+    (void)memcpy(&buf[1], data, len);
+    TEST_ASSERT_EQUAL(CRYPTO_SUCCESS,
+                      crypto_sha256(buf, (size_t)len + 1U, hash));
+    (void)memcpy(out, hash, SEC_REVOCATION_TOKEN_LEN);
+}
+
+/* 用给定 token 数组构造并签名 v2 列表。 */
+static uint16_t build_crl_v2(uint8_t *blob, uint32_t epoch,
+                             const uint8_t (*tokens)[16], uint16_t count)
+{
+    uint16_t signed_len = crl_begin_v2(blob, epoch, count);
+    uint16_t i;
+
+    for (i = 0; i < count; i++) {
+        (void)memcpy(&blob[SEC_REVOCATION_HEADER_LEN +
+                          (uint32_t)i * SEC_REVOCATION_TOKEN_LEN],
+                     tokens[i], SEC_REVOCATION_TOKEN_LEN);
     }
     return crl_seal(blob, signed_len);
 }
@@ -365,6 +411,127 @@ static void test_attestation_revoked_device(void)
     att.signature[0] ^= 0x01U;
 }
 
+/* ── 8. v2: 按 device_id 令牌撤销 ────────────────────────── */
+
+static void test_v2_device_token(void)
+{
+    uint8_t  tokens[1][SEC_REVOCATION_TOKEN_LEN];
+    uint16_t len;
+
+    sec_test_reset_security();
+    sec_revocation_reset();
+
+    crl_make_token(SEC_REVOCATION_DOMAIN_DEVICE_ID, k_rev_device_a, 16U,
+                   tokens[0]);
+    len = build_crl_v2(g_crl, 1U, (const uint8_t (*)[16])tokens, 1U);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_revocation_install(g_crl, len, k_device_pub,
+                                             SEC_KEY_TYPE_P256));
+
+    TEST_ASSERT_TRUE(sec_revocation_is_revoked(k_rev_device_a));
+    TEST_ASSERT_FALSE(sec_revocation_is_revoked(k_rev_device_b));
+    /* v2 令牌不会与原始 ID 直接相等 (域分离). */
+    TEST_ASSERT_FALSE(sec_revocation_is_revoked(NULL));
+    TEST_ASSERT_FALSE(sec_revocation_is_serial_revoked(NULL, 0U));
+    TEST_ASSERT_FALSE(sec_revocation_is_pubkey_revoked(NULL));
+}
+
+/* ── 9. v2: 按证书序列号 / 公钥指纹撤销并拦截链验证 ──────── */
+
+static void test_v2_serial_and_pubkey_revoke_chain(void)
+{
+    uint8_t  chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len;
+    sec_x509_cert_t leaf;
+    uint8_t  tokens[1][SEC_REVOCATION_TOKEN_LEN];
+    uint16_t len;
+
+    sec_test_reset_security();
+    sec_revocation_reset();
+    (void)sec_init();   /* P-256 验签依赖密码引擎初始化 */
+
+    (void)memcpy(chain, k_leaf_der, sizeof(k_leaf_der));
+    (void)memcpy(chain + sizeof(k_leaf_der), k_int_der, sizeof(k_int_der));
+    chain_len = (uint16_t)(sizeof(k_leaf_der) + sizeof(k_int_der));
+
+    TEST_ASSERT_EQUAL(0, sec_x509_parse(k_leaf_der, sizeof(k_leaf_der), &leaf));
+    TEST_ASSERT_TRUE(leaf.serial_len > 0U);
+
+    sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    /* 序列号命中 -> 链验证拒绝 */
+    crl_make_token(SEC_REVOCATION_DOMAIN_SERIAL, leaf.serial,
+                   leaf.serial_len, tokens[0]);
+    len = build_crl_v2(g_crl, 1U, (const uint8_t (*)[16])tokens, 1U);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_revocation_install(g_crl, len, k_device_pub,
+                                             SEC_KEY_TYPE_P256));
+    TEST_ASSERT_TRUE(sec_revocation_is_serial_revoked(leaf.serial,
+                                                      leaf.serial_len));
+    TEST_ASSERT_EQUAL(VERIFY_KEY_REVOKED,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    /* 公钥指纹命中 -> 链验证拒绝 */
+    crl_make_token(SEC_REVOCATION_DOMAIN_PUBKEY, k_leaf_pub, 64U, tokens[0]);
+    len = build_crl_v2(g_crl, 2U, (const uint8_t (*)[16])tokens, 1U);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_revocation_install(g_crl, len, k_device_pub,
+                                             SEC_KEY_TYPE_P256));
+    TEST_ASSERT_TRUE(sec_revocation_is_pubkey_revoked(k_leaf_pub));
+    TEST_ASSERT_EQUAL(VERIFY_KEY_REVOKED,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    /* 无关令牌的新 epoch -> 恢复通过 */
+    crl_make_token(SEC_REVOCATION_DOMAIN_DEVICE_ID, k_rev_device_c, 16U,
+                   tokens[0]);
+    len = build_crl_v2(g_crl, 3U, (const uint8_t (*)[16])tokens, 1U);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_revocation_install(g_crl, len, k_device_pub,
+                                             SEC_KEY_TYPE_P256));
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_set_trusted_time(0);
+}
+
+/* ── 10. 车端安装入口: 必须经预置吊销根验签 ───────────────── */
+
+static void test_install_via_security_api(void)
+{
+    uint8_t  tokens[1][SEC_REVOCATION_TOKEN_LEN];
+    uint16_t len;
+
+    sec_test_reset_security();
+    sec_revocation_reset();
+
+    crl_make_token(SEC_REVOCATION_DOMAIN_DEVICE_ID, k_rev_device_a, 16U,
+                   tokens[0]);
+    len = build_crl_v2(g_crl, 7U, (const uint8_t (*)[16])tokens, 1U);
+
+    /* 未预置吊销根: 拒绝 (fail-closed) */
+    TEST_ASSERT_EQUAL(CCC_ERR_INVALID_PARAM, sec_install_revocation(NULL, len));
+    TEST_ASSERT_EQUAL(CCC_ERR_STATE, sec_install_revocation(g_crl, len));
+
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_revocation_root(SEC_KEY_TYPE_P256,
+                                              k_device_pub, 64));
+    TEST_ASSERT_EQUAL(CCC_OK, sec_install_revocation(g_crl, len));
+    TEST_ASSERT_TRUE(sec_revocation_is_revoked(k_rev_device_a));
+
+    /* 篡改后拒绝, 已安装列表保持不变 */
+    g_crl[SEC_REVOCATION_HEADER_LEN] ^= 0xFFU;
+    TEST_ASSERT_EQUAL(CCC_ERR_SECURITY, sec_install_revocation(g_crl, len));
+    TEST_ASSERT_TRUE(sec_revocation_is_revoked(k_rev_device_a));
+
+    /* 低 epoch 重放拒绝 */
+    len = build_crl_v2(g_crl, 7U, (const uint8_t (*)[16])tokens, 1U);
+    TEST_ASSERT_EQUAL(CCC_ERR_STATE, sec_install_revocation(g_crl, len));
+}
+
 /* ── 7. 产线配置锁定 (必须是最后一个用例) ────────────────── */
 
 static void test_provisioning_lock(void)
@@ -430,6 +597,9 @@ int run_security_revocation_tests(void)
     RUN_TEST(test_format_and_arg_validation);
     RUN_TEST(test_reset_clears_state);
     RUN_TEST(test_attestation_revoked_device);
+    RUN_TEST(test_v2_device_token);
+    RUN_TEST(test_v2_serial_and_pubkey_revoke_chain);
+    RUN_TEST(test_install_via_security_api);
     RUN_TEST(test_provisioning_lock);   /* 终态锁定, 必须最后执行 */
 
     UNITY_END();

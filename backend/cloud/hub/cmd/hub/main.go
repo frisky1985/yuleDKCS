@@ -26,6 +26,7 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
 	hub_logger "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/logger"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/revocation"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/store"
 )
@@ -121,6 +122,25 @@ func main() {
 		gw.WithTLS(cert, key)
 	} else if tlsRequired {
 		logger.Fatal("TLS_REQUIRED=1 but TLS_CERT_FILE/TLS_KEY_FILE are not configured")
+	}
+
+	// ── CRL 签发 ──
+	// CRL_SIGNING_KEY_FILE: PKCS#8/SEC1 PEM 编码的 P-256 私钥，其公钥必须与
+	// 车端 sec_set_revocation_root() 预置的吊销根一致。未配置时端点返回 503，
+	// 绝不签发未签名/空列表。
+	if keyFile := os.Getenv("CRL_SIGNING_KEY_FILE"); keyFile != "" {
+		crlKey, err := revocation.LoadPrivateKey(keyFile)
+		if err != nil {
+			logger.Fatal("failed to load CRL signing key", zap.Error(err))
+		}
+		crlSvc, err := revocation.NewService(pgStore, crlKey, logger)
+		if err != nil {
+			logger.Fatal("failed to init revocation service", zap.Error(err))
+		}
+		gw.WithRevocation(crlSvc)
+		logger.Info("CRL signing enabled", zap.String("key_file", keyFile))
+	} else {
+		logger.Warn("CRL_SIGNING_KEY_FILE not set — revocation endpoints return 503")
 	}
 
 	// ── Start ──

@@ -4,7 +4,7 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.19（端到端 fail-closed 收口：云端去零密钥、车端证书链/证明/UWB/启动门禁） |
+| 版本 | v1.20（CRL 闭环：车端 v2 令牌列表 + 云端签发分发 + 序列号/公钥指纹撤销） |
 | 状态 | 执行中（软件侧安全链路已 fail-closed；HSM/CA、吊销分发、手机端协议一致性、硬件真机与认证待外部条件） |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
@@ -45,13 +45,14 @@
 | **mock MCUX + 掉电穷举** 关闭逻辑层剩余风险 | 新增 `tests/support/mcux_mock/`（`fsl_flash.h` 等 RAM 后端）与独立 `test_mcux` 套件，host 以 `-DKW47A_MCUX_SDK` 真实编译适配层；覆盖几何映射/门禁、HAL 读写擦、失败与半写注入、eFuse 弱符号默认绑定；`test_security_nv` 新增 293 个逐字节断电点 + 320 轮固定种子状态机 fuzz。**修复 2 个真实产品 bug**：①`hal_kw47a.c` 写/擦跨 Bank 未隔离（一次调用可同时破坏 A/B 双份记录），新增 `nv_check_single_bank`；②OTP 转发调用 `kw47a_otp_ll_lock_read/lock_set/epoch_read` 等不存在符号（目标链接隐患），按 LL 头文件改正 | `test_mcux` 8/8；`test_security_nv` 20/20；`test_all` 16 套件 **293 项 0 失败**；CI 加入 `test_mcux`；固件构建通过。仍需真机：SDK 真实 API 签名、PFLASH 时序/cache、真实掉电与 eFuse 烧写 |
 | **G1 Bring-up（软件侧）** | 新增 7 项基础 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB），并在 `SECURE_BOOT=1` 时追加第 08 项安全启动 KAT 自检；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确（含 `08 secure-boot PASS`）；`docs/g1-bringup-runbook.md` |
 | **端到端 fail-closed 收口（云→手机→车）** | ① 云端：CCC/ICCE/ICCOA 适配器删除零密钥兜底，未配置厂商/HSM 时 `BindKey` 直接报错；密钥材料空/全零拒绝下发；`TLS_REQUIRED=1` 强制 TLS（证书缺失拒绝启动）；DKCS `BindKey` 生成唯一 keyId 且要求厂商非空 payload，Unbind/Suspend/Resume/Revoke/Renew 真实转发并返回错误码，GetKey 显式 `NOT_IMPLEMENTED`。② 车端：证书有效期无信任时间即拒绝（原 fail-open）；X.509 解析 basicConstraints/keyUsage/serial，未知 critical 扩展拒绝；CA 必须 `CA:TRUE`，叶子不得为 CA 且要求 digitalSignature；新增 `sec_verify_attestation_peer()`（证明根锚 + 验证方 nonce，不再与本机身份比对）与 `sec_attestation_with_nonce()`；CCC 不再自签自验；UWB 不可用保持 LOCKED；`YULE_PRODUCTION_BUILD` 下无签名清单/存储失败/NV 未绑定/安全状态恢复失败均拒绝启动 | 云端 `go test ./...` 通过；车端 `test_all` 16 套件 **296 项 0 失败**（新增无时间拒绝、扩展解析、对端 nonce 3 项）；`test_mcux` 8/8；host-sim 构建通过 |
+| **CRL 闭环（云端签发 + 车端安装与撤销）** | ① 车端：`sec_revocation` 新增 v2 格式（`YRV2`，16 字节域分离令牌 `SHA-256(domain‖id)[0:16]`；domain 0x01 设备号 / 0x02 证书序列号 / 0x03 公钥），保留 v1 兼容；新增 `sec_revocation_is_serial_revoked()` / `sec_revocation_is_pubkey_revoked()`，链验证在解析后立即命中撤销（`VERIFY_KEY_REVOKED`）；新增 `sec_install_revocation()`：无预置吊销根即拒绝、验签失败拒绝、epoch 回放拒绝，且产线锁定后仍可更新。② 云端：新增 `internal/revocation`（令牌计算、签名 blob、`Service`）与 Postgres 持久化（`revocation_state` / `revocation_entries`，epoch 事务内单调递增）；`GET /api/v1/revocation/crl` 分发签名列表，`POST /api/v1/revocation/entries` 仅 admin 可写；`CRL_SIGNING_KEY_FILE` 未配置时不签发（端点 503）。**密钥契约**：`CRL_SIGNING_KEY_FILE` 为 P-256 私钥，其公钥必须与车端 `sec_set_revocation_root()` 预置的吊销根一致（产线注入） | `test_revocation` 10/10（新增 v2 设备令牌、序列号/公钥撤销拦截链验证、安装入口验签/回放）；`test_all` 16 套件 **299 项 0 失败**；hub `go test ./...` 通过（revocation 与 gateway 新增用例）；固件构建通过 |
 
 ### 0.2 剩余待外部条件与跨端集成
 
 | 类别 | 待完成事项 | 外部依赖 / 前置条件 | 验收判据 |
 |---|---|---|---|
 | 云端密钥平面 | HSM/Vault 接入、CA/证书签发、厂商 S2S 与 Wallet 后端联调；适配器已 fail-closed，不再产生占位密钥 | HSM 厂商 PKCS#11 模块；CA/证书服务；Apple/Google 厂商 API 资质 | 全库无可达的零密钥路径；每把钥匙可离线用根锚验到叶子 |
-| 车端吊销闭环 | CRL 分发端点（云端）+ 车端安装调用方 + 按证书序列号/公钥指纹撤销（当前仅按 device_id） | 云端证书/吊销服务；车端联网通道 | 云端撤销后，离线车端在下一次联网窗口内拒绝该钥匙 |
+| 车端 CRL 传输通道 | 车端固件尚无联网/管理通道：需在 BLE 安全会话或 OTA 通道中接收 CRL blob 并调用 `sec_install_revocation()`，并实现开机/联网后的拉取与重试策略 | 云端 `GET /api/v1/revocation/crl` 已就绪；车端 BLE 管理特征或 OTA 通道 | 云端撤销后，离线车端在下一次联网窗口内拒绝该钥匙；断电重启后 epoch 不回退 |
 | 手机端协议一致性 | `detectProtocol()` 真实探测、CCC/ICCE/ICCOA 帧布局与车端共用测试向量、车端证书/证明校验、Play Integrity / App Attest | 三协议规范文本与认证测试工具；Android/iOS 真机 | 三协议跨端一致性用例通过；模拟器/篡改应用被云端拒绝 |
 | 硬件真机 | P0-04-T1、P0-04-T5 真机验证；P0-05-T1/T2/T3~T8；G1 Bring-up | SE050、NCJ29D6、ST25R501 样件；G1 台架与车辆接口 | 真机 SCP03 握手与密钥隔离取证；UWB/NFC/SE 实测记录（仿真不能替代侧信道与隔离证据） |
 | 产线密钥体系 | 厂商 PKCS#11 适配器落地、产线工位集成、密钥注入与吊销演练 | HSM 厂商 PKCS#11 模块与设备；密钥管理服务；产线工位 | 工位端到端派生/注入通过；密钥指纹入库；吊销与轮换演练通过 |
@@ -61,7 +62,7 @@
 | 车辆与 HIL | P0-03-T3~T6；G3 全量 HIL 与三协议一致性；手机真机矩阵 | 车辆台架、UWB 真机、Android/iOS 主流机型与 Wallet 环境 | 37 项 HIL、CCC/ICCE/ICCOA 一致性用例、手机兼容矩阵通过 |
 | 认证与 OEM | G4：ICCE/CCC/ICCOA 认证、Apple/Google Wallet 接入；G5 试产验证 | 认证机构席位、TSP/Wallet 合作名额、EMC/射频实验室、OEM 审核 | 证书在有效期内且覆盖量产型号；Wallet 上线许可；试产与 OTA 回滚证据 |
 
-> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成。设备吊销与产线锁定的 NV 持久化软件链路已实现（双 Bank + CRC + commit-last + OTP 水位）。**安全策略已全面 fail-closed**：证书有效期缺可信时间即拒绝、CA/叶子扩展校验、对端证明绑定验证方 nonce、UWB 不可用不解锁、生产构建缺签名清单/NV/存储即拒绝启动；云端适配器不再下发占位密钥。剩余阻塞集中在 HSM/CA、吊销分发、手机端协议一致性与硬件真机/认证。
+> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成。设备吊销与产线锁定的 NV 持久化软件链路已实现（双 Bank + CRC + commit-last + OTP 水位）。**安全策略已全面 fail-closed**：证书有效期缺可信时间即拒绝、CA/叶子扩展校验、对端证明绑定验证方 nonce、UWB 不可用不解锁、生产构建缺签名清单/NV/存储即拒绝启动；云端适配器不再下发占位密钥。**CRL 已形成签名闭环**：云端签发并分发 v2 令牌列表，车端按设备号/证书序列号/公钥撤销并可持久化安装。剩余阻塞集中在 HSM/CA、CRL 车端传输通道、手机端协议一致性与硬件真机/认证。
 
 ### 0.3 真机验证执行包（已就绪，待台架）
 
