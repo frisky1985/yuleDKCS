@@ -16,7 +16,7 @@ func mkKeyShareService(t *testing.T, registerAdapter bool) *KeyShareService {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
 	if registerAdapter {
-		reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+		reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	}
 	s := NewKeyShareService(reg, logger)
 	s.WithShareStore(NewInMemoryShareStore())

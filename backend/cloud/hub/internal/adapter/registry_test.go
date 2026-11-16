@@ -14,7 +14,7 @@ func TestRegistryGet_CaseInsensitive(t *testing.T) {
 	r := NewRegistry(logger)
 
 	// Register with lowercase vendor/protocol
-	adapter := NewICCOAAdapter("xiaomi", logger)
+	adapter := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	r.Register("xiaomi", "iccoa_dk40", adapter)
 
 	tests := []struct {
@@ -50,8 +50,8 @@ func TestRegistryGetByVendor_CaseInsensitive(t *testing.T) {
 	logger := zap.NewNop()
 	r := NewRegistry(logger)
 
-	r.Register("oppo", "iccoa_dk40", NewICCOAAdapter("oppo", logger))
-	r.Register("apple", "ccc_dk3", NewCCCAdapter("apple", logger))
+	r.Register("oppo", "iccoa_dk40", NewICCOAAdapterInDemoMode("oppo", logger))
+	r.Register("apple", "ccc_dk3", NewCCCAdapterInDemoMode("apple", logger))
 
 	tests := []struct {
 		name   string
@@ -83,8 +83,8 @@ func TestRegistryRegister_OverwriteExisting(t *testing.T) {
 	logger := zap.NewNop()
 	r := NewRegistry(logger)
 
-	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapter("xiaomi_v1", logger))
-	r.Register("XIAOMI", "ICCOA_DK40", NewICCOAAdapter("xiaomi_v2", logger))
+	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapterInDemoMode("xiaomi_v1", logger))
+	r.Register("XIAOMI", "ICCOA_DK40", NewICCOAAdapterInDemoMode("xiaomi_v2", logger))
 
 	// Should overwrite — key is normalized to lowercase
 	a, ok := r.Get("xiaomi", "iccoa_dk40")
@@ -114,8 +114,8 @@ func TestRegistryGetByVendor_MultipleAdapters(t *testing.T) {
 	r := NewRegistry(logger)
 
 	// Register with same vendor string as Vendor() returns (case preserved)
-	r.Register("samsung", "ccc_dk3", NewCCCAdapter("samsung", logger))
-	r.Register("OPPO", "iccoa_dk40", NewICCOAAdapter("oppo", logger))
+	r.Register("samsung", "ccc_dk3", NewCCCAdapterInDemoMode("samsung", logger))
+	r.Register("OPPO", "iccoa_dk40", NewICCOAAdapterInDemoMode("oppo", logger))
 
 	// GetByVendor should find the samsung adapter (case-insensitive lookup)
 	a, ok := r.GetByVendor("SAMSUNG")
@@ -140,9 +140,9 @@ func TestRegistryGet_MultipleVendors(t *testing.T) {
 	logger := zap.NewNop()
 	r := NewRegistry(logger)
 
-	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapter("xiaomi", logger))
-	r.Register("oppo", "iccoa_dk40", NewICCOAAdapter("oppo", logger))
-	r.Register("apple", "ccc_dk3", NewCCCAdapter("apple", logger))
+	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapterInDemoMode("xiaomi", logger))
+	r.Register("oppo", "iccoa_dk40", NewICCOAAdapterInDemoMode("oppo", logger))
+	r.Register("apple", "ccc_dk3", NewCCCAdapterInDemoMode("apple", logger))
 
 	// Each should be independently retrievable
 	for _, vendor := range []string{"XIAOMI", "OPPO", "APPLE"} {
@@ -171,7 +171,7 @@ func TestRegistryIntegration_AutoDetectProtocolPattern(t *testing.T) {
 
 	// Simulate the AutoDetectProtocol pattern — vendors registered lowercase,
 	// lookup with protobuf uppercase
-	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapter("xiaomi", logger))
+	r.Register("xiaomi", "iccoa_dk40", NewICCOAAdapterInDemoMode("xiaomi", logger))
 
 	// Simulate protobuf String() output which is UPPERCASE
 	vendorFromProto := "XIAOMI"

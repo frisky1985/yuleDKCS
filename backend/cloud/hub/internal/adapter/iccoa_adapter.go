@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
+	"go.uber.org/zap"
 )
 
 // ICCOAAdapter ICCOA协议适配器 (小米/OPPO/vivo)
@@ -15,18 +15,27 @@ import (
 // ICCOA 以车服务器为中心的 S2S 架构，无 Relay Server
 // Hub 通过 ICCOAClient 直连车服务器 S2S 端点
 type ICCOAAdapter struct {
-	vendor string
-	logger *zap.Logger
-	client *s2s.ICCOAClient // S2S 车服务器通信客户端
+	vendor   string
+	logger   *zap.Logger
+	client   *s2s.ICCOAClient // S2S 车服务器通信客户端
+	demoMode bool             // 仅测试: 允许合成占位密钥（生产必须为 false）
 }
 
-// NewICCOAAdapter 创建 ICCOA 适配器（stub 模式，无 S2S 客户端）
+// NewICCOAAdapter 创建 ICCOA 适配器（生产模式，无 S2S 客户端时 BindKey 直接失败）
 // S2S 功能需通过 NewICCOAAdapterWithClient 注入客户端后启用
 func NewICCOAAdapter(vendor string, logger *zap.Logger) *ICCOAAdapter {
 	return &ICCOAAdapter{
 		vendor: vendor,
 		logger: logger.With(zap.String("vendor", vendor), zap.String("protocol", "iccoa_dk40")),
 	}
+}
+
+// NewICCOAAdapterInDemoMode 仅供测试: 厂商 S2S 不可用时合成占位密钥。
+// SECURITY: 生产环境禁止使用。
+func NewICCOAAdapterInDemoMode(vendor string, logger *zap.Logger) *ICCOAAdapter {
+	a := NewICCOAAdapter(vendor, logger)
+	a.demoMode = true
+	return a
 }
 
 // NewICCOAAdapterWithClient 使用自定义 S2S 客户端创建适配器（测试用）
@@ -79,53 +88,46 @@ func (a *ICCOAAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb
 	// 4. UWB配置下发
 	// 5. 调用车服务器 trackKey API 注册钥匙
 
-	if a.client != nil {
-		s2sReq := &s2s.ICCOATrackKeyRequest{
-			KeyID:        req.VehicleId + "-" + req.DeviceId,
-			VehicleID:    req.VehicleId,
-			DeviceID:     req.DeviceId,
-			UserID:       req.UserId,
-			KeyType:      req.KeyType.String(),
-			DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
-			ValidFrom:    req.ValidFrom,
-			ValidUntil:   req.ValidUntil,
+	// 生产路径: 必须配置 S2S 客户端 (密钥材料只能由车服务器产生)
+	if a.client == nil {
+		if a.demoMode {
+			return a.demoBindKey(req), nil
 		}
-
-		s2sResp, err := a.client.TrackKey(ctx, s2sReq)
-		if err != nil {
-			a.logger.Error("ICCOA S2S BindKey (trackKey) failed",
-				zap.String("vehicle_id", req.VehicleId),
-				zap.Error(err),
-				zap.Stack("stack"),
-			)
-			// graceful degradation: 失败时使用 fallback stub
-		} else {
-			return &pb.BindKeyResponse{
-				Key: &pb.DigitalKey{
-					KeyId:       s2sResp.KeyID,
-					VehicleId:   req.VehicleId,
-					DeviceId:    req.DeviceId,
-					UserId:      req.UserId,
-					KeyType:     req.KeyType,
-					Protocol:    pb.Protocol_ICCOA_DK40,
-					AccessLevel: req.AccessLevel,
-					Status:      pb.KeyStatus_ACTIVE,
-					ValidFrom:   req.ValidFrom,
-					ValidUntil:  req.ValidUntil,
-					CreatedAt:   time.Now().Unix(),
-				},
-				VehiclePubkey: []byte(s2sResp.VehiclePubKey),
-			}, nil
-		}
+		return nil, fmt.Errorf("iccoa adapter: S2S client not configured — refusing to synthesize key material")
 	}
 
-	// fallback stub (client nil 或 S2S 失败时)
-	vehiclePubKey := make([]byte, 64)
-	sharedSecret := make([]byte, 32)
+	s2sReq := &s2s.ICCOATrackKeyRequest{
+		KeyID:        req.VehicleId + "-" + req.DeviceId,
+		VehicleID:    req.VehicleId,
+		DeviceID:     req.DeviceId,
+		UserID:       req.UserId,
+		KeyType:      req.KeyType.String(),
+		DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
+		ValidFrom:    req.ValidFrom,
+		ValidUntil:   req.ValidUntil,
+	}
+
+	s2sResp, err := a.client.TrackKey(ctx, s2sReq)
+	if err != nil {
+		a.logger.Error("ICCOA S2S BindKey (trackKey) failed",
+			zap.String("vehicle_id", req.VehicleId),
+			zap.Error(err),
+		)
+		if a.demoMode {
+			return a.demoBindKey(req), nil
+		}
+		return nil, fmt.Errorf("iccoa s2s track key: %w", err)
+	}
+
+	// 密钥材料完整性门禁: 空/全零视为无效，绝不下发。
+	if s2sResp.KeyID == "" ||
+		len(s2sResp.VehiclePubKey) == 0 || isZeroBytes([]byte(s2sResp.VehiclePubKey)) {
+		return nil, fmt.Errorf("iccoa s2s response missing valid key material")
+	}
 
 	return &pb.BindKeyResponse{
 		Key: &pb.DigitalKey{
-			KeyId:       fmt.Sprintf("key-iccoa-%d", time.Now().UnixMilli()),
+			KeyId:       s2sResp.KeyID,
 			VehicleId:   req.VehicleId,
 			DeviceId:    req.DeviceId,
 			UserId:      req.UserId,
@@ -137,9 +139,29 @@ func (a *ICCOAAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb
 			ValidUntil:  req.ValidUntil,
 			CreatedAt:   time.Now().Unix(),
 		},
-		VehiclePubkey: vehiclePubKey,
-		SharedSecret:  sharedSecret,
+		VehiclePubkey: []byte(s2sResp.VehiclePubKey),
 	}, nil
+}
+
+// demoBindKey 仅测试用: 合成占位密钥。生产路径不可达 (demoMode=false 时拒绝)。
+func (a *ICCOAAdapter) demoBindKey(req *pb.BindKeyRequest) *pb.BindKeyResponse {
+	return &pb.BindKeyResponse{
+		Key: &pb.DigitalKey{
+			KeyId:       fmt.Sprintf("key-iccoa-demo-%d", time.Now().UnixMilli()),
+			VehicleId:   req.VehicleId,
+			DeviceId:    req.DeviceId,
+			UserId:      req.UserId,
+			KeyType:     req.KeyType,
+			Protocol:    pb.Protocol_ICCOA_DK40,
+			AccessLevel: req.AccessLevel,
+			Status:      pb.KeyStatus_ACTIVE,
+			ValidFrom:   req.ValidFrom,
+			ValidUntil:  req.ValidUntil,
+			CreatedAt:   time.Now().Unix(),
+		},
+		VehiclePubkey: make([]byte, 64),
+		SharedSecret:  make([]byte, 32),
+	}
 }
 
 func (a *ICCOAAdapter) UnbindKey(ctx context.Context, keyID string) error {

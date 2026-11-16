@@ -7,13 +7,18 @@
 
 #include <string.h>
 
+#define DER_TAG_BOOLEAN  0x01U
 #define DER_TAG_SEQUENCE 0x30U
 #define DER_TAG_INTEGER  0x02U
 #define DER_TAG_BITSTR   0x03U
+#define DER_TAG_OCTETSTR 0x04U
 #define DER_TAG_OID      0x06U
 #define DER_TAG_UTCTIME  0x17U
 #define DER_TAG_GENTIME  0x18U
 #define DER_TAG_CTX0     0xA0U
+#define DER_TAG_CTX1     0x81U
+#define DER_TAG_CTX2     0x82U
+#define DER_TAG_CTX3     0xA3U
 
 /* OID values (content octets, without tag/len) */
 static const uint8_t OID_EC_PUBKEY[] = {
@@ -25,6 +30,15 @@ static const uint8_t OID_PRIME256V1[] = {
 static const uint8_t OID_ECDSA_SHA256[] = {
     0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x04, 0x03, 0x02
 };
+/* Extension OIDs (2.5.29.x) */
+static const uint8_t OID_BASIC_CONSTRAINTS[] = { 0x55, 0x1D, 0x13 };
+static const uint8_t OID_KEY_USAGE[]         = { 0x55, 0x1D, 0x0F };
+static const uint8_t OID_SUBJECT_KEY_ID[]    = { 0x55, 0x1D, 0x0E };
+static const uint8_t OID_SUBJECT_ALT_NAME[]  = { 0x55, 0x1D, 0x11 };
+static const uint8_t OID_CRL_DIST_POINTS[]   = { 0x55, 0x1D, 0x1F };
+static const uint8_t OID_CERT_POLICIES[]     = { 0x55, 0x1D, 0x20 };
+static const uint8_t OID_AUTH_KEY_ID[]       = { 0x55, 0x1D, 0x23 };
+static const uint8_t OID_EXT_KEY_USAGE[]     = { 0x55, 0x1D, 0x25 };
 
 /* Read one TLV. Returns 0 on success, -1 on malformed/truncated input. */
 static int der_read(const uint8_t *p, uint16_t avail, uint8_t *tag,
@@ -219,6 +233,123 @@ static int parse_sig_value(const uint8_t *val, uint16_t len, uint8_t sig[64])
     return int_to_fixed(v, vlen, sig + 32);
 }
 
+/* BasicConstraints ::= SEQUENCE { cA BOOLEAN DEFAULT FALSE,
+ *                                 pathLenConstraint INTEGER OPTIONAL } */
+static int parse_basic_constraints(const uint8_t *val, uint16_t len,
+                                   sec_x509_cert_t *out)
+{
+    const uint8_t *p, *v;
+    uint16_t vlen, total, rem;
+    uint8_t tag;
+
+    if (der_read(val, len, &tag, &v, &vlen, &total) != 0) return -1;
+    if (tag != DER_TAG_SEQUENCE) return -1;
+
+    p = v;
+    rem = vlen;
+    out->is_ca = 0;
+    if (rem > 0U && p[0] == DER_TAG_BOOLEAN) {
+        if (der_read(p, rem, &tag, &v, &vlen, &total) != 0) return -1;
+        if (vlen != 1U) return -1;
+        out->is_ca = (v[0] != 0x00U) ? 1U : 0U;
+    }
+    /* pathLenConstraint (INTEGER) is parsed structurally but not enforced. */
+    out->has_basic_constraints = 1;
+    return 0;
+}
+
+/* KeyUsage ::= BIT STRING (named bits, MSB first). */
+static int parse_key_usage(const uint8_t *val, uint16_t len, sec_x509_cert_t *out)
+{
+    const uint8_t *v;
+    uint16_t vlen, total;
+    uint8_t tag;
+
+    if (der_read(val, len, &tag, &v, &vlen, &total) != 0) return -1;
+    if (tag != DER_TAG_BITSTR || vlen < 2U) return -1;
+    if (v[0] > 7U) return -1;
+    out->key_usage = v[1];
+    out->has_key_usage = 1;
+    return 0;
+}
+
+static int is_known_extension_oid(const uint8_t *oid, uint16_t len)
+{
+    static const struct { const uint8_t *p; uint16_t n; } known[] = {
+        { OID_SUBJECT_KEY_ID,   (uint16_t)sizeof(OID_SUBJECT_KEY_ID) },
+        { OID_SUBJECT_ALT_NAME, (uint16_t)sizeof(OID_SUBJECT_ALT_NAME) },
+        { OID_CRL_DIST_POINTS,  (uint16_t)sizeof(OID_CRL_DIST_POINTS) },
+        { OID_CERT_POLICIES,    (uint16_t)sizeof(OID_CERT_POLICIES) },
+        { OID_AUTH_KEY_ID,      (uint16_t)sizeof(OID_AUTH_KEY_ID) },
+        { OID_EXT_KEY_USAGE,    (uint16_t)sizeof(OID_EXT_KEY_USAGE) },
+    };
+    for (size_t i = 0; i < sizeof(known) / sizeof(known[0]); i++) {
+        if (oid_equals(oid, len, known[i].p, known[i].n)) return 1;
+    }
+    return 0;
+}
+
+/* Extensions ::= SEQUENCE OF Extension
+ * Extension ::= SEQUENCE { extnID OID, critical BOOLEAN DEFAULT FALSE,
+ *                          extnValue OCTET STRING } */
+static int parse_extensions(const uint8_t *val, uint16_t len,
+                            sec_x509_cert_t *out)
+{
+    const uint8_t *p, *v, *oid, *xval;
+    uint16_t vlen, total, rem, oid_len, oid_total, xlen, xtotal;
+    uint8_t tag;
+
+    if (der_read(val, len, &tag, &v, &vlen, &total) != 0) return -1;
+    if (tag != DER_TAG_SEQUENCE) return -1;
+
+    p = v;
+    rem = vlen;
+    while (rem > 0U) {
+        const uint8_t *ev;
+        uint16_t evlen, etotal, off;
+        int critical = 0;
+
+        if (der_read(p, rem, &tag, &ev, &evlen, &etotal) != 0) return -1;
+        if (tag != DER_TAG_SEQUENCE) return -1;
+
+        if (der_read(ev, evlen, &tag, &oid, &oid_len, &oid_total) != 0) return -1;
+        if (tag != DER_TAG_OID) return -1;
+        off = oid_total;
+
+        if (off < evlen && ev[off] == DER_TAG_BOOLEAN) {
+            const uint8_t *bv;
+            uint16_t bvlen, btotal;
+            if (der_read(ev + off, (uint16_t)(evlen - off), &tag, &bv, &bvlen,
+                         &btotal) != 0) return -1;
+            if (bvlen != 1U) return -1;
+            critical = (bv[0] != 0x00U);
+            off = (uint16_t)(off + btotal);
+        }
+
+        if (off >= evlen) return -1;
+        if (der_read(ev + off, (uint16_t)(evlen - off), &tag, &xval, &xlen,
+                     &xtotal) != 0) return -1;
+        if (tag != DER_TAG_OCTETSTR) return -1;
+
+        if (oid_equals(oid, oid_len, OID_BASIC_CONSTRAINTS,
+                       (uint16_t)sizeof(OID_BASIC_CONSTRAINTS))) {
+            if (parse_basic_constraints(xval, xlen, out) != 0) return -1;
+        } else if (oid_equals(oid, oid_len, OID_KEY_USAGE,
+                              (uint16_t)sizeof(OID_KEY_USAGE))) {
+            if (parse_key_usage(xval, xlen, out) != 0) return -1;
+        } else if (is_known_extension_oid(oid, oid_len)) {
+            /* Known but not needed for authentication decisions. */
+        } else if (critical) {
+            /* RFC 5280: unsupported critical extension must be rejected. */
+            out->unknown_critical = 1;
+        }
+
+        p += etotal;
+        rem = (uint16_t)(rem - etotal);
+    }
+    return 0;
+}
+
 int sec_x509_total_len(const uint8_t *der, uint16_t avail)
 {
     const uint8_t *v;
@@ -267,6 +398,17 @@ int sec_x509_parse(const uint8_t *der, uint16_t len, sec_x509_cert_t *out)
         /* serialNumber INTEGER */
         if (der_read(q, qrem, &tag, &v, &vlen, &total) != 0) return -1;
         if (tag != DER_TAG_INTEGER) return -1;
+        {
+            const uint8_t *s = v;
+            uint16_t sl = vlen;
+            while (sl > 1U && s[0] == 0x00U) {
+                s++;
+                sl--;
+            }
+            if (sl > SEC_X509_SERIAL_MAX) return -1;
+            (void)memcpy(out->serial, s, sl);
+            out->serial_len = (uint8_t)sl;
+        }
         q += total;
         qrem = (uint16_t)(qrem - total);
 
@@ -303,6 +445,21 @@ int sec_x509_parse(const uint8_t *der, uint16_t len, sec_x509_cert_t *out)
         if (der_read(q, qrem, &tag, &v, &vlen, &total) != 0) return -1;
         if (tag != DER_TAG_SEQUENCE) return -1;
         if (parse_spki(v, vlen, out->pub) != 0) return -1;
+        q += total;
+        qrem = (uint16_t)(qrem - total);
+
+        /* Optional trailing fields: [1] issuerUniqueID, [2] subjectUniqueID,
+         * [3] extensions. Anything else is malformed. */
+        while (qrem > 0U) {
+            if (der_read(q, qrem, &tag, &v, &vlen, &total) != 0) return -1;
+            if (tag == DER_TAG_CTX3) {
+                if (parse_extensions(v, vlen, out) != 0) return -1;
+            } else if (tag != DER_TAG_CTX1 && tag != DER_TAG_CTX2) {
+                return -1;
+            }
+            q += total;
+            qrem = (uint16_t)(qrem - total);
+        }
     }
 
     /* signatureAlgorithm */

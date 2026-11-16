@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
+	"go.uber.org/zap"
 )
 
 // CCCAdapter CCC协议适配器 (Apple/Samsung)
@@ -21,6 +21,7 @@ type CCCAdapter struct {
 	mailboxCreator MailboxCreator // 可选：用于创建 Mailbox 做 payload 中继
 	httpClient     *http.Client   // 厂商API HTTP客户端 (Apple/Samsung 私有API)
 	baseURL        string         // 厂商API基础URL
+	demoMode       bool           // 仅测试: 允许合成占位密钥（生产必须为 false）
 	// hsm        hsm.Client    // HSM密钥操作
 }
 
@@ -29,6 +30,14 @@ func NewCCCAdapter(vendor string, logger *zap.Logger) *CCCAdapter {
 		vendor: vendor,
 		logger: logger.With(zap.String("vendor", vendor), zap.String("protocol", "ccc_dk3")),
 	}
+}
+
+// NewCCCAdapterInDemoMode 仅供测试: 厂商后端不可用时合成占位密钥。
+// SECURITY: 生产环境禁止使用 — 占位密钥会让所有车辆共用同一"密钥"。
+func NewCCCAdapterInDemoMode(vendor string, logger *zap.Logger) *CCCAdapter {
+	a := NewCCCAdapter(vendor, logger)
+	a.demoMode = true
+	return a
 }
 
 func (a *CCCAdapter) WithMailboxCreator(mc MailboxCreator) *CCCAdapter {
@@ -51,107 +60,76 @@ func (a *CCCAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.B
 		zap.String("user_id", req.UserId),
 	)
 
-	// 如果有配置 HTTP client，调用厂商API
-	if a.httpClient != nil && a.baseURL != "" {
-		bindReq := cccBindKeyRequest{
-			DeviceID:    req.DeviceId,
-			UserID:      req.UserId,
-			DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
-			AccessLevel: req.AccessLevel.String(),
-			ValidFrom:   req.ValidFrom,
-			ValidUntil:  req.ValidUntil,
-			VehicleID:   req.VehicleId,
+	// 生产路径: 必须配置厂商 API (密钥材料只能由 HSM/厂商后端产生)
+	if a.httpClient == nil || a.baseURL == "" {
+		if a.demoMode {
+			return a.demoBindKey(req), nil
 		}
-
-		body, err := json.Marshal(bindReq)
-		if err != nil {
-			a.logger.Error("BindKey: marshal request failed", zap.Error(err))
-			return nil, fmt.Errorf("ccc bind key marshal: %w", err)
-		}
-
-		url := a.baseURL + "/passkeys/" + req.VehicleId
-		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-		if err != nil {
-			a.logger.Error("BindKey: create request failed", zap.Error(err))
-			return nil, fmt.Errorf("ccc bind key request: %w", err)
-		}
-		httpReq.Header.Set("Content-Type", "application/json")
-
-		httpResp, err := a.httpClient.Do(httpReq)
-		if err != nil {
-			a.logger.Error("BindKey: vendor API call failed",
-				zap.String("vendor", a.vendor),
-				zap.Error(err),
-			)
-			// graceful degradation: 失败时使用 fallback stub
-		} else {
-			defer httpResp.Body.Close()
-
-			if httpResp.StatusCode != http.StatusOK && httpResp.StatusCode != http.StatusCreated {
-				respBody, _ := io.ReadAll(httpResp.Body)
-				a.logger.Warn("BindKey: vendor API returned non-success",
-					zap.Int("status", httpResp.StatusCode),
-					zap.String("response", string(respBody)),
-				)
-				return nil, fmt.Errorf("ccc vendor api error: status=%d body=%s", httpResp.StatusCode, string(respBody))
-			}
-
-			var bindResp cccBindKeyResponse
-			if err := json.NewDecoder(httpResp.Body).Decode(&bindResp); err != nil {
-				a.logger.Warn("BindKey: decode vendor response failed",
-					zap.Error(err),
-				)
-				return nil, fmt.Errorf("ccc bind key decode: %w", err)
-			}
-
-			return &pb.BindKeyResponse{
-				Key: &pb.DigitalKey{
-					KeyId:       bindResp.KeyID,
-					VehicleId:   req.VehicleId,
-					DeviceId:    req.DeviceId,
-					UserId:      req.UserId,
-					KeyType:     req.KeyType,
-					Protocol:    pb.Protocol_CCC_DK3,
-					AccessLevel: req.AccessLevel,
-					Status:      pb.KeyStatus_ACTIVE,
-					ValidFrom:   req.ValidFrom,
-					ValidUntil:  req.ValidUntil,
-					CreatedAt:   time.Now().Unix(),
-				},
-				VehiclePubkey: []byte(bindResp.VehiclePubKey),
-				SharedSecret:  []byte(bindResp.SharedSecret),
-			}, nil
-		}
+		return nil, fmt.Errorf("ccc adapter: vendor API not configured — refusing to synthesize key material")
 	}
 
-	// 1. 调用厂商API验证设备SE能力
-	//    Apple:  /v1/devices/{device_id}/attest
-	//    Samsung: /api/v2/devices/verify
-	// if err := a.verifyDeviceAttestation(ctx, req.DeviceId, req.DevicePubkey); err != nil {
-	//     return nil, fmt.Errorf("device attestation failed: %w", err)
-	// }
+	bindReq := cccBindKeyRequest{
+		DeviceID:     req.DeviceId,
+		UserID:       req.UserId,
+		DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
+		AccessLevel:  req.AccessLevel.String(),
+		ValidFrom:    req.ValidFrom,
+		ValidUntil:   req.ValidUntil,
+		VehicleID:    req.VehicleId,
+	}
 
-	// 2. 生成车端密钥对 (HSM)
-	//    vehiclePubKey, vehicleKeyRef, err := a.hsm.GenerateKeyPair(ctx, "secp256r1")
+	body, err := json.Marshal(bindReq)
+	if err != nil {
+		a.logger.Error("BindKey: marshal request failed", zap.Error(err))
+		return nil, fmt.Errorf("ccc bind key marshal: %w", err)
+	}
 
-	// 3. ECDH共享密钥计算
-	//    sharedSecret, err := a.hsm.ECDH(ctx, vehicleKeyRef, req.DevicePubkey)
+	url := a.baseURL + "/passkeys/" + req.VehicleId
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		a.logger.Error("BindKey: create request failed", zap.Error(err))
+		return nil, fmt.Errorf("ccc bind key request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
 
-	// 4. 构建CCC Digital Key 3.0配对帧
-	//    pairingFrame := ccc.BuildPairingFrame(vehiclePubKey, sharedSecret, req.AccessLevel)
+	httpResp, err := a.httpClient.Do(httpReq)
+	if err != nil {
+		a.logger.Error("BindKey: vendor API call failed",
+			zap.String("vendor", a.vendor),
+			zap.Error(err),
+		)
+		if a.demoMode {
+			return a.demoBindKey(req), nil
+		}
+		return nil, fmt.Errorf("ccc vendor api unavailable: %w", err)
+	}
+	defer httpResp.Body.Close()
 
-	// 5. 调用厂商API注册数字钥匙
-	//    Apple:  POST /v1/passkeys/{vehicle_id}
-	//    Samsung: POST /api/v2/digitalkeys
-	//    err := a.registerKeyWithVendor(ctx, req, vehiclePubKey, pairingFrame)
+	if httpResp.StatusCode != http.StatusOK && httpResp.StatusCode != http.StatusCreated {
+		respBody, _ := io.ReadAll(httpResp.Body)
+		a.logger.Warn("BindKey: vendor API returned non-success",
+			zap.Int("status", httpResp.StatusCode),
+			zap.String("response", string(respBody)),
+		)
+		return nil, fmt.Errorf("ccc vendor api error: status=%d body=%s", httpResp.StatusCode, string(respBody))
+	}
 
-	// fallback stub
-	vehiclePubKey := make([]byte, 64)  // P-256 public key
-	sharedSecret := make([]byte, 32)   // ECDH shared secret
+	var bindResp cccBindKeyResponse
+	if err := json.NewDecoder(httpResp.Body).Decode(&bindResp); err != nil {
+		a.logger.Warn("BindKey: decode vendor response failed", zap.Error(err))
+		return nil, fmt.Errorf("ccc bind key decode: %w", err)
+	}
+
+	// 密钥材料完整性门禁: 空/全零视为无效，绝不下发。
+	if bindResp.KeyID == "" ||
+		len(bindResp.VehiclePubKey) == 0 || isZeroBytes([]byte(bindResp.VehiclePubKey)) ||
+		len(bindResp.SharedSecret) == 0 || isZeroBytes([]byte(bindResp.SharedSecret)) {
+		return nil, fmt.Errorf("ccc vendor response missing valid key material")
+	}
 
 	return &pb.BindKeyResponse{
 		Key: &pb.DigitalKey{
-			KeyId:       fmt.Sprintf("key-ccc-%d", time.Now().UnixMilli()),
+			KeyId:       bindResp.KeyID,
 			VehicleId:   req.VehicleId,
 			DeviceId:    req.DeviceId,
 			UserId:      req.UserId,
@@ -163,9 +141,40 @@ func (a *CCCAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.B
 			ValidUntil:  req.ValidUntil,
 			CreatedAt:   time.Now().Unix(),
 		},
-		VehiclePubkey: vehiclePubKey,
-		SharedSecret:  sharedSecret,
+		VehiclePubkey: []byte(bindResp.VehiclePubKey),
+		SharedSecret:  []byte(bindResp.SharedSecret),
 	}, nil
+}
+
+// demoBindKey 仅测试用: 合成占位密钥。生产路径不可达 (demoMode=false 时拒绝)。
+func (a *CCCAdapter) demoBindKey(req *pb.BindKeyRequest) *pb.BindKeyResponse {
+	return &pb.BindKeyResponse{
+		Key: &pb.DigitalKey{
+			KeyId:       fmt.Sprintf("key-ccc-demo-%d", time.Now().UnixMilli()),
+			VehicleId:   req.VehicleId,
+			DeviceId:    req.DeviceId,
+			UserId:      req.UserId,
+			KeyType:     req.KeyType,
+			Protocol:    pb.Protocol_CCC_DK3,
+			AccessLevel: req.AccessLevel,
+			Status:      pb.KeyStatus_ACTIVE,
+			ValidFrom:   req.ValidFrom,
+			ValidUntil:  req.ValidUntil,
+			CreatedAt:   time.Now().Unix(),
+		},
+		VehiclePubkey: make([]byte, 64),
+		SharedSecret:  make([]byte, 32),
+	}
+}
+
+// isZeroBytes 报告 b 是否全为 0（空切片视为全零）。
+func isZeroBytes(b []byte) bool {
+	for _, v := range b {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *CCCAdapter) UnbindKey(ctx context.Context, keyID string) error {
@@ -343,9 +352,9 @@ type cccBindKeyRequest struct {
 
 // cccBindKeyResponse 绑钥匙响应体
 type cccBindKeyResponse struct {
-	KeyID        string `json:"key_id"`
+	KeyID         string `json:"key_id"`
 	VehiclePubKey string `json:"vehicle_pubkey"`
-	SharedSecret string `json:"shared_secret"`
+	SharedSecret  string `json:"shared_secret"`
 }
 
 // cccRevokeRequest 撤销钥匙请求体

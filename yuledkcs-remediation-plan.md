@@ -4,8 +4,8 @@
 |---|---|
 | 文档编号 | RMP-2026-001 |
 | 关联评审 | PRR-2026-001 《yuleDKCS 量产可行性评审清单》 |
-| 版本 | v1.18（mock MCUX 与掉电穷举，修复 2 个 HAL bug） |
-| 状态 | 执行中（软件侧 P0 已完成，并补充吊销/产线锁定；硬件真机/ROM 信任根、持久化与 EOL、第三方审计与认证待外部条件） |
+| 版本 | v1.19（端到端 fail-closed 收口：云端去零密钥、车端证书链/证明/UWB/启动门禁） |
+| 状态 | 执行中（软件侧安全链路已 fail-closed；HSM/CA、吊销分发、手机端协议一致性、硬件真机与认证待外部条件） |
 | 范围 | 对应 6 项 P0 阻断项与 G0–G5 量产门禁 |
 | 制定日期 | 2026-11-08 |
 | 工期基线 | 2026-11-16 启动；基准 57 周，SOP 基线 2027-12-19 |
@@ -24,7 +24,7 @@
 | **P0-01-T1~T3** 固件可构建 | 重写 firmware CMake（双模式 host-sim / 真实 target）；创建 host HAL 桩；修复 main.c 未定义符号；补全 ICCE GATT 常量 | `cmake --build /tmp/fwbuild` 生成 `yuleDKCS_fw.elf`，无未定义符号 |
 | **P0-02-T1** BSW 外部依赖 | 去除 `$HOME` 硬编码路径；`YULEASR_ROOT`/`YULEDKCS_ROOT` 可配置；缺失 yuleASR 时受控降级（仅构建 mcal_stubs/rtd_adapter/memif/test） | `cmake -S embedded/bsw_integration -B build` 配置成功，`test_rtd_adapter` 运行通过 |
 | **P0-04-T2~T4** SE050 软件回退 | `sec_sign`/`sec_verify`/`sec_attestation`/`sec_verify_cert_chain` 软件实现（SM2/P-256 完整路径，USE_SE050 切换硬件）；验签与证书链已升级为真实链路，见下条 | `test_security_sw`：14/14 通过（签名/验签/证明/篡改检测/证书链） |
-| **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→签名→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；UWB 不可用降级解锁；信任锚只接受设备预置根 | `test_ccc_dk_core`：31/31 通过（无链无公钥→LOCKED、直连公钥→UNLOCKED、真实证书链→UNLOCKED、篡改链→LOCKED；旧 `test_ccc_auth.c` 已废弃未构建） |
+| **P0-03-T1~T2** CCC 认证状态机 | `STATE_AUTH_PROCESS` 闭环：验钥→证明→签名→UWB→解锁/闭锁；`ccc_dk_set_auth_data` 接口；**UWB 不可用时 fail-closed 保持 LOCKED**（不再降级解锁）；信任锚只接受设备预置根 | `test_ccc_dk_core`：31/31 通过（无链无公钥→LOCKED、直连公钥+UWB 不可用→LOCKED、真实证书链+UWB 不可用→LOCKED、篡改链→LOCKED） |
 | **P0-05-T2（软件侧）** SE050 真机传输 | 新增 T=1' over I2C 传输层（NAD/PCB/LEN/CRC16、块链、R-block 重传），SCP03 默认走 T=1'；`SE050_USE_T1OI2C=0` 可回退 | `test_se050_t1oi2c`：15/15 通过（CRC 向量、简单/链式命令、链式响应、CRC 重试、缓存适配） |
 | **P0-05-T2（异步仿真）** vSE050 | 新增虚拟 SE050：T=1' 卡侧状态机 + SCP03 INIT UPDATE/EXT AUTH + AES-128/AES-CMAC + 虚拟时钟 BUSY 轮询 + S(WTX) + 故障注入（CRC/NACK/超时/错密钥/拒认证/R-MAC 篡改/密文篡改）；传输层增加首帧读重试与 `delay_us` 钩子 | `test_vse050_scp03`：53/53 通过（AES 加解密/CMAC KAT、握手、BUSY、WTX、CRC 恢复、超时、cryptogram 失配、EXT AUTH 拒绝、会话重建、加密签名 APDU、C-MAC 链式、R-MAC 完整性） |
 | **P0-04-T2（签名 APDU）** | 新增 `se050_apdu_sign()`：INS 0x62 签名命令经 SCP03 发送（key id 4 + SHA-256 32），校验 64 字节 r‖s；`sec_sign` 的 USE_SE050 路径改走该接口并移除静默软件降级；`se050_scp03_apdu` 增加 R-MAC 校验与剥离（失败即关闭通道） | `test_vse050_scp03` 签名段 13/13；未知 key→6A88、无通道→拒绝、R-MAC 篡改→关闭通道；固件 USE_SE050 构建通过 |
@@ -44,11 +44,15 @@
 | **keystore OTP 水位** 支撑防回滚 | `sec_nv_ops_t` 追加 `otp_keystore_epoch_read/raise`（可选、向后兼容）；keystore 记录头 `flags` 复用为 epoch：保存 `max(记录,水位)+1`，Flash 提交后抬水位；加载 `记录 epoch < 水位` → `CCC_ERR_SECURITY`（识别整片 Flash 回滚）；OTP 抬高失败返回硬件错误但记录可加载（不砖机），读失败降级；62 次（无 OTP 255 次）耗尽返回 `CCC_ERR_STATE` 且不写 Flash；KW47A OTP LL 新增 word2+word3 62 位一元码，跨 word 连续计数防止部分烧写虚高 | `test_security_nv` 18/18（水位 1→2、回滚快照拒绝、抬高失败可加载、无 OTP 降级、耗尽保护）；`test_kw47a_drv` 12/12（0→31→32→62、超限拒绝、幂等、缺口计数）；`test_all` 16 套件 **291 项 0 失败**；固件构建通过 |
 | **mock MCUX + 掉电穷举** 关闭逻辑层剩余风险 | 新增 `tests/support/mcux_mock/`（`fsl_flash.h` 等 RAM 后端）与独立 `test_mcux` 套件，host 以 `-DKW47A_MCUX_SDK` 真实编译适配层；覆盖几何映射/门禁、HAL 读写擦、失败与半写注入、eFuse 弱符号默认绑定；`test_security_nv` 新增 293 个逐字节断电点 + 320 轮固定种子状态机 fuzz。**修复 2 个真实产品 bug**：①`hal_kw47a.c` 写/擦跨 Bank 未隔离（一次调用可同时破坏 A/B 双份记录），新增 `nv_check_single_bank`；②OTP 转发调用 `kw47a_otp_ll_lock_read/lock_set/epoch_read` 等不存在符号（目标链接隐患），按 LL 头文件改正 | `test_mcux` 8/8；`test_security_nv` 20/20；`test_all` 16 套件 **293 项 0 失败**；CI 加入 `test_mcux`；固件构建通过。仍需真机：SDK 真实 API 签名、PFLASH 时序/cache、真实掉电与 eFuse 烧写 |
 | **G1 Bring-up（软件侧）** | 新增 7 项基础 `BRINGUP_SELFTEST` 自检固件（时间/存储/SE050/TRNG/BLE/NFC/UWB），并在 `SECURE_BOOT=1` 时追加第 08 项安全启动 KAT 自检；新增《G1 硬件 Bring-up 作业指导书》含可观测判据与证据要求 | `-DBRINGUP_SELFTEST=ON` 构建通过；host-sim 运行输出 PASS/FAIL/SKIP 正确（含 `08 secure-boot PASS`）；`docs/g1-bringup-runbook.md` |
+| **端到端 fail-closed 收口（云→手机→车）** | ① 云端：CCC/ICCE/ICCOA 适配器删除零密钥兜底，未配置厂商/HSM 时 `BindKey` 直接报错；密钥材料空/全零拒绝下发；`TLS_REQUIRED=1` 强制 TLS（证书缺失拒绝启动）；DKCS `BindKey` 生成唯一 keyId 且要求厂商非空 payload，Unbind/Suspend/Resume/Revoke/Renew 真实转发并返回错误码，GetKey 显式 `NOT_IMPLEMENTED`。② 车端：证书有效期无信任时间即拒绝（原 fail-open）；X.509 解析 basicConstraints/keyUsage/serial，未知 critical 扩展拒绝；CA 必须 `CA:TRUE`，叶子不得为 CA 且要求 digitalSignature；新增 `sec_verify_attestation_peer()`（证明根锚 + 验证方 nonce，不再与本机身份比对）与 `sec_attestation_with_nonce()`；CCC 不再自签自验；UWB 不可用保持 LOCKED；`YULE_PRODUCTION_BUILD` 下无签名清单/存储失败/NV 未绑定/安全状态恢复失败均拒绝启动 | 云端 `go test ./...` 通过；车端 `test_all` 16 套件 **296 项 0 失败**（新增无时间拒绝、扩展解析、对端 nonce 3 项）；`test_mcux` 8/8；host-sim 构建通过 |
 
-### 0.2 剩余待外部条件（软件侧已无 P0 阻塞项）
+### 0.2 剩余待外部条件与跨端集成
 
 | 类别 | 待完成事项 | 外部依赖 / 前置条件 | 验收判据 |
 |---|---|---|---|
+| 云端密钥平面 | HSM/Vault 接入、CA/证书签发、厂商 S2S 与 Wallet 后端联调；适配器已 fail-closed，不再产生占位密钥 | HSM 厂商 PKCS#11 模块；CA/证书服务；Apple/Google 厂商 API 资质 | 全库无可达的零密钥路径；每把钥匙可离线用根锚验到叶子 |
+| 车端吊销闭环 | CRL 分发端点（云端）+ 车端安装调用方 + 按证书序列号/公钥指纹撤销（当前仅按 device_id） | 云端证书/吊销服务；车端联网通道 | 云端撤销后，离线车端在下一次联网窗口内拒绝该钥匙 |
+| 手机端协议一致性 | `detectProtocol()` 真实探测、CCC/ICCE/ICCOA 帧布局与车端共用测试向量、车端证书/证明校验、Play Integrity / App Attest | 三协议规范文本与认证测试工具；Android/iOS 真机 | 三协议跨端一致性用例通过；模拟器/篡改应用被云端拒绝 |
 | 硬件真机 | P0-04-T1、P0-04-T5 真机验证；P0-05-T1/T2/T3~T8；G1 Bring-up | SE050、NCJ29D6、ST25R501 样件；G1 台架与车辆接口 | 真机 SCP03 握手与密钥隔离取证；UWB/NFC/SE 实测记录（仿真不能替代侧信道与隔离证据） |
 | 产线密钥体系 | 厂商 PKCS#11 适配器落地、产线工位集成、密钥注入与吊销演练 | HSM 厂商 PKCS#11 模块与设备；密钥管理服务；产线工位 | 工位端到端派生/注入通过；密钥指纹入库；吊销与轮换演练通过 |
 | 安全启动（真机部分） | P0-04-T6：ROM 信任根、OTP/eFuse 计数器固化、调试口熔断、量产镜像签名 | 芯片 ROM/安全启动能力与签名密钥；OTP/eFuse 烧录设备；调试口策略 | 篡改固件无法启动；防回滚计数不可回写；调试口在 PROD/RMA 永久关闭 |
@@ -57,7 +61,7 @@
 | 车辆与 HIL | P0-03-T3~T6；G3 全量 HIL 与三协议一致性；手机真机矩阵 | 车辆台架、UWB 真机、Android/iOS 主流机型与 Wallet 环境 | 37 项 HIL、CCC/ICCE/ICCOA 一致性用例、手机兼容矩阵通过 |
 | 认证与 OEM | G4：ICCE/CCC/ICCOA 认证、Apple/Google Wallet 接入；G5 试产验证 | 认证机构席位、TSP/Wallet 合作名额、EMC/射频实验室、OEM 审核 | 证书在有效期内且覆盖量产型号；Wallet 上线许可；试产与 OTA 回滚证据 |
 
-> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成；其余软件可验证 P0 项均已有实现与单测证据，不再列为阻塞。设备吊销与产线锁定的 NV 持久化软件链路已实现（双 Bank + CRC + commit-last + OTP 水位），未绑定板级 Flash/OTP 时降级为 RAM-only 并打印告警。
+> 说明：P0-05-T2 软件侧（T=1' 传输层 + vSE050 仿真）已完成。设备吊销与产线锁定的 NV 持久化软件链路已实现（双 Bank + CRC + commit-last + OTP 水位）。**安全策略已全面 fail-closed**：证书有效期缺可信时间即拒绝、CA/叶子扩展校验、对端证明绑定验证方 nonce、UWB 不可用不解锁、生产构建缺签名清单/NV/存储即拒绝启动；云端适配器不再下发占位密钥。剩余阻塞集中在 HSM/CA、吊销分发、手机端协议一致性与硬件真机/认证。
 
 ### 0.3 真机验证执行包（已就绪，待台架）
 

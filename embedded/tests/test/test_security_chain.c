@@ -350,6 +350,7 @@ static void test_attestation_with_cert_chain(void)
     uint8_t hash[32];
 
     reset_security();
+    sec_set_trusted_time(T_VALID);
     TEST_ASSERT_EQUAL(CCC_OK, sec_set_device_identity(k_device_id, k_key_id));
     TEST_ASSERT_EQUAL(CCC_OK, sec_set_firmware_measurement(k_fw_hash));
     TEST_ASSERT_EQUAL(CCC_OK, sec_set_attestation_root(k_root_pub, 64));
@@ -433,6 +434,86 @@ static void test_provisioning_arg_validation(void)
                       sec_verify_cert_chain(NULL, 10, k_root_pub, 64));
 }
 
+/* 未注入可信时间时, 带有效期的证书必须 fail-closed (不得默认放行). */
+static void test_chain_without_trusted_time_rejects(void)
+{
+    uint8_t chain[sizeof(k_leaf_der) + sizeof(k_int_der)];
+    uint16_t chain_len;
+
+    reset_security();
+    sec_set_trusted_time(0);
+    TEST_ASSERT_EQUAL(CCC_OK,
+                      sec_set_peer_trust_root(SEC_KEY_TYPE_P256, k_root_pub, 64));
+    chain_len = build_leaf_int_chain(chain, sizeof(chain));
+
+    TEST_ASSERT_EQUAL(VERIFY_KEY_EXPIRED,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+
+    sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(VERIFY_OK,
+                      sec_verify_cert_chain(chain, chain_len, k_root_pub, 64));
+}
+
+/* basicConstraints / keyUsage / serialNumber 必须被正确解析. */
+static void test_x509_extensions_parsed(void)
+{
+    sec_x509_cert_t c;
+
+    TEST_ASSERT_EQUAL(0, sec_x509_parse(k_leaf_der, sizeof(k_leaf_der), &c));
+    TEST_ASSERT_EQUAL(0, c.is_ca);
+    TEST_ASSERT_EQUAL(1, c.has_basic_constraints);
+    TEST_ASSERT_EQUAL(1, c.has_key_usage);
+    TEST_ASSERT_TRUE((c.key_usage & SEC_X509_KU_DIGITAL_SIGNATURE) != 0);
+    TEST_ASSERT_TRUE(c.serial_len > 0U);
+
+    TEST_ASSERT_EQUAL(0, sec_x509_parse(k_int_der, sizeof(k_int_der), &c));
+    TEST_ASSERT_EQUAL(1, c.is_ca);
+    TEST_ASSERT_TRUE((c.key_usage & SEC_X509_KU_KEY_CERT_SIGN) != 0);
+}
+
+/* 对端证明校验: 只依赖证明根锚 + 验证方 nonce, 不依赖本机身份. */
+static void test_attestation_peer_nonce(void)
+{
+    ccc_attestation_t att;
+    uint8_t hash[32];
+    uint8_t nonce[16];
+    uint8_t wrong[16];
+
+    (void)memset(nonce, 0xA5, sizeof(nonce));
+
+    reset_security();
+    sec_set_trusted_time(T_VALID);
+    TEST_ASSERT_EQUAL(CCC_OK, sec_set_attestation_root(k_root_pub, 64));
+    /* 故意不配置本机 device identity / fw measurement */
+
+    (void)memset(&att, 0, sizeof(att));
+    att.version = 0x02;
+    att.key_type = SEC_KEY_TYPE_P256;
+    (void)memcpy(att.device_id, k_device_id, 16);
+    (void)memcpy(att.key_id, k_key_id, 16);
+    (void)memcpy(att.nonce, nonce, sizeof(nonce));
+    att.security_state = 0x01;
+    (void)memcpy(att.attestation_cert, k_device_der, sizeof(k_device_der));
+    att.attestation_cert_len = (uint16_t)sizeof(k_device_der);
+
+    TEST_ASSERT_EQUAL(CRYPTO_SUCCESS,
+                      crypto_sha256((const uint8_t *)&att,
+                                    (size_t)offsetof(ccc_attestation_t, signature),
+                                    hash));
+    TEST_ASSERT_EQUAL(CRYPTO_SUCCESS,
+                      crypto_p256_sign(k_device_priv, hash, att.signature));
+
+    TEST_ASSERT_EQUAL(VERIFY_OK, sec_verify_attestation_peer(&att, nonce));
+
+    (void)memcpy(wrong, nonce, sizeof(wrong));
+    wrong[0] ^= 0x01U;
+    TEST_ASSERT_EQUAL(VERIFY_SIGN_INVALID, sec_verify_attestation_peer(&att, wrong));
+
+    att.security_state = 0x00;
+    TEST_ASSERT_EQUAL(VERIFY_PERMISSION_DENIED,
+                      sec_verify_attestation_peer(&att, nonce));
+}
+
 int run_security_chain_tests(void)
 {
     crypto_random_init();
@@ -452,6 +533,9 @@ int run_security_chain_tests(void)
     RUN_TEST(test_attestation_requires_provisioning);
     RUN_TEST(test_attestation_device_key_roundtrip);
     RUN_TEST(test_attestation_with_cert_chain);
+    RUN_TEST(test_chain_without_trusted_time_rejects);
+    RUN_TEST(test_x509_extensions_parsed);
+    RUN_TEST(test_attestation_peer_nonce);
     RUN_TEST(test_provisioning_arg_validation);
 
     UNITY_END();

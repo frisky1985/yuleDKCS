@@ -40,7 +40,7 @@ func TestHubTransportService_ForwardToVendor_NoAdapter(t *testing.T) {
 func TestHubTransportService_ForwardToVendor_UnsupportedOperation(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewHubTransportService(reg, logger)
 
 	resp, err := s.ForwardToVendor(context.Background(), &pb.ForwardRequest{
@@ -59,7 +59,7 @@ func TestHubTransportService_ForwardToVendor_UnsupportedOperation(t *testing.T) 
 func TestHubTransportService_ForwardToVendor_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewHubTransportService(reg, logger)
 
 	operations := []string{"bind", "unbind", "share", "notify"}
@@ -98,8 +98,8 @@ func TestHubTransportService_VendorCallback(t *testing.T) {
 func TestHubTransportService_HealthCheck_AllHealthy(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
-	reg.Register("apple", "ccc_dk3", adapter.NewCCCAdapter("apple", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
+	reg.Register("apple", "ccc_dk3", adapter.NewCCCAdapterInDemoMode("apple", logger))
 	s := NewHubTransportService(reg, logger)
 
 	resp, err := s.HealthCheck(context.Background(), &pb.HealthCheckRequest{})

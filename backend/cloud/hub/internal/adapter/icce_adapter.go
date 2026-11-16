@@ -5,27 +5,36 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
+	"go.uber.org/zap"
 )
 
 // ICCEAdapter ICCE协议适配器 (华为等)
 // ICCE 以车厂 OEM 为中心的 S2S 架构，无 Relay Server
 // Hub 通过 ICCEClient 直连厂商 S2S 端点
 type ICCEAdapter struct {
-	vendor string
-	logger *zap.Logger
-	client *s2s.ICCEClient // S2S 厂商通信客户端
+	vendor   string
+	logger   *zap.Logger
+	client   *s2s.ICCEClient // S2S 厂商通信客户端
+	demoMode bool            // 仅测试: 允许合成占位密钥（生产必须为 false）
 }
 
-// NewICCEAdapter 创建 ICCE 适配器（stub 模式，无 S2S 客户端）
+// NewICCEAdapter 创建 ICCE 适配器（生产模式，无 S2S 客户端时 BindKey 直接失败）
 // S2S 功能需通过 NewICCEAdapterWithClient 注入客户端后启用
 func NewICCEAdapter(vendor string, logger *zap.Logger) *ICCEAdapter {
 	return &ICCEAdapter{
 		vendor: vendor,
 		logger: logger.With(zap.String("vendor", vendor), zap.String("protocol", "icce")),
 	}
+}
+
+// NewICCEAdapterInDemoMode 仅供测试: 厂商 S2S 不可用时合成占位密钥。
+// SECURITY: 生产环境禁止使用。
+func NewICCEAdapterInDemoMode(vendor string, logger *zap.Logger) *ICCEAdapter {
+	a := NewICCEAdapter(vendor, logger)
+	a.demoMode = true
+	return a
 }
 
 // NewICCEAdapterWithClient 使用自定义 S2S 客户端创建适配器（测试用）
@@ -76,53 +85,46 @@ func (a *ICCEAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.
 		zap.String("user_id", req.UserId),
 	)
 
-	// ICCE绑定: 边缘计算 + UWB FiRa配置
-	// 华为: POST /api/v2/hwcarkey/bind
-	// 通过 ICCE S2S 客户端调用厂商 API（可降级）
-	var s2sKeyID, s2sVehiclePubKey, s2sSharedSecret string
-
-	if a.client != nil {
-		s2sReq := &s2s.ICCEBindRequest{
-			VehicleID:    req.VehicleId,
-			DeviceID:     req.DeviceId,
-			UserID:       req.UserId,
-			DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
-			KeyType:      req.KeyType.String(),
-			ValidFrom:    req.ValidFrom,
-			ValidUntil:   req.ValidUntil,
+	// 生产路径: 必须配置 S2S 客户端 (密钥材料只能由厂商后端产生)
+	if a.client == nil {
+		if a.demoMode {
+			return a.demoBindKey(req), nil
 		}
+		return nil, fmt.Errorf("icce adapter: S2S client not configured — refusing to synthesize key material")
+	}
 
-		s2sResp, err := a.client.BindKey(ctx, s2sReq)
-		if err == nil {
-			s2sKeyID = s2sResp.KeyID
-			s2sVehiclePubKey = s2sResp.VehiclePubKey
-			s2sSharedSecret = s2sResp.SharedSecret
-		} else {
-			a.logger.Error("ICCE S2S BindKey failed, using fallback",
-				zap.String("vehicle_id", req.VehicleId),
-				zap.Error(err),
-				zap.Stack("stack"),
-			)
+	s2sReq := &s2s.ICCEBindRequest{
+		VehicleID:    req.VehicleId,
+		DeviceID:     req.DeviceId,
+		UserID:       req.UserId,
+		DevicePubKey: fmt.Sprintf("%x", req.DevicePubkey),
+		KeyType:      req.KeyType.String(),
+		ValidFrom:    req.ValidFrom,
+		ValidUntil:   req.ValidUntil,
+	}
+
+	s2sResp, err := a.client.BindKey(ctx, s2sReq)
+	if err != nil {
+		a.logger.Error("ICCE S2S BindKey failed",
+			zap.String("vehicle_id", req.VehicleId),
+			zap.Error(err),
+		)
+		if a.demoMode {
+			return a.demoBindKey(req), nil
 		}
+		return nil, fmt.Errorf("icce s2s bind: %w", err)
 	}
 
-	// Fallback: 当 S2S 不可用时返回 stub 响应
-	if s2sKeyID == "" {
-		s2sKeyID = fmt.Sprintf("key-icce-%d", time.Now().UnixMilli())
-	}
-
-	vehiclePubKey := []byte(s2sVehiclePubKey)
-	if len(vehiclePubKey) == 0 {
-		vehiclePubKey = make([]byte, 64)
-	}
-	sharedSecret := []byte(s2sSharedSecret)
-	if len(sharedSecret) == 0 {
-		sharedSecret = make([]byte, 32)
+	// 密钥材料完整性门禁: 空/全零视为无效，绝不下发。
+	if s2sResp.KeyID == "" ||
+		len(s2sResp.VehiclePubKey) == 0 || isZeroBytes([]byte(s2sResp.VehiclePubKey)) ||
+		len(s2sResp.SharedSecret) == 0 || isZeroBytes([]byte(s2sResp.SharedSecret)) {
+		return nil, fmt.Errorf("icce s2s response missing valid key material")
 	}
 
 	return &pb.BindKeyResponse{
 		Key: &pb.DigitalKey{
-			KeyId:       s2sKeyID,
+			KeyId:       s2sResp.KeyID,
 			VehicleId:   req.VehicleId,
 			DeviceId:    req.DeviceId,
 			UserId:      req.UserId,
@@ -134,9 +136,30 @@ func (a *ICCEAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.
 			ValidUntil:  req.ValidUntil,
 			CreatedAt:   time.Now().Unix(),
 		},
-		VehiclePubkey: vehiclePubKey,
-		SharedSecret:  sharedSecret,
+		VehiclePubkey: []byte(s2sResp.VehiclePubKey),
+		SharedSecret:  []byte(s2sResp.SharedSecret),
 	}, nil
+}
+
+// demoBindKey 仅测试用: 合成占位密钥。生产路径不可达 (demoMode=false 时拒绝)。
+func (a *ICCEAdapter) demoBindKey(req *pb.BindKeyRequest) *pb.BindKeyResponse {
+	return &pb.BindKeyResponse{
+		Key: &pb.DigitalKey{
+			KeyId:       fmt.Sprintf("key-icce-demo-%d", time.Now().UnixMilli()),
+			VehicleId:   req.VehicleId,
+			DeviceId:    req.DeviceId,
+			UserId:      req.UserId,
+			KeyType:     req.KeyType,
+			Protocol:    pb.Protocol_ICCE,
+			AccessLevel: req.AccessLevel,
+			Status:      pb.KeyStatus_ACTIVE,
+			ValidFrom:   req.ValidFrom,
+			ValidUntil:  req.ValidUntil,
+			CreatedAt:   time.Now().Unix(),
+		},
+		VehiclePubkey: make([]byte, 64),
+		SharedSecret:  make([]byte, 32),
+	}
 }
 
 func (a *ICCEAdapter) UnbindKey(ctx context.Context, keyID string) error {

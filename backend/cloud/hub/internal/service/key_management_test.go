@@ -393,7 +393,7 @@ func TestKeyManagementService_BindKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
 	// Register with uppercase vendor name matching proto enum String()
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -475,7 +475,7 @@ func TestKeyManagementService_UnbindKey_NoAdapter(t *testing.T) {
 func TestKeyManagementService_UnbindKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -523,7 +523,7 @@ func TestKeyManagementService_SuspendKey_NotOwner(t *testing.T) {
 func TestKeyManagementService_SuspendKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -551,7 +551,7 @@ func TestKeyManagementService_SuspendKey_Success(t *testing.T) {
 func TestKeyManagementService_ResumeKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -579,7 +579,7 @@ func TestKeyManagementService_ResumeKey_Success(t *testing.T) {
 func TestKeyManagementService_StateFlow_ActiveSuspendedActive(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -614,7 +614,7 @@ func TestKeyManagementService_StateFlow_ActiveSuspendedActive(t *testing.T) {
 func TestKeyManagementService_StateFlow_ActiveTerminated(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -652,7 +652,7 @@ func TestKeyManagementService_RevokeKey_NoAuth(t *testing.T) {
 func TestKeyManagementService_RevokeKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -693,7 +693,7 @@ func TestKeyManagementService_RevokeKey_WithPushService(t *testing.T) {
 
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	s.WithPushService(ps)
@@ -724,7 +724,7 @@ func TestKeyManagementService_RevokeKey_PushServiceError_NonBlocking(t *testing.
 
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	s.WithPushService(ps)
@@ -746,7 +746,7 @@ func TestKeyManagementService_RevokeKey_PushServiceError_NonBlocking(t *testing.
 func TestKeyManagementService_RevokeKey_NoPushService(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	// No push service set

@@ -99,7 +99,7 @@ func TestUnifiedKeyService_BindKey_NoAdapter(t *testing.T) {
 func TestUnifiedKeyService_BindKey_Success(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	req := &pb.BindKeyRequest{
@@ -427,7 +427,7 @@ func TestUnifiedKeyService_VendorCallback(t *testing.T) {
 func TestUnifiedKeyService_HealthCheck(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	resp, err := s.HealthCheck(context.Background(), &pb.HealthCheckRequest{})

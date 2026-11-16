@@ -45,8 +45,14 @@ static int secure_boot_precheck(void)
 
     /* No manifest linked in: development / host-sim image, skip the gate. */
     if ((uintptr_t)(const void *)sb_embedded_manifest == (uintptr_t)0) {
+#if defined(YULE_PRODUCTION_BUILD)
+        /* 量产镜像必须带签名清单，缺清单即拒绝启动。 */
+        hal_debug_printf("SECURE_BOOT: no manifest (FATAL)\n");
+        return -1;
+#else
         hal_debug_printf("SECURE_BOOT: no manifest (SKIP)\n");
         return 0;
+#endif
     }
 
     /* A manifest without its image or trust anchor cannot be verified. */
@@ -120,19 +126,33 @@ static int system_init(void)
 
     if (hal_storage_init() != 0) {
         hal_debug_printf("WARN: Storage init failed\n");
+#if defined(YULE_PRODUCTION_BUILD)
+        hal_debug_printf("FATAL: production requires persistent storage\n");
+        return -1;
+#endif
     }
 
     /* 绑定板级 NV Flash/OTP；失败则保持未绑定并降级为纯 RAM. */
-    (void)kw47a_nv_init();
+    if (kw47a_nv_init() != 0) {
+        hal_debug_printf("WARN: NV persistence not bound (RAM-only)\n");
+#if defined(YULE_PRODUCTION_BUILD)
+        /* 无持久化 = 锁定/CRL/密钥水位无法跨复位保持, 量产必须拒绝启动. */
+        hal_debug_printf("FATAL: production requires bound NV persistence\n");
+        return -1;
+#endif
+    }
 
     /* 从 Flash/OTP 恢复产线锁定与 CRL；未绑定 NV 时降级为纯 RAM. */
     {
         ccc_status_t st = sec_security_init();
 
-        if (st == CCC_ERR_NOT_INIT) {
-            hal_debug_printf("WARN: NV persistence not bound (RAM-only)\n");
-        } else if (st != CCC_OK) {
+        if (st != CCC_OK) {
             hal_debug_printf("WARN: security NV restore failed (%d)\n", (int)st);
+#if defined(YULE_PRODUCTION_BUILD)
+            /* 恢复失败意味着锁定/CRL 状态不可信, 必须 fail-closed. */
+            hal_debug_printf("FATAL: production security state unavailable\n");
+            return -1;
+#endif
         }
         if (sec_provisioning_locked()) {
             hal_debug_printf("SECURITY: provisioning locked\n");

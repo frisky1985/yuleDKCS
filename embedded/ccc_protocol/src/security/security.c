@@ -843,17 +843,42 @@ static verify_result_e sec_verify_chain_internal(const uint8_t *chain, uint16_t 
         if (clen <= 0 || (uint16_t)clen > rem) return VERIFY_CERT_INVALID;
         if (sec_x509_parse(p, (uint16_t)clen, &c) != 0) return VERIFY_CERT_INVALID;
 
-        if (g_trusted_time_set && c.has_validity) {
+        if (c.has_validity) {
+            /* fail-closed: 没有可信时间就无法判断有效期，一律拒绝。 */
+            if (!g_trusted_time_set) {
+                return VERIFY_KEY_EXPIRED;
+            }
             if (g_trusted_time < c.not_before || g_trusted_time > c.not_after) {
                 return VERIFY_KEY_EXPIRED;
             }
         }
 
+        /* RFC 5280: 未识别的 critical 扩展不可被忽略。 */
+        if (c.unknown_critical) {
+            return VERIFY_CERT_INVALID;
+        }
+
         if (!have_prev) {
+            /* Leaf: 不得是 CA，且若声明 keyUsage 必须允许数字签名。 */
+            if (c.is_ca) {
+                return VERIFY_CERT_INVALID;
+            }
+            if (c.has_key_usage &&
+                (c.key_usage & SEC_X509_KU_DIGITAL_SIGNATURE) == 0U) {
+                return VERIFY_CERT_INVALID;
+            }
             if (leaf_pub != NULL) {
                 (void)memcpy(leaf_pub, c.pub, 64);
             }
         } else {
+            /* Issuer: 必须是 basicConstraints CA，且 keyUsage 允许签发证书。 */
+            if (!c.has_basic_constraints || !c.is_ca) {
+                return VERIFY_CERT_INVALID;
+            }
+            if (c.has_key_usage &&
+                (c.key_usage & SEC_X509_KU_KEY_CERT_SIGN) == 0U) {
+                return VERIFY_CERT_INVALID;
+            }
             /* prev is the child: its issuer must equal this cert's subject. */
             if (prev.issuer_len != c.subject_len ||
                 (prev.issuer_len > 0U &&
@@ -1154,6 +1179,17 @@ verify_result_e sec_verify(const uint8_t *data, uint32_t len, const uint8_t *sig
 
 ccc_status_t sec_attestation(ccc_attestation_t *att)
 {
+    return sec_attestation_with_nonce(att, NULL);
+}
+
+/**
+ * @brief 生成远程证明，nonce 可由验证方挑战提供。
+ *
+ * @param att    输出证明包
+ * @param nonce  16 字节验证方挑战; 为 NULL 时使用本机 TRNG (仅用于自证)
+ */
+ccc_status_t sec_attestation_with_nonce(ccc_attestation_t *att, const uint8_t nonce[16])
+{
     if (!att) return CCC_ERR_INVALID_PARAM;
     if (!g_sec_initialized) return CCC_ERR_NOT_INIT;
     if (!g_identity_set || !g_fw_measurement_set) return CCC_ERR_SECURITY;
@@ -1161,7 +1197,9 @@ ccc_status_t sec_attestation(ccc_attestation_t *att)
     memset(att, 0, sizeof(*att));
 
     att->version = 0x02;
-    if (crypto_random_bytes(att->nonce, sizeof(att->nonce)) != CRYPTO_SUCCESS) {
+    if (nonce != NULL) {
+        (void)memcpy(att->nonce, nonce, 16);
+    } else if (crypto_random_bytes(att->nonce, sizeof(att->nonce)) != CRYPTO_SUCCESS) {
         return CCC_ERR_SECURITY;
     }
 
@@ -1191,6 +1229,12 @@ ccc_status_t sec_attestation(ccc_attestation_t *att)
     return CCC_OK;
 }
 
+/**
+ * @brief 校验**本机**远程证明包 (自检: 固件度量/身份/签名)。
+ *
+ * SECURITY: 该函数只适用于本机自检或验证本机生成的证明。
+ * 绝不能用于认证对端 — 对端证明请使用 sec_verify_attestation_peer()。
+ */
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
 {
     uint8_t pub[64];
@@ -1245,6 +1289,61 @@ verify_result_e sec_verify_attestation(const ccc_attestation_t *att)
     /* 6. Device revocation list gate: only trusted after the device has proven
      *    possession of its private key, so an unauthenticated caller cannot
      *    probe revocation state with a forged device_id. */
+    if (sec_revocation_is_revoked(att->device_id)) {
+        return VERIFY_KEY_REVOKED;
+    }
+
+    return VERIFY_OK;
+}
+
+/**
+ * @brief 校验**对端**远程证明包 (手机/设备)，用于 CCC 认证 Step 2。
+ *
+ * 与 sec_verify_attestation() 的关键区别:
+ *   - 不比对本机身份/固件度量 (对端本来就不是本机);
+ *   - 必须携带 attestation 证书链，并以预置的证明根锚 (g_att_root) 验链;
+ *   - 支持验证方 nonce 挑战，防重放。
+ *
+ * @param expected_nonce 16 字节期望 nonce; NULL 表示调用方不校验新鲜度
+ *                       (例如该证明已在受保护的会话内传输)。
+ */
+verify_result_e sec_verify_attestation_peer(const ccc_attestation_t *att,
+                                            const uint8_t expected_nonce[16])
+{
+    uint8_t pub[64];
+
+    if (!att) return VERIFY_CERT_INVALID;
+
+    /* 安全状态门禁 (fail closed before expensive crypto). */
+    if (att->security_state != 0x01) {
+        return VERIFY_PERMISSION_DENIED;
+    }
+
+    /* 新鲜度: 验证方挑战必须与证明中的 nonce 一致。 */
+    if (expected_nonce != NULL &&
+        memcmp(att->nonce, expected_nonce, sizeof(att->nonce)) != 0) {
+        return VERIFY_SIGN_INVALID;
+    }
+
+    /* 对端证明必须自带证书链，并由预置证明根锚定。 */
+    if (att->attestation_cert_len == 0U ||
+        att->attestation_cert_len > SEC_ATT_CERT_MAX ||
+        !g_att_root_set) {
+        return VERIFY_CERT_INVALID;
+    }
+    if (sec_verify_chain_internal(att->attestation_cert,
+                                  att->attestation_cert_len,
+                                  g_att_root, 64, pub) != VERIFY_OK) {
+        return VERIFY_CERT_INVALID;
+    }
+
+    if (sec_verify_with_pub(SEC_KEY_TYPE_P256, pub,
+                            (const uint8_t *)att,
+                            (uint32_t)offsetof(ccc_attestation_t, signature),
+                            att->signature, sizeof(att->signature)) != VERIFY_OK) {
+        return VERIFY_SIGN_INVALID;
+    }
+
     if (sec_revocation_is_revoked(att->device_id)) {
         return VERIFY_KEY_REVOKED;
     }

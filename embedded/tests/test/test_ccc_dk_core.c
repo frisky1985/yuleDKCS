@@ -580,8 +580,8 @@ void test_ccc_auth_direct_peer_key_unlocks(void)
     TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
 
     TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
-    /* UWB 会话 1 不存在 -> 回退到 UNLOCKED (host 模式) */
-    TEST_ASSERT_EQUAL(STATE_UNLOCKED, ccc_dk_get_state());
+    /* UWB 会话 1 不存在 -> fail-closed: 认证通过也不得解锁 */
+    TEST_ASSERT_EQUAL(STATE_LOCKED, ccc_dk_get_state());
 
     reset_auth_security();
     TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());
@@ -618,7 +618,8 @@ void test_ccc_auth_cert_chain_path(void)
     TEST_ASSERT_EQUAL(STATE_AUTH_PROCESS, ccc_dk_get_state());
 
     TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_run());
-    TEST_ASSERT_EQUAL(STATE_UNLOCKED, ccc_dk_get_state());
+    /* UWB 不可用 -> fail-closed: 保持 LOCKED */
+    TEST_ASSERT_EQUAL(STATE_LOCKED, ccc_dk_get_state());
 
     /* 复位后提交被篡改的链: 必须锁定 */
     TEST_ASSERT_EQUAL(CCC_OK, ccc_dk_deinit());

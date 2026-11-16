@@ -24,8 +24,8 @@ import (
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/gateway"
-	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 	hub_logger "github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/logger"
+	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/relay"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/service"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/store"
 )
@@ -105,20 +105,22 @@ func main() {
 		logger.Info("OEM JWKS configured", zap.Int("oem_count", len(oemURLs)))
 	}
 
-	// ── TLS (可选) ──
-	// K8s 部署中 hub-tls secret 为 optional: 证书未就绪时回退 HTTP 并打 WARN
-	// （cert-manager/托管证书签发后自动启用 HTTPS，无需改 manifest）
+	// ── TLS ──
+	// 生产 (TLS_REQUIRED=1): 证书缺失即拒绝启动，绝不回退明文 HTTP。
+	// 开发: 未配置 TLS_CERT_FILE 时允许 HTTP；但显式配置了却文件缺失仍视为配置错误。
+	tlsRequired := os.Getenv("TLS_REQUIRED") == "1" || os.Getenv("TLS_REQUIRED") == "true"
 	if cert := os.Getenv("TLS_CERT_FILE"); cert != "" {
 		key := os.Getenv("TLS_KEY_FILE")
 		if key == "" {
 			logger.Fatal("TLS_CERT_FILE set but TLS_KEY_FILE missing")
 		}
 		if _, err := os.Stat(cert); err != nil {
-			logger.Warn("TLS_CERT_FILE set but cert file not found — serving HTTP until cert is provisioned",
+			logger.Fatal("TLS_CERT_FILE configured but cert file not found — refusing to start",
 				zap.String("cert", cert), zap.Error(err))
-		} else {
-			gw.WithTLS(cert, key)
 		}
+		gw.WithTLS(cert, key)
+	} else if tlsRequired {
+		logger.Fatal("TLS_REQUIRED=1 but TLS_CERT_FILE/TLS_KEY_FILE are not configured")
 	}
 
 	// ── Start ──

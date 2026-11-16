@@ -128,9 +128,9 @@ static ccc_status_t process_authentication(void)
         }
     }
 
-    /* Step 2: 验证设备远程证明 (固件完整性 + 签名) */
+    /* Step 2: 验证对端远程证明 (对端身份 + 证明根锚 + 可选 nonce) */
     if (g_auth.attestation) {
-        vr = sec_verify_attestation(g_auth.attestation);
+        vr = sec_verify_attestation_peer(g_auth.attestation, NULL);
         if (vr != VERIFY_OK) {
             g_auth.pending = false;
             transition_state(STATE_LOCKED);
@@ -154,12 +154,12 @@ static ccc_status_t process_authentication(void)
     if (ret == CCC_OK) {
         /* 测距结果由 on_uwb_zone_changed() 回调处理解锁/闭锁 */
         transition_state(STATE_UWB_RANGING);
-    } else {
-        /* UWB 不可用时回退: 认证通过即解锁 (开发/降级路径) */
-        transition_state(STATE_UNLOCKED);
+        return CCC_OK;
     }
 
-    return CCC_OK;
+    /* fail-closed: UWB 不可用时不得解锁 (无法做距离约束)。 */
+    transition_state(STATE_LOCKED);
+    return CCC_ERR_HARDWARE;
 }
 
 /* 供 BLE 接收回调调用: 提交对端认证数据 */

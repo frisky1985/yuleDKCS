@@ -310,7 +310,10 @@ ccc_status_t  sec_store_key(const uint8_t *key_id, const uint8_t *key_data, uint
 ccc_status_t  sec_load_key(const uint8_t *key_id, uint8_t *key_data, uint16_t *key_len);
 ccc_status_t  sec_delete_key(const uint8_t *key_id);
 ccc_status_t  sec_attestation(ccc_attestation_t *att);
+ccc_status_t  sec_attestation_with_nonce(ccc_attestation_t *att, const uint8_t nonce[16]);
 verify_result_e sec_verify_attestation(const ccc_attestation_t *att);
+verify_result_e sec_verify_attestation_peer(const ccc_attestation_t *att,
+                                            const uint8_t expected_nonce[16]);
 verify_result_e sec_verify_cert_chain(const uint8_t *cert_chain, uint16_t chain_len,
                                        const uint8_t *root_pub_key, uint16_t root_key_len);
 

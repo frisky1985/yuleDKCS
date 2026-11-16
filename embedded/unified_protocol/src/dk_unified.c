@@ -530,15 +530,9 @@ dk_status_t dk_auth_verify(void)
     
     switch (g_dk.device.protocol) {
         case DK_PROTOCOL_CCC:
-            /* CCC 认证通过 SE */
-            {
-                ccc_attestation_t att = {0};
-                if (sec_attestation(&att) == CCC_OK &&
-                    sec_verify_attestation(&att) == VERIFY_OK) {
-                    g_dk.status.auth.state = DK_AUTH_VERIFIED;
-                    return DK_OK;
-                }
-            }
+            /* CCC 认证必须由对端证书链 + 挑战签名在 ccc_dk_core 完成。
+             * 本层没有对端认证材料，绝不可以用"自签自验"冒充认证。
+             * 认证结果应由 ccc_dk_core 的会话状态回填。 */
             break;
             
         case DK_PROTOCOL_ICCOA:

@@ -71,7 +71,7 @@ func TestKeyMgmt_BindKey_Success(t *testing.T) {
 			if req.Protocol != pb.Protocol_CCC_DK3 {
 				t.Errorf("Protocol: want CCC_DK3, got %v", req.Protocol)
 			}
-			return &pb.ForwardResponse{}, nil
+			return &pb.ForwardResponse{Payload: []byte("vendor-key-material")}, nil
 		},
 	}
 
@@ -79,13 +79,13 @@ func TestKeyMgmt_BindKey_Success(t *testing.T) {
 	ctx := context.Background()
 
 	resp, err := svc.BindKey(ctx, &pb.BindKeyRequest{
-		VehicleId:  "vehicle-001",
-		DeviceId:   "device-001",
-		UserId:     "user-001",
-		Vendor:     pb.PhoneVendor_APPLE,
-		Protocol:   pb.Protocol_CCC_DK3,
-		KeyType:    pb.KeyType_OWNER,
-		TraceId:    testTraceID(),
+		VehicleId: "vehicle-001",
+		DeviceId:  "device-001",
+		UserId:    "user-001",
+		Vendor:    pb.PhoneVendor_APPLE,
+		Protocol:  pb.Protocol_CCC_DK3,
+		KeyType:   pb.KeyType_OWNER,
+		TraceId:   testTraceID(),
 	})
 
 	if err != nil {
@@ -102,6 +102,33 @@ func TestKeyMgmt_BindKey_Success(t *testing.T) {
 	}
 	if resp.Key.KeyId == "" {
 		t.Error("KeyId should not be empty")
+	}
+}
+
+// 厂商返回空 payload 时必须 fail-closed，不得下发"钥匙"。
+func TestKeyMgmt_BindKey_EmptyVendorPayloadRejected(t *testing.T) {
+	hubClient := &mockHubClient{
+		forwardToVendorFunc: func(_ context.Context, _ *pb.ForwardRequest, _ ...grpc.CallOption) (*pb.ForwardResponse, error) {
+			return &pb.ForwardResponse{}, nil
+		},
+	}
+	svc := newTestService(hubClient)
+	resp, err := svc.BindKey(context.Background(), &pb.BindKeyRequest{
+		VehicleId: "vehicle-001",
+		DeviceId:  "device-001",
+		UserId:    "user-001",
+		Vendor:    pb.PhoneVendor_APPLE,
+		Protocol:  pb.Protocol_CCC_DK3,
+		TraceId:   testTraceID(),
+	})
+	if err != nil {
+		t.Fatalf("BindKey should not return gRPC error: %v", err)
+	}
+	if resp.ErrorCode != "VENDOR_EMPTY_RESPONSE" {
+		t.Errorf("ErrorCode: want VENDOR_EMPTY_RESPONSE, got %q", resp.ErrorCode)
+	}
+	if resp.Key != nil {
+		t.Error("no key must be returned when vendor payload is empty")
 	}
 }
 
@@ -146,12 +173,13 @@ func TestKeyMgmt_BindKey_MultipleVendors(t *testing.T) {
 					if req.Vendor != vendor {
 						t.Errorf("Vendor: want %v, got %v", vendor, req.Vendor)
 					}
-					return &pb.ForwardResponse{}, nil
+					return &pb.ForwardResponse{Payload: []byte("vendor-key-material")}, nil
 				},
 			}
 			svc := newTestService(hubClient)
 			resp, err := svc.BindKey(context.Background(), &pb.BindKeyRequest{
 				VehicleId: "vehicle-001",
+				DeviceId:  "device-001",
 				Vendor:    vendor,
 				Protocol:  pb.Protocol_CCC_DK3,
 				TraceId:   testTraceID(),
@@ -181,12 +209,13 @@ func TestKeyMgmt_BindKey_MultipleProtocols(t *testing.T) {
 					if req.Protocol != proto {
 						t.Errorf("Protocol: want %v, got %v", proto, req.Protocol)
 					}
-					return &pb.ForwardResponse{}, nil
+					return &pb.ForwardResponse{Payload: []byte("vendor-key-material")}, nil
 				},
 			}
 			svc := newTestService(hubClient)
 			resp, err := svc.BindKey(context.Background(), &pb.BindKeyRequest{
 				VehicleId: "vehicle-001",
+				DeviceId:  "device-001",
 				Vendor:    pb.PhoneVendor_APPLE,
 				Protocol:  proto,
 				TraceId:   testTraceID(),
@@ -360,7 +389,7 @@ func TestKeyMgmt_BindKey_ForwardRequestFields(t *testing.T) {
 	hubClient := &mockHubClient{
 		forwardToVendorFunc: func(_ context.Context, req *pb.ForwardRequest, _ ...grpc.CallOption) (*pb.ForwardResponse, error) {
 			capturedReq = req
-			return &pb.ForwardResponse{}, nil
+			return &pb.ForwardResponse{Payload: []byte("vendor-key-material")}, nil
 		},
 	}
 

@@ -104,7 +104,7 @@ func TestDetectProtocol_VendorAutoDetection(t *testing.T) {
 func TestUnifiedKeyService_UnbindKey_WithRegistration(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	resp, err := s.UnbindKey(context.Background(), &pb.UnbindKeyRequest{KeyId: "key-001"})
@@ -120,7 +120,7 @@ func TestUnifiedKeyService_UnbindKey_WithRegistration(t *testing.T) {
 func TestUnifiedKeyService_RevokeKey_WithRegistration(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	resp, err := s.RevokeKey(context.Background(), &pb.RevokeKeyRequest{
@@ -302,7 +302,7 @@ func TestUnifiedKeyService_ListKeys_VariousStates(t *testing.T) {
 func TestUnifiedKeyService_GetKey_WithBind(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	// Bind key first to create session state

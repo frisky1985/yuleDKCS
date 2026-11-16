@@ -8,16 +8,37 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
 	pb "github.com/frisky1985/yuleDKCS/backend/cloud/hub/api/v1"
 	"github.com/frisky1985/yuleDKCS/backend/cloud/hub/internal/adapter/s2s"
+	"go.uber.org/zap"
 )
 
 // ── ICCEAdapter: missing coverage (UnbindKey, RevokeNotify, ShareKey, AcceptShare, Notify) ──
 
+// 生产模式必须 fail-closed: 未配置厂商后端/HSM 时不得合成任何密钥材料。
+func TestAdapters_ProductionMode_RefuseSyntheticKeys(t *testing.T) {
+	logger := zap.NewNop()
+	req := &pb.BindKeyRequest{
+		VehicleId:    "VH-1",
+		DeviceId:     "DEV-1",
+		UserId:       "U1",
+		DevicePubkey: make([]byte, 64),
+	}
+
+	if _, err := NewCCCAdapter("apple", logger).BindKey(context.Background(), req); err == nil {
+		t.Fatal("CCC production adapter must refuse to synthesize key material")
+	}
+	if _, err := NewICCEAdapter("huawei", logger).BindKey(context.Background(), req); err == nil {
+		t.Fatal("ICCE production adapter must refuse to synthesize key material")
+	}
+	if _, err := NewICCOAAdapter("xiaomi", logger).BindKey(context.Background(), req); err == nil {
+		t.Fatal("ICCOA production adapter must refuse to synthesize key material")
+	}
+}
+
 func TestICCEAdapterUnbindKey(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 	err := a.UnbindKey(context.Background(), "key-icce-001")
 	if err != nil {
 		t.Fatalf("UnbindKey should not fail: %v", err)
@@ -26,7 +47,7 @@ func TestICCEAdapterUnbindKey(t *testing.T) {
 
 func TestICCEAdapterRevokeNotify(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 	err := a.RevokeNotify(context.Background(), "key-icce-001", "test-revoke")
 	if err != nil {
 		t.Fatalf("RevokeNotify should not fail: %v", err)
@@ -35,7 +56,7 @@ func TestICCEAdapterRevokeNotify(t *testing.T) {
 
 func TestICCEAdapterShareKey(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 	req := &pb.CreateShareRequest{
 		KeyId:      "key-icce-001",
 		FromUserId: "user-1",
@@ -54,7 +75,7 @@ func TestICCEAdapterShareKey(t *testing.T) {
 
 func TestICCEAdapterAcceptShare(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 	req := &pb.AcceptShareRequest{
 		ShareCode: "123456",
 		DeviceId:  "dev-002",
@@ -78,7 +99,7 @@ func TestICCEAdapterAcceptShare(t *testing.T) {
 
 func TestICCEAdapterNotify(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 	err := a.Notify(context.Background(), "user-1", &pb.VehicleStatusUpdate{})
 	if err != nil {
 		t.Fatalf("Notify should not fail: %v", err)
@@ -87,7 +108,7 @@ func TestICCEAdapterNotify(t *testing.T) {
 
 func TestICCEAdapterFullLifecycle(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCEAdapter("huawei", logger)
+	a := NewICCEAdapterInDemoMode("huawei", logger)
 
 	// BindKey
 	bindResp, err := a.BindKey(context.Background(), &pb.BindKeyRequest{
@@ -128,7 +149,7 @@ func TestICCEAdapterFullLifecycle(t *testing.T) {
 
 func TestCCCAdapterUnbindKey(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewCCCAdapter("apple", logger)
+	a := NewCCCAdapterInDemoMode("apple", logger)
 	err := a.UnbindKey(context.Background(), "key-ccc-001")
 	if err != nil {
 		t.Fatalf("UnbindKey should not fail: %v", err)
@@ -137,7 +158,7 @@ func TestCCCAdapterUnbindKey(t *testing.T) {
 
 func TestCCCAdapterRevokeNotify(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewCCCAdapter("apple", logger)
+	a := NewCCCAdapterInDemoMode("apple", logger)
 	err := a.RevokeNotify(context.Background(), "key-ccc-001", "stolen")
 	if err != nil {
 		t.Fatalf("RevokeNotify should not fail: %v", err)
@@ -146,7 +167,7 @@ func TestCCCAdapterRevokeNotify(t *testing.T) {
 
 func TestCCCAdapterNotify(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewCCCAdapter("apple", logger)
+	a := NewCCCAdapterInDemoMode("apple", logger)
 	err := a.Notify(context.Background(), "user-1", &pb.VehicleStatusUpdate{})
 	if err != nil {
 		t.Fatalf("Notify should not fail: %v", err)
@@ -155,7 +176,7 @@ func TestCCCAdapterNotify(t *testing.T) {
 
 func TestCCCAdapterFullLifecycle(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewCCCAdapter("samsung", logger)
+	a := NewCCCAdapterInDemoMode("samsung", logger)
 
 	req := &pb.BindKeyRequest{
 		VehicleId:    "VH-CCC-001",
@@ -292,7 +313,7 @@ func TestICCOAAdapter_BindKey_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_BindKey_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger) // client = nil
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger) // client = nil
 	resp, err := a.BindKey(context.Background(), &pb.BindKeyRequest{
 		VehicleId:    "VH-ICCOA-001",
 		DeviceId:     "DEV-ICCOA-001",
@@ -337,7 +358,7 @@ func TestICCOAAdapter_ShareKey_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_ShareKey_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	resp, err := a.ShareKey(context.Background(), &pb.CreateShareRequest{
 		KeyId: "key-001", FromUserId: "user-001",
 	})
@@ -358,9 +379,9 @@ func TestICCOAAdapter_AcceptShare_WithS2S(t *testing.T) {
 
 	a := newICCOAAdapterWithMockS2S(mockSrv.URL)
 	resp, err := a.AcceptShare(context.Background(), &pb.AcceptShareRequest{
-		ShareCode: "888888",
-		DeviceId:  "DEV-002",
-		UserId:    "user-002",
+		ShareCode:    "888888",
+		DeviceId:     "DEV-002",
+		UserId:       "user-002",
 		DevicePubkey: make([]byte, 32),
 	})
 	if err != nil {
@@ -376,7 +397,7 @@ func TestICCOAAdapter_AcceptShare_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_AcceptShare_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	resp, err := a.AcceptShare(context.Background(), &pb.AcceptShareRequest{
 		ShareCode: "123456",
 	})
@@ -404,7 +425,7 @@ func TestICCOAAdapter_UnbindKey_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_UnbindKey_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	err := a.UnbindKey(context.Background(), "key-001")
 	if err != nil {
 		t.Fatalf("UnbindKey stub should not fail: %v", err)
@@ -424,7 +445,7 @@ func TestICCOAAdapter_RevokeNotify_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_RevokeNotify_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	err := a.RevokeNotify(context.Background(), "key-001", "stolen")
 	if err != nil {
 		t.Fatalf("RevokeNotify stub should not fail: %v", err)
@@ -447,7 +468,7 @@ func TestICCOAAdapter_HealthCheck_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_HealthCheck_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	status, err := a.HealthCheck(context.Background())
 	if err != nil {
 		t.Fatalf("HealthCheck stub should not fail: %v", err)
@@ -472,15 +493,15 @@ func TestICCOAAdapter_Notify_WithS2S(t *testing.T) {
 
 func TestICCOAAdapter_Notify_StubMode(t *testing.T) {
 	logger := zap.NewNop()
-	a := NewICCOAAdapter("xiaomi", logger)
+	a := NewICCOAAdapterInDemoMode("xiaomi", logger)
 	err := a.Notify(context.Background(), "user-001", &pb.VehicleStatusUpdate{})
 	if err != nil {
 		t.Fatalf("Notify stub should not fail: %v", err)
 	}
 }
 
-func TestICCOAAdapter_BindKey_S2SFails_GracefulDegradation(t *testing.T) {
-	// S2S returns 500 — adapter should fall back to stub result
+func TestICCOAAdapter_BindKey_S2SFails_FailClosed(t *testing.T) {
+	// S2S 返回 500 — 生产适配器必须失败，不得合成占位密钥。
 	s2sAttempts := 0
 	mockSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s2sAttempts++
@@ -503,12 +524,12 @@ func TestICCOAAdapter_BindKey_S2SFails_GracefulDegradation(t *testing.T) {
 		DevicePubkey: make([]byte, 64),
 		KeyType:      pb.KeyType_OWNER,
 	})
-	// Should NOT fail — graceful degradation returns stub
-	if err != nil {
-		t.Fatalf("BindKey should gracefully degrade, not fail: %v", err)
+	// fail-closed: 无厂商密钥材料时必须报错，且不得返回钥匙。
+	if err == nil {
+		t.Fatal("BindKey must fail closed when S2S is unavailable")
 	}
-	if resp.Key.KeyId == "" {
-		t.Error("expected stub key ID on S2S failure")
+	if resp != nil {
+		t.Error("no BindKeyResponse may be returned on failure")
 	}
 	if s2sAttempts < 1 {
 		t.Errorf("expected at least 1 S2S attempt, got %d", s2sAttempts)
@@ -786,12 +807,12 @@ type errAdapter struct {
 	protocol string
 }
 
-func (e *errAdapter) Vendor() string                                 { return e.vendor }
-func (e *errAdapter) Protocol() string                               { return e.protocol }
+func (e *errAdapter) Vendor() string   { return e.vendor }
+func (e *errAdapter) Protocol() string { return e.protocol }
 func (e *errAdapter) BindKey(ctx context.Context, req *pb.BindKeyRequest) (*pb.BindKeyResponse, error) {
 	return nil, nil
 }
-func (e *errAdapter) UnbindKey(ctx context.Context, keyID string) error { return nil }
+func (e *errAdapter) UnbindKey(ctx context.Context, keyID string) error                   { return nil }
 func (e *errAdapter) RevokeNotify(ctx context.Context, keyID string, reason string) error { return nil }
 func (e *errAdapter) ShareKey(ctx context.Context, req *pb.CreateShareRequest) (*pb.CreateShareResponse, error) {
 	return nil, nil
@@ -818,7 +839,7 @@ func TestRegistryListStatus_WithErrors(t *testing.T) {
 	r := NewRegistry(logger)
 
 	r.Register("errVendor", "errProto", &errAdapter{vendor: "errVendor", protocol: "errProto"})
-	r.Register("goodVendor", "goodProto", NewICCOAAdapter("goodVendor", logger))
+	r.Register("goodVendor", "goodProto", NewICCOAAdapterInDemoMode("goodVendor", logger))
 
 	ctx := context.Background()
 	statuses := r.ListStatus(ctx)
@@ -865,7 +886,7 @@ func TestRegistryConcurrentReadWrite(t *testing.T) {
 	r := NewRegistry(logger)
 
 	// Pre-register one adapter
-	r.Register("base", "proto", NewICCOAAdapter("base", logger))
+	r.Register("base", "proto", NewICCOAAdapterInDemoMode("base", logger))
 
 	done := make(chan bool, 20)
 
@@ -873,7 +894,7 @@ func TestRegistryConcurrentReadWrite(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		go func(idx int) {
 			vendor := map[int]string{0: "a", 1: "b", 2: "c", 3: "d", 4: "e"}[idx]
-			r.Register(vendor, "proto", NewICCOAAdapter(vendor, logger))
+			r.Register(vendor, "proto", NewICCOAAdapterInDemoMode(vendor, logger))
 			done <- true
 		}(i)
 	}

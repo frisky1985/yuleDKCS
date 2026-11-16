@@ -107,7 +107,7 @@ func TestCoverage_KeyManagementService_SuspendKey_NoAdapter(t *testing.T) {
 func TestCoverage_KeyManagementService_RevokeKey_AdminBypass(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -131,7 +131,7 @@ func TestCoverage_KeyManagementService_RevokeKey_AdminBypass(t *testing.T) {
 func TestCoverage_KeyManagementService_BindKey_StoreKeyRecord(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 
 	s := NewKeyManagementService(reg, logger)
 	ctx := context.Background()
@@ -378,7 +378,7 @@ func TestCoverage_UnifiedKeyService_RenewKey_EmptySessions(t *testing.T) {
 func TestCoverage_UnifiedKeyService_GetKey_AfterNegotiation(t *testing.T) {
 	logger := zap.NewNop()
 	reg := adapter.NewRegistry(logger)
-	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapter("XIAOMI", logger))
+	reg.Register("XIAOMI", "ICCOA_DK40", adapter.NewICCOAAdapterInDemoMode("XIAOMI", logger))
 	s := NewUnifiedKeyService(reg, logger)
 
 	// Get a key that was bound
