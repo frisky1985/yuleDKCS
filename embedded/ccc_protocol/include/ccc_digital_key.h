@@ -78,7 +78,10 @@ ccc_status_t nfc_oob_exchange(ccc_nfc_oob_data_t *oob_out, ccc_nfc_oob_data_t *o
 /* ========================================================================
  *  BLE Module (NXP KW47A)
  * ======================================================================== */
-#define CCC_BLE_SERVICE_UUID   0xFFD1  /* CCC Digital Key Service (SIG Assigned) */
+#include "hardware_abstraction.h"   /* CCC_SERVICE_UUID / ICCOA_SERVICE_UUID / ICCE_SERVICE_UUID 单一来源 */
+
+/* 便捷别名 — CCC BLE Service UUID (主用 v4.0, 见 hardware_abstraction.h) */
+#define CCC_BLE_SERVICE_UUID   CCC_SERVICE_UUID
 #define BLE_MAX_PAYLOAD        244     /* ATT MTU - 3 */
 #define BLE_MAX_CONN           1
 #define BLE_ADV_DATA_MAX       31
@@ -106,7 +109,59 @@ typedef void (*ble_recv_cb_t)(uint16_t conn_handle, const uint8_t *data, uint16_
 typedef void (*ble_conn_cb_t)(uint16_t conn_handle, uint8_t status);
 typedef void (*ble_disconn_cb_t)(uint16_t conn_handle, uint8_t reason);
 
-/* BLE message types */
+/* ========================================================================
+ *  CCC BLE v4.0 帧格式 (CCC-TS-101 Table 19-19) — 单一来源
+ *
+ * 线格式 (4 字节帧头 + 负载):
+ *    [0]     message_header  Bit[5:0]=Message Type, Bit[7:6]=RFU(置 0)
+ *    [1]     payload_header  Message ID (DK_APDU_RQ=0x0B / DK_APDU_RS=0x0C)
+ *    [2-3]   length          负载长度 (大端 u16)
+ *    [4...]  payload
+ *
+ * 规范示例: SELECT APDU → 0x01 0x0B 0x00 0x13 00A404000DA000000809434343444B41763100
+ *
+ * 注: 旧 R3.0 参考实现定义过 5B 帧头 (msg_type+msg_id+len_LE+reserved) 与
+ *     非规范 Message Type 值域 (0x01/0x20/0x30/0x40...)，但从未在 ble_send()
+ *     中实际封装，纯死代码。两端协议不一致导致根本无法互通。
+ *     本定义为 v4.0 规范收敛，车端与手机端 (iOS/Android) 必须严格一致。
+ * ======================================================================== */
+
+/** CCC Message Type (CCC-TS-101 Table 19-21, Bit[5:0]) */
+typedef enum {
+    CCC_MSG_TYPE_FRAMEWORK        = 0,  /**< Framework message */
+    CCC_MSG_TYPE_SE               = 1,  /**< Secure Element APDU */
+    CCC_MSG_TYPE_UWB_RANGING      = 2,  /**< UWB Ranging Service */
+    CCC_MSG_TYPE_DK_EVENT_NOTIFY  = 3,  /**< DK Event Notification */
+    CCC_MSG_TYPE_VEHICLE_OEM_APP  = 4,  /**< Vehicle OEM App */
+    CCC_MSG_TYPE_SUPPLEMENTARY    = 5,  /**< Supplementary Service */
+    CCC_MSG_TYPE_HEAD_UNIT_PAIR   = 6   /**< Head Unit Pairing */
+} ccc_msg_type_e;
+
+/** CCC Payload Header (Message ID, §19.3.2) */
+typedef enum {
+    CCC_MSG_ID_DK_APDU_RQ  = 0x0B,   /**< DK APDU Request  (手机 → 车) */
+    CCC_MSG_ID_DK_APDU_RS  = 0x0C    /**< DK APDU Response (车 → 手机) */
+} ccc_msg_id_e;
+
+/** CCC v4.0 帧头 — 4B packed, 大端 length */
+typedef struct __attribute__((packed)) {
+    uint8_t  message_header;   /**< Bit[5:0]=ccc_msg_type_e, Bit[7:6]=RFU(0) */
+    uint8_t  payload_header;   /**< ccc_msg_id_e */
+    uint16_t payload_len_be;   /**< 负载长度 (大端 u16, 无线传输序) */
+} ccc_frame_header_v4_t;
+
+/** 帧头长度常量 — 供手机端/测试脚本引用 */
+#define CCC_FRAME_HEADER_LEN   4
+
+/** RFU 掩码: message_header 高 2 位必须置 0 */
+#define CCC_MSG_TYPE_MASK      0x3F
+#define CCC_MSG_TYPE_RFU_MASK  0xC0
+
+/* ========================================================================
+ *  R3.0 兼容 (旧参考实现, 不建议新代码使用)
+ *  仅在车端与存量 R3.0 设备互操作时启用, v4.0 主路径禁止使用
+ * ======================================================================== */
+#if defined(CCC_R30_COMPAT)
 typedef enum {
     BLE_MSG_PAIR_REQUEST     = 0x01,
     BLE_MSG_PAIR_RESPONSE    = 0x02,
@@ -119,13 +174,7 @@ typedef enum {
     BLE_MSG_STATE_NOTIFY     = 0x40,
     BLE_MSG_ERROR            = 0xFF
 } ble_msg_type_e;
-
-typedef struct __attribute__((packed)) {
-    uint8_t  msg_type;
-    uint8_t  msg_id;
-    uint16_t payload_len;
-    uint8_t  reserved;
-} ble_frame_header_t;
+#endif /* CCC_R30_COMPAT */
 
 ccc_status_t ble_kw47a_init(void);
 ccc_status_t ble_kw47a_deinit(void);
@@ -139,6 +188,47 @@ ccc_status_t ble_register_conn_cb(ble_conn_cb_t cb);
 ccc_status_t ble_register_disconn_cb(ble_disconn_cb_t cb);
 ccc_status_t ble_oob_pair(const ccc_nfc_oob_data_t *oob);
 bool         ble_is_connected(uint16_t conn_handle);
+
+/* ========================================================================
+ *  CCC v4.0 帧编解码 + 高层发送 (单一来源, 手机端严格对齐)
+ *
+ * 帧格式: ccc_frame_header_v4_t (4B) + payload, 详见上方定义.
+ *
+ * 用法:
+ *   // 方式 1: 高层一键发送 (内部自动分配栈上 buffer)
+ *   ccc_ble_send_v4(h, CCC_MSG_TYPE_SE, CCC_MSG_ID_DK_APDU_RS, payload, len);
+ *
+ *   // 方式 2: 手动构建帧 (大 payload 需外部 buffer)
+ *   uint8_t frame[CCC_FRAME_HEADER_LEN + 512];
+ *   uint16_t frame_len;
+ *   ccc_frame_build(CCC_MSG_TYPE_SE, CCC_MSG_ID_DK_APDU_RS,
+ *                   payload, len, frame, &frame_len);
+ *   ble_send(h, frame, frame_len);
+ * ======================================================================== */
+
+/** 构建 v4.0 帧: 帧头 + payload, 输出到 out_frame.
+ *  out_frame 必须 ≥ 4 + payload_len 字节.
+ *  RFU 位自动置 0, payload_len_be 大端序自动编码. */
+ccc_status_t ccc_frame_build(uint8_t msg_type, uint8_t msg_id,
+                              const uint8_t *payload, uint16_t payload_len,
+                              uint8_t *out_frame, uint16_t *out_len);
+
+/** 解析 v4.0 帧: 长度精确匹配, 非法帧头/截断/粘包均返回 CCC_ERR_PARAM.
+ *  out_payload 指向 out_frame+4 (不复制), 调用者在 out_frame 存活期间有效. */
+ccc_status_t ccc_frame_parse(const uint8_t *frame, uint16_t frame_len,
+                              ccc_frame_header_v4_t *out_hdr,
+                              const uint8_t **out_payload, uint16_t *out_payload_len);
+
+/** CCC v4.0 高层发送: 自动封装帧头 + ble_send.
+ *  payload_len > (BLE_MAX_PAYLOAD - 4) 时返回 CCC_ERR_PARAM (单帧限制). */
+ccc_status_t ccc_ble_send_v4(uint16_t conn_handle,
+                              uint8_t msg_type, uint8_t msg_id,
+                              const uint8_t *payload, uint16_t payload_len);
+
+/** 协议辅助: 从 message_header 提取 Message Type (屏蔽 RFU 位). */
+static inline uint8_t ccc_msg_type_from_header(uint8_t header_byte) {
+    return header_byte & CCC_MSG_TYPE_MASK;
+}
 
 /* ========================================================================
  *  UWB Module (NXP NCJ29D6)

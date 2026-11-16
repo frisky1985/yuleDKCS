@@ -17,6 +17,7 @@ void tearDown(void) {}
 extern int run_iccoa_core_tests(void);
 extern int run_iccoa_ble_tests(void);
 extern int run_ccc_core_tests(void);
+extern int run_ccc_frame_tests(void);
 extern int run_icce_tests(void);
 extern int run_unified_tests(void);
 extern int run_edge_condition_tests(void);
@@ -47,6 +48,9 @@ int main(void)
 
     printf("\n--- CCC Digital Key Core Tests ---\n");
     ret += run_ccc_core_tests();
+
+    printf("\n--- CCC Digital Key v4.0 Frame Tests (协议一致性锚点) ---\n");
+    ret += run_ccc_frame_tests();
 
     printf("\n--- ICCE Protocol Tests ---\n");
     ret += run_icce_tests();

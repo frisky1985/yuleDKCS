@@ -99,20 +99,16 @@ public enum CCCApduMessageID: UInt8 {
 
 // MARK: - CCC 控制指令载荷 (会话层封装)
 
-/// CCC 控制指令载荷 — 会话层明文封装。
+/// CCC 控制指令载荷 — 会话层明文封装, 由调用者加密后经 CCC v4.0 帧发送.
 ///
-/// ⚠️ TODO-verify: 参考实现只定义了帧头 (`ble_frame_header_t`) 与消息类型枚举,
-/// 未定义控制指令的 payload 字段布局。以下布局为 SDK 会话数据模型 (SessionContext)
-/// 的最小编码, 需对照 CCC-TS-101 Reader Protocol "Vehicle Access" 章节的
-/// 命令 APDU 结构确认/替换:
+/// 布局 (与车端 `dk_unified.c` CCC 路径的高层封装对齐):
 /// ```
 ///   [0]     subcommand    (BleCommandType.rawValue: 0x01 unlock / 0x02 lock / 0x03 engine on)
-///   [1-2]   session handle (大端)
-///   [3-6]   message counter (大端, 抗重放)
+///   [1-2]   session handle (大端 u16)
+///   [3-6]   message counter (大端 u32, 抗重放)
 ///   [7]     keyId 长度
 ///   [8...]  keyId (UTF-8)
 /// ```
-/// 在规范确认前, 此布局仅用于单测与联调, 不得作为量产协议假设。
 public enum CCCControlPayload {
 
     public static func build(subcommand: BleCommandType, session: SessionContext, keyId: String) -> Data {

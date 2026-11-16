@@ -67,7 +67,7 @@ UNI_SRC_FILE := $(UNI_SRC)/dk_unified.c
 # Test files (each has its own main())
 TEST_DIR     := $(TESTDIR)/test
 TEST_ICCOA   := $(TEST_DIR)/test_iccoa_dk_core.c $(TEST_DIR)/test_iccoa_ble.c
-TEST_CCC     := $(TEST_DIR)/test_ccc_dk_core.c
+TEST_CCC     := $(TEST_DIR)/test_ccc_dk_core.c $(TEST_DIR)/test_ccc_frame.c
 TEST_ICCE    := $(TEST_DIR)/test_icce.c
 TEST_UNIFIED := $(TEST_DIR)/test_unified.c
 TEST_ALL     := $(TESTDIR)/support/test_suite.c
@@ -108,7 +108,6 @@ CFLAGS   := -Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
             -DNCJ29D6_IRQ_PORT=0 -DNCJ29D6_IRQ_PIN=9 \
             -DNCJ29D6_RST_PORT=0 -DNCJ29D6_RST_PIN=10 \
             -DNCJ29D6_WAKE_PORT=0 -DNCJ29D6_WAKE_PIN=11 \
-            -DCCC_SERVICE_UUID=0xFFD1 \
             -DNFC_SERVICE_UUID=0xFFD2 \
             -DUWB_CONFIG_UUID=0xFFD3
 LDFLAGS  := -lm
@@ -152,6 +151,8 @@ $(BUILD)/test_iccoa_ble.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_ccc_dk_core.o: $(TEST_DIR)/test_ccc_dk_core.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_ccc_frame.o: $(TEST_DIR)/test_ccc_frame.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_icce.o: $(TEST_DIR)/test_icce.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
 $(BUILD)/test_unified.o: $(TEST_DIR)/test_unified.c | $(BUILD)
@@ -168,6 +169,8 @@ $(BUILD)/test_iccoa_ble_lib.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DICCOA_CORE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_ccc_lib.o: $(TEST_DIR)/test_ccc_dk_core.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_CCC_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_ccc_frame_lib.o: $(TEST_DIR)/test_ccc_frame.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_icce_lib.o: $(TEST_DIR)/test_icce.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_unified_lib.o: $(TEST_DIR)/test_unified.c | $(BUILD)
@@ -379,7 +382,7 @@ test_secure_boot: $(BUILD)/test_secure_boot.o $(BUILD)/secure_boot.o \
 
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
-          $(BUILD)/test_ccc_lib.o $(BUILD)/test_icce_lib.o \
+          $(BUILD)/test_ccc_lib.o $(BUILD)/test_ccc_frame_lib.o $(BUILD)/test_icce_lib.o \
           $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
           $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
           $(BUILD)/test_se050_scp03_lib.o \

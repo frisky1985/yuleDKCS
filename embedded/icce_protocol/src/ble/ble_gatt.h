@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* ICCE Service UUID 单一来源 — 同 hardware_abstraction.h
+ * ICCE T/CA 110-2020: Service 0xFEFA
+ * 旧参考实现曾用 0xFFE0 范围, 与规范不符, 已废弃. */
+#include "../../ccc_protocol/include/hardware_abstraction.h"
+
 #define GATT_SUCCESS 0
 
 /* ── GATT Characteristic Properties (BLE Core Spec, Vol 3, Part G, 3.3.1.1) ── */
@@ -24,13 +29,16 @@
 #define GATT_PERM_WRITE_ENCRYPTED    0x08
 #define GATT_PERM_AUTHENTICATION     0x10
 
-/* ── GATT Service / Characteristic UUIDs (16-bit, ICCE profile) ── */
-#define GATT_UUID_DIGITAL_KEY_SERVICE  0xFFE0
-#define GATT_UUID_KEY_STATUS           0xFFE1
-#define GATT_UUID_RANGING_DATA         0xFFE2
-#define GATT_UUID_AUTH_CHALLENGE       0xFFE3
-#define GATT_UUID_CONTROL_COMMAND      0xFFE4
-#define GATT_UUID_SESSION_KEY          0xFFE5
+/* ── GATT Service / Characteristic UUIDs (16-bit, ICCE T/CA 110-2020)
+ * 单一来源, 手机端 (iOS/Android) 严格对齐.
+ * 旧参考实现曾使用 0xFFE0-0xFFE5 范围, 已废弃 (两端无法发现彼此).
+ * ── */
+#define GATT_UUID_DIGITAL_KEY_SERVICE  ICCE_SERVICE_UUID   /* 0xFEFA */
+#define GATT_UUID_KEY_STATUS           0xFEFB              /* iOS: icceKeyStatusChar */
+#define GATT_UUID_RANGING_DATA         0xFEFC              /* iOS: icceRangingDataChar */
+#define GATT_UUID_AUTH_CHALLENGE       0xFEFD              /* iOS: icceAuthChallengeChar */
+#define GATT_UUID_CONTROL_COMMAND      0xFEFE              /* iOS: icceControlCmdChar */
+#define GATT_UUID_SESSION_KEY          0xFEFF              /* iOS: icceSessionKeyChar */
 
 /* GATT Service */
 typedef struct {

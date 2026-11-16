@@ -456,6 +456,74 @@ ccc_status_t ble_send(uint16_t conn_handle, const uint8_t *data, uint16_t len)
     return kw47a_send_cmd(KW47A_CMD_SEND_DATA, data, len);
 }
 
+/* ========================================================================
+ *  CCC v4.0 帧编解码实现 (ccc_frame_build / ccc_frame_parse / ccc_ble_send_v4)
+ *  帧格式契约见 ccc_digital_key.h, 手机端 (iOS/Android) 严格对齐.
+ * ======================================================================== */
+
+ccc_status_t ccc_frame_build(uint8_t msg_type, uint8_t msg_id,
+                              const uint8_t *payload, uint16_t payload_len,
+                              uint8_t *out_frame, uint16_t *out_len)
+{
+    if (!out_frame || !out_len) return CCC_ERR_INVALID_PARAM;
+    if (payload_len > BLE_MAX_PAYLOAD - CCC_FRAME_HEADER_LEN) return CCC_ERR_INVALID_PARAM;
+    if (msg_type > CCC_MSG_TYPE_HEAD_UNIT_PAIR) return CCC_ERR_INVALID_PARAM;
+
+    /* message_header: Bit[5:0]=msg_type, Bit[7:6]=RFU(必须置 0) */
+    out_frame[0] = msg_type & CCC_MSG_TYPE_MASK;
+    out_frame[1] = msg_id;
+    /* payload_len: 大端序 */
+    out_frame[2] = (uint8_t)((payload_len >> 8) & 0xFF);
+    out_frame[3] = (uint8_t)(payload_len & 0xFF);
+
+    if (payload_len > 0 && payload) {
+        memcpy(out_frame + CCC_FRAME_HEADER_LEN, payload, payload_len);
+    }
+    *out_len = CCC_FRAME_HEADER_LEN + payload_len;
+    return CCC_OK;
+}
+
+ccc_status_t ccc_frame_parse(const uint8_t *frame, uint16_t frame_len,
+                              ccc_frame_header_v4_t *out_hdr,
+                              const uint8_t **out_payload, uint16_t *out_payload_len)
+{
+    if (!frame || frame_len < CCC_FRAME_HEADER_LEN) return CCC_ERR_PARAM;
+    if (!out_hdr) return CCC_ERR_INVALID_PARAM;
+
+    uint8_t header_byte = frame[0];
+    /* RFU 位必须为 0, 否则拒绝 */
+    if ((header_byte & CCC_MSG_TYPE_RFU_MASK) != 0) return CCC_ERR_PARAM;
+
+    /* 用 memcpy 安全填充 packed struct (避免未对齐访问) */
+    memcpy(out_hdr, frame, CCC_FRAME_HEADER_LEN);
+
+    /* 手动解码 BE length — 绕过 packed struct 的 uint16_t 未对齐访问 */
+    uint16_t declared = ((uint16_t)frame[2] << 8) | frame[3];
+
+    /* 长度精确匹配: 截断或粘包均拒绝 (fail-closed) */
+    uint16_t actual = frame_len - CCC_FRAME_HEADER_LEN;
+    if (declared != actual) return CCC_ERR_PARAM;
+
+    if (out_payload) *out_payload = actual > 0 ? (frame + CCC_FRAME_HEADER_LEN) : NULL;
+    if (out_payload_len) *out_payload_len = actual;
+    return CCC_OK;
+}
+
+ccc_status_t ccc_ble_send_v4(uint16_t conn_handle,
+                              uint8_t msg_type, uint8_t msg_id,
+                              const uint8_t *payload, uint16_t payload_len)
+{
+    if (payload_len > BLE_MAX_PAYLOAD - CCC_FRAME_HEADER_LEN) return CCC_ERR_PARAM;
+
+    /* 栈上分配帧 buffer — 最大 MTU 244 + 4 = 248B, 远低于栈溢出风险 */
+    uint8_t frame[BLE_MAX_PAYLOAD];
+    uint16_t frame_len;
+    ccc_status_t ret = ccc_frame_build(msg_type, msg_id, payload, payload_len,
+                                        frame, &frame_len);
+    if (ret != CCC_OK) return ret;
+    return ble_send(conn_handle, frame, frame_len);
+}
+
 ccc_status_t ble_register_recv_cb(ble_recv_cb_t cb)
 {
     g_recv_cb = cb;
