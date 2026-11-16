@@ -65,6 +65,10 @@
  *   8. 权限不足 / 钥匙未绑定     -> ERR_PERMISSION_DENIED
  *   9. 未注册执行器              -> ERR_UNSUPPORTED_COMMAND (不假成功)
  *  10. 任何错误路径均不得触发车控执行器, 不得改变车辆状态.
+ *
+ * 注: CAPABILITY/STATUS 的 session_id/sequence 是"固定取值字段",
+ *     取值不为 0 属于格式错误, 按第 3 条 ERR_MALFORMED 处理;
+ *     仅 VEHICLE_CONTROL 的 session_id/sequence 走第 6/7 条.
  */
 
 #ifndef CCC_OEM_APP_H
@@ -153,19 +157,25 @@ typedef enum {
 /** STATUS: session_id(4,BE) + next_sequence(2,BE) + reserved(2,=0) */
 #define CCC_OEM_STATUS_BODY_LEN      8u
 
-/* ─── 实现接口契约 (本版仅声明, 实现落地前不得注册到消息路由) ─── */
+/* ─── 实现接口 ─── */
 
 /**
  * 处理一个 OEM App 载荷, 产出响应载荷.
+ * @param auth    当前认证会话快照, 由调用方 (core) 通过 ccc_dk_get_auth_info()
+ *                取得后注入; 模块不反向依赖 core, 也便于测试构造会话.
+ *                不得为 NULL.
  * @param rq      请求载荷 (不含 DK 帧头)
  * @param rq_len  请求载荷长度
  * @param rs      响应缓冲
  * @param rs_cap  缓冲容量, 至少 CCC_OEM_APP_HDR_LEN + CCC_OEM_APP_MAX_BODY
- * @return 响应载荷长度; 永不为 0 (错误也以结果码形式返回)
+ * @return 响应载荷长度; rs_cap >= CCC_OEM_APP_HDR_LEN 时永不为 0
+ *         (错误也以结果码形式返回)
  *
  * 约定: 任何输入都必须产生合法响应, 不得断言/越界/部分执行.
+ *      模块内部仅保存 sequence 跟踪状态; session_id 变化时自动复位.
  */
-uint16_t ccc_oem_app_handle(const uint8_t *rq, uint16_t rq_len,
+uint16_t ccc_oem_app_handle(const ccc_auth_info_t *auth,
+                            const uint8_t *rq, uint16_t rq_len,
                             uint8_t *rs, uint16_t rs_cap);
 
 /** 会话复位: 断开连接/重新认证时由 core 调用, 清空 sequence 跟踪 */

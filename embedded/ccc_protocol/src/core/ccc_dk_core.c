@@ -5,6 +5,7 @@
 
 #include "ccc_digital_key.h"
 #include "ccc_apdu.h"
+#include "ccc_oem_app.h"
 #include "crypto_random.h"
 
 /* -------------------------------------------------------------------
@@ -130,6 +131,7 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
 {
     (void)conn_handle; (void)reason;
     ccc_apdu_reset();          /* 会话隔离: 断开即作废 AID/挑战/认证态 */
+    ccc_oem_app_reset_session();
     clear_auth_session();
     g_status.ble_connected = false;
     transition_state(STATE_STANDBY);
@@ -139,7 +141,8 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
  *  APDU 路由 — 传输层之上、密码学服务之下的唯一入口
  *
  *  BLE RX -> ccc_frame_parse (v4.0 帧) -> 本函数按 msg_type 分流
- *    SE + DK_APDU_RQ -> ccc_apdu_process -> SE + DK_APDU_RS 回包
+ *    SE + DK_APDU_RQ   -> ccc_apdu_process  -> SE + DK_APDU_RS 回包
+ *    OEM App + OEM_RQ  -> ccc_oem_app_handle -> OEM App + OEM_RS 回包
  *  帧畸形/非预期消息一律丢弃, 不回包 (fail-closed).
  * ------------------------------------------------------------------- */
 static void on_apdu_authenticated(const uint8_t *challenge, uint16_t challenge_len,
@@ -175,11 +178,27 @@ static void ccc_ble_rx_handler(uint16_t conn_handle,
                                   CCC_MSG_TYPE_SE, CCC_MSG_ID_DK_APDU_RS,
                                   resp, resp_len);
         }
+        return;
     }
-    /* 其他 msg_type (UWB_RANGING / DK_EVENT_NOTIFY / FRAMEWORK)
-     * 不属于 APDU 路由, 由各自模块处理.
-     * 注意: CCC_MSG_TYPE_VEHICLE_OEM_APP(4) 才是 OEM 自定义车控的规范入口
-     * (CCC-TS-101 Table 19-21), 不应把车控塞进 SE 的私有 INS. */
+
+    if (msg_type == CCC_MSG_TYPE_VEHICLE_OEM_APP &&
+        hdr.payload_header == CCC_OEM_MSG_ID_RQ) {
+        /* OEM App: 注入当前认证快照, 响应以 OEM_MSG_ID_RS 回包 */
+        uint8_t  resp[BLE_MAX_PAYLOAD];
+        ccc_auth_info_t auth;
+
+        (void)ccc_dk_get_auth_info(&auth);
+        uint16_t resp_len = ccc_oem_app_handle(&auth, payload, payload_len,
+                                               resp, (uint16_t)sizeof(resp));
+        if (resp_len > 0) {
+            (void)ccc_ble_send_v4(conn_handle,
+                                  CCC_OEM_MSG_TYPE, CCC_OEM_MSG_ID_RS,
+                                  resp, resp_len);
+        }
+        return;
+    }
+    /* 其余 msg_type (UWB_RANGING / DK_EVENT_NOTIFY / FRAMEWORK)
+     * 不属于本入口, 由各自模块处理. */
 }
 
 /* -------------------------------------------------------------------
