@@ -366,6 +366,30 @@ ccc_status_t key_list(ccc_digital_key_t *keys, uint8_t *count)
     return CCC_OK;
 }
 
+ccc_status_t key_get_sole_active_summary(key_summary_t *out)
+{
+    if (!out) return CCC_ERR_INVALID_PARAM;
+
+    uint8_t active = 0;
+    uint8_t slot   = 0;
+
+    for (uint8_t i = 0; i < MAX_KEYS; i++) {
+        if (g_keys[i].state == KEY_STATE_ACTIVE) {
+            active++;
+            slot = i;
+        }
+    }
+
+    if (active == 0) return CCC_ERR_NOT_FOUND;   /* 无可用钥匙 */
+    if (active > 1)  return CCC_ERR_STATE;       /* 歧义: 必须由对端声明 key_id */
+
+    (void)memcpy(out->key_id, g_keys[slot].key_id, KEY_ID_LEN);
+    (void)memcpy(out->access_rights, g_keys[slot].access_rights, 4);
+    out->key_type = g_keys[slot].key_type;
+    out->state    = g_keys[slot].state;
+    return CCC_OK;
+}
+
 ccc_status_t key_share(const uint8_t *key_id, key_type_e type, uint32_t duration_s)
 {
     if (!key_id) return CCC_ERR_INVALID_PARAM;

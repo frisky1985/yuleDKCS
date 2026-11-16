@@ -37,6 +37,32 @@ typedef struct {
 
 static auth_ctx_t g_auth = {0};
 
+/* 认证会话 — 车辆指令权限的唯一权威. 只在完整认证通过后置位. */
+static ccc_auth_info_t g_auth_info = {0};
+
+static void clear_auth_session(void)
+{
+    (void)memset(&g_auth_info, 0, sizeof(g_auth_info));
+}
+
+static void mark_authenticated(void)
+{
+    key_summary_t ks;
+
+    g_auth_info.authenticated = true;
+    g_auth_info.key_bound     = false;
+    (void)memset(g_auth_info.key_id, 0, KEY_ID_LEN);
+    (void)memset(g_auth_info.access_rights, 0, 4);
+
+    /* 只有"恰好一把 ACTIVE 钥匙"才能绑定权限; 否则保持 key_bound=false.
+     * 多钥匙歧义场景需由 APDU 身份交换声明 key_id (待规范确认). */
+    if (key_get_sole_active_summary(&ks) == CCC_OK) {
+        (void)memcpy(g_auth_info.key_id, ks.key_id, KEY_ID_LEN);
+        (void)memcpy(g_auth_info.access_rights, ks.access_rights, 4);
+        g_auth_info.key_bound = true;
+    }
+}
+
 /* -------------------------------------------------------------------
  *  Internal Helpers
  * ------------------------------------------------------------------- */
@@ -93,6 +119,7 @@ static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
 {
     (void)conn_handle; (void)reason;
     ccc_apdu_reset();          /* 会话隔离: 断开即作废 AID/挑战/认证态 */
+    clear_auth_session();
     g_status.ble_connected = false;
     transition_state(STATE_STANDBY);
 }
@@ -190,11 +217,15 @@ static ccc_status_t process_authentication(void)
                     g_auth.auth_sig, g_auth.auth_sig_len);
     if (vr != VERIFY_OK) {
         g_auth.pending = false;
+        clear_auth_session();
         transition_state(STATE_LOCKED);
         return CCC_ERR_SECURITY;
     }
 
     g_auth.pending = false;
+
+    /* 完整认证通过: 置权威会话标志并绑定钥匙权限 */
+    mark_authenticated();
 
     /* Step 4: 认证通过, 启动 UWB 测距 */
     ccc_status_t ret = uwb_start_ranging(1);  /* session_id = 1 */
@@ -216,6 +247,9 @@ void ccc_dk_set_auth_data(const uint8_t *cert_chain, uint16_t cert_chain_len,
                           const uint8_t *auth_data, uint32_t auth_data_len,
                           const uint8_t *auth_sig, uint32_t auth_sig_len)
 {
+    /* 新的认证尝试立即作废上一会话的权限 */
+    clear_auth_session();
+
     g_auth.pending        = true;
     g_auth.cert_chain     = cert_chain;
     g_auth.cert_chain_len = cert_chain_len;
@@ -286,6 +320,7 @@ ccc_status_t ccc_dk_deinit(void)
     uwb_ncj29d6_deinit();
     ble_kw47a_deinit();
     nfc_st25r501_deinit();
+    clear_auth_session();
     transition_state(STATE_INIT);
     return CCC_OK;
 }
@@ -357,5 +392,12 @@ ccc_status_t ccc_dk_get_status(system_status_t *status)
 {
     if (!status) return CCC_ERR_INVALID_PARAM;
     (void)memcpy(status, &g_status, sizeof(*status));
+    return CCC_OK;
+}
+
+ccc_status_t ccc_dk_get_auth_info(ccc_auth_info_t *info)
+{
+    if (!info) return CCC_ERR_INVALID_PARAM;
+    (void)memcpy(info, &g_auth_info, sizeof(*info));
     return CCC_OK;
 }

@@ -335,6 +335,20 @@ typedef struct __attribute__((packed)) {
     uint8_t  reserved[3];
 } ccc_digital_key_t;
 
+/* 轻量钥匙摘要 — 避免在 MCU 栈上复制完整 ccc_digital_key_t (含证书).
+ *
+ * 语义: 仅在"恰好一把 ACTIVE 钥匙"时返回 CCC_OK; 0 把返回 CCC_ERR_NOT_FOUND;
+ *       多把返回 CCC_ERR_STATE (歧义即拒绝, fail-closed).
+ * 用途: 认证成功后绑定会话权限; 多钥匙场景须由 APDU 身份交换明确 key_id. */
+typedef struct {
+    uint8_t key_id[KEY_ID_LEN];
+    uint8_t access_rights[4];
+    uint8_t key_type;
+    uint8_t state;
+} key_summary_t;
+
+ccc_status_t key_get_sole_active_summary(key_summary_t *out);
+
 ccc_status_t key_mgmt_init(void);
 ccc_status_t key_mgmt_deinit(void);
 ccc_status_t key_create(ccc_digital_key_t *key);
@@ -523,11 +537,25 @@ typedef struct {
     uint8_t      active_key_count;
 } system_status_t;
 
+/* 认证会话信息 — 车辆指令权限判定的唯一权威 (由 core 维护).
+ *
+ * authenticated: 证书链 + attestation + 挑战签名全部通过后才为 true;
+ *                任何失败、重新认证、断开连接都会清零.
+ * key_bound:     已绑定唯一 ACTIVE 钥匙; 为 false 时 access_rights 全 0,
+ *                调用方必须拒绝一切车控指令 (fail-closed). */
+typedef struct {
+    bool    authenticated;
+    bool    key_bound;
+    uint8_t key_id[KEY_ID_LEN];
+    uint8_t access_rights[4];
+} ccc_auth_info_t;
+
 ccc_status_t ccc_dk_init(void);
 ccc_status_t ccc_dk_deinit(void);
 ccc_status_t ccc_dk_run(void);    /* main loop tick */
 main_state_e ccc_dk_get_state(void);
 ccc_status_t ccc_dk_get_status(system_status_t *status);
+ccc_status_t ccc_dk_get_auth_info(ccc_auth_info_t *info);
 
 /* 提交对端认证数据 (由 BLE 接收回调调用), 触发 AUTH_PROCESS 闭环 */
 void ccc_dk_set_auth_data(const uint8_t *cert_chain, uint16_t cert_chain_len,
