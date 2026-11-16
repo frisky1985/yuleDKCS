@@ -19,6 +19,7 @@ extern int run_iccoa_ble_tests(void);
 extern int run_ccc_core_tests(void);
 extern int run_ccc_frame_tests(void);
 extern int run_protocol_uuid_tests(void);
+extern int run_ccc_apdu_tests(void);
 extern int run_icce_tests(void);
 extern int run_unified_tests(void);
 extern int run_edge_condition_tests(void);
@@ -55,6 +56,9 @@ int main(void)
 
     printf("\n--- Cross-Protocol Service UUID Consistency ---\n");
     ret += run_protocol_uuid_tests();
+
+    printf("\n--- CCC v4.0 APDU Dispatcher ---\n");
+    ret += run_ccc_apdu_tests();
 
     printf("\n--- ICCE Protocol Tests ---\n");
     ret += run_icce_tests();

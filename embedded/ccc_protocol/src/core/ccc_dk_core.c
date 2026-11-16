@@ -4,6 +4,7 @@
  */
 
 #include "ccc_digital_key.h"
+#include "ccc_apdu.h"
 
 /* -------------------------------------------------------------------
  *  Module Instances
@@ -91,8 +92,54 @@ static void on_ble_connected(uint16_t conn_handle, uint8_t status)
 static void on_ble_disconnected(uint16_t conn_handle, uint8_t reason)
 {
     (void)conn_handle; (void)reason;
+    ccc_apdu_reset();          /* 会话隔离: 断开即作废 AID/挑战/认证态 */
     g_status.ble_connected = false;
     transition_state(STATE_STANDBY);
+}
+
+/* -------------------------------------------------------------------
+ *  APDU 路由 — 传输层之上、密码学服务之下的唯一入口
+ *
+ *  BLE RX -> ccc_frame_parse (v4.0 帧) -> 本函数按 msg_type 分流
+ *    SE + DK_APDU_RQ -> ccc_apdu_process -> SE + DK_APDU_RS 回包
+ *  帧畸形/非预期消息一律丢弃, 不回包 (fail-closed).
+ * ------------------------------------------------------------------- */
+static void on_apdu_authenticated(const uint8_t *challenge, uint16_t challenge_len,
+                                  const uint8_t *sig, uint16_t sig_len)
+{
+    /* 签名与挑战已由 ccc_apdu 拷贝到静态存储, 延迟到 ccc_dk_run 处理安全 */
+    (void)ccc_dk_set_auth_data(NULL, 0, NULL, 0, NULL,
+                               challenge, challenge_len, sig, sig_len);
+}
+
+static void ccc_ble_rx_handler(uint16_t conn_handle,
+                               const uint8_t *data, uint16_t len)
+{
+    ccc_frame_header_v4_t hdr;
+    const uint8_t *payload = NULL;
+    uint16_t payload_len = 0;
+
+    if (ccc_frame_parse(data, len, &hdr, &payload, &payload_len) != CCC_OK) {
+        return;   /* 非法帧头/长度不匹配: 静默丢弃 */
+    }
+
+    uint8_t msg_type = ccc_msg_type_from_header(hdr.message_header);
+
+    if (msg_type == CCC_MSG_TYPE_SE &&
+        hdr.payload_header == CCC_MSG_ID_DK_APDU_RQ) {
+        uint8_t  resp[BLE_MAX_PAYLOAD];
+        uint16_t resp_len = 0;
+
+        (void)ccc_apdu_process(payload, payload_len,
+                               resp, (uint16_t)sizeof(resp), &resp_len);
+        if (resp_len > 0) {
+            (void)ccc_ble_send_v4(conn_handle,
+                                  CCC_MSG_TYPE_SE, CCC_MSG_ID_DK_APDU_RS,
+                                  resp, resp_len);
+        }
+    }
+    /* 其他 msg_type (UWB_RANGING / DK_EVENT_NOTIFY / FRAMEWORK)
+     * 不属于 APDU 路由, 由各自模块处理. */
 }
 
 /* -------------------------------------------------------------------
@@ -206,6 +253,7 @@ ccc_status_t ccc_dk_init(void)
     /* Register BLE callbacks */
     ble_register_conn_cb(on_ble_connected);
     ble_register_disconn_cb(on_ble_disconnected);
+    ble_register_recv_cb(ccc_ble_rx_handler);
 
     /* Init UWB */
     ret = uwb_ncj29d6_init();
@@ -222,6 +270,10 @@ ccc_status_t ccc_dk_init(void)
     /* Init Key Management */
     ret = key_mgmt_init();
     if (ret != CCC_OK) return ret;
+
+    /* APDU 会话层: 认证成功事件回调 core 的认证流程 */
+    ccc_apdu_reset();
+    (void)ccc_apdu_register_auth_cb(on_apdu_authenticated);
 
     transition_state(STATE_STANDBY);
     return CCC_OK;
