@@ -21,6 +21,8 @@ public enum CCCFrameError: Error, Equatable {
     case tooShort(Int)
     /// Length 字段与实际负载长度不一致 (防截断/粘包)
     case payloadLengthMismatch(declared: Int, actual: Int)
+    /// Bit[7:6] RFU 非零 (规范要求置 0, 与车端 fail-closed 一致)
+    case rfuBitsSet(UInt8)
 }
 
 // MARK: - CCC BLE 指令帧
@@ -61,12 +63,13 @@ public struct CCCCommandFrame: Equatable {
         return bytes
     }
 
-    /// 严格解析: 帧头 + length 精确匹配, 不匹配返回 nil
+    /// 严格解析: 帧头 + length 精确匹配 + RFU 位为 0, 否则返回 nil
     public init?(data: Data) {
         guard data.count >= CCCCommandFrame.headerLength else { return nil }
+        guard (data[0] & 0xC0) == 0 else { return nil }   // Bit[7:6] RFU 必须为 0
         let declared = (Int(data[2]) << 8) | Int(data[3])
         guard data.count == CCCCommandFrame.headerLength + declared else { return nil }
-        self.messageType = data[0]
+        self.messageType = data[0] & 0x3F
         self.messageID = data[1]
         self.payload = data.subdata(in: CCCCommandFrame.headerLength..<data.count)
     }
@@ -76,13 +79,16 @@ public struct CCCCommandFrame: Equatable {
         guard data.count >= CCCCommandFrame.headerLength else {
             throw CCCFrameError.tooShort(data.count)
         }
+        guard (data[0] & 0xC0) == 0 else {
+            throw CCCFrameError.rfuBitsSet(data[0])
+        }
         let declared = (Int(data[2]) << 8) | Int(data[3])
         let actual = data.count - CCCCommandFrame.headerLength
         guard declared == actual else {
             throw CCCFrameError.payloadLengthMismatch(declared: declared, actual: actual)
         }
         return CCCCommandFrame(
-            messageType: data[0],
+            messageType: data[0] & 0x3F,
             messageID: data[1],
             payload: data.subdata(in: CCCCommandFrame.headerLength..<data.count)
         )

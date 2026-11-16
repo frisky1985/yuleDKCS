@@ -18,6 +18,11 @@ extern "C" {
 #include <stdbool.h>
 #include <string.h>
 
+/* Service UUID 单一来源 — 与 CCC/ICCE 共用 hardware_abstraction.h 定义,
+ * 禁止在本头文件重复硬编码 (历史漂移: CCC 曾被写成 ICCOA 的 0xFEF5).
+ * 用相对路径以保证 iccoa_dk 独立编译 (其 CMake 未挂 ccc include 路径). */
+#include "../../ccc_protocol/include/hardware_abstraction.h"
+
 /* ========================================================================
  *  Return Codes
  * ======================================================================== */
@@ -38,7 +43,7 @@ extern "C" {
  *  BLE Communication
  * ======================================================================== */
 #define ICCOA_MAX_PAYLOAD   244
-#define ICCOA_SERVICE_UUID  0xFEF5
+/* ICCOA_SERVICE_UUID (=0xFEF5) 来自 hardware_abstraction.h 单一来源 */
 
 typedef void (*iccoa_ble_recv_cb_t)(const uint8_t *data, uint16_t len);
 

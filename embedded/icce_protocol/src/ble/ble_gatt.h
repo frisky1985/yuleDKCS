@@ -6,8 +6,9 @@
 
 /* ICCE Service UUID 单一来源 — 同 hardware_abstraction.h
  * ICCE T/CA 110-2020: Service 0xFEFA
- * 旧参考实现曾用 0xFFE0 范围, 与规范不符, 已废弃. */
-#include "../../ccc_protocol/include/hardware_abstraction.h"
+ * 旧参考实现曾用 0xFFE0 范围, 与规范不符, 已废弃.
+ * 用相对路径以保证 icce_dk 独立编译 (其 CMake 未挂 ccc include 路径). */
+#include "../../../ccc_protocol/include/hardware_abstraction.h"
 
 #define GATT_SUCCESS 0
 

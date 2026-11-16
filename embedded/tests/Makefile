@@ -73,7 +73,7 @@ TEST_UNIFIED := $(TEST_DIR)/test_unified.c
 TEST_ALL     := $(TESTDIR)/support/test_suite.c
 
 # Include paths
-INCLUDES := -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
+INCLUDES := -I$(TESTDIR) -I$(TESTDIR)/support -I$(TESTDIR)/support/icce \
             -I$(ROOT)/iccoa_protocol/include -I$(ROOT)/ccc_protocol/include \
             -I$(ROOT)/icce_protocol/include -I$(ROOT)/unified_protocol/include \
             -I$(ROOT)/tools/provision/include \
@@ -170,6 +170,10 @@ $(BUILD)/test_iccoa_ble_lib.o: $(TEST_DIR)/test_iccoa_ble.c | $(BUILD)
 $(BUILD)/test_ccc_lib.o: $(TEST_DIR)/test_ccc_dk_core.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_CCC_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_ccc_frame_lib.o: $(TEST_DIR)/test_ccc_frame.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_LIB_MODE -c -o $@ $<
+$(BUILD)/test_protocol_uuid.o: $(TEST_DIR)/test_protocol_uuid.c | $(BUILD)
+	$(CC) $(CFLAGS) $(INCLUDES) -ggdb -c -o $@ $<
+$(BUILD)/test_protocol_uuid_lib.o: $(TEST_DIR)/test_protocol_uuid.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_LIB_MODE -c -o $@ $<
 $(BUILD)/test_icce_lib.o: $(TEST_DIR)/test_icce.c | $(BUILD)
 	$(CC) $(CFLAGS) $(INCLUDES) -DTEST_ICCE_NO_MAIN -DTEST_LIB_MODE -c -o $@ $<
@@ -383,6 +387,7 @@ test_secure_boot: $(BUILD)/test_secure_boot.o $(BUILD)/secure_boot.o \
 test_all: $(BUILD)/test_suite.o \
           $(BUILD)/test_iccoa_dk_core_lib.o $(BUILD)/test_iccoa_ble_lib.o \
           $(BUILD)/test_ccc_lib.o $(BUILD)/test_ccc_frame_lib.o $(BUILD)/test_icce_lib.o \
+          $(BUILD)/test_protocol_uuid_lib.o \
           $(BUILD)/test_unified_lib.o $(BUILD)/test_edge_condition_lib.o \
           $(BUILD)/test_icce_edge_lib.o $(BUILD)/test_sm_crypto_lib.o \
           $(BUILD)/test_se050_scp03_lib.o \

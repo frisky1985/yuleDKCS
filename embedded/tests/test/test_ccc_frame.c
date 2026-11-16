@@ -19,27 +19,12 @@
 
 #include "unity.h"
 #include "ccc_digital_key.h"
+#include "protocol_vectors/ccc_frame_v4.h"   /* 跨语言固定字节向量 (单一来源) */
 #include <string.h>
 #include <stdio.h>
 
-/* ─── 规范示例向量 (CCC-TS-101 §19.3) ─── */
-
-/** SELECT APDU payload: 00 A4 04 00 0D A0 00 00 00 80 94 34 34 34 34 44 4B 41 76 31 00 */
-static const uint8_t SELECT_APDU_PAYLOAD[] = {
-    0x00, 0xA4, 0x04, 0x00, 0x0D, 0xA0, 0x00, 0x00, 0x00,
-    0x80, 0x94, 0x34, 0x34, 0x34, 0x34, 0x44, 0x4B, 0x41,
-    0x76, 0x31, 0x00
-};
-#define SELECT_APDU_LEN  21
-
-/** 完整 SELECT APDU 帧 (规范示例, 4B 帧头 + 21B payload = 25B) */
-static const uint8_t SELECT_APDU_FRAME[] = {
-    0x01, 0x0B, 0x00, 0x15,                         /* 帧头: SE(1) + DK_APDU_RQ(11) + BE len 21 */
-    0x00, 0xA4, 0x04, 0x00, 0x0D, 0xA0, 0x00, 0x00,
-    0x00, 0x80, 0x94, 0x34, 0x34, 0x34, 0x34, 0x44,
-    0x4B, 0x41, 0x76, 0x31, 0x00
-};
-#define SELECT_APDU_FRAME_LEN  25  /* 4 + 21 */
+/* 规范向量来自 protocol_vectors/ccc_frame_v4.h, 与 iOS/Android 测试共用.
+ * 本文件只验证车端编解码与这些向量的字节级一致性. */
 
 /* ─── msg_type_from_header 辅助 ─── */
 
@@ -62,38 +47,31 @@ void test_frame_build_select_apdu_spec_example(void) {
 
     ccc_status_t ret = ccc_frame_build(
         CCC_MSG_TYPE_SE, CCC_MSG_ID_DK_APDU_RQ,
-        SELECT_APDU_PAYLOAD, SELECT_APDU_LEN,
+        CCC_VEC_SELECT_APDU_PAYLOAD, CCC_VEC_SELECT_APDU_PAYLOAD_LEN,
         frame, &frame_len
     );
 
     TEST_ASSERT_EQUAL_INT(CCC_OK, ret);
-    TEST_ASSERT_EQUAL_UINT16(SELECT_APDU_FRAME_LEN, frame_len);
-    TEST_ASSERT_EQUAL_MEMORY(SELECT_APDU_FRAME, frame, SELECT_APDU_FRAME_LEN);
+    TEST_ASSERT_EQUAL_UINT16(CCC_VEC_SELECT_APDU_FRAME_LEN, frame_len);
+    TEST_ASSERT_EQUAL_MEMORY(CCC_VEC_SELECT_APDU_FRAME, frame,
+                             CCC_VEC_SELECT_APDU_FRAME_LEN);
 }
 
 void test_frame_build_dk_event_notify(void) {
-    /* 车辆状态上报: DK Event Notification (Message Type=3), 裸 3B 状态 */
-    uint8_t status_payload[] = { 0x01, 0x00, 0x45 };  /* locked=1, engine_on=0, battery=69 */
+    /* 车辆状态上报: DK Event Notification (Message Type=3) */
     uint8_t frame[16];
     uint16_t frame_len = 0;
 
     ccc_status_t ret = ccc_frame_build(
         CCC_MSG_TYPE_DK_EVENT_NOTIFY, CCC_MSG_ID_DK_APDU_RS,
-        status_payload, sizeof(status_payload),
+        CCC_VEC_DK_EVENT_PAYLOAD, sizeof(CCC_VEC_DK_EVENT_PAYLOAD),
         frame, &frame_len
     );
 
     TEST_ASSERT_EQUAL_INT(CCC_OK, ret);
-    TEST_ASSERT_EQUAL_UINT16(7, frame_len);  /* 4 + 3 */
-    /* 帧头验证 */
-    TEST_ASSERT_EQUAL_UINT8(0x03, frame[0]);  /* DK_EVENT_NOTIFY */
-    TEST_ASSERT_EQUAL_UINT8(0x0C, frame[1]);  /* DK_APDU_RS */
-    TEST_ASSERT_EQUAL_UINT8(0x00, frame[2]);  /* BE len high */
-    TEST_ASSERT_EQUAL_UINT8(0x03, frame[3]);  /* BE len low */
-    /* payload 验证 */
-    TEST_ASSERT_EQUAL_UINT8(0x01, frame[4]);
-    TEST_ASSERT_EQUAL_UINT8(0x00, frame[5]);
-    TEST_ASSERT_EQUAL_UINT8(0x45, frame[6]);
+    TEST_ASSERT_EQUAL_UINT16(CCC_VEC_DK_EVENT_FRAME_LEN, frame_len);
+    TEST_ASSERT_EQUAL_MEMORY(CCC_VEC_DK_EVENT_FRAME, frame,
+                             CCC_VEC_DK_EVENT_FRAME_LEN);
 }
 
 void test_frame_build_empty_payload(void) {
@@ -107,11 +85,8 @@ void test_frame_build_empty_payload(void) {
     );
 
     TEST_ASSERT_EQUAL_INT(CCC_OK, ret);
-    TEST_ASSERT_EQUAL_UINT16(4, frame_len);  /* 仅帧头 */
-    TEST_ASSERT_EQUAL_UINT8(0x00, frame[0]);  /* FRAMEWORK */
-    TEST_ASSERT_EQUAL_UINT8(0x0C, frame[1]);  /* DK_APDU_RS */
-    TEST_ASSERT_EQUAL_UINT8(0x00, frame[2]);  /* BE len 0 */
-    TEST_ASSERT_EQUAL_UINT8(0x00, frame[3]);
+    TEST_ASSERT_EQUAL_UINT16(CCC_VEC_EMPTY_FRAME_LEN, frame_len);
+    TEST_ASSERT_EQUAL_MEMORY(CCC_VEC_EMPTY_FRAME, frame, CCC_VEC_EMPTY_FRAME_LEN);
 }
 
 /* ─── ccc_frame_build 负向测试 ─── */
@@ -150,15 +125,16 @@ void test_frame_parse_select_apdu_spec_example(void) {
     uint16_t payload_len = 0;
 
     ccc_status_t ret = ccc_frame_parse(
-        SELECT_APDU_FRAME, SELECT_APDU_FRAME_LEN,
+        CCC_VEC_SELECT_APDU_FRAME, CCC_VEC_SELECT_APDU_FRAME_LEN,
         &hdr, &payload, &payload_len
     );
 
     TEST_ASSERT_EQUAL_INT(CCC_OK, ret);
     TEST_ASSERT_EQUAL_UINT8(CCC_MSG_TYPE_SE, ccc_msg_type_from_header(hdr.message_header));
     TEST_ASSERT_EQUAL_UINT8(CCC_MSG_ID_DK_APDU_RQ, hdr.payload_header);
-    TEST_ASSERT_EQUAL_UINT16(SELECT_APDU_LEN, payload_len);
-    TEST_ASSERT_EQUAL_MEMORY(SELECT_APDU_PAYLOAD, payload, SELECT_APDU_LEN);
+    TEST_ASSERT_EQUAL_UINT16(CCC_VEC_SELECT_APDU_PAYLOAD_LEN, payload_len);
+    TEST_ASSERT_EQUAL_MEMORY(CCC_VEC_SELECT_APDU_PAYLOAD, payload,
+                             CCC_VEC_SELECT_APDU_PAYLOAD_LEN);
 }
 
 void test_frame_parse_roundtrip_all_msg_types(void) {
@@ -196,39 +172,26 @@ void test_frame_parse_too_short(void) {
 }
 
 void test_frame_parse_rfu_bits_not_zero(void) {
-    uint8_t frame[8] = {
-        0xC1,  /* Bit[7:6]=11 (RFU 非零), Bit[5:0]=SE */
-        0x0B,
-        0x00, 0x04,
-        0xAA, 0xBB, 0xCC, 0xDD
-    };
     ccc_frame_header_v4_t hdr;
-    ccc_status_t ret = ccc_frame_parse(frame, 8, &hdr, NULL, NULL);
+    ccc_status_t ret = ccc_frame_parse(CCC_VEC_INVALID_RFU_FRAME,
+                                       CCC_VEC_INVALID_RFU_FRAME_LEN,
+                                       &hdr, NULL, NULL);
     TEST_ASSERT_EQUAL_INT(CCC_ERR_PARAM, ret);
 }
 
 void test_frame_parse_length_truncated(void) {
-    /* 声明 payload_len=10, 实际只有 5 — 截断 */
-    uint8_t frame[9] = {
-        0x01, 0x0B,
-        0x00, 0x0A,  /* BE len = 10 */
-        0x01, 0x02, 0x03, 0x04, 0x05
-    };
     ccc_frame_header_v4_t hdr;
-    ccc_status_t ret = ccc_frame_parse(frame, 9, &hdr, NULL, NULL);
+    ccc_status_t ret = ccc_frame_parse(CCC_VEC_TRUNCATED_FRAME,
+                                       CCC_VEC_TRUNCATED_FRAME_LEN,
+                                       &hdr, NULL, NULL);
     TEST_ASSERT_EQUAL_INT(CCC_ERR_PARAM, ret);
 }
 
 void test_frame_parse_length_stuffed(void) {
-    /* 声明 payload_len=2, 实际有 5 — 粘包 */
-    uint8_t frame[11] = {
-        0x01, 0x0B,
-        0x00, 0x02,  /* BE len = 2 */
-        0x01, 0x02,
-        0xAA, 0xBB, 0xCC  /* 多余数据 */
-    };
     ccc_frame_header_v4_t hdr;
-    ccc_status_t ret = ccc_frame_parse(frame, 11, &hdr, NULL, NULL);
+    ccc_status_t ret = ccc_frame_parse(CCC_VEC_STUFFED_FRAME,
+                                       CCC_VEC_STUFFED_FRAME_LEN,
+                                       &hdr, NULL, NULL);
     TEST_ASSERT_EQUAL_INT(CCC_ERR_PARAM, ret);
 }
 

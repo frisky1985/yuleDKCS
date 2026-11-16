@@ -66,10 +66,12 @@ object CccFrame {
     }
 
     /**
-     * 解析帧; 长度不符 / 数据不足时返回 null (防截断/粘包)。
+     * 解析帧; 长度不符 / RFU 位非零 / 数据不足时返回 null (防截断/粘包/畸形帧)。
      */
     fun parse(data: ByteArray): Frame? {
         if (data.size < HEADER_SIZE) return null
+        // Bit[7:6] 为 RFU, 规范要求置 0; 与车端 ccc_frame_parse 保持一致的 fail-closed
+        if ((data[0].toUInt8() and 0xC0) != 0) return null
         val declared = ((data[2].toUInt8()) shl 8) or data[3].toUInt8()
         if (data.size != HEADER_SIZE + declared) return null
         return Frame(

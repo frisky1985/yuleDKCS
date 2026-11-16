@@ -21,7 +21,9 @@ extern "C" {
 #define DK_HAL_ERR_TIMEOUT (-2)
 
 /* ── BLE (NXP KW47A) — REQ-029 ──────────────────────────────────── */
-#define DK_BLE_GATT_CCC_DK_SERVICE_UUID  0xFFD1u   /* CCC DK Service */
+/* CCC GATT Service UUID 不在本 HAL 契约内重复定义:
+ * 单一来源见 ccc_protocol/include/hardware_abstraction.h 的 CCC_SERVICE_UUID.
+ * 旧值 0xFFD1 为 CCC R3.0 遗留, 已删除 (与 v4.0 0xFFF5 并存会导致注册/扫描错位). */
 
 /* ── UWB (NXP NCJ29D6) — REQ-030 ────────────────────────────────── */
 /* 距离分区: LOCKED / APPROACH / UNLOCK / ENTRY / INSIDE */
